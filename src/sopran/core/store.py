@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -100,6 +102,7 @@ class Store:
             "time_coverage": _time_coverage_to_json(time_coverage),
             "source_files": list(source_files),
             "producer": producer,
+            "software": _software_metadata(),
         }
         if provenance is not None:
             manifest["provenance"] = provenance
@@ -288,6 +291,20 @@ def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
             for variable in schema.variables
         ],
     }
+
+
+def _software_metadata() -> dict[str, str]:
+    return {
+        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "sopran": _sopran_version(),
+    }
+
+
+def _sopran_version() -> str:
+    try:
+        return version("sopran")
+    except PackageNotFoundError:
+        return "0.0.0"
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 
 import polars as pl
 import pytest
@@ -42,6 +43,10 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     assert manifest["dataset_id"] == "kaguya.esa1.energy_flux"
     assert manifest["layer"] == "normalized"
     assert manifest["schema_version"] == "0.1"
+    assert manifest["software"] == {
+        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "sopran": spn.__version__,
+    }
     assert manifest["time_coverage"] == {
         "start": "2008-02-01T00:00:00Z",
         "stop": "2008-02-02T00:00:00Z",

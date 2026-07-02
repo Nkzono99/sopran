@@ -863,7 +863,8 @@ logs/              # 必要に応じて生成ログ
 - `partitioning`
 - `producer`
 - `created_at`
-- `software`
+- `software`: SOPRAN package version、Python version、将来の Rust backend version /
+  binary hash など、再実行環境の同定に使う情報。
 - `parameters`
 
 ## Pipeline と保存の関係

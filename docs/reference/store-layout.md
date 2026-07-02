@@ -31,9 +31,10 @@ Catalog rows currently include:
 
 The catalog is the boundary for append, replace, and lazy scan operations.
 
-`dataset.json` may include a `provenance` object. The first supported producer
-is the KAGUYA ESA1 pipeline, which records pipeline source, stages, run mode,
-time range, output dataset/layer, and selected variable.
+`dataset.json` includes a `software` object with the SOPRAN package version and
+Python runtime version. It may also include a `provenance` object. The first
+supported producer is the KAGUYA ESA1 pipeline, which records pipeline source,
+stages, run mode, time range, output dataset/layer, and selected variable.
 
 Registry layout:
 

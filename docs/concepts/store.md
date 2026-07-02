@@ -28,8 +28,9 @@ shards/
 
 `catalog.parquet` records shard path, start/stop coverage, row count, checksum,
 status, and schema version. `dataset.json` records dataset ID, layer, mission,
-instrument, product, schema version, time coverage, source files, producer, and
-optional provenance. `schema.json` also records the same schema version.
+instrument, product, schema version, time coverage, source files, producer,
+software versions, and optional provenance. `schema.json` also records the same
+schema version.
 
 `Store.write_parquet_dataset(..., provenance={...})` writes a structured
 provenance object into `dataset.json`. Pipeline backends should use this for the
