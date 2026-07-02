@@ -45,11 +45,13 @@ subset.to_polars()
 subset.quicklook("counts_energy_band")
 ```
 
-`resample()` uses a thin SOPRAN wrapper around xarray's resampler. Aggregations
-such as `mean()` return another `SopranArray`:
+`resample()` uses a thin SOPRAN wrapper around xarray's resampler. Basic
+aggregations such as `mean()`, `sum()`, and `median()` return another
+`SopranArray`:
 
 ```python
 hourly = quality.resample(time="1h").mean()
+counts_10s = counts.resample(time="10s").sum()
 hourly.to_polars()
 ```
 

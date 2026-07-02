@@ -239,6 +239,40 @@ def test_loaded_array_resample_delegates_to_xarray_resampler() -> None:
     assert resampled.metadata["schema"]["dims"] == ["time"]
 
 
+def test_loaded_array_resampler_wraps_sum_and_median_reductions() -> None:
+    times = np.array(
+        [
+            "2008-01-01T00:00:00",
+            "2008-01-01T00:01:00",
+            "2008-01-01T00:02:00",
+            "2008-01-01T00:03:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.array([1.0, 2.0, 10.0, 20.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time",), units="count"),
+        xr=array,
+    )
+
+    summed = loaded.resample(time="2min").sum()
+    median = loaded.resample(time="2min").median()
+
+    assert isinstance(summed, SopranArray)
+    assert summed.to_xarray().values.tolist() == [3.0, 30.0]
+    assert summed.schema.units == "count"
+    assert isinstance(median, SopranArray)
+    assert median.to_xarray().values.tolist() == [1.5, 15.0]
+    assert median.schema.dims == ("time",)
+
+
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
     import matplotlib
 

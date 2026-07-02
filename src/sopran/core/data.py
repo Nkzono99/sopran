@@ -226,4 +226,14 @@ class SopranArrayResampler:
     resampler: Any
 
     def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
-        return self.parent._with_xarray(self.resampler.mean(*args, **kwargs))
+        return self._reduce("mean", *args, **kwargs)
+
+    def sum(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._reduce("sum", *args, **kwargs)
+
+    def median(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._reduce("median", *args, **kwargs)
+
+    def _reduce(self, method: str, *args: Any, **kwargs: Any) -> SopranArray:
+        reduction = getattr(self.resampler, method)
+        return self.parent._with_xarray(reduction(*args, **kwargs))
