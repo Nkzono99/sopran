@@ -46,3 +46,10 @@ stop = "2011-07-02T00:00:00"
 
     assert plan.dataset_id == "artemis.p1.fgm.magnetic_field"
     assert plan.time == case.time
+
+
+def test_top_level_load_dispatches_artemis_dataset_id() -> None:
+    with pytest.raises(NotImplementedError) as exc:
+        spn.load("artemis.p1.fgm.magnetic_field", spn.day("2011-07-01"))
+
+    assert "ARTEMIS P1 FGM" in str(exc.value)
