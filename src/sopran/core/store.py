@@ -49,6 +49,24 @@ class Store:
     def dataset_path(self, dataset_id: str, *, layer: str) -> Path:
         return self._layer_path(layer, *_dataset_parts(dataset_id))
 
+    def dataset(self, dataset_id: str, *, layer: str | None = None) -> DatasetRecord:
+        if layer is not None:
+            record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+            if record.manifest_path.exists():
+                return record
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
+
+        matches = []
+        for candidate_layer in ("raw", "normalized", "features", "databases"):
+            record = DatasetRecord(root=self.dataset_path(dataset_id, layer=candidate_layer))
+            if record.manifest_path.exists():
+                matches.append(record)
+        if len(matches) == 1:
+            return matches[0]
+        if not matches:
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id}")
+        raise DatasetNotFoundError(f"Dataset exists in multiple layers: {dataset_id}")
+
     def register_dataset(
         self,
         *,
