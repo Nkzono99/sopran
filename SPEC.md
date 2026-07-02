@@ -1194,7 +1194,8 @@ v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の
 
 - `body`: `moon`, `earth`, `mars` など。
 - `datum` / `shape`: spherical、ellipsoid、triaxial、または SPICE body radii。
-- `lon_domain`: `0_360` または `minus180_180`。
+- `lon_domain`: canonical value は `0_360` または `-180_180`。config alias として
+  `minus180_180` も受け付け、内部では `-180_180` へ正規化する。
 - `lon_direction`: `east_positive` または `west_positive`。
 - `lat_type`: `planetocentric` または `planetographic`。
 - `projection`: `equirectangular`, `polar_stereographic`, `orthographic`,

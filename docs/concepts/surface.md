@@ -20,6 +20,7 @@ region.crosses_lon_boundary  # True
 region.lon_span              # 20.0
 region.contains(355, 0)      # True
 region.contains(-5, 0)       # True
+region.to_lon_domain("minus180_180").lon_domain  # "-180_180"
 ```
 
 Mission modules may discover provider files, but body-fixed semantics belong to

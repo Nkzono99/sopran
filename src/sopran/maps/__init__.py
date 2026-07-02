@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from typing import Literal
 
 
-LonDomain = Literal["0_360", "-180_180"]
+LonDomain = Literal["0_360", "-180_180", "minus180_180"]
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,9 @@ class Region:
     lat: tuple[float, float]
     body: str = "moon"
     lon_domain: LonDomain = "0_360"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "lon_domain", _canonical_lon_domain(self.lon_domain))
 
     @property
     def crosses_lon_boundary(self) -> bool:
@@ -27,6 +30,7 @@ class Region:
         return float((stop + domain_width) - start)
 
     def to_lon_domain(self, lon_domain: LonDomain) -> Region:
+        lon_domain = _canonical_lon_domain(lon_domain)
         if lon_domain == self.lon_domain:
             return self
         return replace(
@@ -55,12 +59,21 @@ class Region:
 
 
 def _convert_lon(value: float, lon_domain: LonDomain) -> float:
+    lon_domain = _canonical_lon_domain(lon_domain)
     if lon_domain == "0_360":
         return float(value % 360)
     if lon_domain == "-180_180":
         converted = (value + 180) % 360 - 180
         return float(180 if converted == -180 and value > 0 else converted)
-    raise ValueError("lon_domain must be '0_360' or '-180_180'")
+    raise ValueError("lon_domain must be '0_360', '-180_180', or 'minus180_180'")
+
+
+def _canonical_lon_domain(lon_domain: LonDomain) -> Literal["0_360", "-180_180"]:
+    if lon_domain == "minus180_180":
+        return "-180_180"
+    if lon_domain in ("0_360", "-180_180"):
+        return lon_domain
+    raise ValueError("lon_domain must be '0_360', '-180_180', or 'minus180_180'")
 
 
 __all__ = ["LonDomain", "Region"]

@@ -24,6 +24,7 @@ For regions that cross the 0/360 degree boundary:
 region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
 region.contains(355, 0)
 region.to_lon_domain("-180_180")
+region.to_lon_domain("minus180_180")  # accepted config alias
 ```
 
 These endpoints are planning skeletons for now. Full terrain-aware computation
