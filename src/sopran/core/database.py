@@ -14,6 +14,7 @@ class ProductRef:
     dataset_id: str
     layer: str
     store: Any | None = field(default=None, repr=False, compare=False)
+    database_name: str | None = field(default=None, repr=False, compare=False)
 
     @property
     def name(self) -> str:
@@ -23,6 +24,25 @@ class ProductRef:
         if self.store is None:
             raise ValueError("ProductRef.scan() requires a Store-backed reference")
         return self.store.scan_dataset(self.dataset_id, layer=self.layer)
+
+    def adopt_dataset(
+        self,
+        dataset: DatasetRecord,
+        *,
+        description: str = "",
+    ) -> ProductRef:
+        if self.store is None:
+            raise ValueError(
+                "ProductRef.adopt_dataset() requires a Store-backed reference"
+            )
+        if self.database_name is None:
+            return self
+        database = Database(
+            name=self.database_name,
+            root=self.store.database_path(self.database_name),
+            store=self.store,
+        )
+        return database.adopt_dataset(dataset, description=description)
 
 
 @dataclass(frozen=True)
@@ -52,6 +72,7 @@ class Database:
             dataset_id=f"{self.name}.{name}",
             layer="databases",
             store=self.store,
+            database_name=self.name,
         )
 
     def metadata(self) -> dict[str, Any]:
@@ -66,6 +87,7 @@ class Database:
                 dataset_id=str(item["dataset_id"]),
                 layer=str(item.get("layer", "databases")),
                 store=self.store,
+                database_name=self.name,
             )
             for item in self.metadata().get("products", [])
         )
@@ -101,6 +123,7 @@ class Database:
             dataset_id=str(manifest["dataset_id"]),
             layer=str(manifest["layer"]),
             store=self.store,
+            database_name=self.name,
         )
         self.root.mkdir(parents=True, exist_ok=True)
         self._write_metadata(product, description=description)

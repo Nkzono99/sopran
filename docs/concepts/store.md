@@ -136,6 +136,16 @@ products[0].dataset_id
 lazy = products[0].scan()
 ```
 
+Writing an alignment result directly to `db.product("wake_context")` also
+registers that product in `database.json`:
+
+```python
+features.write_dataset(
+    db.product("wake_context"),
+    description="aligned wake context features",
+)
+```
+
 When a reusable feature table is already stored in the `features` layer, keep
 the physical dataset there and adopt it into a project database as a reference:
 

@@ -761,7 +761,8 @@ def test_alignment_dataset_schema_preserves_feature_units_and_frames(tmp_path) -
 
 def test_alignment_result_writes_to_database_product_reference(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
-    target = store.database("lunar_wake").product("wake_context")
+    database = store.database("lunar_wake", create=True)
+    target = database.product("wake_context")
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
         cadence="10s",
@@ -774,7 +775,10 @@ def test_alignment_result_writes_to_database_product_reference(tmp_path) -> None
     )
     aligned = spn.align(sza, grid=bins, method="nearest", tolerance="3s")
 
-    dataset = aligned.write_dataset(target)
+    dataset = aligned.write_dataset(
+        target,
+        description="Wake context features.",
+    )
 
     assert dataset.root == store.database_path("lunar_wake", "wake_context")
     assert dataset.manifest()["dataset_id"] == "lunar_wake.wake_context"
@@ -782,6 +786,18 @@ def test_alignment_result_writes_to_database_product_reference(tmp_path) -> None
     assert dataset.manifest()["mission"] == "analysis"
     assert dataset.manifest()["instrument"] == "alignment"
     assert dataset.manifest()["product"] == "wake_context"
+    assert database.metadata()["products"] == [
+        {
+            "name": "wake_context",
+            "dataset_id": "lunar_wake.wake_context",
+            "layer": "databases",
+            "description": "Wake context features.",
+        }
+    ]
+    assert [
+        (product.name, product.dataset_id, product.layer)
+        for product in database.products()
+    ] == [("wake_context", "lunar_wake.wake_context", "databases")]
     assert target.scan().collect().to_dicts() == [
         {"time": "2008-01-01T00:00:05Z", "sza": 70.0}
     ]

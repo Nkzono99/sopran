@@ -285,6 +285,7 @@ class AlignmentResult:
         provenance: dict[str, Any] | None = None,
         parameters: dict[str, Any] | None = None,
         context: Any | None = None,
+        description: str = "",
         status: str = "candidate",
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
@@ -297,7 +298,7 @@ class AlignmentResult:
         dataset_parameters = dict(parameters or {})
         dataset_parameters["layout"] = layout
         dataset_parameters["alignment"] = self.metadata()
-        return store.write_parquet_dataset(
+        dataset = store.write_parquet_dataset(
             dataset_id=output_dataset_id,
             layer=output_layer,
             mission=mission,
@@ -332,6 +333,10 @@ class AlignmentResult:
             dataset_version=dataset_version,
             partitioning=partitioning,
         )
+        adopter = getattr(target, "adopt_dataset", None)
+        if callable(adopter):
+            adopter(dataset, description=description)
+        return dataset
 
     def metadata(self) -> dict[str, Any]:
         return {

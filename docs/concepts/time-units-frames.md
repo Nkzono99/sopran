@@ -74,8 +74,15 @@ dataset = features.write_dataset(
     context=case,
 )
 
-dataset = features.write_dataset(store.database("lunar_wake").product("wake_context"))
+dataset = features.write_dataset(
+    store.database("lunar_wake").product("wake_context"),
+    description="aligned wake context features",
+)
 ```
+
+Passing a database `ProductRef` writes to the `databases` layer and registers the
+product in that database's `database.json`, so `db.products()` can discover it
+later.
 
 Use `SampleTable` when each product needs its own rule, such as nearest SZA,
 bin-maximum wave power, bin-median density, or the first/last sample:

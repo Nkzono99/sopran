@@ -1808,7 +1808,8 @@ schema、catalog、manifest を作り、`parameters["alignment"]` に同じ meta
 `context=case` を渡した場合は `case.metadata()` を manifest の `context` に保存し、
 後から feature table がどの解析 case で作られたかを辿れるようにする。
 `AlignmentResult.write_dataset(db.product("wake_context"), ...)` のように `ProductRef` を渡すと、
-その参照が持つ dataset ID と layer に保存する。
+その参照が持つ dataset ID と layer に保存し、対象 database の `database.json` にも
+product 参照を登録する。`description=...` は database product metadata に保存される。
 単発ファイルとして外に出す場合は `write_parquet(path, layout=...)`、Store 管理下で再利用する
 解析 feature として残す場合は `write_dataset(...)` を使い分ける。
 `join="outer"` は全 bin を保持し、`join="inner"` はいずれかの feature が欠けた bin を落とす。
