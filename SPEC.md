@@ -527,6 +527,8 @@ F:/sopran_cache/
   `RawFileRecord` を復元できる。
 - parquet shard の schema、partition、期間、生成 pipeline、checksum を記録し、
   catalog checksum と現在の shard checksum を比較できる API を持つ。
+- dataset manifest の `source_files` から raw sidecar manifest へ辿り、入力 raw file の
+  checksum を検証できる API を持つ。
 - ユーザーが拡張した database を登録する。
 
 責務分担:

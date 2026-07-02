@@ -56,6 +56,8 @@ without duplicates on append. `partitioning` records Parquet partition columns.
 empty object. The manifest may also include a `provenance` object. The first
 supported producer is the KAGUYA ESA1 pipeline, which records pipeline source,
 stages, run mode, time range, output dataset/layer, and selected variable.
+`Store.dataset_source_files(...)` resolves the manifest `source_files` list back
+to raw sidecar records.
 
 Registry layout:
 

@@ -277,6 +277,15 @@ class Store:
             raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
         return record.scan(dataset_id=dataset_id)
 
+    def dataset_source_files(
+        self,
+        dataset_id: str,
+        *,
+        layer: str | None = None,
+    ) -> tuple[RawFileRecord, ...]:
+        manifest = self.dataset(dataset_id, layer=layer).manifest()
+        return tuple(self.raw_file(path) for path in manifest.get("source_files", []))
+
     def rebuild_registry(self):
         path = self.registry_path("datasets.parquet")
         path.parent.mkdir(parents=True, exist_ok=True)
