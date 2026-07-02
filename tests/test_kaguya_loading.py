@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-import sopran as spn
+from datetime import datetime
+
 import polars as pl
 import pytest
+
+import sopran as spn
 from sopran import Store
 from sopran.missions.kaguya import Kaguya, normalize_sensors
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
@@ -258,6 +261,44 @@ def test_pipeline_scan_reads_stored_normalized_variable(tmp_path) -> None:
     assert lazy.collect().to_dicts() == [
         {"time": "2008-01-01T00:00:08Z", "energy": 0, "counts": 64}
     ]
+
+
+def test_pipeline_scan_filters_datetime_time_column(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-01-01")
+    frame = pl.DataFrame(
+        {
+            "time": [
+                datetime(2008, 1, 1, 0, 0, 8),
+                datetime(2008, 1, 2, 0, 0, 8),
+            ],
+            "energy": [0, 0],
+            "counts": [64, 128],
+        }
+    )
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=frame,
+    )
+    kg = spn.Kaguya(store=store)
+
+    rows = (
+        kg.esa1.pipeline(time)
+        .from_normalized()
+        .select_variables("counts")
+        .scan()
+        .collect()
+        .to_dicts()
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["counts"] == 64
 
 
 def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:

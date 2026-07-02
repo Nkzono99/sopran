@@ -239,12 +239,7 @@ class PaceInstrument(KaguyaInstrument):
         dataset_id = pipeline.output_dataset or f"kaguya.esa1.{variable}"
         layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
         lazy = self.mission.store.scan_dataset(dataset_id, layer=layer)
-        import polars as pl
-
-        return lazy.filter(
-            (pl.col("time") >= pipeline.time.start_iso)
-            & (pl.col("time") < pipeline.time.stop_iso)
-        )
+        return _filter_lazy_by_time(lazy, pipeline.time)
 
     def _run_pipeline(self, pipeline: Pipeline, *, mode: str = "create") -> PipelineResult:
         if self.sensor != "ESA1":
@@ -313,6 +308,22 @@ class PaceInstrument(KaguyaInstrument):
         for day in time.days():
             files.extend(self.select(day).files(download=download))
         return KaguyaESA1Data(time=time, files=tuple(files))
+
+
+def _filter_lazy_by_time(lazy, time: TimeRange):
+    import polars as pl
+
+    dtype = lazy.collect_schema().get("time")
+    if dtype == pl.Datetime or dtype == pl.Date:
+        start = time.start.replace(tzinfo=None)
+        stop = time.stop.replace(tzinfo=None)
+    else:
+        start = time.start_iso
+        stop = time.stop_iso
+    return lazy.filter(
+        (pl.col("time") >= start)
+        & (pl.col("time") < stop)
+    )
 
 
 class LmagInstrument(KaguyaInstrument):
