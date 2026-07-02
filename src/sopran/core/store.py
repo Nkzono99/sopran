@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from sopran.core.errors import DatasetNotFoundError
-from sopran.core.schema import InstrumentSchema
+from sopran.core.schema import InstrumentSchema, validate_schema
 from sopran.core.time import TimeRange, period
 
 _LAYERS = ("raw", "normalized", "features", "databases")
@@ -243,6 +243,7 @@ class Store:
         if append and overwrite:
             raise ValueError("append and overwrite cannot both be true")
         _validate_dataset_status(status)
+        _validate_product_frame(frame, schema, product)
 
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         existing_shards = _read_catalog_shards(record.catalog_path) if append else ()
@@ -554,6 +555,14 @@ def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
             for variable in schema.variables
         ],
     }
+
+
+def _validate_product_frame(frame: Any, schema: InstrumentSchema, product: str) -> None:
+    try:
+        schema.variable(product)
+    except KeyError:
+        return
+    validate_schema(frame, schema, variables=(product,))
 
 
 def _software_metadata() -> dict[str, str]:

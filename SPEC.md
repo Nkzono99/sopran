@@ -1039,6 +1039,10 @@ return KaguyaESA1Data(ds)
 部分読み込みにも使える。Polars / pandas などの table では指定 variable 名または alias の
 存在を検証し、xarray Dataset / DataArray では variable の dims も `VariableSchema.dims` と
 照合する。欠損や dims mismatch は public exception の `SchemaError` として扱う。
+`Store.write_parquet_dataset(...)` は `product` が schema 内の variable 名または alias に
+解決できる場合、保存前に `validate_schema(frame, schema, variables=(product,))` を実行する。
+`pitch_angle_distribution` のような派生 feature で product 名が instrument schema に存在しない場合は、
+その product 用 schema を別途渡すか、明示的な feature schema が整うまで自動検証は行わない。
 
 これにより、ファイル仕様変更、欠損、列名変更、単位ミス、座標系 metadata 不足を早期に検出する。
 

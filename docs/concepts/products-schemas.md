@@ -24,6 +24,11 @@ Table-like data is checked for selected variable names or aliases. xarray
 datasets and arrays are also checked against `VariableSchema.dims`. Validation
 failures raise `SchemaError`.
 
+`Store.write_parquet_dataset()` runs this check automatically when the dataset
+`product` resolves to a variable in the supplied schema. Derived features whose
+product names are outside the instrument schema can still be written with their
+own schema.
+
 Example variables:
 
 ```text
