@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Literal
+from uuid import uuid4
 
 from sopran.core.time import TimeRange
 
@@ -34,6 +36,7 @@ class PipelineResult:
     status: str
     message: str
     outputs: tuple[Any, ...] = ()
+    run_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -139,15 +142,17 @@ class Pipeline:
         if mode not in ("create", "append", "replace"):
             raise ValueError("mode must be 'create', 'append', or 'replace'")
         plan = self.plan()
+        run_id = _new_pipeline_run_id()
         if dry_run:
             return PipelineResult(
                 plan=plan,
                 status="planned",
                 message="Dry run only; no pipeline stages were executed.",
+                run_id=run_id,
             )
         runner = getattr(self.context, "_run_pipeline", None)
         if runner is not None:
-            return runner(self, mode=mode)
+            return runner(self, mode=mode, run_id=run_id)
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
     def _with_stage(self, name: str, **parameters: Any) -> Pipeline:
@@ -172,6 +177,11 @@ def _write_target(dataset: str | Any, layer: str | None) -> tuple[str, str]:
     if dataset_id is None or output_layer is None:
         raise TypeError("Pipeline.write() expects a dataset ID string or ProductRef")
     return str(dataset_id), str(output_layer)
+
+
+def _new_pipeline_run_id() -> str:
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    return f"run_{stamp}_{uuid4().hex[:8]}"
 
 
 def _stream_frame_by_day(frame: Any):

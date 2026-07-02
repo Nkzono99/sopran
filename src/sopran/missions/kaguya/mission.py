@@ -343,7 +343,13 @@ class PaceInstrument(KaguyaInstrument):
         lazy = self.mission.store.scan_dataset(dataset_id, layer=layer)
         return _filter_lazy_by_time(lazy, pipeline.time)
 
-    def _run_pipeline(self, pipeline: Pipeline, *, mode: str = "create") -> PipelineResult:
+    def _run_pipeline(
+        self,
+        pipeline: Pipeline,
+        *,
+        mode: str = "create",
+        run_id: str,
+    ) -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
         if pipeline.output_dataset is None or pipeline.output_layer is None:
@@ -362,6 +368,7 @@ class PaceInstrument(KaguyaInstrument):
                 pipeline,
                 variable=variable,
                 mode=mode,
+                run_id=run_id,
             ),
         )
         quicklooks = _write_pipeline_quicklooks(
@@ -369,12 +376,14 @@ class PaceInstrument(KaguyaInstrument):
             output,
             pipeline=pipeline,
             variable=variable,
+            run_id=run_id,
         )
         return PipelineResult(
             plan=pipeline.plan(),
             status="complete",
             message=f"Wrote {pipeline.output_dataset}",
             outputs=(output, *quicklooks),
+            run_id=run_id,
         )
 
     def info(self) -> InfoPage:
@@ -518,6 +527,7 @@ def _write_pipeline_quicklooks(
     *,
     pipeline: Pipeline,
     variable: str,
+    run_id: str,
 ) -> tuple[object, ...]:
     stages = [stage for stage in pipeline.stages if stage.name == "quicklook"]
     if not stages:
@@ -541,7 +551,7 @@ def _write_pipeline_quicklooks(
                 name,
                 root=root,
                 formats=formats,
-                metadata=_pipeline_quicklook_metadata(pipeline, variable),
+                metadata=_pipeline_quicklook_metadata(pipeline, variable, run_id=run_id),
             )
         )
     return tuple(results)
@@ -556,11 +566,17 @@ def _pipeline_plot_item(data: KaguyaESA1Data, variable: str, *, y: str):
     return array.line(x=x)
 
 
-def _pipeline_quicklook_metadata(pipeline: Pipeline, variable: str) -> dict[str, object]:
+def _pipeline_quicklook_metadata(
+    pipeline: Pipeline,
+    variable: str,
+    *,
+    run_id: str,
+) -> dict[str, object]:
     return {
         "pipeline": {
             "output_dataset": pipeline.output_dataset,
             "output_layer": pipeline.output_layer,
+            "run_id": run_id,
             "source": pipeline.source,
             "start": pipeline.time.start_iso,
             "stop": pipeline.time.stop_iso,
@@ -575,12 +591,14 @@ def _pipeline_dataset_provenance(
     *,
     variable: str,
     mode: str,
+    run_id: str,
 ) -> dict[str, object]:
     return {
         "pipeline": {
             "mode": mode,
             "output_dataset": pipeline.output_dataset,
             "output_layer": pipeline.output_layer,
+            "run_id": run_id,
             "source": pipeline.source,
             "stages": [stage.name for stage in pipeline.stages],
             "start": pipeline.time.start_iso,

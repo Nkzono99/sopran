@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import re
 from pathlib import Path
 
 import numpy as np
@@ -295,12 +296,14 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     )
 
     assert result.status == "complete"
+    assert re.match(r"^run_\d{8}T\d{6}\d{6}Z_[0-9a-f]{8}$", result.run_id)
     manifest = result.outputs[0].manifest()
     assert manifest["dataset_id"] == "kaguya.esa1.counts"
     assert manifest["provenance"]["pipeline"] == {
         "mode": "create",
         "output_dataset": "kaguya.esa1.counts",
         "output_layer": "normalized",
+        "run_id": result.run_id,
         "source": "kaguya.esa1",
         "stages": ["decode", "select_variables", "write"],
         "start": "2008-01-01T00:00:00Z",
@@ -338,6 +341,7 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
         "kaguya.esa1.counts"
     )
     assert result.outputs[1].metadata["metadata"]["pipeline"]["output_layer"] == "normalized"
+    assert result.outputs[1].metadata["metadata"]["pipeline"]["run_id"] == result.run_id
 
 
 def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:

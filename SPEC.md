@@ -1893,6 +1893,10 @@ download した raw file は checksum または size / timestamp を catalog に
 - `dry_run=True` で入出力計画を表示する。
 - `resume=True` で catalog status から再開する。
 
+v0.1 では `Pipeline.run()` が `PipelineResult.run_id` を返す。dataset を書く
+backend は同じ run ID を `dataset.json["provenance"]["pipeline"]["run_id"]` に残し、
+quicklook を生成する場合は quicklook metadata にも同じ run ID を入れる。
+
 ### Rust backend contract
 
 Rust は Python の細かい内側関数としてではなく、大きめの stage として呼ぶ。
