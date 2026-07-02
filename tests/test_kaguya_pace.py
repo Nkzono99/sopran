@@ -371,7 +371,12 @@ def test_kaguya_esa1_pipeline_write_registers_database_product(
         kg.esa1.pipeline(spn.day("2008-01-01"))
         .decode()
         .select_variables("counts")
-        .write(database.product("raw_counts"))
+        .write(
+            database.product(
+                "raw_counts",
+                description="ESA1 counts for wake review",
+            )
+        )
         .run()
     )
 
@@ -381,10 +386,11 @@ def test_kaguya_esa1_pipeline_write_registers_database_product(
             "name": "raw_counts",
             "dataset_id": "wake_events.raw_counts",
             "layer": "databases",
-            "description": "",
+            "description": "ESA1 counts for wake review",
         }
     ]
     product = database.products()[0]
+    assert product.description == "ESA1 counts for wake review"
     assert product.manifest()["dataset_id"] == "wake_events.raw_counts"
     assert product.scan().collect().height == 2048
 

@@ -56,7 +56,7 @@ class ProductRef:
         self,
         dataset: DatasetRecord,
         *,
-        description: str = "",
+        description: str | None = None,
     ) -> ProductRef:
         if self.store is None:
             raise ValueError(
@@ -69,7 +69,10 @@ class ProductRef:
             root=self.store.database_path(self.database_name),
             store=self.store,
         )
-        return database.adopt_dataset(dataset, description=description)
+        return database.adopt_dataset(
+            dataset,
+            description=self.description if description is None else description,
+        )
 
     def _record(self) -> DatasetRecord:
         if self.store is None:
@@ -97,7 +100,7 @@ class Database:
                 encoding="utf-8",
             )
 
-    def product(self, name: str) -> ProductRef:
+    def product(self, name: str, *, description: str = "") -> ProductRef:
         if not name:
             raise ValueError("database product name must not be empty")
         return ProductRef(
@@ -105,6 +108,7 @@ class Database:
             layer="databases",
             store=self.store,
             database_name=self.name,
+            description=description,
         )
 
     def metadata(self) -> dict[str, Any]:

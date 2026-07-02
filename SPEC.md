@@ -879,8 +879,10 @@ databases/
 ```
 
 ユーザー拡張は `Database.register_product()` または pipeline の `write()` から行う。
-`pipeline.write(db.product("raw_pad")).run()` のように `ProductRef` を出力先にした場合は、
-run 完了後に書き込んだ dataset を `database.json` の product list に登録する。
+`pipeline.write(db.product("raw_pad", description="...")).run()` のように `ProductRef` を
+出力先にした場合は、run 完了後に書き込んだ dataset を `database.json` の product list に
+登録する。`db.product(..., description=...)` は pipeline が作成する database product の
+説明として保持し、run 後に `db.products()` / `ProductRef.info()` から確認できるようにする。
 `store.database(name, create=True)` は `databases/<name>/database.json` を作成し、
 空の product list で database namespace を初期化する。既存 metadata は上書きしない。
 `features` layer に保存した再利用可能な解析 dataset を、研究テーマの database から
@@ -2232,13 +2234,15 @@ events = db.product("events")
     .pipeline(events.scan().select("start", "stop"))
     .from_normalized()
     .select_variables("energy_flux")
-    .write(db.product("esa1_context"))
+    .write(db.product("esa1_context", description="ESA1 context for wake events"))
     .run()
 )
 ```
 
-`db.product(name)` は `ProductRef` を返す。`ProductRef.scan()` は Store に登録済みの
-`databases/<db>/<product>` dataset を Polars LazyFrame として読む。探索用には
+`db.product(name, description=...)` は `ProductRef` を返す。`description` は
+pipeline / feature table が product を登録するときの database product metadata として
+保存する。`ProductRef.scan()` は Store に登録済みの `databases/<db>/<product>` dataset を
+Polars LazyFrame として読む。探索用には
 `ProductRef.info()`, `ProductRef.manifest()`, `ProductRef.schema()` を持ち、実データを
 collect せずに database product の概要、description、manifest、schema を確認できる。
 `db.adopt_dataset(dataset, description=...)` は既存の `features` / `normalized` /
