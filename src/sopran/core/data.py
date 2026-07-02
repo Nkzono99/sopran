@@ -145,7 +145,7 @@ class SopranArray:
             append=append,
             producer=producer,
             provenance=provenance,
-            parameters=parameters,
+            parameters=_metadata_with_operations(parameters, self.operations),
             context=context,
             status=status,
             dataset_version=dataset_version,
@@ -188,7 +188,7 @@ class SopranArray:
             time_range=self.time,
             frame=frame or self.schema.frame,
             aggregation=aggregation,
-            metadata=metadata,
+            metadata=_metadata_with_operations(metadata, self.operations),
             context=context,
             figsize=figsize,
         )
@@ -266,3 +266,14 @@ class SopranArrayResampler:
                 "reducer": method,
             },
         )
+
+
+def _metadata_with_operations(
+    metadata: dict[str, Any] | None,
+    operations: tuple[dict[str, Any], ...],
+) -> dict[str, Any] | None:
+    if not operations:
+        return metadata
+    merged = dict(metadata or {})
+    merged.setdefault("operations", [dict(operation) for operation in operations])
+    return merged

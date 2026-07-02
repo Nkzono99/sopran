@@ -57,6 +57,12 @@ hourly.to_polars()
 hourly.metadata["operations"]
 ```
 
+When a loaded object already carries derived-operation metadata, `quicklook()`
+records it under the quicklook `metadata.operations` field and
+`write_parquet(store, ...)` records it under the Store manifest
+`parameters.operations` field. Explicit user-supplied `metadata["operations"]`
+or `parameters["operations"]` takes precedence.
+
 Use `SopranArray.write_parquet(store, ...)` when a single loaded variable should
 be persisted as a SOPRAN dataset with `dataset.json`, `schema.json`,
 `catalog.parquet`, and one or more Parquet shards:

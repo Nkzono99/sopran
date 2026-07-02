@@ -723,6 +723,10 @@ class KaguyaESA1Data:
 `resample` は薄い wrapper object を返し、`mean`, `sum`, `median`, `max`, `first`, `last`
 のような基本集約結果は再び `SopranArray` に包み直す。
 この resample 集約は `loaded.metadata["operations"]` に cadence と reducer を残す。
+`quicklook()` と `write_parquet(store, ...)` は、ユーザーが `metadata` や `parameters` を
+明示しなくても、この `operations` を quicklook metadata と Store manifest の
+`parameters.operations` に自動的に伝播する。ユーザーが同じ key を明示した場合は、
+ユーザー指定を優先する。
 
 ```python
 flux = esa1.energy_flux

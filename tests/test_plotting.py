@@ -314,6 +314,40 @@ def test_loaded_array_resampler_wraps_max_first_and_last_reductions() -> None:
     assert last.schema.units == "count"
 
 
+def test_loaded_array_resample_quicklook_records_operation_metadata(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        [
+            "2008-01-01T00:00:00",
+            "2008-01-01T00:01:00",
+            "2008-01-01T00:02:00",
+            "2008-01-01T00:03:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.array([1.0, 2.0, 3.0, 4.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=array,
+    )
+    resampled = loaded.resample(time="2min").mean()
+
+    result = resampled.quicklook("quality_2min", root=tmp_path)
+    metadata = json.loads((tmp_path / "quality_2min.json").read_text(encoding="utf-8"))
+
+    assert result.metadata["metadata"]["operations"] == resampled.metadata["operations"]
+    assert metadata["metadata"]["operations"] == resampled.metadata["operations"]
+
+
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
     import matplotlib
 
@@ -464,6 +498,45 @@ def test_loaded_array_write_parquet_accepts_loaded_array_as_context(tmp_path) ->
     )
 
     assert record.manifest()["context"] == loaded.metadata
+
+
+def test_loaded_array_resample_write_parquet_records_operation_parameters(
+    tmp_path,
+) -> None:
+    times = np.array(
+        [
+            "2008-01-01T00:00:00",
+            "2008-01-01T00:01:00",
+            "2008-01-01T00:02:00",
+            "2008-01-01T00:03:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.array([1.0, 2.0, 3.0, 4.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=array,
+    )
+    resampled = loaded.resample(time="2min").sum()
+
+    record = resampled.write_parquet(
+        spn.Store(tmp_path / "store"),
+        dataset_id="analysis.quality.2min",
+        mission="analysis",
+        instrument="quality",
+    )
+
+    assert (
+        record.manifest()["parameters"]["operations"]
+        == resampled.metadata["operations"]
+    )
 
 
 def test_plot_stack_line_accepts_vector_time_series() -> None:
