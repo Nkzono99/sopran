@@ -20,5 +20,15 @@ stack.plan()
 stack.plot()
 ```
 
+When a `Project` case supplies the time range, variable endpoints can create
+lazy plot items directly:
+
+```python
+stack = case.stack(
+    case.kaguya.esa1.counts.spectrogram(y="energy"),
+    case.kaguya.esa1.quality.line(),
+)
+```
+
 The v0.1 implementation uses Matplotlib. HoloViz, Datashader, Panel dashboards,
 and HTML quicklooks are planned for larger interactive products.

@@ -17,6 +17,17 @@ must emit plan/log/provenance.
 case.kaguya.esa1.energy_flux.plot()
 ```
 
+Endpoint-derived PlotItems are allowed for PlotStack. In v0.1 these items are
+lazy: stack construction records the endpoint and case/time context, and actual
+loading happens when `stack.plot()` materializes the panel.
+
+```python
+stack = case.stack(
+    case.kaguya.esa1.counts.spectrogram(y="energy"),
+    case.kaguya.esa1.quality.line(),
+)
+```
+
 ## PlotStack
 
 `PlotStack` is the SPEDAS/tplot-like multi-panel time-series view.

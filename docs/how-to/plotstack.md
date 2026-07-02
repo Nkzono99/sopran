@@ -10,5 +10,16 @@ plan = stack.plan()
 figure = stack.plot()
 ```
 
+With a project case, omit the repeated time argument and let the case provide it:
+
+```python
+stack = case.stack(
+    case.kaguya.esa1.counts.spectrogram(y="energy"),
+    case.kaguya.esa1.quality.line(),
+)
+
+figure = stack.plot()
+```
+
 `PlotStack` is the SPEDAS/tplot-like route for comparing time-series products
 from different instruments or missions. The current backend is Matplotlib.

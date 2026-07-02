@@ -97,7 +97,7 @@ def spectrogram(
 
 
 def _line_xy(item: PlotItem) -> tuple[np.ndarray, np.ndarray]:
-    data = item.data
+    data = _materialize(item.data)
     values = _values(data)
     if values.ndim != 1:
         raise ValueError(f"Line plot expects 1D data, got shape {values.shape}")
@@ -108,7 +108,7 @@ def _spectrogram_xyz(item: PlotItem) -> tuple[np.ndarray, np.ndarray, np.ndarray
     if item.y is None:
         raise ValueError("Spectrogram plot requires a y coordinate name")
 
-    data = item.data
+    data = _materialize(item.data)
     if hasattr(data, "transpose") and hasattr(data, "dims"):
         data = data.transpose(item.x, item.y)
 
@@ -122,6 +122,14 @@ def _values(data: Any) -> np.ndarray:
     if hasattr(data, "values"):
         return np.asarray(data.values)
     return np.asarray(data)
+
+
+def _materialize(data: Any) -> Any:
+    if callable(data):
+        data = data()
+    if hasattr(data, "to_xarray"):
+        return data.to_xarray()
+    return data
 
 
 def _coord(data: Any, name: str, *, axis: int) -> np.ndarray:

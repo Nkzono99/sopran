@@ -174,6 +174,54 @@ class VariableEndpoint:
     ):
         return self.load(time, download=download).plot(**kwargs)
 
+    def line(
+        self,
+        time: TimeRange | None = None,
+        *,
+        x: str = "time",
+        name: str | None = None,
+        download: DownloadMode = "never",
+    ):
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        from sopran.core.plotting import line
+
+        return line(
+            lambda: self.load(time, download=download).to_xarray(),
+            x=x,
+            name=name or self.name,
+        )
+
+    def spectrogram(
+        self,
+        time: TimeRange | None = None,
+        *,
+        y: str,
+        x: str = "time",
+        name: str | None = None,
+        download: DownloadMode = "never",
+        reduce_dims: tuple[str, ...] | None = None,
+        reduction: str = "sum",
+    ):
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        from sopran.core.plotting import spectrogram
+
+        return spectrogram(
+            lambda: _load_endpoint_plot_array(
+                self,
+                time,
+                download=download,
+                x=x,
+                y=y,
+                reduce_dims=reduce_dims,
+                reduction=reduction,
+            ),
+            x=x,
+            y=y,
+            name=name or self.name,
+        )
+
 
 class KaguyaInstrument:
     def __init__(self, mission: Kaguya, name: str) -> None:
@@ -324,6 +372,26 @@ def _filter_lazy_by_time(lazy, time: TimeRange):
         (pl.col("time") >= start)
         & (pl.col("time") < stop)
     )
+
+
+def _load_endpoint_plot_array(
+    endpoint: VariableEndpoint,
+    time: TimeRange,
+    *,
+    download: DownloadMode,
+    x: str,
+    y: str,
+    reduce_dims: tuple[str, ...] | None,
+    reduction: str,
+):
+    array = endpoint.load(time, download=download).to_xarray()
+    dims = getattr(array, "dims", ())
+    dims_to_reduce = reduce_dims
+    if dims_to_reduce is None:
+        dims_to_reduce = tuple(dim for dim in dims if dim not in {x, y})
+    if dims_to_reduce:
+        array = getattr(array, reduction)(dims_to_reduce)
+    return array
 
 
 class LmagInstrument(KaguyaInstrument):

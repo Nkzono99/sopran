@@ -158,6 +158,59 @@ def test_loaded_sopran_array_builds_spectrogram_plot_item(tmp_path: Path) -> Non
     assert len(stack.plot().axes) == 2
 
 
+def test_kaguya_variable_endpoint_builds_lazy_plot_items(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    kg = spn.Kaguya(store=store)
+    time = spn.day("2008-01-01")
+
+    stack = spn.stack(
+        kg.esa1.counts.spectrogram(time, y="energy"),
+        kg.esa1.quality.line(time),
+    )
+
+    assert stack.plan().items == ("counts", "quality")
+    assert len(stack.plot().axes) == 2
+
+
+def test_project_case_variable_endpoint_builds_lazy_plot_items(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.wake]
+start = "2008-01-01T00:00:00"
+stop = "2008-01-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    case = spn.Project(project_root, store=store).case("wake")
+
+    stack = case.stack(
+        case.kaguya.esa1.counts.spectrogram(y="energy"),
+        case.kaguya.esa1.quality.line(),
+    )
+
+    assert stack.plan().items == ("counts", "quality")
+    assert len(stack.plot().axes) == 2
+
+
 def test_top_level_load_dispatches_kaguya_variable_dataset_id(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"

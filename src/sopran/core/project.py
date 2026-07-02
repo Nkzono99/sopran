@@ -151,5 +151,11 @@ class CaseVariableEndpoint:
     def plot(self, time: TimeRange | None = None, **kwargs):
         return self._endpoint.plot(time or self._case.time, **kwargs)
 
+    def line(self, time: TimeRange | None = None, **kwargs):
+        return self._endpoint.line(time or self._case.time, **kwargs)
+
+    def spectrogram(self, time: TimeRange | None = None, **kwargs):
+        return self._endpoint.spectrogram(time or self._case.time, **kwargs)
+
     def __getattr__(self, name: str):
         return getattr(self._endpoint, name)
