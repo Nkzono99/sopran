@@ -52,6 +52,9 @@ sidecar manifest next to the raw file, named `<filename>.sopran.json`, with the
 relative raw path, mission, provider, download URL, acquisition time, checksum,
 and byte size.
 
+`Store.raw_files(refresh=True)` scans those sidecars and writes
+`registry/raw_files.parquet`. It can be filtered by `mission` or `provider`.
+
 ## Dataset Registry
 
 `Store.datasets(refresh=True)` scans dataset manifests and writes

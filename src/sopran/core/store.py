@@ -74,6 +74,37 @@ class Store:
         _write_json(manifest_path, manifest)
         return RawFileRecord(path=raw_file, manifest_path=manifest_path)
 
+    def rebuild_raw_file_registry(self):
+        path = self.registry_path("raw_files.parquet")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        frame = _raw_file_index_frame(_raw_file_index_rows(self.root))
+        frame.write_parquet(path)
+        return frame.sort("path")
+
+    def raw_files(
+        self,
+        *,
+        mission: str | None = None,
+        provider: str | None = None,
+        refresh: bool = False,
+    ):
+        import polars as pl
+
+        index_path = self.registry_path("raw_files.parquet")
+        if refresh or not index_path.exists():
+            frame = self.rebuild_raw_file_registry()
+        else:
+            frame = pl.read_parquet(index_path)
+
+        filters = {
+            "mission": mission,
+            "provider": provider,
+        }
+        for column, value in filters.items():
+            if value is not None:
+                frame = frame.filter(pl.col(column) == value)
+        return frame.sort("path")
+
     def database(self, name: str):
         from sopran.core.database import Database
 
@@ -588,6 +619,45 @@ def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
         "start": pl.Utf8,
         "stop": pl.Utf8,
         "path": pl.Utf8,
+    }
+    if not rows:
+        return pl.DataFrame(schema=schema)
+    return pl.DataFrame(rows, schema=schema)
+
+
+def _raw_file_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
+    raw_root = root / "raw"
+    if not raw_root.exists():
+        return ()
+
+    rows: list[dict[str, Any]] = []
+    for manifest_path in sorted(raw_root.rglob("*.sopran.json")):
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        rows.append(
+            {
+                "path": str(manifest.get("path") or ""),
+                "mission": str(manifest.get("mission") or ""),
+                "provider": str(manifest.get("provider") or ""),
+                "download_url": str(manifest.get("download_url") or ""),
+                "acquired_at": str(manifest.get("acquired_at") or ""),
+                "checksum": str(manifest.get("checksum") or ""),
+                "size_bytes": int(manifest.get("size_bytes") or 0),
+            }
+        )
+    return tuple(rows)
+
+
+def _raw_file_index_frame(rows: tuple[dict[str, Any], ...]):
+    import polars as pl
+
+    schema = {
+        "path": pl.Utf8,
+        "mission": pl.Utf8,
+        "provider": pl.Utf8,
+        "download_url": pl.Utf8,
+        "acquired_at": pl.Utf8,
+        "checksum": pl.Utf8,
+        "size_bytes": pl.Int64,
     }
     if not rows:
         return pl.DataFrame(schema=schema)

@@ -268,6 +268,31 @@ def test_store_registers_raw_file_manifest(tmp_path) -> None:
     assert manifest["acquired_at"].endswith("Z")
 
 
+def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    first = store.raw_path("kaguya", "l2", "first.dat")
+    second = store.raw_path("artemis", "cdf", "second.cdf")
+    first.parent.mkdir(parents=True)
+    second.parent.mkdir(parents=True)
+    first.write_bytes(b"kaguya")
+    second.write_bytes(b"artemis")
+    store.register_raw_file("kaguya/l2/first.dat", mission="kaguya", provider="darts")
+    store.register_raw_file("artemis/cdf/second.cdf", mission="artemis", provider="spdf")
+
+    index = store.raw_files(refresh=True)
+    spdf = store.raw_files(provider="spdf")
+
+    assert store.registry_path("raw_files.parquet").exists()
+    assert index.select("path").to_series().to_list() == [
+        "raw/artemis/cdf/second.cdf",
+        "raw/kaguya/l2/first.dat",
+    ]
+    assert index.select("mission").to_series().to_list() == ["artemis", "kaguya"]
+    assert index.select("provider").to_series().to_list() == ["spdf", "darts"]
+    assert all(value.startswith("sha256:") for value in index.select("checksum").to_series())
+    assert spdf.select("path").to_series().to_list() == ["raw/artemis/cdf/second.cdf"]
+
+
 def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     database = store.database("my_project")
