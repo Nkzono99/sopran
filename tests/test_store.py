@@ -560,6 +560,13 @@ def test_database_product_reference_scans_dataset(tmp_path) -> None:
     scanned = product.scan().collect()
 
     assert scanned.select("counts").to_series().to_list() == [64]
+    assert product.manifest()["dataset_id"] == "wake_events.raw_counts"
+    assert "counts" in {
+        variable["name"]
+        for variable in product.schema()["variables"]
+    }
+    assert "wake_events.raw_counts" in str(product.info())
+    assert "layer: databases" in str(product.info())
 
 
 def test_database_adopts_existing_feature_dataset_reference(tmp_path) -> None:

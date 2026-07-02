@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema
 from sopran.core.store import DatasetRecord
 
@@ -25,6 +26,29 @@ class ProductRef:
             raise ValueError("ProductRef.scan() requires a Store-backed reference")
         return self.store.scan_dataset(self.dataset_id, layer=self.layer)
 
+    def manifest(self) -> dict[str, Any]:
+        return self._record().manifest()
+
+    def schema(self) -> dict[str, Any]:
+        return self._record().schema()
+
+    def info(self) -> InfoPage:
+        manifest = self.manifest()
+        time_coverage = manifest.get("time_coverage")
+        lines = [
+            f"dataset_id: {self.dataset_id}",
+            f"layer: {self.layer}",
+            f"product: {manifest.get('product', self.name)}",
+            f"status: {manifest.get('status', 'unknown')}",
+        ]
+        if self.database_name is not None:
+            lines.insert(1, f"database: {self.database_name}")
+        if isinstance(time_coverage, dict):
+            lines.append(
+                f"time: {time_coverage.get('start')} to {time_coverage.get('stop')}"
+            )
+        return InfoPage(title=f"ProductRef {self.dataset_id}", lines=tuple(lines))
+
     def adopt_dataset(
         self,
         dataset: DatasetRecord,
@@ -43,6 +67,11 @@ class ProductRef:
             store=self.store,
         )
         return database.adopt_dataset(dataset, description=description)
+
+    def _record(self) -> DatasetRecord:
+        if self.store is None:
+            raise ValueError("ProductRef metadata requires a Store-backed reference")
+        return self.store.dataset(self.dataset_id, layer=self.layer)
 
 
 @dataclass(frozen=True)
