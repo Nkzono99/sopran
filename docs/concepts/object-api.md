@@ -25,6 +25,8 @@ Loaded objects such as `SopranArray` also expose `info()`. It returns an
 `InfoPage` with variable dimensions, time coverage, units, description, and
 input file count when available, so notebook displays and console output use the
 same lightweight page model as mission and endpoint objects.
+`SopranArray.schema` is the underlying `VariableSchema`; it is callable, so
+`SopranArray.schema()` returns the same object for endpoint-like access.
 For table workflows, `SopranArray.to_polars()` flattens the loaded xarray
 coordinates and values into a Polars DataFrame, and `to_pandas()` returns the
 same table as a pandas DataFrame.

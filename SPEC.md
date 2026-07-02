@@ -664,6 +664,9 @@ loaded.metadata
 loaded.trange
 ```
 
+`SopranArray` のように既に `.schema` 属性として `VariableSchema` を持つ loaded object は、
+互換性のため `.schema()` でも同じ schema object を返せるようにする。
+
 Lazy product の共通操作:
 
 ```python

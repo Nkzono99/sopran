@@ -16,6 +16,9 @@ class VariableSchema:
     description: str = ""
     aliases: tuple[str, ...] = ()
 
+    def __call__(self) -> VariableSchema:
+        return self
+
     def to_metadata(self) -> dict[str, Any]:
         return {
             "name": self.name,

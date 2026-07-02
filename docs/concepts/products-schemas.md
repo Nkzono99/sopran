@@ -31,6 +31,9 @@ table = schema.to_markdown()
 `to_metadata()` is the shared machine-readable representation used by
 `schema.json` and documentation generation. `to_markdown()` creates a variable
 table that can be embedded in mission and instrument guides.
+`VariableSchema` is callable and returns itself. This keeps loaded objects that
+store a schema as an attribute compatible with endpoint-style `loaded.schema()`
+access.
 The built-in schema reference at [Schema Reference](../reference/schemas.md)
 is generated from the same runtime schema objects exposed by
 `spn.schema_reference_markdown()`.

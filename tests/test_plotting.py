@@ -118,6 +118,24 @@ def test_loaded_array_info_returns_info_page() -> None:
     assert "Raw counts." in str(info)
 
 
+def test_loaded_array_schema_is_callable_like_endpoint_schema() -> None:
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="quality",
+            dims=("time",),
+            units="flag",
+        ),
+    )
+
+    schema = loaded.schema()
+
+    assert schema is loaded.schema
+    assert schema.name == "quality"
+    assert schema.units == "flag"
+
+
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
     import matplotlib
 
