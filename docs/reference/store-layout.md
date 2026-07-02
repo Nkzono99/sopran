@@ -36,6 +36,9 @@ shard files. `DatasetRecord.update_shard_status(path, status)` updates the
 catalog status for one shard; allowed statuses are `pending`, `running`,
 `complete`, `failed`, and `skipped`. `DatasetRecord.shards(status=...)` lists
 catalog rows and `DatasetRecord.failed_shards()` returns rows marked `failed`.
+`DatasetRecord.replace_shard(path, frame=..., time_coverage=...)` overwrites an
+existing cataloged shard and updates its checksum, row count, time coverage, and
+status.
 
 Raw file sidecar layout:
 

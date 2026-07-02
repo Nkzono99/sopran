@@ -627,6 +627,38 @@ def test_dataset_record_lists_shards_by_status(tmp_path) -> None:
         dataset.shards(status="unknown")
 
 
+def test_dataset_record_replaces_shard_and_updates_catalog(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-02-01")
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "counts": [1]}),
+    )
+    dataset.update_shard_status("shards/part-000.parquet", "failed")
+    (dataset.root / "shards" / "part-000.parquet").write_bytes(b"broken shard")
+
+    updated = dataset.replace_shard(
+        "shards/part-000.parquet",
+        frame=pl.DataFrame({"time": [time.start_iso], "counts": [2]}),
+        time_coverage=time,
+    )
+
+    assert updated == dataset
+    assert dataset.verify_checksums()
+    assert dataset.failed_shards() == ()
+    assert dataset.catalog().select("row_count").to_series().to_list() == [1]
+    assert dataset.catalog().select("status").to_series().to_list() == ["complete"]
+    assert dataset.scan().collect().to_dicts() == [
+        {"time": time.start_iso, "counts": 2}
+    ]
+
+
 def test_store_dataset_finds_registered_dataset_without_layer(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

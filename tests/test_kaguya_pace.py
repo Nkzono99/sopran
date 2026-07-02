@@ -525,7 +525,7 @@ def test_kaguya_esa1_pipeline_run_only_failed_requires_existing_catalog(
         pipe.run(only_failed=True)
 
 
-def test_kaguya_esa1_pipeline_run_only_failed_detects_failed_shards(
+def test_kaguya_esa1_pipeline_run_only_failed_replays_failed_shards(
     tmp_path: Path,
 ) -> None:
     store = Store(tmp_path / "store")
@@ -542,9 +542,24 @@ def test_kaguya_esa1_pipeline_run_only_failed_detects_failed_shards(
     )
     dataset = pipe.run().outputs[0]
     dataset.update_shard_status("shards/part-000.parquet", "failed")
+    (dataset.root / "shards" / "part-000.parquet").write_bytes(b"broken shard")
 
-    with pytest.raises(NotImplementedError):
-        pipe.run(only_failed=True)
+    result = pipe.run(only_failed=True)
+
+    assert result.status == "complete"
+    assert result.outputs[0].root == dataset.root
+    assert result.outputs[0].verify_checksums()
+    assert result.outputs[0].failed_shards() == ()
+    assert result.outputs[0].manifest()["provenance"]["pipeline"]["run_id"] == result.run_id
+    assert result.outputs[0].catalog().select("status").to_series().to_list() == [
+        "complete"
+    ]
+    assert result.outputs[0].scan().collect().height == 2048
+    log = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log["status"] == "complete"
+    assert log["only_failed"] is True
+    assert log["failed_shard_count"] == 0
+    assert log["replayed_shard_count"] == 1
 
 
 def _write_type01_pbf(path: Path) -> None:

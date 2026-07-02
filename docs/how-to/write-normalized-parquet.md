@@ -43,4 +43,6 @@ result = pipe.run(only_failed=True)
 ```
 
 The current KAGUYA ESA1 implementation records a skip log when the catalog
-contains no failed shards; failed-shard replay itself is not implemented yet.
+contains no failed shards. When failed shards exist, it reloads each failed
+shard's cataloged time coverage, overwrites the same shard path, refreshes the
+catalog checksum, and writes a complete run log with `replayed_shard_count`.

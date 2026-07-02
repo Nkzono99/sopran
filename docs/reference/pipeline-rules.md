@@ -13,7 +13,8 @@
 - `resume=True` is mutually exclusive with `mode="append"` and
   `mode="replace"`.
 - `run(only_failed=True)` may skip execution when the existing output catalog
-  contains no failed shards; replaying failed shards is a later backend feature.
+  contains no failed shards. KAGUYA ESA1 replays failed shards by overwriting
+  the same shard path and refreshing catalog metadata.
 - `only_failed=True` is mutually exclusive with `resume=True`, `mode="append"`,
   and `mode="replace"`.
 - `scan()` returns a Polars `LazyFrame` when possible.

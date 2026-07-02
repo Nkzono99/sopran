@@ -432,6 +432,53 @@ class DatasetRecord:
     def failed_shards(self) -> tuple[dict[str, Any], ...]:
         return self.shards(status="failed")
 
+    def replace_shard(
+        self,
+        shard_path: str | Path,
+        *,
+        frame: Any,
+        time_coverage: TimeRange,
+        compression: str = "zstd",
+    ) -> DatasetRecord:
+        import polars as pl
+
+        path_text = Path(shard_path).as_posix()
+        catalog = self.catalog()
+        if path_text not in catalog.select("path").to_series().to_list():
+            raise KeyError(f"Shard not found in catalog: {path_text}")
+
+        target = _resolve_child(self.root, path_text)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        frame.write_parquet(target, compression=compression)
+        row_count = _frame_row_count(frame)
+        checksum = _sha256_file(target)
+        updated = catalog.with_columns(
+            [
+                pl.when(pl.col("path") == path_text)
+                .then(pl.lit(time_coverage.start_iso))
+                .otherwise(pl.col("start"))
+                .alias("start"),
+                pl.when(pl.col("path") == path_text)
+                .then(pl.lit(time_coverage.stop_iso))
+                .otherwise(pl.col("stop"))
+                .alias("stop"),
+                pl.when(pl.col("path") == path_text)
+                .then(pl.lit(row_count))
+                .otherwise(pl.col("row_count"))
+                .alias("row_count"),
+                pl.when(pl.col("path") == path_text)
+                .then(pl.lit(checksum))
+                .otherwise(pl.col("checksum"))
+                .alias("checksum"),
+                pl.when(pl.col("path") == path_text)
+                .then(pl.lit("complete"))
+                .otherwise(pl.col("status"))
+                .alias("status"),
+            ]
+        )
+        updated.write_parquet(self.catalog_path)
+        return self
+
     def scan(self, *, dataset_id: str | None = None):
         import polars as pl
 

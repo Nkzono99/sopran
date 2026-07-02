@@ -919,6 +919,8 @@ v0.1 では `DatasetRecord.update_shard_status(path, status)` で catalog の sh
 `pending`, `running`, `complete`, `failed`, `skipped` のいずれかに更新できるようにする。
 また `DatasetRecord.shards(status=...)` と `DatasetRecord.failed_shards()` で対象 shard を
 列挙できるようにし、`only_failed=True` の再実行や監査 UI はこの API を使う。
+shard の再生成は `DatasetRecord.replace_shard(path, frame=..., time_coverage=...)` で
+同じ path を上書きし、catalog の `checksum`, `row_count`, `status` を更新する。
 
 ```python
 pipe.run(resume=True)
@@ -1910,8 +1912,9 @@ run mode、started_at、finished_at、stage list、output target、shard row cou
 row_count、shard_count を持つ。
 `resume=True` はまず complete catalog が既に要求 time range を覆う場合に再実行を skip し、
 `PipelineResult.status == "skipped"` と skip log を返す。`only_failed=True` はまず既存
-catalog が要求 time range を覆い、failed shard がない場合に skip log を返す。failed /
-partial shard の再実行は後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
+catalog が要求 time range を覆い、failed shard がない場合に skip log を返す。KAGUYA ESA1
+では failed shard の `start` / `stop` から同じ shard path を再生成し、complete に戻す。
+partial shard の検出と再分割は後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
 `PipelineResult.to_text()` / `str(result)` で source、time range、stage list、
 output target を確認できる。
 

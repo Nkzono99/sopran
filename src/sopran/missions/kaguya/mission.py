@@ -14,7 +14,7 @@ from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import VariableSchema
-from sopran.core.time import TimeRange
+from sopran.core.time import TimeRange, period
 from sopran.missions.kaguya.data import KaguyaESA1Data
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
@@ -413,8 +413,48 @@ class PaceInstrument(KaguyaInstrument):
                     run_id=run_id,
                     log_path=log_path,
                 )
-            raise NotImplementedError(
-                "KAGUYA ESA1 only_failed replay is not implemented for failed shards yet"
+            variable = _pipeline_variable(pipeline)
+            replayed_count = _replay_failed_pipeline_shards(
+                self,
+                existing,
+                variable=variable,
+            )
+            _update_pipeline_dataset_provenance(
+                existing,
+                pipeline,
+                variable=variable,
+                mode=mode,
+                run_id=run_id,
+            )
+            quicklooks = ()
+            if _pipeline_has_quicklook(pipeline):
+                data = self.load(pipeline.time, download="never")
+                quicklooks = _write_pipeline_quicklooks(
+                    data,
+                    existing,
+                    pipeline=pipeline,
+                    variable=variable,
+                    run_id=run_id,
+                )
+            log_path = _write_pipeline_log(
+                existing,
+                pipeline=pipeline,
+                run_id=run_id,
+                mode=mode,
+                status="complete",
+                started_at=started_at,
+                elapsed_seconds=perf_counter() - started,
+                resume=False,
+                only_failed=True,
+                replayed_shard_count=replayed_count,
+            )
+            return PipelineResult(
+                plan=pipeline.plan(),
+                status="complete",
+                message=f"Replayed {replayed_count} failed shard(s) for {pipeline.output_dataset}",
+                outputs=(existing, *quicklooks),
+                run_id=run_id,
+                log_path=log_path,
             )
 
         variable = _pipeline_variable(pipeline)
@@ -682,6 +722,31 @@ def _pipeline_dataset_provenance(
     }
 
 
+def _update_pipeline_dataset_provenance(
+    output,
+    pipeline: Pipeline,
+    *,
+    variable: str,
+    mode: str,
+    run_id: str,
+) -> None:
+    manifest = output.manifest()
+    manifest["provenance"] = _pipeline_dataset_provenance(
+        pipeline,
+        variable=variable,
+        mode=mode,
+        run_id=run_id,
+    )
+    output.manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _pipeline_has_quicklook(pipeline: Pipeline) -> bool:
+    return any(stage.name == "quicklook" for stage in pipeline.stages)
+
+
 def _complete_pipeline_output(store: Store, pipeline: Pipeline):
     try:
         output = store.dataset(str(pipeline.output_dataset), layer=str(pipeline.output_layer))
@@ -715,6 +780,33 @@ def _failed_shard_count(output) -> int:
     return len(output.failed_shards())
 
 
+def _replay_failed_pipeline_shards(
+    instrument: PaceInstrument,
+    output,
+    *,
+    variable: str,
+) -> int:
+    replayed = 0
+    for shard in output.failed_shards():
+        shard_time = _shard_time_range(shard)
+        data = instrument.load(shard_time, download="never")
+        output.replace_shard(
+            str(shard["path"]),
+            frame=data.to_polars(variable),
+            time_coverage=shard_time,
+        )
+        replayed += 1
+    return replayed
+
+
+def _shard_time_range(shard: dict[str, object]) -> TimeRange:
+    start = str(shard.get("start") or "")
+    stop = str(shard.get("stop") or "")
+    if not start or not stop:
+        raise ValueError(f"Failed shard has no time coverage: {shard.get('path')}")
+    return period(start, stop)
+
+
 def _record_covers_time(output, pipeline: Pipeline) -> bool:
     coverage = output.manifest().get("time_coverage") or {}
     start = str(coverage.get("start") or "")
@@ -733,6 +825,7 @@ def _write_pipeline_log(
     elapsed_seconds: float,
     resume: bool = False,
     only_failed: bool = False,
+    replayed_shard_count: int = 0,
 ) -> Path:
     shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
@@ -747,6 +840,7 @@ def _write_pipeline_log(
         "resume": resume,
         "only_failed": only_failed,
         "failed_shard_count": failed_shard_count,
+        "replayed_shard_count": replayed_shard_count,
         "started_at": started_at,
         "finished_at": finished_at,
         "elapsed_seconds": elapsed_seconds,
