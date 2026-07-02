@@ -518,7 +518,8 @@ F:/sopran_cache/
 - dataset ID から実体 path を解決する。
 - manifest と catalog を読み書きする。
 - `registry/datasets.parquet` に manifest index を作り、layer / mission / instrument /
-  product / schema version / status / created_at / time coverage で dataset を一覧・探索する。
+  product / dataset version / schema version / status / created_at / time coverage で
+  dataset を一覧・探索する。
 - raw file の checksum、download URL、取得日時を記録する。
 - parquet shard の schema、partition、期間、生成 pipeline を記録する。
 - ユーザーが拡張した database を登録する。

@@ -226,6 +226,8 @@ class Store:
         mission: str | None = None,
         instrument: str | None = None,
         product: str | None = None,
+        schema_version: str | None = None,
+        dataset_version: str | None = None,
         status: str | None = None,
         refresh: bool = False,
     ):
@@ -242,6 +244,8 @@ class Store:
             "mission": mission,
             "instrument": instrument,
             "product": product,
+            "schema_version": schema_version,
+            "version": dataset_version,
             "status": status,
         }
         for column, value in filters.items():
@@ -504,6 +508,7 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
                     "mission": str(manifest.get("mission") or ""),
                     "instrument": str(manifest.get("instrument") or ""),
                     "product": str(manifest.get("product") or ""),
+                    "version": str(manifest.get("version") or "1"),
                     "schema_version": str(
                         manifest.get("schema_version") or _DATASET_SCHEMA_VERSION
                     ),
@@ -526,6 +531,7 @@ def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
         "mission": pl.Utf8,
         "instrument": pl.Utf8,
         "product": pl.Utf8,
+        "version": pl.Utf8,
         "schema_version": pl.Utf8,
         "status": pl.Utf8,
         "created_at": pl.Utf8,

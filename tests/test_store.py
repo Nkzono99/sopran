@@ -367,6 +367,7 @@ def test_store_rebuilds_dataset_registry_index(tmp_path) -> None:
         "kaguya.esa1.counts",
     ]
     assert index.select("layer").to_series().to_list() == ["features", "normalized"]
+    assert index.select("version").to_series().to_list() == ["1", "1"]
     assert index.select("schema_version").to_series().to_list() == ["0.1", "0.1"]
     assert index.select("status").to_series().to_list() == ["candidate", "candidate"]
     assert all(value.endswith("Z") for value in index.select("created_at").to_series().to_list())
@@ -390,6 +391,7 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
         time_coverage=day,
         frame=pl.DataFrame({"time": [day.start_iso], "counts": [64]}),
         status="adopted",
+        dataset_version="2026.07",
     )
     store.write_parquet_dataset(
         dataset_id="kaguya.esa1.pitch_angle_distribution",
@@ -405,11 +407,18 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
 
     features = store.datasets(layer="features")
     adopted = store.datasets(status="adopted")
+    schema_v01 = store.datasets(schema_version="0.1")
+    dataset_v202607 = store.datasets(dataset_version="2026.07")
 
     assert features.select("dataset_id").to_series().to_list() == [
         "kaguya.esa1.pitch_angle_distribution"
     ]
     assert adopted.select("dataset_id").to_series().to_list() == ["kaguya.esa1.counts"]
+    assert schema_v01.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.pitch_angle_distribution",
+        "kaguya.esa1.counts",
+    ]
+    assert dataset_v202607.select("dataset_id").to_series().to_list() == ["kaguya.esa1.counts"]
 
 
 def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
