@@ -39,7 +39,19 @@ lazy = (
 frame = lazy.collect()
 ```
 
+Stream scanned data in chunks when downstream code should work incrementally:
+
+```python
+for day_frame in pipe.stream(partition="day"):
+    process(day_frame)
+```
+
+The generic fallback supports `partition="all"` and `partition="day"` via
+`scan().collect()`. Mission backends can provide `_stream_pipeline(...)` for
+true shard, orbit, or provider-native streaming.
+
 The current implementation is intentionally small. It records stage order,
 prevents accidental overwrite by default, supports explicit append/replace,
-uses parquet catalog shards as the storage boundary, and can write a Matplotlib
-PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.
+uses parquet catalog shards as the storage boundary, streams collected scan
+results by day, and can write a Matplotlib PNG quicklook plus JSON metadata for
+KAGUYA ESA1 pipeline runs.

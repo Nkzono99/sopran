@@ -6,6 +6,7 @@ from typing import Any, Literal
 from sopran.core.time import TimeRange
 
 PipelineRunMode = Literal["create", "append", "replace"]
+PipelineStreamPartition = Literal["all", "day", "shard", "orbit"]
 
 
 @dataclass(frozen=True)
@@ -113,6 +114,22 @@ class Pipeline:
     def collect(self):
         return self.scan().collect()
 
+    def stream(self, *, partition: PipelineStreamPartition = "all"):
+        streamer = getattr(self.context, "_stream_pipeline", None)
+        if streamer is not None:
+            yield from streamer(self, partition=partition)
+            return
+
+        if partition == "all":
+            yield self.collect()
+            return
+        if partition == "day":
+            yield from _stream_frame_by_day(self.collect())
+            return
+        raise NotImplementedError(
+            "Pipeline.stream() partition='shard' and partition='orbit' require a backend"
+        )
+
     def run(
         self,
         *,
@@ -155,3 +172,17 @@ def _write_target(dataset: str | Any, layer: str | None) -> tuple[str, str]:
     if dataset_id is None or output_layer is None:
         raise TypeError("Pipeline.write() expects a dataset ID string or ProductRef")
     return str(dataset_id), str(output_layer)
+
+
+def _stream_frame_by_day(frame: Any):
+    import polars as pl
+
+    if "time" not in frame.columns:
+        raise ValueError("Pipeline.stream(partition='day') requires a 'time' column")
+    day_column = "__sopran_stream_day"
+    indexed = frame.with_columns(
+        pl.col("time").cast(pl.Utf8).str.slice(0, 10).alias(day_column)
+    )
+    days = indexed.select(day_column).unique(maintain_order=True).to_series().to_list()
+    for day in days:
+        yield indexed.filter(pl.col(day_column) == day).drop(day_column)

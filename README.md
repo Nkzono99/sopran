@@ -92,6 +92,15 @@ pipe.run(mode="append")    # catalog に shard を追加
 lazy = kg.esa1.pipeline(time).from_normalized().select_variables("counts").scan()
 counts_frame = lazy.collect()
 
+stream = (
+    kg.esa1.pipeline(time)
+    .from_normalized()
+    .select_variables("counts")
+    .stream(partition="day")
+)
+for day_frame in stream:
+    pass
+
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy"),
     kg.esa1.quality.load(time).line(),

@@ -578,6 +578,8 @@ pipe = (
 - `collect()` はメモリ上の product として返す。
 - `scan()` は Polars `LazyFrame` や Arrow scanner のような遅延 table を返す。
 - `stream()` は shard / day / orbit 単位の iterator として返す。
+  v0.1 の generic fallback は `scan().collect()` した結果から `partition="all"` と
+  `partition="day"` を提供し、`shard` / `orbit` は mission backend に委譲する。
 
 ```python
 product = pipe.collect()
@@ -1980,6 +1982,7 @@ M4: Pipeline minimum
   - pipeline(time) -> download -> decode -> normalize -> write -> run
   - select_variables(...)
   - scan() with Polars
+  - stream(partition="all" / "day") fallback
 
 M5: PlotStack minimum
   - spectrogram + line panels

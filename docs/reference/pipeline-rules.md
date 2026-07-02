@@ -8,6 +8,10 @@
   is explicit.
 - `scan()` returns a Polars `LazyFrame` when possible.
 - `collect()` is a thin materialization helper over `scan().collect()`.
+- `stream(partition="all")` yields one collected frame in the generic fallback.
+- `stream(partition="day")` groups collected scan rows by the `time` column.
+- `stream(partition="shard")` and `stream(partition="orbit")` require a mission
+  backend implementation.
 
 Variable selection should use `select_variables(...)`; variable names should not
 become pipeline stage methods.
