@@ -61,7 +61,8 @@ The returned `RawFileRecord` can verify that the current file still matches the
 recorded checksum.
 
 `Store.raw_files(refresh=True)` scans those sidecars and writes
-`registry/raw_files.parquet`. It can be filtered by `mission` or `provider`.
+`registry/raw_files.parquet`. It can be filtered by `mission`, `provider`,
+`filename`, `provider_path`, or `data_version`.
 Use `Store.raw_file(...)` to reopen a `RawFileRecord` from a raw path and its
 sidecar manifest.
 

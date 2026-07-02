@@ -75,5 +75,6 @@ filtered with `layer`, `mission`, `instrument`, `product`, `dataset_version`,
 `schema_version`, `status`, and `created_at` copied from each manifest.
 
 `raw_files.parquet` is rebuilt by `Store.raw_files(refresh=True)` from raw
-sidecar manifests and can be filtered with `mission` or `provider`. Rows include
-provider path, filename, version, checksum, and acquisition time.
+sidecar manifests and can be filtered with `mission`, `provider`, `filename`,
+`provider_path`, or `data_version`. Rows include provider path, filename,
+version, checksum, and acquisition time.

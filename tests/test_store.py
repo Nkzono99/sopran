@@ -314,11 +314,20 @@ def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
     second.parent.mkdir(parents=True)
     first.write_bytes(b"kaguya")
     second.write_bytes(b"artemis")
-    store.register_raw_file("kaguya/l2/first.dat", mission="kaguya", provider="darts")
+    store.register_raw_file(
+        "kaguya/l2/first.dat",
+        mission="kaguya",
+        provider="darts",
+        provider_path="/pub/kaguya/first.dat",
+        data_version="v1",
+    )
     store.register_raw_file("artemis/cdf/second.cdf", mission="artemis", provider="spdf")
 
     index = store.raw_files(refresh=True)
     spdf = store.raw_files(provider="spdf")
+    first_dat = store.raw_files(filename="first.dat")
+    darts_v1 = store.raw_files(provider="darts", data_version="v1")
+    provider_path = store.raw_files(provider_path="/pub/kaguya/first.dat")
 
     assert store.registry_path("raw_files.parquet").exists()
     assert index.select("path").to_series().to_list() == [
@@ -328,9 +337,12 @@ def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
     assert index.select("mission").to_series().to_list() == ["artemis", "kaguya"]
     assert index.select("provider").to_series().to_list() == ["spdf", "darts"]
     assert index.select("filename").to_series().to_list() == ["second.cdf", "first.dat"]
-    assert index.select("version").to_series().to_list() == ["", ""]
+    assert index.select("version").to_series().to_list() == ["", "v1"]
     assert all(value.startswith("sha256:") for value in index.select("checksum").to_series())
     assert spdf.select("path").to_series().to_list() == ["raw/artemis/cdf/second.cdf"]
+    assert first_dat.select("path").to_series().to_list() == ["raw/kaguya/l2/first.dat"]
+    assert darts_v1.select("path").to_series().to_list() == ["raw/kaguya/l2/first.dat"]
+    assert provider_path.select("path").to_series().to_list() == ["raw/kaguya/l2/first.dat"]
 
 
 def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) -> None:

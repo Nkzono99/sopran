@@ -100,6 +100,9 @@ class Store:
         *,
         mission: str | None = None,
         provider: str | None = None,
+        filename: str | None = None,
+        provider_path: str | None = None,
+        data_version: str | None = None,
         refresh: bool = False,
     ):
         import polars as pl
@@ -113,6 +116,9 @@ class Store:
         filters = {
             "mission": mission,
             "provider": provider,
+            "filename": filename,
+            "provider_path": provider_path,
+            "version": data_version,
         }
         for column, value in filters.items():
             if value is not None:
