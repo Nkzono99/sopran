@@ -232,8 +232,11 @@ def test_loaded_array_resample_delegates_to_xarray_resampler() -> None:
 
     resampled = loaded.resample(time="2min").mean()
 
-    assert resampled.dims == ("time",)
-    assert resampled.values.tolist() == [1.5, 3.5]
+    assert isinstance(resampled, SopranArray)
+    assert resampled.schema.dims == ("time",)
+    assert resampled.to_xarray().dims == ("time",)
+    assert resampled.to_xarray().values.tolist() == [1.5, 3.5]
+    assert resampled.metadata["schema"]["dims"] == ["time"]
 
 
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:

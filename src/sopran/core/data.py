@@ -89,8 +89,11 @@ class SopranArray:
     def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._with_xarray(self.to_xarray().mean(*args, **kwargs))
 
-    def resample(self, *args: Any, **kwargs: Any) -> Any:
-        return self.to_xarray().resample(*args, **kwargs)
+    def resample(self, *args: Any, **kwargs: Any) -> SopranArrayResampler:
+        return SopranArrayResampler(
+            parent=self,
+            resampler=self.to_xarray().resample(*args, **kwargs),
+        )
 
     def write_parquet(
         self,
@@ -215,3 +218,12 @@ class SopranArray:
             files=self.files,
             xr=array,
         )
+
+
+@dataclass(frozen=True)
+class SopranArrayResampler:
+    parent: SopranArray
+    resampler: Any
+
+    def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self.parent._with_xarray(self.resampler.mean(*args, **kwargs))

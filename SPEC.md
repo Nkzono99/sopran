@@ -719,8 +719,8 @@ class KaguyaESA1Data:
 よく使う `sel`, `mean`, `where`, `resample` などだけを薄く委譲し、複雑な操作は `.xr` に降りる。
 `sel` / `where` / `mean` のように `xarray.DataArray` を返す操作は、結果を再び
 `SopranArray` に包み直し、schema の dims を結果の dims に追従させる。
-`resample` のように intermediate object を返す xarray API は、その xarray object をそのまま返して
-後続の `.mean()` などを xarray 側に任せる。
+`resample` は薄い wrapper object を返し、`resample(...).mean()` のような集約結果は再び
+`SopranArray` に包み直す。
 
 ```python
 flux = esa1.energy_flux

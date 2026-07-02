@@ -45,10 +45,12 @@ subset.to_polars()
 subset.quicklook("counts_energy_band")
 ```
 
-`resample()` delegates to xarray's resampler for time-grid operations:
+`resample()` uses a thin SOPRAN wrapper around xarray's resampler. Aggregations
+such as `mean()` return another `SopranArray`:
 
 ```python
 hourly = quality.resample(time="1h").mean()
+hourly.to_polars()
 ```
 
 Use `SopranArray.write_parquet(store, ...)` when a single loaded variable should
