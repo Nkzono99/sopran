@@ -39,24 +39,39 @@ pip install "sopran[dev]"
 
 optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `dev` に分けます。
 
-## 想定 API
+## 現在動く最小 API
 
-まだ実装前のイメージです。
+KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF decode、
+`xarray`/`polars` 変換、parquet 保存、最小 PlotStack までの縦切りを実装し始めています。
 
 ```python
 import sopran as spn
 
-kg = spn.Kaguya(project="projects/lunar_wake")
-time = spn.period("2008-02-01T00:00:00", "2008-02-01T12:00:00")
+store = spn.Store("F:/sopran_data")
+kg = spn.Kaguya(store=store)
+time = spn.day("2008-01-01")
 
 kg.esa1.energy_flux.info()
 kg.esa1.energy_flux.plan(time)
 
 esa1 = kg.esa1.load(time)
-flux = kg.esa1.energy_flux.load(time)
+ds = esa1.to_xarray()
+counts = esa1.to_polars("counts", reduce_look="sum")
+record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 
-esa1.energy_flux.plot()
-flux.to_xarray()
+stack = spn.stack(
+    spn.spectrogram(ds["counts"].sum("look"), y="energy"),
+    spn.line(ds["quality"]),
+)
+fig = stack.plot()
+```
+
+raw file は `Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。
+たとえば ESA1 の 2008-01-01 は次の配置を探索します。
+
+```text
+F:/sopran_data/raw/kaguya/pds3/
+  sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz
 ```
 
 `kg.esa1.energy_flux` は実データではなく endpoint です。属性アクセスだけでは I/O を起こさず、
