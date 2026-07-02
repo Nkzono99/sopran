@@ -180,3 +180,33 @@ def test_project_save_writes_loaded_xarray_artifact_with_metadata(tmp_path) -> N
         assert np.asarray(saved.values).shape == (0,)
     finally:
         saved.close()
+
+
+def test_project_save_can_include_case_context_metadata(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+frame = "SSE"
+cache = true
+
+[cases.wake]
+start = "2008-02-01T00:00:00"
+stop = "2008-02-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    store = Store(tmp_path / "store")
+    project = spn.Project(project_root, store=store)
+    case = project.case("wake")
+    data = KaguyaESA1Data(time=case.time).quality
+
+    artifact = project.save(
+        data,
+        "interim/kaguya_esa1_quality_wake_context",
+        context=case,
+    )
+
+    metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
+    assert metadata["context"] == case.metadata()

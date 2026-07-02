@@ -37,6 +37,7 @@ class Project:
         name: str | Path,
         *,
         format: str = "netcdf",
+        context: Any | None = None,
         overwrite: bool = False,
     ) -> ProjectArtifact:
         if format != "netcdf":
@@ -51,7 +52,14 @@ class Project:
             raise TypeError("Project.save() expects an xarray object or to_xarray() value")
         array.to_netcdf(target)
 
-        metadata = _artifact_metadata(value, array, target, root=self.root, format=format)
+        metadata = _artifact_metadata(
+            value,
+            array,
+            target,
+            root=self.root,
+            format=format,
+            context=context,
+        )
         metadata_path = target.with_suffix(".json")
         metadata_path.write_text(
             json.dumps(metadata, indent=2, sort_keys=True) + "\n",
@@ -301,6 +309,7 @@ def _artifact_metadata(
     *,
     root: Path,
     format: str,
+    context: Any | None = None,
 ) -> dict[str, Any]:
     time = getattr(value, "time", None)
     metadata: dict[str, Any] = {
@@ -317,4 +326,15 @@ def _artifact_metadata(
     files = getattr(value, "files", ())
     if files:
         metadata["source_files"] = [str(file) for file in files]
+    if context is not None:
+        metadata["context"] = _context_metadata(context)
     return metadata
+
+
+def _context_metadata(context: Any) -> dict[str, Any]:
+    if isinstance(context, dict):
+        return dict(context)
+    metadata = getattr(context, "metadata", None)
+    if callable(metadata):
+        return metadata()
+    raise TypeError("context must be a metadata dict or expose metadata()")
