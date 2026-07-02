@@ -107,6 +107,14 @@ class KaguyaESA1Data:
 
         return _data_array_to_polars(array, variable, np, pl)
 
+    def to_pandas(
+        self,
+        variable: str = "counts",
+        *,
+        reduce_look: Literal["sum"] | None = None,
+    ):
+        return self.to_polars(variable, reduce_look=reduce_look).to_pandas()
+
     def write_parquet(
         self,
         store: Store,

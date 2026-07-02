@@ -186,6 +186,22 @@ def test_kaguya_esa1_to_polars_sums_counts_by_energy(tmp_path: Path) -> None:
     assert frame["counts"].to_list() == [64] * 32
 
 
+def test_kaguya_esa1_to_pandas_wraps_polars_conversion(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    kg = spn.Kaguya(store=store)
+
+    frame = kg.esa1.load(spn.day("2008-01-01")).to_pandas("counts", reduce_look="sum")
+
+    assert list(frame.columns) == ["time", "energy", "counts"]
+    assert len(frame) == 32
+    assert frame["counts"].tolist() == [64] * 32
+
+
 def test_kaguya_esa1_write_parquet_saves_counts_dataset(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
