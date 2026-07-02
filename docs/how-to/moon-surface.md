@@ -34,9 +34,12 @@ shadow_plan = case.moon.shadow.plan(dem=dem_plan)
 sza_plan = case.moon.sza.plan()
 ```
 
-`projection` and `area_or_point` are written to every surface plan. Use
-`projection="polar_stereo"` as a short alias when you want
-`polar_stereographic` metadata.
+`lon_domain`, `lon_direction`, `lat_type`, `projection`, and `area_or_point`
+are written to every surface plan. Plans inherit coordinate conventions from
+`region`, and derived shadow or illumination plans inherit them from
+`dem=<SurfacePlan>` unless you pass explicit values. Use
+`lon_domain="minus180_180"` and `projection="polar_stereo"` as short aliases
+for `-180_180` and `polar_stereographic` metadata.
 SZA plans default to `geometry_source="spice"` so the intended geometry backend
 is recorded even before the SPICE-backed computation backend is implemented.
 Passing the compatibility alias `geometry="spice"` writes the same value to

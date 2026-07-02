@@ -241,6 +241,21 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
         geometry = _geometry_source(normalized, default=default_geometry)
         normalized["geometry"] = geometry
         normalized["geometry_source"] = geometry
+    reference = _coordinate_reference(normalized)
+    normalized["lon_domain"] = _canonical_lon_domain(
+        str(normalized.get("lon_domain", reference.get("lon_domain", "0_360")))
+    )
+    normalized["lon_direction"] = _canonical_lon_direction(
+        str(
+            normalized.get(
+                "lon_direction",
+                reference.get("lon_direction", "east_positive"),
+            )
+        )
+    )
+    normalized["lat_type"] = _canonical_lat_type(
+        str(normalized.get("lat_type", reference.get("lat_type", "planetocentric")))
+    )
     normalized["projection"] = _canonical_projection(
         str(normalized.get("projection", "native"))
     )
@@ -258,6 +273,36 @@ def _geometry_source(parameters: dict[str, Any], *, default: str | None) -> str:
     if value is None:
         raise ValueError("geometry_source cannot be empty")
     return str(value)
+
+
+def _coordinate_reference(parameters: dict[str, Any]) -> dict[str, Any]:
+    region = _metadata_value(parameters.get("region"))
+    if isinstance(region, dict):
+        return region
+    dem = _metadata_value(parameters.get("dem"))
+    if isinstance(dem, dict) and isinstance(dem.get("parameters"), dict):
+        return dem["parameters"]
+    return {}
+
+
+def _canonical_lon_domain(lon_domain: str) -> str:
+    if lon_domain == "minus180_180":
+        return "-180_180"
+    if lon_domain in {"0_360", "-180_180"}:
+        return lon_domain
+    raise ValueError("lon_domain must be '0_360', '-180_180', or 'minus180_180'")
+
+
+def _canonical_lon_direction(lon_direction: str) -> str:
+    if lon_direction in {"east_positive", "west_positive"}:
+        return lon_direction
+    raise ValueError("lon_direction must be 'east_positive' or 'west_positive'")
+
+
+def _canonical_lat_type(lat_type: str) -> str:
+    if lat_type in {"planetocentric", "planetographic"}:
+        return lat_type
+    raise ValueError("lat_type must be 'planetocentric' or 'planetographic'")
 
 
 def _canonical_projection(projection: str) -> str:

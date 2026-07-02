@@ -132,11 +132,17 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
                         "lat_type": "planetocentric",
                     },
                     "resolution": "512ppd",
+                    "lon_domain": "-180_180",
+                    "lon_direction": "east_positive",
+                    "lat_type": "planetocentric",
                     "projection": "native",
                     "area_or_point": "area",
                 },
             },
             "model": "sphere",
+            "lon_domain": "-180_180",
+            "lon_direction": "east_positive",
+            "lat_type": "planetocentric",
             "projection": "native",
             "area_or_point": "area",
         },
@@ -196,3 +202,46 @@ def test_moon_surface_plan_normalizes_projection_metadata() -> None:
         moon.dem.plan(source="kaguya.tc.dem", projection="unknown")
     with pytest.raises(ValueError, match="area_or_point"):
         moon.dem.plan(source="kaguya.tc.dem", area_or_point="cell")
+
+
+def test_surface_plan_records_coordinate_conventions_from_region_and_dem() -> None:
+    moon = spn.Moon()
+    region = spn.Region(
+        lon=(120, 160),
+        lat=(-45, -10),
+        body="moon",
+        lon_domain="-180_180",
+        lon_direction="west_positive",
+        lat_type="planetographic",
+    )
+
+    dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=region)
+    shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00Z", dem=dem_plan)
+
+    assert dem_plan.parameters["lon_domain"] == "-180_180"
+    assert dem_plan.parameters["lon_direction"] == "west_positive"
+    assert dem_plan.parameters["lat_type"] == "planetographic"
+    assert shadow_plan.parameters["lon_domain"] == "-180_180"
+    assert shadow_plan.parameters["lon_direction"] == "west_positive"
+    assert shadow_plan.parameters["lat_type"] == "planetographic"
+
+
+def test_surface_plan_normalizes_coordinate_convention_aliases() -> None:
+    moon = spn.Moon()
+
+    plan = moon.dem.plan(
+        source="kaguya.tc.dem",
+        lon_domain="minus180_180",
+        lon_direction="east_positive",
+        lat_type="planetocentric",
+    )
+
+    assert plan.parameters["lon_domain"] == "-180_180"
+    assert plan.parameters["lon_direction"] == "east_positive"
+    assert plan.parameters["lat_type"] == "planetocentric"
+    with pytest.raises(ValueError, match="lon_domain"):
+        moon.dem.plan(source="kaguya.tc.dem", lon_domain="west_360")
+    with pytest.raises(ValueError, match="lon_direction"):
+        moon.dem.plan(source="kaguya.tc.dem", lon_direction="north_positive")
+    with pytest.raises(ValueError, match="lat_type"):
+        moon.dem.plan(source="kaguya.tc.dem", lat_type="geodetic")

@@ -36,5 +36,8 @@ The current implementation records plans only. Full terrain-aware shadow and
 illumination calculation will require DEM data, solar geometry, body shape,
 projection metadata, and explicit longitude-domain handling.
 
-Every surface plan records `projection` and `area_or_point`; omitted values
-default to `native` and `area`.
+Every surface plan records `lon_domain`, `lon_direction`, `lat_type`,
+`projection`, and `area_or_point`. Region-backed plans inherit coordinate
+conventions from `region`, and derived plans such as `moon.shadow.plan(dem=...)`
+inherit them from the DEM plan. Omitted values default to `0_360`,
+`east_positive`, `planetocentric`, `native`, and `area`.

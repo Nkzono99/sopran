@@ -1292,6 +1292,9 @@ normalized/
 `SvmProduct`, `ShadowProduct`, `IlluminationProduct` は metadata に次を持つ。
 v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の前段となり、
 `Region` や入れ子の DEM plan を JSON-ready な dict に展開する。
+`SurfacePlan` は `region` があればその `lon_domain`, `lon_direction`, `lat_type` を継承し、
+`shadow` / `illumination` のように `dem=<SurfacePlan>` から派生する plan では DEM plan の
+座標 convention を継承する。明示指定された convention は canonical value に正規化して保存する。
 
 - `body`: `moon`, `earth`, `mars` など。
 - `datum` / `shape`: spherical、ellipsoid、triaxial、または SPICE body radii。
