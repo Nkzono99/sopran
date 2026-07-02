@@ -92,6 +92,7 @@ class Store:
         producer: str = "sopran",
         provenance: dict[str, Any] | None = None,
         status: str = "candidate",
+        parameters: dict[str, Any] | None = None,
     ) -> DatasetRecord:
         _validate_dataset_status(status)
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
@@ -109,6 +110,7 @@ class Store:
             "source_files": list(source_files),
             "producer": producer,
             "software": _software_metadata(),
+            "parameters": parameters or {},
         }
         if provenance is not None:
             manifest["provenance"] = provenance
@@ -138,6 +140,7 @@ class Store:
         append: bool = False,
         producer: str = "sopran",
         provenance: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
     ) -> DatasetRecord:
         if append and overwrite:
             raise ValueError("append and overwrite cannot both be true")
@@ -180,6 +183,7 @@ class Store:
             ),
             producer=producer,
             provenance=provenance,
+            parameters=parameters,
         )
 
     def scan_dataset(self, dataset_id: str, *, layer: str):

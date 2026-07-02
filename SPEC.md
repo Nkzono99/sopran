@@ -866,7 +866,8 @@ logs/              # 必要に応じて生成ログ
 - `created_at`: manifest 作成時刻。UTC ISO-8601 (`Z`) で保存する。
 - `software`: SOPRAN package version、Python version、将来の Rust backend version /
   binary hash など、再実行環境の同定に使う情報。
-- `parameters`
+- `parameters`: binning、quality mask、coordinate transform、feature extraction など、
+  dataset 生成時に使った JSON serializable な設定。
 
 ## Pipeline と保存の関係
 

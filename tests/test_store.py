@@ -52,6 +52,7 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "sopran": spn.__version__,
     }
+    assert manifest["parameters"] == {}
     assert manifest["time_coverage"] == {
         "start": "2008-02-01T00:00:00Z",
         "stop": "2008-02-02T00:00:00Z",
@@ -130,6 +131,31 @@ def test_store_writes_dataset_provenance_into_manifest(tmp_path) -> None:
             "source": "kaguya.esa1",
             "stages": ["decode", "select_variables", "write"],
         }
+    }
+
+
+def test_store_writes_dataset_parameters_into_manifest(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.energy_flux",
+        layer="features",
+        mission="kaguya",
+        instrument="esa1",
+        product="energy_flux",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "energy_flux": [1.0]}),
+        parameters={
+            "binning": "none",
+            "quality_mask": ["valid_energy", "valid_look_direction"],
+        },
+    )
+
+    assert dataset.manifest()["parameters"] == {
+        "binning": "none",
+        "quality_mask": ["valid_energy", "valid_look_direction"],
     }
 
 

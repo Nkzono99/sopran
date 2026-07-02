@@ -32,6 +32,10 @@ instrument, product, schema version, dataset status, creation time, time
 coverage, source files, producer, software versions, and optional provenance.
 `schema.json` also records the same schema version.
 
+`parameters` in `dataset.json` stores JSON-serializable generation settings such
+as binning choices, quality masks, coordinate transform options, and feature
+extraction arguments.
+
 `Store.write_parquet_dataset(..., provenance={...})` writes a structured
 provenance object into `dataset.json`. Pipeline backends should use this for the
 pipeline source, stage list, mode, time range, and selected product or variable.
