@@ -853,7 +853,8 @@ logs/              # 必要に応じて生成ログ
 - `schema_version`: v0.1 の初期値は `"0.1"` とし、`dataset.json`、`schema.json`、
   `catalog.parquet`、`registry/datasets.parquet` に同じ値を保存する。
 - `version`
-- `status`: `scratch`, `candidate`, `adopted`, `deprecated`
+- `status`: `scratch`, `candidate`, `adopted`, `deprecated` のいずれか。
+  初期保存は `candidate` を default とする。
 - `time_coverage`
 - `source_datasets`
 - `source_files`
@@ -862,7 +863,7 @@ logs/              # 必要に応じて生成ログ
 - `schema`
 - `partitioning`
 - `producer`
-- `created_at`
+- `created_at`: manifest 作成時刻。UTC ISO-8601 (`Z`) で保存する。
 - `software`: SOPRAN package version、Python version、将来の Rust backend version /
   binary hash など、再実行環境の同定に使う情報。
 - `parameters`

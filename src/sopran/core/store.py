@@ -5,6 +5,7 @@ import os
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -16,6 +17,7 @@ from sopran.core.time import TimeRange, period
 
 _LAYERS = ("raw", "normalized", "features", "databases")
 _DATASET_SCHEMA_VERSION = "0.1"
+_DATASET_STATUSES = ("scratch", "candidate", "adopted", "deprecated")
 
 
 @dataclass(frozen=True)
@@ -89,7 +91,9 @@ class Store:
         shards: tuple[dict[str, Any], ...] = (),
         producer: str = "sopran",
         provenance: dict[str, Any] | None = None,
+        status: str = "candidate",
     ) -> DatasetRecord:
+        _validate_dataset_status(status)
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         record.root.mkdir(parents=True, exist_ok=True)
         manifest = {
@@ -99,6 +103,8 @@ class Store:
             "instrument": instrument,
             "product": product,
             "schema_version": _DATASET_SCHEMA_VERSION,
+            "status": status,
+            "created_at": _utc_now_iso(),
             "time_coverage": _time_coverage_to_json(time_coverage),
             "source_files": list(source_files),
             "producer": producer,
@@ -298,6 +304,16 @@ def _software_metadata() -> dict[str, str]:
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "sopran": _sopran_version(),
     }
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _validate_dataset_status(status: str) -> None:
+    if status not in _DATASET_STATUSES:
+        allowed = ", ".join(_DATASET_STATUSES)
+        raise ValueError(f"status must be one of: {allowed}")
 
 
 def _sopran_version() -> str:

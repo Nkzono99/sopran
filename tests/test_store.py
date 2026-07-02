@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import json
 import sys
 
@@ -43,6 +44,10 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     assert manifest["dataset_id"] == "kaguya.esa1.energy_flux"
     assert manifest["layer"] == "normalized"
     assert manifest["schema_version"] == "0.1"
+    assert manifest["status"] == "candidate"
+    assert manifest["created_at"].endswith("Z")
+    created_at = datetime.fromisoformat(manifest["created_at"].replace("Z", "+00:00"))
+    assert created_at.tzinfo == UTC
     assert manifest["software"] == {
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "sopran": spn.__version__,
@@ -126,6 +131,23 @@ def test_store_writes_dataset_provenance_into_manifest(tmp_path) -> None:
             "stages": ["decode", "select_variables", "write"],
         }
     }
+
+
+def test_store_rejects_unknown_dataset_status(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    with pytest.raises(ValueError, match="status must be"):
+        store.register_dataset(
+            dataset_id="kaguya.esa1.counts",
+            layer="normalized",
+            mission="kaguya",
+            instrument="esa1",
+            product="counts",
+            schema=KAGUYA_ESA1_SCHEMA,
+            time_coverage=time,
+            status="ready",
+        )
 
 
 def test_store_parquet_writer_refuses_to_overwrite_existing_shard(tmp_path) -> None:
