@@ -24,6 +24,7 @@ For regions that cross the 0/360 degree boundary:
 region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
 region.contains(355, 0)
 spn.Region(lon=(-10, 10), lat=(-5, 5), body="moon", lon_domain="0_360").lon
+spn.Region(lon=(120, 160), lat=(-45, -10), body="moon", lon_direction="west_positive")
 region.to_lon_domain("-180_180")
 region.to_lon_domain("minus180_180")  # accepted config alias
 ```

@@ -5,6 +5,7 @@ from typing import Literal
 
 
 LonDomain = Literal["0_360", "-180_180", "minus180_180"]
+LonDirection = Literal["east_positive", "west_positive"]
 
 
 @dataclass(frozen=True)
@@ -13,10 +14,16 @@ class Region:
     lat: tuple[float, float]
     body: str = "moon"
     lon_domain: LonDomain = "0_360"
+    lon_direction: LonDirection = "east_positive"
 
     def __post_init__(self) -> None:
         lon_domain = _canonical_lon_domain(self.lon_domain)
         object.__setattr__(self, "lon_domain", lon_domain)
+        object.__setattr__(
+            self,
+            "lon_direction",
+            _canonical_lon_direction(self.lon_direction),
+        )
         object.__setattr__(
             self,
             "lon",
@@ -62,6 +69,7 @@ class Region:
             "lon": [float(self.lon[0]), float(self.lon[1])],
             "lat": [float(self.lat[0]), float(self.lat[1])],
             "lon_domain": self.lon_domain,
+            "lon_direction": self.lon_direction,
         }
 
 
@@ -83,4 +91,10 @@ def _canonical_lon_domain(lon_domain: LonDomain) -> Literal["0_360", "-180_180"]
     raise ValueError("lon_domain must be '0_360', '-180_180', or 'minus180_180'")
 
 
-__all__ = ["LonDomain", "Region"]
+def _canonical_lon_direction(lon_direction: str) -> LonDirection:
+    if lon_direction in ("east_positive", "west_positive"):
+        return lon_direction  # type: ignore[return-value]
+    raise ValueError("lon_direction must be 'east_positive' or 'west_positive'")
+
+
+__all__ = ["LonDirection", "LonDomain", "Region"]

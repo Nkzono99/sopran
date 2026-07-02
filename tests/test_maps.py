@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import sopran as spn
 
 
@@ -48,3 +50,26 @@ def test_region_constructor_normalizes_longitudes_to_domain() -> None:
     assert region.contains_lon(355)
     assert region.contains_lon(-5)
     assert region.to_metadata()["lon"] == [350.0, 10.0]
+
+
+def test_region_records_longitude_direction_metadata() -> None:
+    default_region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+    west_positive = spn.Region(
+        lon=(120, 160),
+        lat=(-45, -10),
+        body="moon",
+        lon_direction="west_positive",
+    )
+
+    assert default_region.lon_direction == "east_positive"
+    assert default_region.to_metadata()["lon_direction"] == "east_positive"
+    assert west_positive.lon_direction == "west_positive"
+    assert west_positive.to_metadata()["lon_direction"] == "west_positive"
+
+    with pytest.raises(ValueError, match="lon_direction"):
+        spn.Region(
+            lon=(120, 160),
+            lat=(-45, -10),
+            body="moon",
+            lon_direction="north_positive",
+        )

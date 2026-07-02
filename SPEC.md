@@ -1256,7 +1256,8 @@ v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の
   `minus180_180` も受け付け、内部では `-180_180` へ正規化する。
   `Region(lon=..., lon_domain=...)` は constructor 時点で lon の両端を指定 domain に
   正規化し、metadata も canonical longitude だけを出す。
-- `lon_direction`: `east_positive` または `west_positive`。
+- `lon_direction`: `east_positive` または `west_positive`。`Region` の既定は
+  `east_positive` とし、metadata に常に出力する。
 - `lat_type`: `planetocentric` または `planetographic`。
 - `projection`: `equirectangular`, `polar_stereographic`, `orthographic`,
   `azimuthal_equidistant`, `lambert`, `native` など。

@@ -79,6 +79,7 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
                         "lon": [-10.0, 10.0],
                         "lat": [-5.0, 5.0],
                         "lon_domain": "-180_180",
+                        "lon_direction": "east_positive",
                     },
                     "resolution": "512ppd",
                 },
