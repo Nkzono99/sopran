@@ -7,6 +7,10 @@ Project configuration lives in `sopran.toml` in an analysis workspace:
 frame = "SSE"
 cache = true
 
+[store]
+data_root = "data"
+cache_root = "cache"
+
 [cases.example]
 start = "2008-02-01T00:00:00"
 stop = "2008-02-02T00:00:00"
@@ -25,3 +29,8 @@ Environment variables:
 
 - `SOPRAN_DATA_ROOT`: default store root.
 - `SOPRAN_CACHE_ROOT`: optional cache root override.
+
+When `Project(root)` creates its own `Store`, `[store].data_root` and
+`[store].cache_root` are resolved relative to the project root unless they are
+absolute paths. Explicit `Store(...)` arguments and environment variables take
+priority over project configuration.

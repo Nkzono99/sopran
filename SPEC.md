@@ -1855,6 +1855,11 @@ Or use a Project case:
 - `SOPRAN_OFFLINE`
 - `SOPRAN_LOG_LEVEL`
 
+`Project(root)` が明示 `Store` なしで作られる場合、`root/sopran.toml` の
+`[store].data_root` と `[store].cache_root` を読む。相対 path は project root 基準で
+解決する。環境変数 `SOPRAN_DATA_ROOT` / `SOPRAN_CACHE_ROOT` がある場合は project config より
+優先する。
+
 ### Download policy
 
 download は副作用が大きいので、policy を明示する。

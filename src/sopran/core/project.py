@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,7 +28,7 @@ class Project:
 
     def __init__(self, root: Path | str, *, store: Store | None = None) -> None:
         self.root = Path(root)
-        self.store = store or Store(self.root / "data")
+        self.store = store or self._configured_store()
 
     def save(
         self,
@@ -88,6 +89,21 @@ class Project:
         path = self.root / "sopran.toml"
         with path.open("rb") as handle:
             return tomllib.load(handle)
+
+    def _configured_store(self) -> Store:
+        config = self._read_config() if (self.root / "sopran.toml").exists() else {}
+        store_config = config.get("store", {})
+        root = _configured_path(
+            self.root,
+            os.environ.get("SOPRAN_DATA_ROOT") or store_config.get("data_root"),
+            default=self.root / "data",
+        )
+        cache_root = _configured_path(
+            self.root,
+            os.environ.get("SOPRAN_CACHE_ROOT") or store_config.get("cache_root"),
+            default=None,
+        )
+        return Store(root=root, cache_root=cache_root)
 
 
 class Case:
@@ -239,6 +255,20 @@ def _project_child_path(root: Path, name: str | Path, *, suffix: str) -> Path:
     if not target.is_relative_to(resolved_root):
         raise ValueError(f"Project artifact path escapes project root: {name}")
     return target
+
+
+def _configured_path(
+    project_root: Path,
+    value: object | None,
+    *,
+    default: Path | None,
+) -> Path | None:
+    if value is None:
+        return default
+    path = Path(str(value))
+    if path.is_absolute():
+        return path
+    return project_root / path
 
 
 def _artifact_metadata(

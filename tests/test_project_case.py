@@ -57,6 +57,24 @@ def test_project_case_allows_explicit_time_without_config_file(tmp_path) -> None
     assert case.region is None
 
 
+def test_project_reads_store_roots_from_project_config(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[store]
+data_root = "configured_data"
+cache_root = "configured_cache"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    project = spn.Project(project_root)
+
+    assert project.store.root == project_root / "configured_data"
+    assert project.store.cache_root == project_root / "configured_cache"
+
+
 def test_project_save_writes_loaded_xarray_artifact_with_metadata(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()

@@ -15,6 +15,10 @@ case = project.case("wake_20080201")
 frame = "SSE"
 cache = true
 
+[store]
+data_root = "data"
+cache_root = "cache"
+
 [cases.wake_20080201]
 start = "2008-02-01T00:00:00"
 stop = "2008-02-02T00:00:00"
@@ -36,6 +40,10 @@ case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
 
 `case.region` is `None` when no region is configured. Case-specific region
 settings override `[defaults.region]`.
+
+When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
+relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain
+higher priority.
 
 Use `Project.save(...)` for ad-hoc or interim artifacts that belong to the
 analysis workspace rather than the shared data `Store`:
