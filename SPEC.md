@@ -1477,7 +1477,9 @@ stack = spn.stack(
 - 時間ビン化は `spn.time_bins(...)` が返す `TimeBins` を第一級 object として扱う。
 - `spn.align(...)` は全 input に同じ `method`, `tolerance` を適用する簡易 API とする。
 - product ごとに reducer や tolerance を変える feature table は `spn.SampleTable(grid)` で作る。
-- `join`, `fill`, `quality mask`, `wide/long` の扱いは feature table API の拡張点として残す。
+- `join="outer"` は全 time bin を保持し、欠損 feature を null にする既定動作とする。
+- `join="inner"` は null を含む bin を落とし、ML / 統計用の完全行 table を作る。
+- `fill`, `quality mask`, `wide/long` の扱いは feature table API の拡張点として残す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
@@ -1496,6 +1498,7 @@ features = spn.align(
     grid=grid,
     method="nearest",
     tolerance="5s",
+    join="inner",
 ).to_polars()
 ```
 
@@ -1508,7 +1511,7 @@ features = (
     .add(case.kaguya.lrs.wave_power.load(), method="max")
     .add(case.kaguya.lrs.density.load(), method="median")
     .add(case.artemis.p1.fgm.magnetic_field.load(), method="nearest", tolerance="2s")
-    .collect()
+    .collect(join="inner")
     .to_polars()
 )
 ```
@@ -1516,6 +1519,7 @@ features = (
 v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `mean`, `max`,
 `median` で `TimeBins` に対応づける。`nearest` は center time の最近傍を取り、
 `mean`, `max`, `median` は半開区間 `[start, stop)` の bin 内 sample を集約する。
+`join="outer"` は全 bin を保持し、`join="inner"` はいずれかの feature が欠けた bin を落とす。
 `time x component` の vector product は
 `magnetic_field_x`, `magnetic_field_y`, `magnetic_field_z` のような wide columns へ展開する。
 スペクトル、distribution、`center sample` / `first` / `last` などの reducer、欠損処理、

@@ -21,7 +21,14 @@ rule:
 
 ```python
 bins = spn.time_bins(time, cadence="10s")
-features = spn.align(sza, wave_power, grid=bins, method="nearest", tolerance="5s")
+features = spn.align(
+    sza,
+    wave_power,
+    grid=bins,
+    method="nearest",
+    tolerance="5s",
+    join="inner",
+)
 frame = features.to_polars()
 features.write_parquet("features.parquet")
 ```
@@ -35,7 +42,7 @@ features = (
     .add(sza, method="nearest", tolerance="5s")
     .add(wave_power, method="max")
     .add(density, method="median")
-    .collect()
+    .collect(join="inner")
 )
 frame = features.to_polars()
 ```
@@ -45,6 +52,10 @@ series with `nearest`, `mean`, `max`, or `median` alignment onto regular
 half-open bins. `nearest` samples the bin center; the other reducers aggregate
 samples inside `[start, stop)`. Vector series are expanded to wide columns such
 as `magnetic_field_x`.
+
+The default `join="outer"` keeps every time bin and leaves missing feature
+values as null. Use `join="inner"` when a machine-learning or statistical table
+should keep only bins where every feature is present.
 
 Coordinate frames and units are still early-stage. The design goal is to avoid
 reimplementing established space-physics and planetary geometry libraries. SPICE

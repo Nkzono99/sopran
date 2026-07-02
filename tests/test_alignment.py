@@ -112,6 +112,44 @@ def test_align_max_aggregates_arrays_inside_time_bins() -> None:
     ]
 
 
+def test_align_inner_join_drops_bins_with_missing_features() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([5.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="wave_power",
+    )
+
+    aligned = spn.align(
+        sza,
+        wave_power,
+        grid=bins,
+        method="nearest",
+        tolerance="2s",
+        join="inner",
+    )
+
+    assert aligned.join == "inner"
+    assert aligned.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 5.0}
+    ]
+
+
 def test_align_nearest_expands_vector_components_to_wide_columns() -> None:
     bins = spn.time_bins(
         spn.period("2011-07-01T00:00:00Z", "2011-07-01T00:00:20Z"),
@@ -299,4 +337,40 @@ def test_sample_table_supports_product_specific_bin_reducers() -> None:
     assert result.to_polars().to_dicts() == [
         {"time": "2008-01-01T00:00:05Z", "wave_power": 5.0, "density": 3.0},
         {"time": "2008-01-01T00:00:15Z", "wave_power": 10.0, "density": 15.0},
+    ]
+
+
+def test_sample_table_inner_join_drops_bins_with_missing_features() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([5.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="wave_power",
+    )
+
+    result = (
+        spn.SampleTable(bins)
+        .add(sza, method="nearest", tolerance="2s")
+        .add(wave_power, method="max")
+        .collect(join="inner")
+    )
+
+    assert result.join == "inner"
+    assert result.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 5.0}
     ]

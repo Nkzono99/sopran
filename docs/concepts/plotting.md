@@ -40,7 +40,7 @@ joins, create explicit time bins and align products separately:
 
 ```python
 bins = spn.time_bins(case.time, cadence="10s")
-features = spn.align(sza, wave_power, grid=bins, method="mean").to_polars()
+features = spn.align(sza, wave_power, grid=bins, method="mean", join="inner").to_polars()
 ```
 
 When each product needs a different sampling rule, use `SampleTable`:
@@ -51,10 +51,13 @@ features = (
     .add(sza, method="nearest", tolerance="5s")
     .add(wave_power, method="max")
     .add(density, method="median")
-    .collect()
+    .collect(join="inner")
     .to_polars()
 )
 ```
+
+`join="outer"` keeps every bin with nulls for missing features. `join="inner"`
+drops bins that do not have every requested feature.
 
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and

@@ -9,7 +9,9 @@ from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 
 AlignMethod = Literal["nearest", "mean", "max", "median"]
 AlignmentMethod = Literal["nearest", "mean", "max", "median", "mixed"]
+JoinMode = Literal["outer", "inner"]
 _ALIGN_METHODS = ("nearest", "mean", "max", "median")
+_JOIN_MODES = ("outer", "inner")
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,7 @@ class AlignmentResult:
     columns: tuple[str, ...]
     rows: tuple[dict[str, Any], ...]
     method: AlignmentMethod
+    join: JoinMode = "outer"
 
     def to_polars(self):
         import polars as pl
@@ -89,9 +92,11 @@ def align(
     grid: TimeBins,
     method: AlignMethod,
     tolerance: str | timedelta | None = None,
+    join: JoinMode = "outer",
 ) -> AlignmentResult:
     if not arrays:
         raise ValueError("align() requires at least one array")
+    _validate_join(join)
     tolerance_delta = _parse_duration(tolerance) if tolerance is not None else None
     requested_features = tuple(
         _RequestedFeature(
@@ -103,7 +108,7 @@ def align(
         for index, array in enumerate(arrays)
         for feature in _features(array, index)
     )
-    return _collect_features(grid, requested_features, method=method)
+    return _collect_features(grid, requested_features, method=method, join=join)
 
 
 @dataclass(frozen=True)
@@ -139,9 +144,10 @@ class SampleTable:
             ),
         )
 
-    def collect(self) -> AlignmentResult:
+    def collect(self, *, join: JoinMode = "outer") -> AlignmentResult:
         if not self.specs:
             raise ValueError("SampleTable.collect() requires at least one sample")
+        _validate_join(join)
         requested_features = tuple(
             _RequestedFeature(
                 name=feature.name,
@@ -156,7 +162,7 @@ class SampleTable:
             for index, spec in enumerate(self.specs)
             for feature in _features(spec.array, index)
         )
-        return _collect_features(self.grid, requested_features, method="mixed")
+        return _collect_features(self.grid, requested_features, method="mixed", join=join)
 
 
 @dataclass(frozen=True)
@@ -172,6 +178,7 @@ def _collect_features(
     features: tuple[_RequestedFeature, ...],
     *,
     method: AlignmentMethod,
+    join: JoinMode,
 ) -> AlignmentResult:
     columns = tuple(feature.name for feature in features)
     rows = []
@@ -193,8 +200,16 @@ def _collect_features(
                 )
             else:
                 raise ValueError("method must be 'nearest', 'mean', 'max', or 'median'")
+        if join == "inner" and any(row[column] is None for column in columns):
+            continue
         rows.append(row)
-    return AlignmentResult(grid=grid, columns=columns, rows=tuple(rows), method=method)
+    return AlignmentResult(
+        grid=grid,
+        columns=columns,
+        rows=tuple(rows),
+        method=method,
+        join=join,
+    )
 
 
 @dataclass(frozen=True)
@@ -281,6 +296,11 @@ def _array_name(array: Any, index: int) -> str:
 def _coord_label(value: Any) -> str:
     text = str(value)
     return "".join(character if character.isalnum() else "_" for character in text).strip("_")
+
+
+def _validate_join(join: str) -> None:
+    if join not in _JOIN_MODES:
+        raise ValueError("join must be 'outer' or 'inner'")
 
 
 def _parse_duration(value: str | timedelta | None) -> timedelta:
