@@ -32,6 +32,10 @@ def test_artemis_guides_return_markdown_pages() -> None:
 
     assert "# ARTEMIS" in mission_guide.to_markdown()
     assert "FGM" in fgm_guide.to_markdown()
+    assert art.help() == mission_guide
+    assert art.p1.help() == mission_guide
+    assert art.p1.fgm.help() == fgm_guide
+    assert art.p1.fgm.magnetic_field.help() == variable_guide
     assert variable_guide.source == "sopran.missions.artemis/README.md"
 
 

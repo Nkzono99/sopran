@@ -1296,7 +1296,7 @@ MkDocs / GitHub Pages では multi-language plugin または `docs/ja`, `docs/en
 
 Mission、instrument、variable endpoint、body、surface endpoint は、短い `info()` と詳しい
 `guide()` を持つ。`help()` は Python 組み込みと名前が衝突しやすいため主導線にはせず、
-interactive convenience の alias として許容する。
+interactive convenience の alias として `guide()` と同じ `GuidePage` を返す。
 
 ```python
 kg = spn.Kaguya()
@@ -1304,17 +1304,22 @@ moon = spn.Moon()
 
 kg.info()             # KAGUYA の短い概要
 kg.guide()            # KAGUYA README を参照
+kg.help()             # kg.guide() の alias
 kg.guide("lrs")       # KAGUYA/LRS README を参照
+kg.help("lrs")        # topic 指定も guide() と同じ
 
 kg.lrs.info()
 kg.lrs.guide()
+kg.lrs.help()
 
 kg.esa1.energy_flux.info()
 kg.esa1.energy_flux.guide()
+kg.esa1.energy_flux.help()
 
 moon.info()
 moon.dem.info()
 moon.dem.guide()
+moon.dem.help()
 ```
 
 `info()` は console で読みやすい短い text を持つ `InfoPage` のような軽い object を返す。

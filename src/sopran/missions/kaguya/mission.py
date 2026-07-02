@@ -72,6 +72,9 @@ class Kaguya:
             return _read_guide("ESA1.md", title="PACE ESA1")
         raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
+    def help(self, topic: str | None = None) -> GuidePage:
+        return self.guide(topic)
+
     def example(self) -> GuidePage:
         return _example_page(
             "KAGUYA Example",
@@ -167,6 +170,9 @@ class VariableEndpoint:
 
     def guide(self) -> GuidePage:
         return self.instrument.guide()
+
+    def help(self) -> GuidePage:
+        return self.guide()
 
     def example(self) -> GuidePage:
         return _example_page(
@@ -373,6 +379,9 @@ class PaceInstrument(KaguyaInstrument):
         if self.sensor == "ESA1":
             return _read_guide("ESA1.md", title="PACE ESA1")
         return _read_guide("README.md", title=f"KAGUYA {self.sensor}")
+
+    def help(self) -> GuidePage:
+        return self.guide()
 
     def example(self) -> GuidePage:
         if self.sensor != "ESA1":

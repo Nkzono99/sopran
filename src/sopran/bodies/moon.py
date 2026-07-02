@@ -42,6 +42,9 @@ class Moon:
             source="sopran.bodies.moon",
         )
 
+    def help(self) -> GuidePage:
+        return self.guide()
+
 
 class SurfaceEndpoint:
     def __init__(self, body: Moon, product: str, label: str) -> None:
@@ -64,6 +67,9 @@ class SurfaceEndpoint:
             markdown=_SURFACE_GUIDES.get(self.product, _MOON_GUIDE),
             source=f"sopran.bodies.moon.{self.product}",
         )
+
+    def help(self) -> GuidePage:
+        return self.guide()
 
     def plan(self, **parameters: Any) -> SurfacePlan:
         return SurfacePlan(

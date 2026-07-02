@@ -33,3 +33,5 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
 
     assert "# Moon Surface Products" in moon.guide().to_markdown()
     assert "DEM" in moon.dem.guide().to_markdown()
+    assert moon.help() == moon.guide()
+    assert moon.dem.help() == moon.dem.guide()

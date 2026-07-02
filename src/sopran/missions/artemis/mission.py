@@ -41,6 +41,9 @@ class Artemis:
     def guide(self) -> GuidePage:
         return _read_guide(title="ARTEMIS")
 
+    def help(self) -> GuidePage:
+        return self.guide()
+
 
 class ArtemisProbe:
     def __init__(self, mission: Artemis, probe: str) -> None:
@@ -56,6 +59,9 @@ class ArtemisProbe:
 
     def guide(self) -> GuidePage:
         return self.mission.guide()
+
+    def help(self) -> GuidePage:
+        return self.guide()
 
 
 class ArtemisFgmInstrument:
@@ -79,6 +85,9 @@ class ArtemisFgmInstrument:
 
     def guide(self) -> GuidePage:
         return self.probe.guide()
+
+    def help(self) -> GuidePage:
+        return self.guide()
 
 
 @dataclass(frozen=True)
@@ -108,6 +117,9 @@ class ArtemisVariableEndpoint:
 
     def guide(self) -> GuidePage:
         return self.instrument.guide()
+
+    def help(self) -> GuidePage:
+        return self.guide()
 
     def plan(self, time: TimeRange) -> ArtemisLoadPlan:
         return ArtemisLoadPlan(
