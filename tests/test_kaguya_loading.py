@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import sopran as spn
+import polars as pl
 import pytest
 from sopran import Store
 from sopran.missions.kaguya import Kaguya, normalize_sensors
+from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
 def test_normalize_sensors_accepts_spedas_ids_and_names() -> None:
@@ -227,6 +229,27 @@ def test_pipeline_write_accepts_database_product_reference(tmp_path) -> None:
     assert product.layer == "databases"
     assert plan.output_dataset == "wake_events.raw_counts"
     assert plan.output_layer == "databases"
+
+
+def test_pipeline_scan_reads_stored_normalized_variable(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-01-01")
+    frame = pl.DataFrame({"time": ["2008-01-01T00:00:08Z"], "energy": [0], "counts": [64]})
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=frame,
+    )
+    kg = spn.Kaguya(store=store)
+
+    lazy = kg.esa1.pipeline(time).from_normalized().select_variables("counts").scan()
+
+    assert lazy.collect().to_dicts() == frame.to_dicts()
 
 
 def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:

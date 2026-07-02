@@ -85,6 +85,12 @@ class Pipeline:
             output_layer=self.output_layer,
         )
 
+    def scan(self):
+        scanner = getattr(self.context, "_scan_pipeline", None)
+        if scanner is not None:
+            return scanner(self)
+        raise NotImplementedError("Pipeline.scan() backend is not implemented yet")
+
     def run(
         self,
         *,

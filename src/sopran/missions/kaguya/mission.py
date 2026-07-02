@@ -232,6 +232,14 @@ class PaceInstrument(KaguyaInstrument):
     def pipeline(self, time: TimeRange) -> Pipeline:
         return Pipeline(source=f"kaguya.{self.sensor.lower()}", time=time, context=self)
 
+    def _scan_pipeline(self, pipeline: Pipeline):
+        if self.sensor != "ESA1":
+            raise NotImplementedError(f"pipeline scan is not implemented for {self.sensor}")
+        variable = _pipeline_variable(pipeline)
+        dataset_id = pipeline.output_dataset or f"kaguya.esa1.{variable}"
+        layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
+        return self.mission.store.scan_dataset(dataset_id, layer=layer)
+
     def _run_pipeline(self, pipeline: Pipeline, *, mode: str = "create") -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
@@ -341,3 +349,9 @@ def _pipeline_variable(pipeline: Pipeline) -> str:
     if pipeline.output_dataset:
         return pipeline.output_dataset.split(".")[-1]
     return "counts"
+
+
+def _pipeline_source_layer(pipeline: Pipeline) -> str:
+    if any(stage.name == "from_normalized" for stage in pipeline.stages):
+        return "normalized"
+    raise ValueError("Pipeline.scan() requires from_normalized() or write(..., layer=...)")
