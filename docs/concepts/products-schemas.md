@@ -62,8 +62,11 @@ checked too. Validation failures raise `SchemaError`.
 `product` resolves to a variable in the supplied schema. Derived features whose
 product names are outside the instrument schema can still be written with their
 own schema.
+Aligned feature datasets created by `AlignmentResult.write_dataset()` preserve
+source xarray/DataArray `units` and `frame` attributes when they are present, so
+derived `features` layer tables remain inspectable through `schema.json`.
 
-`schema.json` preserves `dtype` and `frame` when they are present on
+`schema.json` preserves `units`, `dtype`, and `frame` when they are present on
 `VariableSchema`. Vector and position products should use these fields to keep
 component dtype and coordinate frame metadata discoverable.
 

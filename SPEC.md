@@ -1640,6 +1640,8 @@ stack = spn.stack(
   0、False、欠損の bin を feature table から落とす。
 - `AlignmentResult.metadata()` は columns、feature ごとの method/tolerance、grid、method、
   join、fill、quality_mask を返し、manifest/provenance に使う。
+- source DataArray に `attrs["units"]` / `attrs["frame"]` がある場合は、aligned feature の
+  metadata と `write_dataset()` が生成する `schema.json` に保存する。
 - `AlignmentResult.feature_metadata()` は `to_feature_frame()` と対になる軽量 metadata として、
   feature columns、feature rules、grid、row count、time column 名を返す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
@@ -1715,6 +1717,8 @@ bin grid を表形式として確認でき、`TimeBins.metadata()` / `AlignmentR
 API とし、regular cadence に丸めない。
 `AlignmentResult.metadata()["features"]` は各 output column の `method` と `tolerance_seconds` を
 保存し、`SampleTable` で product ごとに違う reducer/tolerance を選んだ場合も再現可能にする。
+入力 product が xarray/DataArray attrs として `units` や `frame` を持つ場合は、feature metadata
+にも同じ値を保存し、aligned dataset の `schema.json` の各 feature column に反映する。
 `AlignmentResult.write_dataset(store, dataset_id, ...)` は `features` layer に Parquet shard、
 schema、catalog、manifest を作り、`parameters["alignment"]` に同じ metadata を保存する。
 `AlignmentResult.write_dataset(db.product("wake_context"), ...)` のように `ProductRef` を渡すと、

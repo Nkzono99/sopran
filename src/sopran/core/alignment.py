@@ -282,6 +282,7 @@ class AlignmentResult:
                 instrument=instrument,
                 columns=self.columns,
                 layout=layout,
+                feature_rules=self.feature_rules,
             ),
             time_coverage=self.grid.time,
             frame=self.to_polars(layout=layout),
@@ -406,6 +407,8 @@ def align(
             samples=feature.samples,
             method=method,
             tolerance=tolerance_delta,
+            units=feature.units,
+            frame=feature.frame,
         )
         for index, array in enumerate(arrays)
         for feature in _features(array, index)
@@ -475,6 +478,8 @@ class SampleTable:
                     if spec.tolerance is not None
                     else None
                 ),
+                units=feature.units,
+                frame=feature.frame,
             )
             for index, spec in enumerate(self.specs)
             for feature in _features(spec.array, index)
@@ -499,6 +504,8 @@ class _RequestedFeature:
     samples: tuple[tuple[datetime, float], ...]
     method: AlignMethod
     tolerance: timedelta | None
+    units: str | None = None
+    frame: str | None = None
 
 
 def _collect_features(
@@ -567,10 +574,12 @@ def _collect_features(
 class _FeatureSeries:
     name: str
     samples: tuple[tuple[datetime, float], ...]
+    units: str | None = None
+    frame: str | None = None
 
 
 def _feature_rule(feature: _RequestedFeature) -> dict[str, Any]:
-    return {
+    rule = {
         "column": feature.name,
         "method": feature.method,
         "tolerance_seconds": (
@@ -579,6 +588,11 @@ def _feature_rule(feature: _RequestedFeature) -> dict[str, Any]:
             else None
         ),
     }
+    if feature.units is not None:
+        rule["units"] = feature.units
+    if feature.frame is not None:
+        rule["frame"] = feature.frame
+    return rule
 
 
 def _default_product_name(dataset_id: str) -> str:
@@ -609,7 +623,13 @@ def _alignment_schema(
     instrument: str,
     columns: tuple[str, ...],
     layout: TableLayout,
+    feature_rules: tuple[dict[str, Any], ...] = (),
 ) -> InstrumentSchema:
+    feature_metadata = {
+        str(feature.get("column")): feature
+        for feature in feature_rules
+        if feature.get("column") is not None
+    }
     if layout == "wide":
         variables = (
             VariableSchema(
@@ -621,6 +641,8 @@ def _alignment_schema(
                 VariableSchema(
                     name=column,
                     dims=("time",),
+                    units=_feature_metadata_value(feature_metadata, column, "units"),
+                    frame=_feature_metadata_value(feature_metadata, column, "frame"),
                     description="Aligned feature column.",
                 )
                 for column in columns
@@ -649,6 +671,15 @@ def _alignment_schema(
     return InstrumentSchema(mission=mission, instrument=instrument, variables=variables)
 
 
+def _feature_metadata_value(
+    feature_metadata: dict[str, dict[str, Any]],
+    column: str,
+    key: str,
+) -> str | None:
+    value = feature_metadata.get(column, {}).get(key)
+    return str(value) if value is not None else None
+
+
 def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:
     if hasattr(array, "to_xarray"):
         array = array.to_xarray()
@@ -657,11 +688,15 @@ def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:
     dims = tuple(array.dims)
     times = array.coords["time"].values
     name = _array_name(array, index)
+    units = _array_attr(array, "units")
+    frame = _array_attr(array, "frame")
     if dims == ("time",):
         return (
             _FeatureSeries(
                 name=name,
                 samples=_sample_values(times, array.values),
+                units=units,
+                frame=frame,
             ),
         )
     if len(dims) == 2 and dims[0] == "time":
@@ -671,6 +706,8 @@ def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:
             _FeatureSeries(
                 name=f"{name}_{_coord_label(component)}",
                 samples=_sample_values(times, values[:, component_index]),
+                units=units,
+                frame=frame,
             )
             for component_index, component in enumerate(array.coords[component_dim].values)
         )
@@ -747,6 +784,11 @@ def _array_name(array: Any, index: int) -> str:
     if name:
         return str(name)
     return f"value_{index}"
+
+
+def _array_attr(array: Any, name: str) -> str | None:
+    value = getattr(array, "attrs", {}).get(name)
+    return str(value) if value is not None else None
 
 
 def _coord_label(value: Any) -> str:

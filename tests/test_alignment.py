@@ -662,6 +662,66 @@ def test_alignment_result_writes_feature_dataset_to_store(tmp_path) -> None:
     ]
 
 
+def test_alignment_dataset_schema_preserves_feature_units_and_frames(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    magnetic_field = xr.DataArray(
+        np.array([[1.0, 2.0, 3.0]]),
+        dims=("time", "component"),
+        coords={
+            "time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]"),
+            "component": ["x", "y", "z"],
+        },
+        name="magnetic_field",
+        attrs={"units": "nT", "frame": "SSE"},
+    )
+    aligned = spn.align(
+        magnetic_field,
+        grid=bins,
+        method="nearest",
+        tolerance="3s",
+    )
+
+    dataset = aligned.write_dataset(store, "analysis.fgm_context")
+
+    variables = {
+        variable["name"]: variable
+        for variable in dataset.schema()["variables"]
+    }
+    assert variables["magnetic_field_x"]["units"] == "nT"
+    assert variables["magnetic_field_x"]["frame"] == "SSE"
+    assert variables["magnetic_field_y"]["units"] == "nT"
+    assert variables["magnetic_field_y"]["frame"] == "SSE"
+    assert variables["magnetic_field_z"]["units"] == "nT"
+    assert variables["magnetic_field_z"]["frame"] == "SSE"
+    assert dataset.manifest()["parameters"]["alignment"]["features"] == [
+        {
+            "column": "magnetic_field_x",
+            "method": "nearest",
+            "tolerance_seconds": 3.0,
+            "units": "nT",
+            "frame": "SSE",
+        },
+        {
+            "column": "magnetic_field_y",
+            "method": "nearest",
+            "tolerance_seconds": 3.0,
+            "units": "nT",
+            "frame": "SSE",
+        },
+        {
+            "column": "magnetic_field_z",
+            "method": "nearest",
+            "tolerance_seconds": 3.0,
+            "units": "nT",
+            "frame": "SSE",
+        },
+    ]
+
+
 def test_alignment_result_writes_to_database_product_reference(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
     target = store.database("lunar_wake").product("wake_context")
