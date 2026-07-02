@@ -662,6 +662,41 @@ def test_alignment_result_writes_feature_dataset_to_store(tmp_path) -> None:
     ]
 
 
+def test_alignment_result_write_dataset_records_case_context(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+frame = "SSE"
+cache = true
+
+[cases.wake]
+start = "2008-01-01T00:00:00"
+stop = "2008-01-01T00:00:10"
+""".strip(),
+        encoding="utf-8",
+    )
+    store = spn.Store(tmp_path / "store")
+    case = spn.Project(project_root, store=store).case("wake")
+    bins = spn.time_bins(case.time, cadence="10s")
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    aligned = spn.align(sza, grid=bins, method="nearest", tolerance="3s")
+
+    dataset = aligned.write_dataset(
+        store,
+        "analysis.wake_context",
+        context=case,
+    )
+
+    assert dataset.manifest()["context"] == case.metadata()
+
+
 def test_alignment_dataset_schema_preserves_feature_units_and_frames(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
     bins = spn.time_bins(

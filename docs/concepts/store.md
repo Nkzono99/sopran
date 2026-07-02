@@ -135,7 +135,10 @@ When a reusable feature table is already stored in the `features` layer, keep
 the physical dataset there and adopt it into a project database as a reference:
 
 ```python
-features = aligned.write_dataset(store, "analysis.wake_context")
+features = aligned.write_dataset(store, "analysis.wake_context", context=case)
 db.adopt_dataset(features, description="aligned wake context features")
 lazy = db.products()[0].scan()
 ```
+
+The feature dataset manifest records the alignment parameters and, when
+`context=case` is passed, the project case metadata that produced the table.

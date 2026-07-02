@@ -185,6 +185,7 @@ class Store:
         provenance: dict[str, Any] | None = None,
         status: str = "candidate",
         parameters: dict[str, Any] | None = None,
+        context: Any | None = None,
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
     ) -> DatasetRecord:
@@ -211,6 +212,8 @@ class Store:
         }
         if provenance is not None:
             manifest["provenance"] = provenance
+        if context is not None:
+            manifest["context"] = _context_metadata(context)
         _write_json(
             record.manifest_path,
             manifest,
@@ -239,6 +242,7 @@ class Store:
         producer: str = "sopran",
         provenance: dict[str, Any] | None = None,
         parameters: dict[str, Any] | None = None,
+        context: Any | None = None,
         status: str = "candidate",
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
@@ -293,6 +297,7 @@ class Store:
             producer=producer,
             provenance=provenance,
             parameters=parameters,
+            context=context,
             status=status,
             dataset_version=dataset_version,
             partitioning=partitioning,
@@ -561,6 +566,15 @@ def _software_metadata() -> dict[str, str]:
         "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "sopran": _sopran_version(),
     }
+
+
+def _context_metadata(context: Any) -> dict[str, Any]:
+    if isinstance(context, Mapping):
+        return dict(context)
+    metadata = getattr(context, "metadata", None)
+    if callable(metadata):
+        return metadata()
+    raise TypeError("context must be a metadata dict or expose metadata()")
 
 
 def _utc_now_iso() -> str:

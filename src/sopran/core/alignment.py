@@ -259,6 +259,7 @@ class AlignmentResult:
         producer: str = "sopran.align",
         provenance: dict[str, Any] | None = None,
         parameters: dict[str, Any] | None = None,
+        context: Any | None = None,
         status: str = "candidate",
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
@@ -301,6 +302,7 @@ class AlignmentResult:
                 }
             },
             parameters=dataset_parameters,
+            context=context,
             status=status,
             dataset_version=dataset_version,
             partitioning=partitioning,

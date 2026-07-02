@@ -71,6 +71,7 @@ dataset = features.write_dataset(
     store,
     "analysis.wake_context",
     source_datasets=("moon.sza", "artemis.p1.efi.wave_power"),
+    context=case,
 )
 
 dataset = features.write_dataset(store.database("lunar_wake").product("wake_context"))
@@ -107,6 +108,8 @@ grid, alignment method, join mode, fill policy, and detailed bin edges/centers
 so the same information can be written into a dataset manifest. It also stores
 `features`, a per-output-column list of the selected reducer and tolerance, so
 mixed `SampleTable` rules are reproducible.
+Pass `context=case` to `write_dataset()` when the manifest should preserve the
+project case metadata that produced the feature table.
 Custom edge grids are marked with `partial="custom"` and preserve the exact
 user-provided intervals instead of forcing them onto a regular cadence.
 When a source xarray/DataArray exposes `attrs["units"]` or `attrs["frame"]`,

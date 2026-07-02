@@ -44,7 +44,9 @@ settings override `[defaults.region]`.
 `case.metadata()` returns a JSON-ready snapshot of the case name, project root,
 store roots, time range, default frame/cache values, defaults, and region
 metadata. Use it when a plot, interim artifact, or pipeline run needs to carry
-the same analysis context into provenance.
+the same analysis context into provenance. Feature tables created with
+`AlignmentResult.write_dataset(..., context=case)` store the same metadata in
+the dataset manifest.
 
 When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
 relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain

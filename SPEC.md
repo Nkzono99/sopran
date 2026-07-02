@@ -1698,6 +1698,7 @@ dataset = features.write_dataset(
         "kaguya.lrs.wave_power",
         "artemis.p1.fgm.magnetic_field",
     ),
+    context=case,
 )
 ```
 
@@ -1731,6 +1732,8 @@ API とし、regular cadence に丸めない。
 にも同じ値を保存し、aligned dataset の `schema.json` の各 feature column に反映する。
 `AlignmentResult.write_dataset(store, dataset_id, ...)` は `features` layer に Parquet shard、
 schema、catalog、manifest を作り、`parameters["alignment"]` に同じ metadata を保存する。
+`context=case` を渡した場合は `case.metadata()` を manifest の `context` に保存し、
+後から feature table がどの解析 case で作られたかを辿れるようにする。
 `AlignmentResult.write_dataset(db.product("wake_context"), ...)` のように `ProductRef` を渡すと、
 その参照が持つ dataset ID と layer に保存する。
 単発ファイルとして外に出す場合は `write_parquet(path, layout=...)`、Store 管理下で再利用する
