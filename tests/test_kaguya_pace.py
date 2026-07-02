@@ -5,6 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
+import sopran as spn
+from sopran import Store
 from sopran.missions.kaguya import pace_energy_counts, read_pace_pbf
 
 
@@ -38,6 +40,23 @@ def test_read_pace_pbf_accepts_gzip_files(tmp_path: Path) -> None:
     assert pace_energy_counts(pace).shape == (1, 32)
 
 
+def test_kaguya_esa1_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    kg = spn.Kaguya(store=store)
+
+    ds = kg.esa1.load(spn.day("2008-01-01")).to_xarray()
+
+    assert ds["counts"].shape == (1, 32, 64)
+    assert int(ds["counts"].isel(time=0, energy=0).sum()) == 64
+    assert ds["quality"].to_numpy().tolist() == [0]
+    assert str(ds["time"].values[0]) == "2008-01-01T00:00:08.000000000"
+
+
 def _write_type01_pbf(path: Path) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE
@@ -61,3 +80,9 @@ def _write_type01_pbf(path: Path) -> None:
         file.write(event.tobytes())
         file.write(counts.tobytes())
         file.write(trash.tobytes())
+
+
+def _write_type01_pbf_gzip(gzip_path: Path, scratch_path: Path) -> None:
+    _write_type01_pbf(scratch_path)
+    with scratch_path.open("rb") as source, gzip.open(gzip_path, "wb") as target:
+        target.write(source.read())
