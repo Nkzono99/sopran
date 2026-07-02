@@ -22,6 +22,7 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     sza_plan = moon.sza.plan(
         time="2008-02-01T12:00:00Z",
         region=normalized,
+        geometry_source="spice",
     )
 
     assert normalized.lon == (-10.0, 10.0)
@@ -34,6 +35,7 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert shadow_plan.product == "shadow"
     assert sza_plan.product == "sza"
     assert sza_plan.parameters["geometry"] == "spice"
+    assert sza_plan.parameters["geometry_source"] == "spice"
     assert "Moon" in str(moon.info())
     assert "DEM" in str(moon.dem.info())
 
@@ -46,6 +48,15 @@ def test_moon_surface_endpoints_list_stable_source_ids() -> None:
     assert moon.svm.sources() == ("kaguya.lism.svm",)
     assert "legacy.shadowmap_sza" in moon.shadow.sources()
     assert moon.sza.sources() == ("computed.spice.sza",)
+
+
+def test_moon_sza_plan_normalizes_geometry_source_alias() -> None:
+    moon = spn.Moon()
+
+    plan = moon.sza.plan(time="2008-02-01T12:00:00Z", geometry_source="naif_spice")
+
+    assert plan.parameters["geometry_source"] == "naif_spice"
+    assert plan.parameters["geometry"] == "naif_spice"
 
 
 def test_moon_map_returns_surface_endpoint_by_name() -> None:

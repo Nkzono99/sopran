@@ -37,8 +37,8 @@ sza_plan = case.moon.sza.plan()
 `projection` and `area_or_point` are written to every surface plan. Use
 `projection="polar_stereo"` as a short alias when you want
 `polar_stereographic` metadata.
-SZA plans default to `geometry="spice"` so the intended geometry backend is
-recorded even before the SPICE-backed computation backend is implemented.
+SZA plans default to `geometry_source="spice"` so the intended geometry backend
+is recorded even before the SPICE-backed computation backend is implemented.
 
 For regions that cross the 0/360 degree boundary:
 

@@ -198,14 +198,14 @@ solar incidence と visibility を表す予定です。
         "en": """# Moon Solar Zenith Angle
 
 SZA products represent solar zenith angle on the lunar surface. The planning
-endpoint records time, region, geometry backend, and projection metadata before
-SPICE-backed computation is implemented.
+endpoint records time, region, geometry_source backend, and projection metadata
+before SPICE-backed computation is implemented.
 """,
         "ja": """# Moon Solar Zenith Angle
 
 SZA product は月面上の solar zenith angle を表します。planning endpoint は
-SPICE-backed computation の実装前に、time、region、geometry backend、projection metadata
-を記録します。
+SPICE-backed computation の実装前に、time、region、geometry_source backend、
+projection metadata を記録します。
 """,
     },
 }
@@ -231,8 +231,12 @@ def _metadata_value(value: Any) -> Any:
 
 def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(parameters)
-    if product == "sza" and "geometry" not in normalized:
-        normalized["geometry"] = "spice"
+    if product == "sza":
+        geometry = str(
+            normalized.get("geometry_source", normalized.get("geometry", "spice"))
+        )
+        normalized["geometry"] = geometry
+        normalized["geometry_source"] = geometry
     normalized["projection"] = _canonical_projection(
         str(normalized.get("projection", "native"))
     )

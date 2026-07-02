@@ -48,7 +48,8 @@ Mission modules may discover provider files, but body-fixed semantics belong to
 Terrain-aware shadow and illumination products must eventually record DEM,
 solar position, body shape, projection, and longitude-domain metadata.
 `moon.sza` is a planning endpoint for solar zenith angle products; the current
-source ID is `computed.spice.sza`. Its default `geometry` metadata is `spice`.
+source ID is `computed.spice.sza`. Its default `geometry_source` metadata is
+`spice`; `geometry` is kept as a compatibility alias with the same value.
 
 When a surface endpoint is reached through a `Project` case, case context is
 applied as a default:
