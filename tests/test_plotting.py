@@ -178,6 +178,49 @@ def test_loaded_array_exports_polars_and_pandas_tables() -> None:
     assert pandas_frame.to_dict(orient="records") == polars_frame.to_dicts()
 
 
+def test_loaded_array_writes_parquet_dataset_to_store(tmp_path) -> None:
+    array = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": ["t0", "t1"]},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="quality",
+            dims=("time",),
+            description="Quality flag.",
+        ),
+        files=(tmp_path / "raw" / "kaguya" / "esa1.pbf",),
+        xr=array,
+    )
+
+    record = loaded.write_parquet(
+        spn.Store(tmp_path / "store"),
+        dataset_id="kaguya.esa1.quality",
+        mission="kaguya",
+        instrument="esa1",
+        provenance={"source": "unit-test"},
+    )
+
+    assert record.manifest()["dataset_id"] == "kaguya.esa1.quality"
+    assert record.manifest()["layer"] == "normalized"
+    assert record.manifest()["product"] == "quality"
+    assert record.manifest()["source_files"] == [
+        str(tmp_path / "raw" / "kaguya" / "esa1.pbf")
+    ]
+    assert record.manifest()["provenance"] == {"source": "unit-test"}
+    assert record.schema()["variables"][0]["name"] == "quality"
+    assert record.schema()["variables"][0]["description"] == "Quality flag."
+    assert record.catalog().select("row_count").to_series().to_list() == [2]
+    assert record.scan().collect().to_dicts() == [
+        {"time": "t0", "quality": 0},
+        {"time": "t1", "quality": 1},
+    ]
+
+
 def test_plot_stack_line_accepts_vector_time_series() -> None:
     import matplotlib
 

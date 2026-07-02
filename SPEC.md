@@ -656,6 +656,7 @@ Loaded object の共通操作:
 loaded.to_polars()
 loaded.to_pandas()
 loaded.to_xarray()
+loaded.write_parquet(store, dataset_id="mission.instrument.product")
 loaded.plot()
 loaded.info()
 loaded.schema()
@@ -702,6 +703,8 @@ class KaguyaESA1Data:
 
 `SopranArray` は xarray を薄く包み、初心者向けの `.info()` / `.plot()` と、
 上級者向けの `.xr` を両方提供する。
+単一変数の保存は `.write_parquet(store, ...)` で `Store.write_parquet_dataset(...)` に委譲し、
+その変数だけを持つ `InstrumentSchema`、`dataset.json`、`schema.json`、`catalog.parquet` を作る。
 `xarray.DataArray` を継承せず、composition で保持する。xarray の挙動を壊さないため、
 よく使う `sel`, `mean`, `where`, `resample` などだけを薄く委譲し、複雑な操作は `.xr` に降りる。
 

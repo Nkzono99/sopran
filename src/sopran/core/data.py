@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from sopran.core.pages import InfoPage
-from sopran.core.schema import VariableSchema
+from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange
 
 
@@ -62,6 +62,58 @@ class SopranArray:
 
     def to_pandas(self):
         return self.to_polars().to_pandas()
+
+    def write_parquet(
+        self,
+        store: Any,
+        *,
+        dataset_id: str | None = None,
+        layer: str = "normalized",
+        mission: str = "analysis",
+        instrument: str = "loaded_array",
+        product: str | None = None,
+        shard_path: str = "shards/part-000.parquet",
+        compression: str = "zstd",
+        overwrite: bool = False,
+        append: bool = False,
+        source_datasets: tuple[str, ...] = (),
+        producer: str = "sopran",
+        provenance: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
+        context: Any | None = None,
+        status: str = "candidate",
+        dataset_version: str = "1",
+        partitioning: tuple[str, ...] = (),
+    ):
+        product_name = product or self.name
+        schema = InstrumentSchema(
+            mission=mission,
+            instrument=instrument,
+            variables=(self.schema,),
+        )
+        return store.write_parquet_dataset(
+            dataset_id=dataset_id or f"{mission}.{instrument}.{product_name}",
+            layer=layer,
+            mission=mission,
+            instrument=instrument,
+            product=product_name,
+            schema=schema,
+            time_coverage=self.time,
+            frame=self.to_polars(),
+            source_files=tuple(str(path) for path in self.files),
+            source_datasets=source_datasets,
+            shard_path=shard_path,
+            compression=compression,
+            overwrite=overwrite,
+            append=append,
+            producer=producer,
+            provenance=provenance,
+            parameters=parameters,
+            context=context,
+            status=status,
+            dataset_version=dataset_version,
+            partitioning=partitioning,
+        )
 
     def plot(self, *args: Any, **kwargs: Any) -> Any:
         if self.xr is not None and hasattr(self.xr, "plot"):

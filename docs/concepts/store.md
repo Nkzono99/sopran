@@ -47,6 +47,9 @@ extraction arguments.
 `Store.write_parquet_dataset(..., provenance={...})` writes a structured
 provenance object into `dataset.json`. Pipeline backends should use this for the
 pipeline source, stage list, mode, time range, and selected product or variable.
+For a single loaded variable, prefer `SopranArray.write_parquet(store, ...)`.
+It delegates to `Store.write_parquet_dataset(...)` while carrying the loaded
+array's `VariableSchema`, time coverage, source files, and table conversion.
 `DatasetRecord.verify_checksums()` compares catalog checksums with current shard
 files. By default it audits every catalog shard; use
 `DatasetRecord.verify_checksums(status="complete")` to verify the same shard set

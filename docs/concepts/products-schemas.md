@@ -59,6 +59,9 @@ xarray variable or DataArray has matching metadata attributes, those values are
 checked too. Validation failures raise `SchemaError`.
 Loaded `SopranArray` objects can export the same variable to table form with
 `to_polars()` or `to_pandas()`, preserving dimension coordinates as columns.
+They can also write that one variable directly into a `Store` with
+`write_parquet(store, ...)`; SOPRAN builds a one-variable `InstrumentSchema` and
+records the variable metadata in the resulting `schema.json`.
 
 `Store.write_parquet_dataset()` runs this check automatically when the dataset
 `product` resolves to a variable in the supplied schema. Derived features whose

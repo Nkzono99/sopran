@@ -28,6 +28,19 @@ same lightweight page model as mission and endpoint objects.
 For table workflows, `SopranArray.to_polars()` flattens the loaded xarray
 coordinates and values into a Polars DataFrame, and `to_pandas()` returns the
 same table as a pandas DataFrame.
+Use `SopranArray.write_parquet(store, ...)` when a single loaded variable should
+be persisted as a SOPRAN dataset with `dataset.json`, `schema.json`,
+`catalog.parquet`, and one or more Parquet shards:
+
+```python
+quality = kg.esa1.load(time).quality
+record = quality.write_parquet(
+    store,
+    dataset_id="kaguya.esa1.quality",
+    mission="kaguya",
+    instrument="esa1",
+)
+```
 
 `GuidePage` carries language metadata so package guides and public docs can
 share the same bilingual contract:
