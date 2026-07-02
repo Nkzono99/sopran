@@ -32,6 +32,7 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert dem_plan.parameters["resolution"] == "512ppd"
     assert dem_plan.parameters["projection"] == "native"
     assert dem_plan.parameters["area_or_point"] == "area"
+    assert dem_plan.parameters["shape"] == "spherical"
     assert shadow_plan.product == "shadow"
     assert sza_plan.product == "sza"
     assert sza_plan.parameters["geometry"] == "spice"
@@ -135,6 +136,7 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
                     "lon_domain": "-180_180",
                     "lon_direction": "east_positive",
                     "lat_type": "planetocentric",
+                    "shape": "spherical",
                     "projection": "native",
                     "area_or_point": "area",
                 },
@@ -143,6 +145,7 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
             "lon_domain": "-180_180",
             "lon_direction": "east_positive",
             "lat_type": "planetocentric",
+            "shape": "spherical",
             "projection": "native",
             "area_or_point": "area",
         },
@@ -245,3 +248,26 @@ def test_surface_plan_normalizes_coordinate_convention_aliases() -> None:
         moon.dem.plan(source="kaguya.tc.dem", lon_direction="north_positive")
     with pytest.raises(ValueError, match="lat_type"):
         moon.dem.plan(source="kaguya.tc.dem", lat_type="geodetic")
+
+
+def test_surface_plan_records_shape_and_inherits_datum_from_dem() -> None:
+    moon = spn.Moon()
+
+    dem_plan = moon.dem.plan(
+        source="kaguya.tc.dem",
+        shape="sphere",
+        datum="mean_radius",
+    )
+    shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00Z", dem=dem_plan)
+
+    assert dem_plan.parameters["shape"] == "spherical"
+    assert dem_plan.parameters["datum"] == "mean_radius"
+    assert shadow_plan.parameters["shape"] == "spherical"
+    assert shadow_plan.parameters["datum"] == "mean_radius"
+
+
+def test_surface_plan_rejects_unknown_shape_model() -> None:
+    moon = spn.Moon()
+
+    with pytest.raises(ValueError, match="shape"):
+        moon.dem.plan(source="kaguya.tc.dem", shape="flat")

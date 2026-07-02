@@ -22,14 +22,16 @@ sza_plan = moon.sza.plan(
 metadata = dem_plan.to_metadata()
 ```
 
-`SurfacePlan` metadata always records `lon_domain`, `lon_direction`,
+`SurfacePlan` metadata always records `shape`, `lon_domain`, `lon_direction`,
 `lat_type`, `projection`, and `area_or_point`. Region-backed plans inherit the
 longitude and latitude conventions from `region`; shadow and illumination plans
-inherit them from `dem=<SurfacePlan>` when no explicit convention is passed.
+inherit shape, datum, and coordinate conventions from `dem=<SurfacePlan>` when
+no explicit value is passed.
 Defaults are `lon_domain="0_360"`, `lon_direction="east_positive"`,
-`lat_type="planetocentric"`, `projection="native"`, and
-`area_or_point="area"`. The `minus180_180` and `polar_stereo` aliases are
-canonicalized to `-180_180` and `polar_stereographic`.
+`lat_type="planetocentric"`, `shape="spherical"`, `projection="native"`, and
+`area_or_point="area"`. The `minus180_180`, `sphere`, `spice`, `body_radii`,
+and `polar_stereo` aliases are canonicalized to `-180_180`, `spherical`,
+`spice_body_radii`, `spice_body_radii`, and `polar_stereographic`.
 
 Regions understand longitude-domain wrapping:
 

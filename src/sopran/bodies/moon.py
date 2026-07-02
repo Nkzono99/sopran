@@ -256,6 +256,12 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
     normalized["lat_type"] = _canonical_lat_type(
         str(normalized.get("lat_type", reference.get("lat_type", "planetocentric")))
     )
+    normalized["shape"] = _canonical_shape(
+        str(normalized.get("shape", reference.get("shape", "spherical")))
+    )
+    datum = normalized.get("datum", reference.get("datum"))
+    if datum is not None:
+        normalized["datum"] = str(datum)
     normalized["projection"] = _canonical_projection(
         str(normalized.get("projection", "native"))
     )
@@ -303,6 +309,22 @@ def _canonical_lat_type(lat_type: str) -> str:
     if lat_type in {"planetocentric", "planetographic"}:
         return lat_type
     raise ValueError("lat_type must be 'planetocentric' or 'planetographic'")
+
+
+def _canonical_shape(shape: str) -> str:
+    aliases = {
+        "sphere": "spherical",
+        "spice": "spice_body_radii",
+        "body_radii": "spice_body_radii",
+    }
+    canonical = aliases.get(shape, shape)
+    allowed = {"spherical", "ellipsoid", "triaxial", "spice_body_radii"}
+    if canonical in allowed:
+        return canonical
+    raise ValueError(
+        "shape must be one of spherical, ellipsoid, triaxial, "
+        "spice_body_radii, sphere, spice, or body_radii"
+    )
 
 
 def _canonical_projection(projection: str) -> str:

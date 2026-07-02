@@ -1301,6 +1301,9 @@ v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の
 
 - `body`: `moon`, `earth`, `mars` など。
 - `datum` / `shape`: spherical、ellipsoid、triaxial、または SPICE body radii。
+  planning skeleton の既定 `shape` は `spherical` とし、`sphere`, `spice`,
+  `body_radii` はそれぞれ canonical value へ正規化する。`datum` は明示時だけ保存し、
+  `shadow` / `illumination` など DEM 派生 plan では DEM plan から継承する。
 - `lon_domain`: canonical value は `0_360` または `-180_180`。config alias として
   `minus180_180` も受け付け、内部では `-180_180` へ正規化する。
   `Region(lon=..., lon_domain=...)` は constructor 時点で lon の両端を指定 domain に
