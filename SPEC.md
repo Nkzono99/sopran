@@ -1609,6 +1609,16 @@ features = spn.align(
 )
 frame = features.to_polars(layout="wide")
 metadata = features.metadata()
+
+dataset = features.write_dataset(
+    store,
+    "analysis.wake_context",
+    source_datasets=(
+        "moon.sza",
+        "kaguya.lrs.wave_power",
+        "artemis.p1.fgm.magnetic_field",
+    ),
+)
 ```
 
 product ごとに sampling rule が異なる場合は、`SampleTable` を使う。
@@ -1635,6 +1645,10 @@ bin grid を表形式として確認でき、`TimeBins.metadata()` / `AlignmentR
 `edges`, `centers`, `durations_seconds`, `is_partial` を保存する。
 `AlignmentResult.metadata()["features"]` は各 output column の `method` と `tolerance_seconds` を
 保存し、`SampleTable` で product ごとに違う reducer/tolerance を選んだ場合も再現可能にする。
+`AlignmentResult.write_dataset(store, dataset_id, ...)` は `features` layer に Parquet shard、
+schema、catalog、manifest を作り、`parameters["alignment"]` に同じ metadata を保存する。
+単発ファイルとして外に出す場合は `write_parquet(path, layout=...)`、Store 管理下で再利用する
+解析 feature として残す場合は `write_dataset(...)` を使い分ける。
 `join="outer"` は全 bin を保持し、`join="inner"` はいずれかの feature が欠けた bin を落とす。
 `fill` が指定された場合は、`outer` で残った欠損 feature 値をその値で置き換える。
 `quality_mask` が指定された場合は、1D の mask series を bin 内 center sampling し、

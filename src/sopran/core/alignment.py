@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
+from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 
 AlignMethod = Literal["nearest", "center", "mean", "max", "median", "first", "last"]
@@ -149,6 +150,66 @@ class AlignmentResult:
         output.parent.mkdir(parents=True, exist_ok=True)
         self.to_polars(layout=layout).write_parquet(output)
         return output
+
+    def write_dataset(
+        self,
+        store: Any,
+        dataset_id: str,
+        *,
+        layer: str = "features",
+        mission: str = "analysis",
+        instrument: str = "alignment",
+        product: str | None = None,
+        layout: TableLayout = "wide",
+        source_files: tuple[str, ...] = (),
+        source_datasets: tuple[str, ...] = (),
+        shard_path: str = "shards/part-000.parquet",
+        compression: str = "zstd",
+        overwrite: bool = False,
+        append: bool = False,
+        producer: str = "sopran.align",
+        provenance: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
+        status: str = "candidate",
+        dataset_version: str = "1",
+        partitioning: tuple[str, ...] = (),
+    ):
+        dataset_parameters = dict(parameters or {})
+        dataset_parameters["layout"] = layout
+        dataset_parameters["alignment"] = self.metadata()
+        return store.write_parquet_dataset(
+            dataset_id=dataset_id,
+            layer=layer,
+            mission=mission,
+            instrument=instrument,
+            product=product or _default_product_name(dataset_id),
+            schema=_alignment_schema(
+                mission=mission,
+                instrument=instrument,
+                columns=self.columns,
+                layout=layout,
+            ),
+            time_coverage=self.grid.time,
+            frame=self.to_polars(layout=layout),
+            source_files=source_files,
+            source_datasets=source_datasets,
+            shard_path=shard_path,
+            compression=compression,
+            overwrite=overwrite,
+            append=append,
+            producer=producer,
+            provenance=provenance
+            or {
+                "pipeline": {
+                    "source": "sopran.align",
+                    "stages": ["align", "write_dataset"],
+                }
+            },
+            parameters=dataset_parameters,
+            status=status,
+            dataset_version=dataset_version,
+            partitioning=partitioning,
+        )
 
     def metadata(self) -> dict[str, Any]:
         return {
@@ -384,6 +445,56 @@ def _feature_rule(feature: _RequestedFeature) -> dict[str, Any]:
             else None
         ),
     }
+
+
+def _default_product_name(dataset_id: str) -> str:
+    return next((part for part in reversed(dataset_id.split(".")) if part), "features")
+
+
+def _alignment_schema(
+    *,
+    mission: str,
+    instrument: str,
+    columns: tuple[str, ...],
+    layout: TableLayout,
+) -> InstrumentSchema:
+    if layout == "wide":
+        variables = (
+            VariableSchema(
+                name="time",
+                dims=("time",),
+                description="Feature table bin center time.",
+            ),
+            *(
+                VariableSchema(
+                    name=column,
+                    dims=("time",),
+                    description="Aligned feature column.",
+                )
+                for column in columns
+            ),
+        )
+    elif layout == "long":
+        variables = (
+            VariableSchema(
+                name="time",
+                dims=("time",),
+                description="Feature table bin center time.",
+            ),
+            VariableSchema(
+                name="feature",
+                dims=("time",),
+                description="Aligned feature name.",
+            ),
+            VariableSchema(
+                name="value",
+                dims=("time",),
+                description="Aligned feature value.",
+            ),
+        )
+    else:
+        raise ValueError("layout must be 'wide' or 'long'")
+    return InstrumentSchema(mission=mission, instrument=instrument, variables=variables)
 
 
 def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:

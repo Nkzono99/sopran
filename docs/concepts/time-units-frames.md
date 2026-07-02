@@ -43,6 +43,18 @@ frame = features.to_polars()
 features.write_parquet("features.parquet")
 ```
 
+Use `write_parquet()` for an ad-hoc file. Use `write_dataset()` when the feature
+table should become a reusable Store-managed `features` dataset with manifest,
+schema, catalog, checksum, source dataset IDs, and alignment metadata:
+
+```python
+dataset = features.write_dataset(
+    store,
+    "analysis.wake_context",
+    source_datasets=("moon.sza", "artemis.p1.efi.wave_power"),
+)
+```
+
 Use `SampleTable` when each product needs its own rule, such as nearest SZA,
 bin-maximum wave power, bin-median density, or the first/last sample:
 

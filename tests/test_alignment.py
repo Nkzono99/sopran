@@ -527,6 +527,79 @@ def test_alignment_result_writes_long_parquet_feature_table(tmp_path) -> None:
     ]
 
 
+def test_alignment_result_writes_feature_dataset_to_store(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([5.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="wave_power",
+    )
+    aligned = spn.align(
+        sza,
+        wave_power,
+        grid=bins,
+        method="nearest",
+        tolerance="3s",
+    )
+
+    dataset = aligned.write_dataset(
+        store,
+        "analysis.wake_context",
+        source_datasets=("kaguya.orbit.sza", "artemis.p1.efi.wave_power"),
+    )
+
+    assert dataset.manifest()["layer"] == "features"
+    assert dataset.manifest()["mission"] == "analysis"
+    assert dataset.manifest()["instrument"] == "alignment"
+    assert dataset.manifest()["product"] == "wake_context"
+    assert dataset.manifest()["source_datasets"] == [
+        "kaguya.orbit.sza",
+        "artemis.p1.efi.wave_power",
+    ]
+    assert dataset.manifest()["parameters"]["layout"] == "wide"
+    assert dataset.manifest()["parameters"]["alignment"]["features"] == [
+        {"column": "sza", "method": "nearest", "tolerance_seconds": 3.0},
+        {"column": "wave_power", "method": "nearest", "tolerance_seconds": 3.0},
+    ]
+    assert dataset.schema()["variables"] == [
+        {
+            "name": "time",
+            "dims": ["time"],
+            "units": None,
+            "description": "Feature table bin center time.",
+            "aliases": [],
+        },
+        {
+            "name": "sza",
+            "dims": ["time"],
+            "units": None,
+            "description": "Aligned feature column.",
+            "aliases": [],
+        },
+        {
+            "name": "wave_power",
+            "dims": ["time"],
+            "units": None,
+            "description": "Aligned feature column.",
+            "aliases": [],
+        },
+    ]
+    assert dataset.scan().collect().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 5.0}
+    ]
+
+
 def test_alignment_result_exposes_feature_table_metadata() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
