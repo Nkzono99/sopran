@@ -55,8 +55,8 @@ checksums for a dataset.
 
 Raw files are not renamed by SOPRAN. `Store.register_raw_file(...)` writes a
 sidecar manifest next to the raw file, named `<filename>.sopran.json`, with the
-relative raw path, mission, provider, download URL, acquisition time, checksum,
-and byte size.
+relative raw path, filename, mission, provider, provider path, data version,
+download URL, acquisition time, checksum, and byte size.
 The returned `RawFileRecord` can verify that the current file still matches the
 recorded checksum.
 

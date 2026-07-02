@@ -40,10 +40,11 @@ raw/kaguya/l2/example.dat
 raw/kaguya/l2/example.dat.sopran.json
 ```
 
-The sidecar manifest records the relative raw path, mission, provider, download
-URL, acquisition time, SHA-256 checksum, and byte size. `RawFileRecord` can
-compare the manifest checksum with the current file checksum. `Store.raw_file(...)`
-reopens a raw file and sidecar manifest as a `RawFileRecord`.
+The sidecar manifest records the relative raw path, filename, mission, provider,
+provider path, data version, download URL, acquisition time, SHA-256 checksum,
+and byte size. `RawFileRecord` can compare the manifest checksum with the
+current file checksum. `Store.raw_file(...)` reopens a raw file and sidecar
+manifest as a `RawFileRecord`.
 
 `dataset.json` includes dataset lifecycle metadata. `version` is the dataset
 content version and defaults to `"1"`. `status` is one of `scratch`,
@@ -74,4 +75,5 @@ filtered with `layer`, `mission`, `instrument`, `product`, `dataset_version`,
 `schema_version`, `status`, and `created_at` copied from each manifest.
 
 `raw_files.parquet` is rebuilt by `Store.raw_files(refresh=True)` from raw
-sidecar manifests and can be filtered with `mission` or `provider`.
+sidecar manifests and can be filtered with `mission` or `provider`. Rows include
+provider path, filename, version, checksum, and acquisition time.

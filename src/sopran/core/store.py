@@ -64,6 +64,8 @@ class Store:
         *,
         mission: str,
         provider: str,
+        provider_path: str | None = None,
+        data_version: str | None = None,
         download_url: str | None = None,
         acquired_at: str | None = None,
     ) -> RawFileRecord:
@@ -73,8 +75,11 @@ class Store:
         manifest_path = raw_file.with_name(f"{raw_file.name}.sopran.json")
         manifest = {
             "path": raw_file.relative_to(self.root).as_posix(),
+            "filename": raw_file.name,
             "mission": mission,
             "provider": provider,
+            "provider_path": provider_path,
+            "version": data_version,
             "download_url": download_url,
             "acquired_at": acquired_at or _utc_now_iso(),
             "checksum": _sha256_file(raw_file),
@@ -686,8 +691,11 @@ def _raw_file_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
         rows.append(
             {
                 "path": str(manifest.get("path") or ""),
+                "filename": str(manifest.get("filename") or ""),
                 "mission": str(manifest.get("mission") or ""),
                 "provider": str(manifest.get("provider") or ""),
+                "provider_path": str(manifest.get("provider_path") or ""),
+                "version": str(manifest.get("version") or ""),
                 "download_url": str(manifest.get("download_url") or ""),
                 "acquired_at": str(manifest.get("acquired_at") or ""),
                 "checksum": str(manifest.get("checksum") or ""),
@@ -702,8 +710,11 @@ def _raw_file_index_frame(rows: tuple[dict[str, Any], ...]):
 
     schema = {
         "path": pl.Utf8,
+        "filename": pl.Utf8,
         "mission": pl.Utf8,
         "provider": pl.Utf8,
+        "provider_path": pl.Utf8,
+        "version": pl.Utf8,
         "download_url": pl.Utf8,
         "acquired_at": pl.Utf8,
         "checksum": pl.Utf8,

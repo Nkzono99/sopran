@@ -253,6 +253,8 @@ def test_store_registers_raw_file_manifest(tmp_path) -> None:
         "kaguya/l2/example.dat",
         mission="kaguya",
         provider="darts",
+        provider_path="/pub/pds3/sln-l-pace-3-rdr-v1.0/data/example.dat",
+        data_version="v1.0",
         download_url="https://example.invalid/kaguya/l2/example.dat",
     )
 
@@ -260,8 +262,11 @@ def test_store_registers_raw_file_manifest(tmp_path) -> None:
     assert record.path == raw_file
     assert record.manifest_path == raw_file.with_name("example.dat.sopran.json")
     assert manifest["path"] == "raw/kaguya/l2/example.dat"
+    assert manifest["filename"] == "example.dat"
     assert manifest["mission"] == "kaguya"
     assert manifest["provider"] == "darts"
+    assert manifest["provider_path"] == "/pub/pds3/sln-l-pace-3-rdr-v1.0/data/example.dat"
+    assert manifest["version"] == "v1.0"
     assert manifest["download_url"] == "https://example.invalid/kaguya/l2/example.dat"
     assert manifest["checksum"].startswith("sha256:")
     assert manifest["size_bytes"] == len(b"raw payload")
@@ -322,6 +327,8 @@ def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
     ]
     assert index.select("mission").to_series().to_list() == ["artemis", "kaguya"]
     assert index.select("provider").to_series().to_list() == ["spdf", "darts"]
+    assert index.select("filename").to_series().to_list() == ["second.cdf", "first.dat"]
+    assert index.select("version").to_series().to_list() == ["", ""]
     assert all(value.startswith("sha256:") for value in index.select("checksum").to_series())
     assert spdf.select("path").to_series().to_list() == ["raw/artemis/cdf/second.cdf"]
 
