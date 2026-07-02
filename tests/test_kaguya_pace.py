@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import json
 import re
 from pathlib import Path
 
@@ -311,6 +312,24 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     }
     assert manifest["provenance"]["variable"] == "counts"
     assert result.outputs[0].scan().collect().height == 2048
+    assert result.log_path == result.outputs[0].root / "logs" / f"{result.run_id}.json"
+    log = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log["run_id"] == result.run_id
+    assert log["status"] == "complete"
+    assert log["plan"]["source"] == "kaguya.esa1"
+    assert log["plan"]["output_dataset"] == "kaguya.esa1.counts"
+    assert log["plan"]["output_layer"] == "normalized"
+    assert log["stages"] == [
+        {"name": "decode", "parameters": {}},
+        {"name": "select_variables", "parameters": {"names": ["counts"]}},
+        {
+            "name": "write",
+            "parameters": {"dataset": "kaguya.esa1.counts", "layer": "normalized"},
+        },
+    ]
+    assert log["row_count"] == 2048
+    assert log["shards"][0]["row_count"] == 2048
+    assert log["elapsed_seconds"] >= 0
 
 
 def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> None:

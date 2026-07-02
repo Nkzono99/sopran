@@ -61,3 +61,8 @@ range, output dataset/layer, selected variable, backend, and artifact list.
 KAGUYA ESA1 pipeline writes also add manifest provenance under
 `dataset.json["provenance"]`, including run ID, source, stages, run mode, time
 range, output dataset/layer, and selected variable.
+
+Dataset-writing KAGUYA ESA1 runs write a structured log to
+`dataset_root/logs/<run_id>.json`; the same path is returned as
+`PipelineResult.log_path`. The log records status, elapsed seconds, plan fields,
+stage parameters, shard metadata, and total row count.

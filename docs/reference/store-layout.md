@@ -17,6 +17,7 @@ dataset.json
 schema.json
 catalog.parquet
 shards/
+logs/
 ```
 
 Catalog rows currently include:
@@ -56,7 +57,10 @@ without duplicates on append. `partitioning` records Parquet partition columns.
 `parameters` stores JSON-serializable generation settings, and defaults to an
 empty object. The manifest may also include a `provenance` object. The first
 supported producer is the KAGUYA ESA1 pipeline, which records pipeline source,
-stages, run mode, time range, output dataset/layer, and selected variable.
+stages, run mode, run ID, time range, output dataset/layer, and selected
+variable. Dataset-writing KAGUYA ESA1 pipeline runs also write structured logs
+under `logs/<run_id>.json` with status, elapsed seconds, stage parameters,
+shard rows, and total row count.
 `Store.dataset_source_files(...)` resolves the manifest `source_files` list back
 to raw sidecar records. `Store.verify_dataset(...)` checks both dataset shard
 checksums and raw input checksums.

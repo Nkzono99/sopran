@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
+from time import perf_counter
 from typing import Literal
 
 from sopran.core import Store
@@ -355,6 +357,7 @@ class PaceInstrument(KaguyaInstrument):
         if pipeline.output_dataset is None or pipeline.output_layer is None:
             raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
 
+        started = perf_counter()
         variable = _pipeline_variable(pipeline)
         data = self.load(pipeline.time, download="never")
         output = data.write_parquet(
@@ -378,12 +381,20 @@ class PaceInstrument(KaguyaInstrument):
             variable=variable,
             run_id=run_id,
         )
+        log_path = _write_pipeline_log(
+            output,
+            pipeline=pipeline,
+            run_id=run_id,
+            status="complete",
+            elapsed_seconds=perf_counter() - started,
+        )
         return PipelineResult(
             plan=pipeline.plan(),
             status="complete",
             message=f"Wrote {pipeline.output_dataset}",
             outputs=(output, *quicklooks),
             run_id=run_id,
+            log_path=log_path,
         )
 
     def info(self) -> InfoPage:
@@ -606,6 +617,56 @@ def _pipeline_dataset_provenance(
         },
         "variable": variable,
     }
+
+
+def _write_pipeline_log(
+    output,
+    *,
+    pipeline: Pipeline,
+    run_id: str,
+    status: str,
+    elapsed_seconds: float,
+) -> Path:
+    shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
+    row_count = sum(int(row.get("row_count") or 0) for row in shards)
+    payload = {
+        "run_id": run_id,
+        "status": status,
+        "elapsed_seconds": elapsed_seconds,
+        "plan": {
+            "source": pipeline.source,
+            "start": pipeline.time.start_iso,
+            "stop": pipeline.time.stop_iso,
+            "output_dataset": pipeline.output_dataset,
+            "output_layer": pipeline.output_layer,
+        },
+        "stages": [
+            {
+                "name": stage.name,
+                "parameters": _jsonable(stage.parameters),
+            }
+            for stage in pipeline.stages
+        ],
+        "row_count": row_count,
+        "shards": shards,
+    }
+    path = output.root / "logs" / f"{run_id}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def _jsonable(value: object) -> object:
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, Path):
+        return value.as_posix()
+    return value
 
 
 class LmagInstrument(KaguyaInstrument):

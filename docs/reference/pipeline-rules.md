@@ -16,6 +16,8 @@
 - Dataset-writing pipeline backends should write manifest provenance with the
   pipeline run ID, source, stage names, run mode, time range, output target, and
   selected variable/product.
+- Dataset-writing pipeline backends should write a structured log under the
+  dataset `logs/` directory and expose it through `PipelineResult.log_path`.
 - Quicklook-producing backends should write the same run ID into quicklook
   metadata so preview artifacts can be traced to the dataset-writing run.
 

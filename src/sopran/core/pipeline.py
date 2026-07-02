@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -37,6 +38,7 @@ class PipelineResult:
     message: str
     outputs: tuple[Any, ...] = ()
     run_id: str = ""
+    log_path: Path | None = None
 
 
 @dataclass(frozen=True)
