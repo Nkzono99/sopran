@@ -25,7 +25,8 @@ scan, collect, or compute data. Execution happens at explicit methods:
 share the same bilingual contract:
 
 ```python
-page = kg.guide(language="ja")
+page = kg.guide()       # Japanese by default
+page_en = kg.guide(language="en")
 page.language
 page.available_languages
 page.language_switcher()  # "Lang: 日本語/English" when both languages exist
@@ -40,8 +41,10 @@ page.show()               # prints the same Markdown, including the switcher
 ```
 
 Mission, instrument, and variable endpoints should pass the same `language=`
-keyword through to their package guide resources. KAGUYA, ARTEMIS, and Moon
-surface guides currently expose Japanese and English guide pages.
+keyword through to their package guide resources. The default language is
+Japanese (`language="ja"`); English is selected explicitly with `language="en"`.
+KAGUYA, ARTEMIS, and Moon surface guides currently expose Japanese and English
+guide pages.
 
 `Project` and `Case` provide analysis context:
 

@@ -15,7 +15,8 @@ Inspect the endpoint without loading data:
 ```python
 kg.esa1.counts.info()
 kg.esa1.counts.plan(time)
-kg.esa1.counts.guide()
+kg.esa1.counts.guide()               # Japanese by default
+kg.esa1.counts.guide(language="en")  # English guide
 ```
 
 Load local raw data and convert it:

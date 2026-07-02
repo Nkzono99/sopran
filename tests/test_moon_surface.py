@@ -91,7 +91,8 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
 def test_moon_surface_guides_return_markdown_pages() -> None:
     moon = spn.Moon()
 
-    assert "# Moon Surface Products" in moon.guide().to_markdown()
+    assert moon.guide().language == "ja"
+    assert "月面プロダクト" in moon.guide().to_markdown()
     assert "DEM" in moon.dem.guide().to_markdown()
     assert moon.guide().url == "https://nkzono99.github.io/sopran/surface/moon/"
     assert moon.dem.guide().url == moon.guide().url

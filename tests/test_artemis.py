@@ -31,7 +31,9 @@ def test_artemis_guides_return_markdown_pages() -> None:
     fgm_guide = art.p1.fgm.guide()
     variable_guide = art.p1.fgm.magnetic_field.guide()
 
+    assert mission_guide.language == "ja"
     assert "# ARTEMIS" in mission_guide.to_markdown()
+    assert "ARTEMIS は" in mission_guide.to_markdown()
     assert "FGM" in fgm_guide.to_markdown()
     assert "| name | dims | units | dtype | frame | aliases | description |" in (
         fgm_guide.to_markdown()
@@ -42,7 +44,7 @@ def test_artemis_guides_return_markdown_pages() -> None:
     assert art.p1.help() == mission_guide
     assert art.p1.fgm.help() == fgm_guide
     assert art.p1.fgm.magnetic_field.help() == variable_guide
-    assert variable_guide.source == "sopran.missions.artemis/README.md"
+    assert variable_guide.source == "sopran.missions.artemis/README.ja.md"
     assert mission_guide.url == "https://nkzono99.github.io/sopran/missions/artemis/"
     assert fgm_guide.url == mission_guide.url
     assert variable_guide.url == mission_guide.url

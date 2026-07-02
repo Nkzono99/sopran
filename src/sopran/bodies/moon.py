@@ -45,7 +45,7 @@ class Moon:
             ),
         )
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return _guide_page(
             title="Moon Surface Products",
             source="sopran.bodies.moon",
@@ -54,7 +54,7 @@ class Moon:
             url=_PUBLIC_DOC_URL,
         )
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def map(self, product: str) -> SurfaceEndpoint:
@@ -86,7 +86,7 @@ class SurfaceEndpoint:
             ),
         )
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return _guide_page(
             title=f"Moon {self.label}",
             source=f"sopran.bodies.moon.{self.product}",
@@ -95,7 +95,7 @@ class SurfaceEndpoint:
             url=_PUBLIC_DOC_URL,
         )
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def sources(self) -> tuple[str, ...]:

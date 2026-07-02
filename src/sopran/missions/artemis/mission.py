@@ -45,10 +45,10 @@ class Artemis:
             ),
         )
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return _read_guide(title="ARTEMIS", language=language)
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
 
@@ -64,10 +64,10 @@ class ArtemisProbe:
             lines=("fgm: fluxgate magnetometer",),
         )
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return self.mission.guide(language=language)
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
 
@@ -93,10 +93,10 @@ class ArtemisFgmInstrument:
     def schema(self) -> InstrumentSchema:
         return ARTEMIS_FGM_SCHEMA
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return self.probe.guide(language=language).with_schema(ARTEMIS_FGM_SCHEMA)
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
 
@@ -125,10 +125,10 @@ class ArtemisVariableEndpoint:
     def schema(self) -> VariableSchema:
         return self._schema
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return self.instrument.guide(language=language)
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def plan(self, time: TimeRange) -> ArtemisLoadPlan:
@@ -166,7 +166,7 @@ class ArtemisVariableEndpoint:
         )
 
 
-def _read_guide(*, title: str, language: str = "en") -> GuidePage:
+def _read_guide(*, title: str, language: str = "ja") -> GuidePage:
     if language not in _GUIDE_LANGUAGES:
         raise ValueError(f"ARTEMIS guide language is not available: {language}")
     package = files("sopran.missions.artemis")

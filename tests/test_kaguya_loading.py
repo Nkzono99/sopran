@@ -118,7 +118,9 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     esa1_guide = kg.esa1.guide()
     energy_flux_guide = kg.esa1.energy_flux.guide()
 
+    assert mission_guide.language == "ja"
     assert "KAGUYA/SELENE" in str(mission_guide)
+    assert "KAGUYA/SELENE は SOPRAN" in str(mission_guide)
     assert "PACE ESA1" in str(esa1_guide)
     assert "energy_flux" in energy_flux_guide.to_markdown()
     assert "| name | dims | units | dtype | frame | aliases | description |" in (
@@ -132,7 +134,7 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     assert kg.help("esa1") == esa1_guide
     assert kg.esa1.help() == esa1_guide
     assert kg.esa1.energy_flux.help() == energy_flux_guide
-    assert energy_flux_guide.source == "sopran.missions.kaguya/ESA1.md"
+    assert energy_flux_guide.source == "sopran.missions.kaguya/ESA1.ja.md"
     assert mission_guide.url == "https://nkzono99.github.io/sopran/missions/kaguya/"
     assert esa1_guide.url == "https://nkzono99.github.io/sopran/missions/kaguya-esa1/"
     assert energy_flux_guide.url == esa1_guide.url

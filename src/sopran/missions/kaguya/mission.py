@@ -76,7 +76,7 @@ class Kaguya:
             ),
         )
 
-    def guide(self, topic: str | None = None, *, language: str = "en") -> GuidePage:
+    def guide(self, topic: str | None = None, *, language: str = "ja") -> GuidePage:
         if topic is None:
             return _read_guide("README.md", title="KAGUYA/SELENE", language=language)
         normalized = topic.lower().replace("-", "").replace("_", "")
@@ -84,7 +84,7 @@ class Kaguya:
             return self.esa1.guide(language=language)
         raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
-    def help(self, topic: str | None = None, *, language: str = "en") -> GuidePage:
+    def help(self, topic: str | None = None, *, language: str = "ja") -> GuidePage:
         return self.guide(topic, language=language)
 
     def example(self) -> GuidePage:
@@ -185,10 +185,10 @@ class VariableEndpoint:
     def schema(self) -> VariableSchema:
         return self._schema
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         return self.instrument.guide(language=language)
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def example(self) -> GuidePage:
@@ -593,7 +593,7 @@ class PaceInstrument(KaguyaInstrument):
             else (),
         )
 
-    def guide(self, *, language: str = "en") -> GuidePage:
+    def guide(self, *, language: str = "ja") -> GuidePage:
         if self.sensor == "ESA1":
             return _read_guide(
                 "ESA1.md",
@@ -602,7 +602,7 @@ class PaceInstrument(KaguyaInstrument):
             ).with_schema(KAGUYA_ESA1_SCHEMA)
         return _read_guide("README.md", title=f"KAGUYA {self.sensor}", language=language)
 
-    def help(self, *, language: str = "en") -> GuidePage:
+    def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def example(self) -> GuidePage:
@@ -1182,7 +1182,7 @@ def _missing_time_error(endpoint: str) -> ValueError:
     )
 
 
-def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
+def _read_guide(name: str, *, title: str, language: str = "ja") -> GuidePage:
     if language not in _GUIDE_LANGUAGES:
         raise ValueError(f"KAGUYA guide language is not available: {language}")
     package = files("sopran.missions.kaguya")
