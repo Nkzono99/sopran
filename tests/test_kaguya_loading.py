@@ -342,6 +342,36 @@ def test_kaguya_esa1_load_without_time_explains_required_period(tmp_path) -> Non
     assert 'time = spn.period("2008-02-01", "2008-02-02")' in message
 
 
+def test_kaguya_esa1_variable_load_without_time_uses_endpoint_examples(
+    tmp_path,
+) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    with pytest.raises(ValueError) as exc:
+        kg.esa1.quality.load()
+
+    message = str(exc.value)
+    assert "Time range is required for Kaguya.ESA1.quality" in message
+    assert "kg.esa1.quality.load(time)" in message
+    assert "case.kaguya.esa1.quality.load()" in message
+    assert "kg.esa1.energy_flux.load(time)" not in message
+
+
+def test_kaguya_esa1_instrument_load_without_time_uses_instrument_examples(
+    tmp_path,
+) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    with pytest.raises(ValueError) as exc:
+        kg.esa1.load()
+
+    message = str(exc.value)
+    assert "Time range is required for Kaguya.ESA1" in message
+    assert "kg.esa1.load(time)" in message
+    assert "case.kaguya.esa1.load()" in message
+    assert "kg.esa1.energy_flux.load(time)" not in message
+
+
 def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.month("2008-02")

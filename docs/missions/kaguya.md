@@ -16,6 +16,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
 - Pipeline run, append, replace, scan, and collect for ESA1 counts.
 - ESA1 unknown variable errors use schema aliases to suggest canonical
   variables and next `info()` / `load()` calls.
+- ESA1 missing-time errors show examples for the exact instrument or variable
+  endpoint that was called.
 - `example()` pages on `Kaguya`, `kg.esa1`, and ESA1 variable endpoints.
 - Bilingual package guides via `kg.guide(language="ja")`,
   `kg.guide(language="en")`, and `kg.esa1.guide(language=...)`.

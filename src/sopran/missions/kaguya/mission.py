@@ -1185,12 +1185,20 @@ class LmagInstrument(KaguyaInstrument):
 
 
 def _missing_time_error(endpoint: str) -> ValueError:
+    example = _kaguya_endpoint_example(endpoint)
     return ValueError(
         f"Time range is required for {endpoint}.\n\n"
         'Examples:\n  time = spn.period("2008-02-01", "2008-02-02")\n'
-        f"  kg.esa1.energy_flux.load(time)\n\n"
-        "Or use a Project case:\n  case.kaguya.esa1.energy_flux.load()"
+        f"  {example}.load(time)\n\n"
+        f"Or use a Project case:\n  case.kaguya.{example.removeprefix('kg.')}.load()"
     )
+
+
+def _kaguya_endpoint_example(endpoint: str) -> str:
+    parts = endpoint.split(".")
+    if len(parts) >= 2 and parts[0] == "Kaguya":
+        return ".".join(("kg", *(part.lower() for part in parts[1:])))
+    return "kg.esa1.energy_flux"
 
 
 def _schema_variable_suggestion(name: str) -> str:
