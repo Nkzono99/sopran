@@ -122,6 +122,8 @@ class Store:
                 *existing_shards,
                 {
                     "path": Path(shard_path).as_posix(),
+                    "start": time_coverage.start_iso,
+                    "stop": time_coverage.stop_iso,
                     "row_count": _frame_row_count(frame),
                     "checksum": _sha256_file(target),
                     "status": "complete",
@@ -222,6 +224,8 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
     rows = [
         {
             "path": shard.get("path", ""),
+            "start": shard.get("start", ""),
+            "stop": shard.get("stop", ""),
             "row_count": int(shard.get("row_count", 0)),
             "checksum": shard.get("checksum", ""),
             "status": shard.get("status", "pending"),
@@ -247,6 +251,8 @@ def _read_catalog_shards(path: Path) -> tuple[dict[str, Any], ...]:
         rows.append(
             {
                 "path": shard_path,
+                "start": str(row.get("start") or ""),
+                "stop": str(row.get("stop") or ""),
                 "row_count": int(row.get("row_count") or 0),
                 "checksum": str(row.get("checksum") or ""),
                 "status": str(row.get("status") or "complete"),

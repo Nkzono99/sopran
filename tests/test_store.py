@@ -86,6 +86,8 @@ def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:
     assert pl.read_parquet(shard).to_dicts() == frame.to_dicts()
     assert catalog.select("path").to_series().to_list() == ["shards/part-000.parquet"]
     assert catalog.select("row_count").to_series().to_list() == [1]
+    assert catalog.select("start").to_series().to_list() == [time.start_iso]
+    assert catalog.select("stop").to_series().to_list() == [time.stop_iso]
     assert catalog.select("checksum").to_series().to_list()[0].startswith("sha256:")
 
 
