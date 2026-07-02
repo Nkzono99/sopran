@@ -31,7 +31,8 @@ calculation is a later milestone.
 Surface products must preserve body, datum/shape, lon domain, lon direction,
 lat type, projection, CRS, resolution, area-or-point, and geometry_source
 metadata when geometry is involved. `geometry` is accepted as a compatibility
-alias and normalized to the same value as `geometry_source`.
+alias and normalized to the same value as `geometry_source`. `ephemeris` is also
+accepted as a geometry input and normalized to `geometry_source`.
 
 The current `Region` utility supports longitude-domain conversion,
 0/360-boundary detection, longitude span, and simple point containment:

@@ -1245,6 +1245,7 @@ SPICE など幾何計算に使う入力は `source` ではなく `geometry_sourc
 区別する。
 surface planning API は `geometry_source` と旧 `geometry` を同じ値に正規化し、manifest 側では
 `geometry_source` を主表記にする。
+`ephemeris` が渡された場合も同じ geometry input として扱い、`geometry_source` に正規化する。
 `moon.sza.plan(...)` の `geometry_source` 既定値は `"spice"` とし、SPICE-backed SZA product
 であることを planning metadata に残す。移行期間は `geometry` も同じ値の alias として残す。
 

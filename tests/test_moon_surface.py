@@ -77,6 +77,16 @@ def test_surface_plan_normalizes_geometry_aliases_when_provided() -> None:
     assert shadow.parameters["geometry"] == "spice"
 
 
+def test_surface_plan_normalizes_ephemeris_as_geometry_source() -> None:
+    moon = spn.Moon()
+
+    plan = moon.sza.plan(time="2008-02-01T12:00:00Z", ephemeris="kaguya.spice")
+
+    assert plan.parameters["ephemeris"] == "kaguya.spice"
+    assert plan.parameters["geometry_source"] == "kaguya.spice"
+    assert plan.parameters["geometry"] == "kaguya.spice"
+
+
 def test_moon_map_returns_surface_endpoint_by_name() -> None:
     moon = spn.Moon()
 

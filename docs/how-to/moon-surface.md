@@ -40,7 +40,8 @@ sza_plan = case.moon.sza.plan()
 SZA plans default to `geometry_source="spice"` so the intended geometry backend
 is recorded even before the SPICE-backed computation backend is implemented.
 Passing the compatibility alias `geometry="spice"` writes the same value to
-`geometry_source`.
+`geometry_source`. Passing `ephemeris="kaguya.spice"` records the same geometry
+source value.
 
 For regions that cross the 0/360 degree boundary:
 

@@ -235,6 +235,7 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
         product == "sza"
         or "geometry_source" in normalized
         or "geometry" in normalized
+        or "ephemeris" in normalized
     ):
         default_geometry = "spice" if product == "sza" else None
         geometry = _geometry_source(normalized, default=default_geometry)
@@ -250,7 +251,10 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
 
 
 def _geometry_source(parameters: dict[str, Any], *, default: str | None) -> str:
-    value = parameters.get("geometry_source", parameters.get("geometry", default))
+    value = parameters.get(
+        "geometry_source",
+        parameters.get("geometry", parameters.get("ephemeris", default)),
+    )
     if value is None:
         raise ValueError("geometry_source cannot be empty")
     return str(value)
