@@ -49,6 +49,15 @@ class Store:
     def registry_path(self, *parts: str) -> Path:
         return self.root.joinpath("registry", *parts)
 
+    def raw_file(self, path: Path | str) -> RawFileRecord:
+        raw_file = _resolve_raw_file(self.root, path)
+        manifest_path = raw_file.with_name(f"{raw_file.name}.sopran.json")
+        if not raw_file.exists():
+            raise FileNotFoundError(f"Raw file not found: {raw_file}")
+        if not manifest_path.exists():
+            raise FileNotFoundError(f"Raw file manifest not found: {manifest_path}")
+        return RawFileRecord(path=raw_file, manifest_path=manifest_path)
+
     def register_raw_file(
         self,
         path: Path | str,

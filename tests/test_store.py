@@ -282,6 +282,25 @@ def test_raw_file_record_verifies_checksum(tmp_path) -> None:
     assert not record.verify_checksum()
 
 
+def test_store_finds_registered_raw_file_record(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    raw_file = store.raw_path("kaguya", "l2", "example.dat")
+    raw_file.parent.mkdir(parents=True)
+    raw_file.write_bytes(b"raw payload")
+    registered = store.register_raw_file(
+        "kaguya/l2/example.dat",
+        mission="kaguya",
+        provider="darts",
+    )
+
+    found = store.raw_file("kaguya/l2/example.dat")
+
+    assert found.path == registered.path
+    assert found.manifest_path == registered.manifest_path
+    assert found.manifest()["provider"] == "darts"
+    assert found.verify_checksum()
+
+
 def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
     store = Store(tmp_path / "store")
     first = store.raw_path("kaguya", "l2", "first.dat")

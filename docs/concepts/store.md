@@ -58,6 +58,8 @@ recorded checksum.
 
 `Store.raw_files(refresh=True)` scans those sidecars and writes
 `registry/raw_files.parquet`. It can be filtered by `mission` or `provider`.
+Use `Store.raw_file(...)` to reopen a `RawFileRecord` from a raw path and its
+sidecar manifest.
 
 ## Dataset Registry
 

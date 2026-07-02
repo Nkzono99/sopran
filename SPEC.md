@@ -523,7 +523,8 @@ F:/sopran_cache/
 - raw file の checksum、download URL、取得日時を記録する。初期実装では raw file の隣に
   `<filename>.sopran.json` sidecar manifest を置き、`registry/raw_files.parquet` に
   mission / provider / checksum / acquired_at の index を作る。解析前に manifest checksum と
-  現在のファイル checksum を比較できる API を持つ。
+  現在のファイル checksum を比較できる API を持つ。raw path から sidecar manifest を読み、
+  `RawFileRecord` を復元できる。
 - parquet shard の schema、partition、期間、生成 pipeline、checksum を記録し、
   catalog checksum と現在の shard checksum を比較できる API を持つ。
 - ユーザーが拡張した database を登録する。
