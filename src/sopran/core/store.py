@@ -492,8 +492,8 @@ class DatasetRecord:
             raise DatasetNotFoundError(f"Dataset has no complete parquet shards: {name}")
         return pl.scan_parquet([str(path) for path in paths])
 
-    def verify_checksums(self) -> bool:
-        for row in self.catalog().iter_rows(named=True):
+    def verify_checksums(self, *, status: str | None = None) -> bool:
+        for row in self.shards(status=status):
             shard_path = str(row.get("path") or "")
             expected = str(row.get("checksum") or "")
             if not shard_path:

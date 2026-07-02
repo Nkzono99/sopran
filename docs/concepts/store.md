@@ -47,7 +47,9 @@ extraction arguments.
 provenance object into `dataset.json`. Pipeline backends should use this for the
 pipeline source, stage list, mode, time range, and selected product or variable.
 `DatasetRecord.verify_checksums()` compares catalog checksums with current shard
-files.
+files. By default it audits every catalog shard; use
+`DatasetRecord.verify_checksums(status="complete")` to verify the same shard set
+that `scan()` reads.
 `DatasetRecord.update_shard_status(path, status)` updates a catalog shard status
 to `pending`, `running`, `complete`, `failed`, or `skipped`.
 `DatasetRecord.shards(status=...)` lists catalog shards, and
