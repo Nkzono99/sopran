@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from sopran.core.data import SopranArray
 from sopran.core.time import TimeRange
@@ -75,6 +75,32 @@ class KaguyaESA1Data:
             return self._pace_to_xarray(np, xr, self.pace)
 
         return self._empty_xarray(np, xr)
+
+    def to_polars(
+        self,
+        variable: str = "counts",
+        *,
+        reduce_look: Literal["sum"] | None = None,
+    ):
+        try:
+            import numpy as np
+            import polars as pl
+        except ImportError as exc:
+            raise RuntimeError("polars is required for to_polars()") from exc
+
+        dataset = self.to_xarray()
+        if variable not in dataset:
+            raise KeyError(f"Unknown variable for KAGUYA ESA1 data: {variable}")
+
+        array = dataset[variable]
+        if reduce_look == "sum":
+            if "look" not in array.dims:
+                raise ValueError(f"{variable} has no look dimension to reduce")
+            array = array.sum("look")
+        elif reduce_look is not None:
+            raise ValueError("reduce_look must be None or 'sum'")
+
+        return _data_array_to_polars(array, variable, np, pl)
 
     def _empty_xarray(self, np: Any, xr: Any):
         energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
@@ -194,3 +220,38 @@ def _header_time_to_datetime64(value: object, np: Any):
         return np.datetime64("NaT", "ns")
     text = datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None).isoformat()
     return np.datetime64(text, "ns")
+
+
+def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any):
+    dims = tuple(array.dims)
+    values = np.asarray(array.values)
+    if dims == ("time", "energy"):
+        times = np.asarray(array.coords["time"].values)
+        energy = np.asarray(array.coords["energy"].values)
+        return pl.DataFrame(
+            {
+                "time": np.repeat(times, len(energy)),
+                "energy": np.tile(energy, len(times)),
+                variable: values.reshape(-1),
+            }
+        )
+    if dims == ("time", "energy", "look"):
+        times = np.asarray(array.coords["time"].values)
+        energy = np.asarray(array.coords["energy"].values)
+        look = np.asarray(array.coords["look"].values)
+        return pl.DataFrame(
+            {
+                "time": np.repeat(times, len(energy) * len(look)),
+                "energy": np.tile(np.repeat(energy, len(look)), len(times)),
+                "look": np.tile(look, len(times) * len(energy)),
+                variable: values.reshape(-1),
+            }
+        )
+    if dims == ("time",):
+        return pl.DataFrame(
+            {
+                "time": np.asarray(array.coords["time"].values),
+                variable: values.reshape(-1),
+            }
+        )
+    raise NotImplementedError(f"Cannot convert {variable} with dims {dims} to Polars")

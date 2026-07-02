@@ -57,6 +57,22 @@ def test_kaguya_esa1_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None
     assert str(ds["time"].values[0]) == "2008-01-01T00:00:08.000000000"
 
 
+def test_kaguya_esa1_to_polars_sums_counts_by_energy(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    kg = spn.Kaguya(store=store)
+
+    frame = kg.esa1.load(spn.day("2008-01-01")).to_polars("counts", reduce_look="sum")
+
+    assert frame.columns == ["time", "energy", "counts"]
+    assert frame.height == 32
+    assert frame["counts"].to_list() == [64] * 32
+
+
 def _write_type01_pbf(path: Path) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE
