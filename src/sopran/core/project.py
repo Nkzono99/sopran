@@ -7,6 +7,7 @@ from typing import Any
 from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
+from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
 
 
@@ -47,6 +48,7 @@ class Case:
         self.name = name
         self.time = time
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
+        self.artemis = CaseMission(Artemis(), self)
 
     def stack(self, *items: PlotItem) -> PlotStack:
         return stack(*items)
@@ -61,6 +63,37 @@ class CaseKaguya:
         value = getattr(self._mission, name)
         if hasattr(value, "load"):
             return CaseInstrument(value, self._case)
+        return value
+
+
+class CaseMission:
+    def __init__(self, mission, case: Case) -> None:
+        self._mission = mission
+        self._case = case
+
+    def __getattr__(self, name: str):
+        value = getattr(self._mission, name)
+        return CaseNode(value, self._case)
+
+
+class CaseNode:
+    def __init__(self, value, case: Case) -> None:
+        self._value = value
+        self._case = case
+
+    def load(self, time: TimeRange | None = None, **kwargs):
+        return self._value.load(time or self._case.time, **kwargs)
+
+    def plan(self, time: TimeRange | None = None, **kwargs):
+        return self._value.plan(time or self._case.time, **kwargs)
+
+    def plot(self, time: TimeRange | None = None, **kwargs):
+        return self._value.plot(time or self._case.time, **kwargs)
+
+    def __getattr__(self, name: str):
+        value = getattr(self._value, name)
+        if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):
+            return CaseNode(value, self._case)
         return value
 
 

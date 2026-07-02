@@ -27,3 +27,22 @@ def test_artemis_load_is_explicitly_not_implemented_yet() -> None:
         art.p1.fgm.magnetic_field.load(spn.day("2011-07-01"))
 
     assert "ARTEMIS P1 FGM" in str(exc.value)
+
+
+def test_project_case_supplies_time_to_artemis_endpoint(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.wake]
+start = "2011-07-01T00:00:00"
+stop = "2011-07-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    case = spn.Project(project_root).case("wake")
+    plan = case.artemis.p1.fgm.magnetic_field.plan()
+
+    assert plan.dataset_id == "artemis.p1.fgm.magnetic_field"
+    assert plan.time == case.time
