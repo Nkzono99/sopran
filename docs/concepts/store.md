@@ -77,12 +77,15 @@ index = store.datasets(refresh=True)
 kaguya_features = store.datasets(layer="features", mission="kaguya")
 adopted = store.datasets(status="adopted")
 versioned = store.datasets(dataset_version="2026.07", schema_version="0.1")
+overlapping = store.datasets(time_range=spn.period("2008-02-01", "2008-02-02"))
 ```
 
 The registry records dataset ID, layer, mission, instrument, product, schema
 version, dataset content version, dataset status, creation time, time coverage,
-and dataset path. It is an index over manifests; `dataset.json`, `schema.json`,
-and per-dataset `catalog.parquet` remain the source of truth.
+and dataset path. A `time_range` filter returns datasets whose time coverage
+overlaps the requested half-open interval. It is an index over manifests;
+`dataset.json`, `schema.json`, and per-dataset `catalog.parquet` remain the
+source of truth.
 
 ## Database Products
 

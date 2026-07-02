@@ -332,6 +332,7 @@ class Store:
         schema_version: str | None = None,
         dataset_version: str | None = None,
         status: str | None = None,
+        time_range: TimeRange | None = None,
         refresh: bool = False,
     ):
         import polars as pl
@@ -354,6 +355,11 @@ class Store:
         for column, value in filters.items():
             if value is not None:
                 frame = frame.filter(pl.col(column) == value)
+        if time_range is not None:
+            frame = frame.filter(
+                (pl.col("start") < time_range.stop_iso)
+                & (pl.col("stop") > time_range.start_iso)
+            )
         return frame.sort(["layer", "dataset_id"])
 
     def _layer_path(self, layer: str, *parts: str) -> Path:

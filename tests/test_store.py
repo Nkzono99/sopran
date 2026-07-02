@@ -560,6 +560,7 @@ def test_store_rebuilds_dataset_registry_index(tmp_path) -> None:
 def test_store_filters_dataset_registry_index(tmp_path) -> None:
     store = Store(tmp_path / "store")
     day = spn.day("2008-02-01")
+    next_day = spn.day("2008-02-02")
     store.write_parquet_dataset(
         dataset_id="kaguya.esa1.counts",
         layer="normalized",
@@ -582,12 +583,28 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
         time_coverage=day,
         frame=pl.DataFrame({"time": [day.start_iso], "pad": [1.0]}),
     )
+    store.write_parquet_dataset(
+        dataset_id="artemis.p1.fgm.magnetic_field",
+        layer="normalized",
+        mission="artemis",
+        instrument="fgm",
+        product="magnetic_field",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=next_day,
+        frame=pl.DataFrame({"time": [next_day.start_iso], "b_x": [1.0]}),
+    )
     store.datasets(refresh=True)
 
     features = store.datasets(layer="features")
     adopted = store.datasets(status="adopted")
     schema_v01 = store.datasets(schema_version="0.1")
     dataset_v202607 = store.datasets(dataset_version="2026.07")
+    overlapping = store.datasets(
+        time_range=spn.period("2008-02-01T12:00:00Z", "2008-02-01T18:00:00Z")
+    )
+    boundary = store.datasets(
+        time_range=spn.period("2008-02-02T00:00:00Z", "2008-02-02T06:00:00Z")
+    )
 
     assert features.select("dataset_id").to_series().to_list() == [
         "kaguya.esa1.pitch_angle_distribution"
@@ -595,9 +612,17 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
     assert adopted.select("dataset_id").to_series().to_list() == ["kaguya.esa1.counts"]
     assert schema_v01.select("dataset_id").to_series().to_list() == [
         "kaguya.esa1.pitch_angle_distribution",
+        "artemis.p1.fgm.magnetic_field",
         "kaguya.esa1.counts",
     ]
     assert dataset_v202607.select("dataset_id").to_series().to_list() == ["kaguya.esa1.counts"]
+    assert overlapping.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.pitch_angle_distribution",
+        "kaguya.esa1.counts",
+    ]
+    assert boundary.select("dataset_id").to_series().to_list() == [
+        "artemis.p1.fgm.magnetic_field"
+    ]
 
 
 def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
