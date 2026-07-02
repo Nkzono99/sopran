@@ -174,8 +174,11 @@ class KaguyaESA1Data:
             counts = record.arrays.get("cnt")
             if counts is None:
                 continue
+            header = pace.headers[record.index]
+            if not _header_in_time_range(header, self.time):
+                continue
             count_rows.append(_counts_to_energy_look(counts))
-            headers.append(pace.headers[record.index])
+            headers.append(header)
 
         if not count_rows:
             return self._empty_xarray(np, xr)
@@ -247,6 +250,14 @@ def _header_time_to_datetime64(value: object, np: Any):
         return np.datetime64("NaT", "ns")
     text = datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None).isoformat()
     return np.datetime64(text, "ns")
+
+
+def _header_in_time_range(header: dict[str, Any], time: TimeRange) -> bool:
+    value = header.get("time")
+    if value is None:
+        return False
+    instant = datetime.fromtimestamp(float(value), tz=timezone.utc)
+    return time.start <= instant < time.stop
 
 
 def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any):
