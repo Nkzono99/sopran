@@ -6,6 +6,7 @@ sopran_data/
   normalized/
   features/
   databases/
+  registry/
   cache/
 ```
 
@@ -28,3 +29,13 @@ Catalog rows currently include:
 - `status`
 
 The catalog is the boundary for append, replace, and lazy scan operations.
+
+Registry layout:
+
+```text
+registry/
+  datasets.parquet
+```
+
+`datasets.parquet` is rebuilt by `Store.datasets(refresh=True)` and can be
+filtered with `layer`, `mission`, `instrument`, or `product`.

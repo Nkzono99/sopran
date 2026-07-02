@@ -138,6 +138,14 @@ F:/sopran_data/raw/kaguya/pds3/
   sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz
 ```
 
+保存済み dataset は `Store.datasets(refresh=True)` で `registry/datasets.parquet` に索引化し、
+layer や mission で絞り込めます。
+
+```python
+index = store.datasets(refresh=True)
+kaguya_features = store.datasets(layer="features", mission="kaguya")
+```
+
 `kg.esa1.energy_flux` は実データではなく endpoint です。属性アクセスだけでは I/O を起こさず、
 実データ取得は `.load(time)`、計算は `.compute(...)`、描画は `.plot(...)` を実行点にします。
 

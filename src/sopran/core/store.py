@@ -12,6 +12,8 @@ from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema
 from sopran.core.time import TimeRange, period
 
+_LAYERS = ("raw", "normalized", "features", "databases")
+
 
 @dataclass(frozen=True)
 class Store:
@@ -39,6 +41,9 @@ class Store:
     def database_path(self, *parts: str) -> Path:
         return self.root.joinpath("databases", *parts)
 
+    def registry_path(self, *parts: str) -> Path:
+        return self.root.joinpath("registry", *parts)
+
     def database(self, name: str):
         from sopran.core.database import Database
 
@@ -57,7 +62,7 @@ class Store:
             raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
 
         matches = []
-        for candidate_layer in ("raw", "normalized", "features", "databases"):
+        for candidate_layer in _LAYERS:
             record = DatasetRecord(root=self.dataset_path(dataset_id, layer=candidate_layer))
             if record.manifest_path.exists():
                 matches.append(record)
@@ -165,6 +170,41 @@ class Store:
         if not record.catalog_path.exists():
             raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
         return record.scan(dataset_id=dataset_id)
+
+    def rebuild_registry(self):
+        path = self.registry_path("datasets.parquet")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        frame = _dataset_index_frame(_dataset_index_rows(self.root))
+        frame.write_parquet(path)
+        return frame.sort(["layer", "dataset_id"])
+
+    def datasets(
+        self,
+        *,
+        layer: str | None = None,
+        mission: str | None = None,
+        instrument: str | None = None,
+        product: str | None = None,
+        refresh: bool = False,
+    ):
+        import polars as pl
+
+        index_path = self.registry_path("datasets.parquet")
+        if refresh or not index_path.exists():
+            frame = self.rebuild_registry()
+        else:
+            frame = pl.read_parquet(index_path)
+
+        filters = {
+            "layer": layer,
+            "mission": mission,
+            "instrument": instrument,
+            "product": product,
+        }
+        for column, value in filters.items():
+            if value is not None:
+                frame = frame.filter(pl.col(column) == value)
+        return frame.sort(["layer", "dataset_id"])
 
     def _layer_path(self, layer: str, *parts: str) -> Path:
         if layer == "raw":
@@ -364,3 +404,46 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     return f"sha256:{digest.hexdigest()}"
+
+
+def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
+    rows: list[dict[str, Any]] = []
+    for layer in _LAYERS:
+        layer_root = root / layer
+        if not layer_root.exists():
+            continue
+        for manifest_path in sorted(layer_root.rglob("dataset.json")):
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            time_coverage = manifest.get("time_coverage") or {}
+            dataset_root = manifest_path.parent
+            rows.append(
+                {
+                    "dataset_id": str(manifest.get("dataset_id") or ""),
+                    "layer": str(manifest.get("layer") or layer),
+                    "mission": str(manifest.get("mission") or ""),
+                    "instrument": str(manifest.get("instrument") or ""),
+                    "product": str(manifest.get("product") or ""),
+                    "start": str(time_coverage.get("start") or ""),
+                    "stop": str(time_coverage.get("stop") or ""),
+                    "path": dataset_root.relative_to(root).as_posix(),
+                }
+            )
+    return tuple(rows)
+
+
+def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
+    import polars as pl
+
+    schema = {
+        "dataset_id": pl.Utf8,
+        "layer": pl.Utf8,
+        "mission": pl.Utf8,
+        "instrument": pl.Utf8,
+        "product": pl.Utf8,
+        "start": pl.Utf8,
+        "stop": pl.Utf8,
+        "path": pl.Utf8,
+    }
+    if not rows:
+        return pl.DataFrame(schema=schema)
+    return pl.DataFrame(rows, schema=schema)

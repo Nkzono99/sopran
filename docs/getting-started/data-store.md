@@ -29,3 +29,10 @@ You can scan stored data with Polars:
 lazy = store.scan_dataset("kaguya.esa1.counts", layer="normalized")
 frame = lazy.collect()
 ```
+
+Build a registry index when you want to inspect or filter saved datasets:
+
+```python
+index = store.datasets(refresh=True)
+normalized = store.datasets(layer="normalized")
+```

@@ -506,6 +506,8 @@ F:/sopran_cache/
 
 - dataset ID から実体 path を解決する。
 - manifest と catalog を読み書きする。
+- `registry/datasets.parquet` に manifest index を作り、layer / mission / instrument /
+  product で dataset を探索する。
 - raw file の checksum、download URL、取得日時を記録する。
 - parquet shard の schema、partition、期間、生成 pipeline を記録する。
 - ユーザーが拡張した database を登録する。
@@ -529,6 +531,9 @@ Case
 store = spn.Store("F:/sopran_data")
 prj = spn.Project("projects/lunar_wake", store=store)
 case = prj.case("wake_20080201")
+
+index = store.datasets(refresh=True)
+kaguya_features = store.datasets(layer="features", mission="kaguya")
 ```
 
 `case.kaguya.esa1.energy_flux.load()` は、case から時間範囲と frame、project から workspace と
@@ -1964,6 +1969,7 @@ M2: Store minimum
   - dataset.json
   - catalog.parquet
   - schema.json
+  - registry/datasets.parquet
 
 M3: Project / Case
   - project config

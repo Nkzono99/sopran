@@ -30,6 +30,21 @@ shards/
 and status. `dataset.json` records dataset ID, layer, mission, instrument,
 product, time coverage, source files, and producer.
 
+## Dataset Registry
+
+`Store.datasets(refresh=True)` scans dataset manifests and writes
+`registry/datasets.parquet`. Later calls read that registry unless `refresh` is
+requested again:
+
+```python
+index = store.datasets(refresh=True)
+kaguya_features = store.datasets(layer="features", mission="kaguya")
+```
+
+The registry records dataset ID, layer, mission, instrument, product, time
+coverage, and dataset path. It is an index over manifests; `dataset.json`,
+`schema.json`, and per-dataset `catalog.parquet` remain the source of truth.
+
 ## Database Products
 
 User-defined products live under the `databases` layer:

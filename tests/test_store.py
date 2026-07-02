@@ -203,6 +203,77 @@ def test_store_dataset_finds_registered_dataset_without_layer(tmp_path) -> None:
         store.dataset("unknown.dataset")
 
 
+def test_store_rebuilds_dataset_registry_index(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    day = spn.day("2008-02-01")
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "counts": [64]}),
+    )
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.pitch_angle_distribution",
+        layer="features",
+        mission="kaguya",
+        instrument="esa1",
+        product="pitch_angle_distribution",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "pad": [1.0]}),
+    )
+
+    index = store.datasets(refresh=True)
+
+    assert store.registry_path("datasets.parquet").exists()
+    assert index.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.pitch_angle_distribution",
+        "kaguya.esa1.counts",
+    ]
+    assert index.select("layer").to_series().to_list() == ["features", "normalized"]
+    assert index.select("start").to_series().to_list() == [day.start_iso, day.start_iso]
+    assert index.select("path").to_series().to_list() == [
+        "features/kaguya/esa1/pitch_angle_distribution",
+        "normalized/kaguya/esa1/counts",
+    ]
+
+
+def test_store_filters_dataset_registry_index(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    day = spn.day("2008-02-01")
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "counts": [64]}),
+    )
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.pitch_angle_distribution",
+        layer="features",
+        mission="kaguya",
+        instrument="esa1",
+        product="pitch_angle_distribution",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "pad": [1.0]}),
+    )
+    store.datasets(refresh=True)
+
+    features = store.datasets(layer="features")
+
+    assert features.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.pitch_angle_distribution"
+    ]
+
+
 def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
     store = Store(tmp_path / "store")
     first = spn.day("2008-02-01")
