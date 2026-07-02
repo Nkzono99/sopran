@@ -59,8 +59,9 @@ The current implementation is intentionally small. It records stage order,
 prevents accidental overwrite by default, supports explicit append/replace,
 uses parquet catalog shards as the storage boundary, streams collected scan
 results by day, issues a `PipelineResult.run_id` for each `run()` call, skips
-already complete KAGUYA ESA1 outputs with `run(resume=True)`, and can write a
-Matplotlib PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.
+already complete KAGUYA ESA1 outputs with `run(resume=True)`, records failed
+KAGUYA ESA1 shards with `run(on_error="continue")`, and can write a Matplotlib
+PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.
 Quicklook metadata records the pipeline run ID, source, stage names, time range,
 output dataset/layer, selected variable, backend, and artifact list.
 
@@ -84,3 +85,8 @@ shards exist, KAGUYA ESA1 reloads each failed shard's cataloged time coverage,
 overwrites the same shard path, refreshes the catalog checksum, and records
 `replayed_shard_count` in the complete run log. Partial shard detection and
 repartitioning are later backend features.
+
+`run(on_error="continue")` currently records KAGUYA ESA1 load/write setup
+failures, such as missing local raw files in offline mode, as a failed catalog
+shard. The structured log uses `status == "partial"`, includes `on_error`, and
+records each error with its stage, exception type, and message.

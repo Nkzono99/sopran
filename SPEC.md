@@ -1758,6 +1758,9 @@ SopranError
 
 pipeline 実行では、単一 shard の失敗で全体を壊すか、failed shard として継続するかを
 明示できるようにする。
+`on_error="fail"` は最初の shard 失敗で例外を送出する既定動作とする。
+`on_error="continue"` は失敗 shard を catalog に `status="failed"` として残し、
+run log の `errors` に stage、例外型、message を記録する。
 
 ```python
 pipe.run(on_error="fail")
@@ -1914,7 +1917,9 @@ row_count、shard_count を持つ。
 `PipelineResult.status == "skipped"` と skip log を返す。`only_failed=True` はまず既存
 catalog が要求 time range を覆い、failed shard がない場合に skip log を返す。KAGUYA ESA1
 では failed shard の `start` / `stop` から同じ shard path を再生成し、complete に戻す。
-partial shard の検出と再分割は後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
+KAGUYA ESA1 の `on_error="continue"` は、v0.1 では入力 raw file が見つからないなどの
+load/write 前段失敗を 1 shard の failed catalog として記録する。partial shard の検出と
+再分割は後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
 `PipelineResult.to_text()` / `str(result)` で source、time range、stage list、
 output target を確認できる。
 

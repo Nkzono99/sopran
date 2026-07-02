@@ -8,6 +8,9 @@
   stages; its plan can be inspected with `to_dict()` or `str(result)`.
 - `run()` fails on existing shards unless `mode="append"` or `mode="replace"`
   is explicit.
+- `run(on_error="fail")` is the default error policy.
+- `run(on_error="continue")` lets a backend record failed shards and return a
+  partial result; KAGUYA ESA1 records missing-input load failures this way.
 - `run(resume=True)` may skip execution when the output catalog is already
   complete for the requested range.
 - `resume=True` is mutually exclusive with `mode="append"` and

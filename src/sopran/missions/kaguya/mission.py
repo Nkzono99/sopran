@@ -355,6 +355,7 @@ class PaceInstrument(KaguyaInstrument):
         run_id: str,
         resume: bool = False,
         only_failed: bool = False,
+        on_error: str = "fail",
     ) -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
@@ -376,6 +377,7 @@ class PaceInstrument(KaguyaInstrument):
                     elapsed_seconds=perf_counter() - started,
                     resume=True,
                     only_failed=False,
+                    on_error=on_error,
                 )
                 return PipelineResult(
                     plan=pipeline.plan(),
@@ -404,6 +406,7 @@ class PaceInstrument(KaguyaInstrument):
                     elapsed_seconds=perf_counter() - started,
                     resume=False,
                     only_failed=True,
+                    on_error=on_error,
                 )
                 return PipelineResult(
                     plan=pipeline.plan(),
@@ -447,6 +450,7 @@ class PaceInstrument(KaguyaInstrument):
                 resume=False,
                 only_failed=True,
                 replayed_shard_count=replayed_count,
+                on_error=on_error,
             )
             return PipelineResult(
                 plan=pipeline.plan(),
@@ -458,21 +462,59 @@ class PaceInstrument(KaguyaInstrument):
             )
 
         variable = _pipeline_variable(pipeline)
-        data = self.load(pipeline.time, download="never")
-        output = data.write_parquet(
-            self.mission.store,
-            variable=variable,
-            dataset_id=pipeline.output_dataset,
-            layer=pipeline.output_layer,
-            overwrite=mode == "replace",
-            append=mode == "append",
-            provenance=_pipeline_dataset_provenance(
+        data = None
+        try:
+            loaded = self.load(pipeline.time, download="never")
+            _ensure_pipeline_input_files(loaded, self, pipeline.time)
+            data = loaded
+            output = data.write_parquet(
+                self.mission.store,
+                variable=variable,
+                dataset_id=pipeline.output_dataset,
+                layer=pipeline.output_layer,
+                overwrite=mode == "replace",
+                append=mode == "append",
+                provenance=_pipeline_dataset_provenance(
+                    pipeline,
+                    variable=variable,
+                    mode=mode,
+                    run_id=run_id,
+                ),
+            )
+        except FileExistsError:
+            raise
+        except Exception as exc:
+            if on_error != "continue":
+                raise
+            stage = "load" if data is None else "write"
+            output = _write_failed_pipeline_output(
+                self.mission.store,
                 pipeline,
                 variable=variable,
                 mode=mode,
                 run_id=run_id,
-            ),
-        )
+            )
+            log_path = _write_pipeline_log(
+                output,
+                pipeline=pipeline,
+                run_id=run_id,
+                mode=mode,
+                status="partial",
+                started_at=started_at,
+                elapsed_seconds=perf_counter() - started,
+                resume=resume,
+                only_failed=only_failed,
+                on_error=on_error,
+                errors=(_pipeline_error(stage, exc),),
+            )
+            return PipelineResult(
+                plan=pipeline.plan(),
+                status="partial",
+                message=f"Recorded failed shard for {pipeline.output_dataset}",
+                outputs=(output,),
+                run_id=run_id,
+                log_path=log_path,
+            )
         quicklooks = _write_pipeline_quicklooks(
             data,
             output,
@@ -490,6 +532,7 @@ class PaceInstrument(KaguyaInstrument):
             elapsed_seconds=perf_counter() - started,
             resume=resume,
             only_failed=only_failed,
+            on_error=on_error,
         )
         return PipelineResult(
             plan=pipeline.plan(),
@@ -722,6 +765,41 @@ def _pipeline_dataset_provenance(
     }
 
 
+def _write_failed_pipeline_output(
+    store: Store,
+    pipeline: Pipeline,
+    *,
+    variable: str,
+    mode: str,
+    run_id: str,
+):
+    return store.register_dataset(
+        dataset_id=str(pipeline.output_dataset),
+        layer=str(pipeline.output_layer),
+        mission="kaguya",
+        instrument="esa1",
+        product=variable,
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=pipeline.time,
+        shards=(
+            {
+                "path": "shards/part-000.parquet",
+                "start": pipeline.time.start_iso,
+                "stop": pipeline.time.stop_iso,
+                "row_count": 0,
+                "checksum": "",
+                "status": "failed",
+            },
+        ),
+        provenance=_pipeline_dataset_provenance(
+            pipeline,
+            variable=variable,
+            mode=mode,
+            run_id=run_id,
+        ),
+    )
+
+
 def _update_pipeline_dataset_provenance(
     output,
     pipeline: Pipeline,
@@ -790,6 +868,7 @@ def _replay_failed_pipeline_shards(
     for shard in output.failed_shards():
         shard_time = _shard_time_range(shard)
         data = instrument.load(shard_time, download="never")
+        _ensure_pipeline_input_files(data, instrument, shard_time)
         output.replace_shard(
             str(shard["path"]),
             frame=data.to_polars(variable),
@@ -797,6 +876,20 @@ def _replay_failed_pipeline_shards(
         )
         replayed += 1
     return replayed
+
+
+def _ensure_pipeline_input_files(
+    data: KaguyaESA1Data,
+    instrument: PaceInstrument,
+    time: TimeRange,
+) -> None:
+    if data.files:
+        return
+    expected = ", ".join(instrument.remote_files_for_period(time))
+    raise FileNotFoundError(
+        f"No local KAGUYA ESA1 raw files found for {time.start_iso} .. {time.stop_iso}. "
+        f"Expected: {expected}"
+    )
 
 
 def _shard_time_range(shard: dict[str, object]) -> TimeRange:
@@ -826,6 +919,8 @@ def _write_pipeline_log(
     resume: bool = False,
     only_failed: bool = False,
     replayed_shard_count: int = 0,
+    on_error: str = "fail",
+    errors: tuple[dict[str, str], ...] = (),
 ) -> Path:
     shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
@@ -839,8 +934,10 @@ def _write_pipeline_log(
         "status": status,
         "resume": resume,
         "only_failed": only_failed,
+        "on_error": on_error,
         "failed_shard_count": failed_shard_count,
         "replayed_shard_count": replayed_shard_count,
+        "errors": [_jsonable(error) for error in errors],
         "started_at": started_at,
         "finished_at": finished_at,
         "elapsed_seconds": elapsed_seconds,
@@ -877,6 +974,14 @@ def _write_pipeline_log(
         encoding="utf-8",
     )
     return path
+
+
+def _pipeline_error(stage: str, exc: Exception) -> dict[str, str]:
+    return {
+        "stage": stage,
+        "type": exc.__class__.__name__,
+        "message": str(exc),
+    }
 
 
 def _pipeline_stage_logs(

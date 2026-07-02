@@ -9,6 +9,7 @@ from uuid import uuid4
 from sopran.core.time import TimeRange
 
 PipelineRunMode = Literal["create", "append", "replace"]
+PipelineOnError = Literal["fail", "continue"]
 PipelineStreamPartition = Literal["all", "day", "shard", "orbit"]
 
 
@@ -199,9 +200,12 @@ class Pipeline:
         mode: PipelineRunMode = "create",
         resume: bool = False,
         only_failed: bool = False,
+        on_error: PipelineOnError = "fail",
     ) -> PipelineResult:
         if mode not in ("create", "append", "replace"):
             raise ValueError("mode must be 'create', 'append', or 'replace'")
+        if on_error not in ("fail", "continue"):
+            raise ValueError("on_error must be 'fail' or 'continue'")
         if resume and mode != "create":
             raise ValueError("resume=True requires mode='create'")
         if only_failed and mode != "create":
@@ -225,6 +229,7 @@ class Pipeline:
                 run_id=run_id,
                 resume=resume,
                 only_failed=only_failed,
+                on_error=on_error,
             )
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 

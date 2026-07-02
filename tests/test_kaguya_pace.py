@@ -525,6 +525,52 @@ def test_kaguya_esa1_pipeline_run_only_failed_requires_existing_catalog(
         pipe.run(only_failed=True)
 
 
+def test_kaguya_esa1_pipeline_run_on_error_continue_records_failed_shard(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+
+    result = pipe.run(on_error="continue")
+
+    assert result.status == "partial"
+    dataset = result.outputs[0]
+    assert dataset.failed_shards() == (
+        {
+            "path": "shards/part-000.parquet",
+            "schema_version": "0.1",
+            "start": "2008-01-01T00:00:00Z",
+            "stop": "2008-01-02T00:00:00Z",
+            "row_count": 0,
+            "checksum": "",
+            "status": "failed",
+        },
+    )
+    log = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log["status"] == "partial"
+    assert log["on_error"] == "continue"
+    assert log["failed_shard_count"] == 1
+    assert log["errors"][0]["stage"] == "load"
+    assert "IPACE_PBF1_080101_ESA1_V003.dat.gz" in log["errors"][0]["message"]
+
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    replayed = pipe.run(only_failed=True)
+
+    assert replayed.status == "complete"
+    assert replayed.outputs[0].failed_shards() == ()
+    assert replayed.outputs[0].scan().collect().height == 2048
+
+
 def test_kaguya_esa1_pipeline_run_only_failed_replays_failed_shards(
     tmp_path: Path,
 ) -> None:

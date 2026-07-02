@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import polars as pl
+import pytest
 
 import sopran as spn
 from sopran.core.pipeline import Pipeline
@@ -48,3 +49,28 @@ def test_pipeline_stream_delegates_to_backend_when_available() -> None:
     assert list(pipe.stream(partition="orbit")) == [
         {"source": "test.source", "partition": "orbit"}
     ]
+
+
+def test_pipeline_run_forwards_on_error_policy_to_backend() -> None:
+    class RunContext:
+        def _run_pipeline(self, pipeline: Pipeline, *, on_error: str, **kwargs):
+            return {"source": pipeline.source, "on_error": on_error, "kwargs": kwargs}
+
+    pipe = Pipeline(
+        source="test.source",
+        time=spn.day("2008-02-01"),
+        context=RunContext(),
+    )
+
+    result = pipe.run(on_error="continue")
+
+    assert result["source"] == "test.source"
+    assert result["on_error"] == "continue"
+    assert result["kwargs"]["mode"] == "create"
+
+
+def test_pipeline_run_validates_on_error_policy() -> None:
+    pipe = Pipeline(source="test.source", time=spn.day("2008-02-01"))
+
+    with pytest.raises(ValueError, match="on_error"):
+        pipe.run(on_error="skip")

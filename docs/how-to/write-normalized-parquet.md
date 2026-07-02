@@ -42,6 +42,14 @@ failed = record.failed_shards()
 result = pipe.run(only_failed=True)
 ```
 
+Use `on_error="continue"` when a batch should leave a failed catalog shard
+instead of raising immediately:
+
+```python
+result = pipe.run(on_error="continue")
+failed = result.outputs[0].failed_shards()
+```
+
 The current KAGUYA ESA1 implementation records a skip log when the catalog
 contains no failed shards. When failed shards exist, it reloads each failed
 shard's cataloged time coverage, overwrites the same shard path, refreshes the
