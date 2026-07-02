@@ -21,8 +21,11 @@ time = spn.day("2011-07-01")
 
 plan = art.p1.fgm.magnetic_field.plan(time)
 ion_plan = art.p1.esa.ion_energy_flux.plan(time)
-item = art.p1.fgm.magnetic_field.line(time)
-plot_result = spn.stack(item).plot()
+stack = spn.stack(
+    art.p1.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True),
+    art.p1.fgm.magnetic_field.line(time),
+)
+plot_result = stack.plot()
 fig = plot_result.fig
 ```
 

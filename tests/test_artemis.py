@@ -308,6 +308,28 @@ def test_artemis_load_reads_normalized_ion_energy_flux_from_store(tmp_path) -> N
     assert array.values.tolist() == [[10.0, 30.0]]
 
 
+def test_artemis_esa_endpoint_builds_spectrogram_plot_item(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2011-07-01")
+    _write_artemis_esa_dataset(store, time)
+
+    item = spn.Artemis(store=store).p1.esa.ion_energy_flux.spectrogram(
+        time,
+        y="energy",
+        log_color=True,
+    )
+    result = spn.stack(item).plot()
+
+    assert item.name == "ion_energy_flux"
+    assert item.kind == "spectrogram"
+    assert item.y == "energy"
+    assert item.log_color is True
+    assert len(result.axes) == 1
+
+
 def test_artemis_variable_endpoint_builds_line_plot_item(tmp_path) -> None:
     import matplotlib
 
@@ -388,6 +410,31 @@ stop = "2011-07-02T00:00:00"
 
     assert stack.plan().items == ("magnetic_field",)
     assert len(stack.plot().axes[0].lines) == 3
+
+
+def test_project_case_artemis_esa_endpoint_builds_spectrogram_plot_item(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2011-07-01")
+    _write_artemis_esa_dataset(store, time)
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.wake]
+start = "2011-07-01T00:00:00"
+stop = "2011-07-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    case = spn.Project(project_root, store=store).case("wake")
+
+    stack = case.stack(case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy"))
+
+    assert stack.plan().items == ("ion_energy_flux",)
+    assert len(stack.plot().axes) == 1
 
 
 def _write_artemis_fgm_dataset(store: spn.Store, time: spn.TimeRange) -> None:

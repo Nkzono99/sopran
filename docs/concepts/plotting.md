@@ -33,6 +33,8 @@ lazy plot items directly:
 stack = case.stack(
     case.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
     case.kaguya.esa1.quality.line(),
+    case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy", log_color=True),
+    case.artemis.p1.fgm.magnetic_field.line(),
 )
 ```
 
@@ -107,7 +109,9 @@ see.
 
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
-`magnetic_field_z`.
+`magnetic_field_z`. Spectral products such as ARTEMIS ESA `ion_energy_flux`
+can use the same `spectrogram(y="energy")` PlotStack route as KAGUYA ESA1
+spectra once a normalized parquet dataset exists in the store.
 
 The v0.1 implementation accepts `backend="matplotlib"`. `plot()` returns a
 `PlotResult` with `fig`, `axes`, `backend`, and metadata so quicklook and

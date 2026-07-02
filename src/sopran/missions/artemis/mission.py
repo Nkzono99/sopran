@@ -222,6 +222,25 @@ class ArtemisVariableEndpoint:
             name=name or self.name,
         )
 
+    def spectrogram(
+        self,
+        time: TimeRange,
+        *,
+        y: str,
+        x: str = "time",
+        name: str | None = None,
+        log_color: bool = False,
+    ):
+        from sopran.core.plotting import spectrogram
+
+        return spectrogram(
+            lambda: self.load(time).to_xarray(),
+            x=x,
+            y=y,
+            name=name or self.name,
+            log_color=log_color,
+        )
+
 
 def _read_guide(*, title: str, language: str = "ja") -> GuidePage:
     if language not in _GUIDE_LANGUAGES:

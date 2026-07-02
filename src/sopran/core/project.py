@@ -244,6 +244,14 @@ class CaseNode:
 
         return line(lambda: self.load(time).to_xarray(), **kwargs)
 
+    def spectrogram(self, time: TimeRange | None = None, **kwargs):
+        spectrogram_method = getattr(self._value, "spectrogram", None)
+        if spectrogram_method is not None:
+            return spectrogram_method(time or self._case.time, **kwargs)
+        from sopran.core.plotting import spectrogram
+
+        return spectrogram(lambda: self.load(time).to_xarray(), **kwargs)
+
     def __getattr__(self, name: str):
         value = getattr(self._value, name)
         if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):

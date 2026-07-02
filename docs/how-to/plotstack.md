@@ -24,6 +24,8 @@ With a project case, omit the repeated time argument and let the case provide it
 stack = case.stack(
     case.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
     case.kaguya.esa1.quality.line(),
+    case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy", log_color=True),
+    case.artemis.p1.fgm.magnetic_field.line(),
 )
 
 plot_result = stack.plot(backend="matplotlib", context=case)
