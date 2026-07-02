@@ -35,5 +35,6 @@ stack = spn.stack(
     kg.esa1.quality.load(time).line(),
 )
 
-stack.plot()
+plot_result = stack.plot()
+plot_result.fig
 ```

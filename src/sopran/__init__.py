@@ -7,7 +7,7 @@ from sopran.core import Database, DatasetNotFoundError, GuidePage, InfoPage
 from sopran.core import FeatureMatrix
 from sopran.core import FrameTransformError, PipelineError, SchemaError
 from sopran.core import InstrumentSchema, VariableSchema
-from sopran.core import PlotArtifact, PlotItem, PlotPlan, ProductRef
+from sopran.core import PlotArtifact, PlotItem, PlotPlan, PlotResult, ProductRef
 from sopran.core import PlotStack, SampleSpec, SampleTable, SopranError, Store, TimeRange
 from sopran.core import QuicklookResult
 from sopran.core import TimeBins, align, day, line, load, month, period
@@ -48,6 +48,7 @@ __all__ = [
     "PlotArtifact",
     "PlotItem",
     "PlotPlan",
+    "PlotResult",
     "PlotStack",
     "Project",
     "PipelineError",

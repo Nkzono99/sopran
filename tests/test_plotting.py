@@ -37,11 +37,16 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     )
 
     plan = stack.plan()
-    fig = stack.plot()
+    result = stack.plot()
 
     assert plan.panel_count == 2
     assert plan.items == ("counts", "quality")
-    assert len(fig.axes) == 2
+    assert isinstance(result, spn.PlotResult)
+    assert result.backend == "matplotlib"
+    assert len(result.fig.axes) == 2
+    assert len(result.axes) == 2
+    assert result.metadata["panel_count"] == 2
+    assert result.metadata["items"] == ["counts", "quality"]
 
 
 def test_plot_stack_line_accepts_vector_time_series() -> None:

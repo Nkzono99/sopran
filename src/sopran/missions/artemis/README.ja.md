@@ -19,7 +19,8 @@ time = spn.day("2011-07-01")
 
 plan = art.p1.fgm.magnetic_field.plan(time)
 item = art.p1.fgm.magnetic_field.line(time)
-fig = spn.stack(item).plot()
+plot_result = spn.stack(item).plot()
+fig = plot_result.fig
 ```
 
 ## 次の作業

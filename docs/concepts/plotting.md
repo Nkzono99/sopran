@@ -17,7 +17,7 @@ stack = spn.stack(
 )
 
 stack.plan()
-stack.plot(backend="matplotlib")
+plot_result = stack.plot(backend="matplotlib")
 stack.quicklook("wake_overview", root="reports", backend="matplotlib")
 ```
 
@@ -84,7 +84,9 @@ Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
 `magnetic_field_z`.
 
-The v0.1 implementation accepts `backend="matplotlib"`. HoloViz, Datashader,
+The v0.1 implementation accepts `backend="matplotlib"`. `plot()` returns a
+`PlotResult` with `fig`, `axes`, `backend`, and metadata so quicklook and
+notebook workflows can share the same plot description. HoloViz, Datashader,
 Panel dashboards, and HTML quicklooks are planned for larger interactive
 products. Current `quicklook()` output is a Matplotlib PNG plus a small JSON
 metadata file.

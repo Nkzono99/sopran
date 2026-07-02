@@ -24,7 +24,8 @@ plan = art.p1.fgm.magnetic_field.plan(time)
 stack = case.stack(
     case.artemis.p1.fgm.magnetic_field.line(),
 )
-fig = stack.plot()
+plot_result = stack.plot()
+fig = plot_result.fig
 ```
 
 ## Next Work

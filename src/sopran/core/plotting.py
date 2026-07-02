@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
@@ -33,6 +33,15 @@ class PlotArtifact:
 
 
 @dataclass(frozen=True)
+class PlotResult:
+    fig: Any
+    axes: tuple[Any, ...]
+    backend: str
+    artifacts: tuple[PlotArtifact, ...] = ()
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class QuicklookResult:
     name: str
     artifacts: tuple[PlotArtifact, ...]
@@ -55,7 +64,7 @@ class PlotStack:
         *,
         backend: Literal["matplotlib"] = "matplotlib",
         figsize: tuple[float, float] | None = None,
-    ) -> Any:
+    ) -> PlotResult:
         if not self.items:
             raise ValueError("PlotStack requires at least one item")
         if backend != "matplotlib":
@@ -87,7 +96,17 @@ class PlotStack:
         axes[-1].set_xlabel("time")
         fig.autofmt_xdate()
         fig.tight_layout()
-        return fig
+        plan = self.plan()
+        return PlotResult(
+            fig=fig,
+            axes=tuple(axes),
+            backend=backend,
+            metadata={
+                "backend": backend,
+                "panel_count": plan.panel_count,
+                "items": list(plan.items),
+            },
+        )
 
     def quicklook(
         self,
@@ -103,7 +122,8 @@ class PlotStack:
         target_root.mkdir(parents=True, exist_ok=True)
         if backend != "matplotlib":
             raise ValueError("PlotStack.quicklook() currently supports only matplotlib")
-        fig = self.plot(backend=backend, figsize=figsize)
+        plot_result = self.plot(backend=backend, figsize=figsize)
+        fig = plot_result.fig
         plan = self.plan()
         artifacts = []
         for format_name in formats:

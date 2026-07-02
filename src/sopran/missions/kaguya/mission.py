@@ -208,7 +208,8 @@ stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy"),
     kg.esa1.quality.load(time).line(),
 )
-fig = stack.plot()
+plot_result = stack.plot()
+fig = plot_result.fig
 ```
 """,
         )
@@ -631,7 +632,8 @@ stack = spn.stack(
     counts.spectrogram(y="energy"),
     kg.esa1.quality.load(time).line(),
 )
-fig = stack.plot()
+plot_result = stack.plot()
+fig = plot_result.fig
 ```
 """,
         )

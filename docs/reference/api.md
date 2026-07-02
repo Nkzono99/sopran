@@ -26,6 +26,14 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.pages.InfoPage
 
+::: sopran.core.plotting.PlotItem
+
+::: sopran.core.plotting.PlotStack
+
+::: sopran.core.plotting.PlotResult
+
+::: sopran.core.plotting.QuicklookResult
+
 ::: sopran.core.errors
 
 ::: sopran.core.store.Store

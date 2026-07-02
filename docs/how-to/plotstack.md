@@ -7,7 +7,8 @@ stack = spn.stack(
 )
 
 plan = stack.plan()
-figure = stack.plot(backend="matplotlib")
+plot_result = stack.plot(backend="matplotlib")
+figure = plot_result.fig
 result = stack.quicklook("wake_overview", root="reports", backend="matplotlib")
 ```
 
@@ -19,10 +20,12 @@ stack = case.stack(
     case.kaguya.esa1.quality.line(),
 )
 
-figure = stack.plot(backend="matplotlib")
+plot_result = stack.plot(backend="matplotlib")
+figure = plot_result.fig
 ```
 
 `PlotStack` is the SPEDAS/tplot-like route for comparing time-series products
 from different instruments or missions. The current backend is Matplotlib and
 is selected with `backend="matplotlib"`.
+`plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
 `quicklook()` writes `<name>.png` and `<name>.json`.
