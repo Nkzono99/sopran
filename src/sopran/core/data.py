@@ -17,6 +17,7 @@ class SopranArray:
     time: TimeRange
     schema: VariableSchema
     files: tuple[Path, ...] = ()
+    operations: tuple[dict[str, Any], ...] = ()
     xr: Any = None
 
     @property
@@ -25,7 +26,7 @@ class SopranArray:
 
     @property
     def metadata(self) -> dict[str, Any]:
-        return {
+        metadata = {
             "type": type(self).__name__,
             "name": self.name,
             "time_range": {
@@ -35,6 +36,9 @@ class SopranArray:
             "schema": self.schema.to_metadata(),
             "source_files": [str(path) for path in self.files],
         }
+        if self.operations:
+            metadata["operations"] = [dict(operation) for operation in self.operations]
+        return metadata
 
     def info(self) -> InfoPage:
         lines = [
@@ -93,6 +97,7 @@ class SopranArray:
         return SopranArrayResampler(
             parent=self,
             resampler=self.to_xarray().resample(*args, **kwargs),
+            parameters={str(key): value for key, value in kwargs.items()},
         )
 
     def write_parquet(
@@ -207,15 +212,22 @@ class SopranArray:
             array = getattr(array, reduction)(reduce_dims)
         return spectrogram(array, x=x, y=y, name=name or self.name, log_color=log_color)
 
-    def _with_xarray(self, array: Any) -> SopranArray:
+    def _with_xarray(
+        self,
+        array: Any,
+        *,
+        operation: dict[str, Any] | None = None,
+    ) -> SopranArray:
         name = str(getattr(array, "name", None) or self.name)
         dims = tuple(str(dim) for dim in getattr(array, "dims", self.schema.dims))
         schema = replace(self.schema, name=name, dims=dims)
+        operations = self.operations if operation is None else (*self.operations, operation)
         return SopranArray(
             name=name,
             time=self.time,
             schema=schema,
             files=self.files,
+            operations=operations,
             xr=array,
         )
 
@@ -224,6 +236,7 @@ class SopranArray:
 class SopranArrayResampler:
     parent: SopranArray
     resampler: Any
+    parameters: dict[str, Any]
 
     def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._reduce("mean", *args, **kwargs)
@@ -245,4 +258,11 @@ class SopranArrayResampler:
 
     def _reduce(self, method: str, *args: Any, **kwargs: Any) -> SopranArray:
         reduction = getattr(self.resampler, method)
-        return self.parent._with_xarray(reduction(*args, **kwargs))
+        return self.parent._with_xarray(
+            reduction(*args, **kwargs),
+            operation={
+                "operation": "resample",
+                "parameters": dict(self.parameters),
+                "reducer": method,
+            },
+        )

@@ -672,6 +672,7 @@ loaded.trange
 `loaded.metadata` は JSON-ready な dict とし、少なくとも `type`, `name`, `time_range`,
 `schema`, `source_files` を含める。plot、quicklook、Project artifact、Store manifest に
 渡しても意味が変わらない軽量 provenance snapshot として扱う。
+派生操作を経た loaded object は `operations` に操作名、parameter、reducer などを記録してよい。
 `context=loaded` のように object を直接渡した場合も、この `metadata` property を使う。
 
 Lazy product の共通操作:
@@ -721,6 +722,7 @@ class KaguyaESA1Data:
 `SopranArray` に包み直し、schema の dims を結果の dims に追従させる。
 `resample` は薄い wrapper object を返し、`mean`, `sum`, `median`, `max`, `first`, `last`
 のような基本集約結果は再び `SopranArray` に包み直す。
+この resample 集約は `loaded.metadata["operations"]` に cadence と reducer を残す。
 
 ```python
 flux = esa1.energy_flux

@@ -29,7 +29,8 @@ same lightweight page model as mission and endpoint objects.
 `SopranArray.schema()` returns the same object for endpoint-like access.
 `SopranArray.trange` aliases the loaded `TimeRange`, and
 `SopranArray.metadata` returns a JSON-ready provenance snapshot with the object
-type, name, time range, variable schema, and source files.
+type, name, time range, variable schema, source files, and optional derived
+operations.
 APIs that accept `context=` can use either `context=loaded` or
 `context=loaded.metadata`; both record the same loaded-object provenance.
 For table workflows, `SopranArray.to_polars()` flattens the loaded xarray
@@ -53,6 +54,7 @@ aggregations such as `mean()`, `sum()`, `median()`, `max()`, `first()`, and
 hourly = quality.resample(time="1h").mean()
 counts_10s = counts.resample(time="10s").sum()
 hourly.to_polars()
+hourly.metadata["operations"]
 ```
 
 Use `SopranArray.write_parquet(store, ...)` when a single loaded variable should

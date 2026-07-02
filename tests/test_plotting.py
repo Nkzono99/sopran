@@ -237,6 +237,13 @@ def test_loaded_array_resample_delegates_to_xarray_resampler() -> None:
     assert resampled.to_xarray().dims == ("time",)
     assert resampled.to_xarray().values.tolist() == [1.5, 3.5]
     assert resampled.metadata["schema"]["dims"] == ["time"]
+    assert resampled.metadata["operations"] == [
+        {
+            "operation": "resample",
+            "parameters": {"time": "2min"},
+            "reducer": "mean",
+        }
+    ]
 
 
 def test_loaded_array_resampler_wraps_sum_and_median_reductions() -> None:
