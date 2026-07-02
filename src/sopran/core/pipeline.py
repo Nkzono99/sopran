@@ -135,6 +135,8 @@ class Pipeline:
         root: str | None = None,
         y: str = "energy",
         backend: str = "matplotlib",
+        frame: str | None = None,
+        aggregation: dict[str, Any] | None = None,
     ) -> Pipeline:
         parameters = {
             "quicklook_name": name,
@@ -144,6 +146,10 @@ class Pipeline:
         }
         if root is not None:
             parameters["root"] = root
+        if frame is not None:
+            parameters["frame"] = frame
+        if aggregation is not None:
+            parameters["aggregation"] = dict(aggregation)
         return self._with_stage("quicklook", **parameters)
 
     def write(

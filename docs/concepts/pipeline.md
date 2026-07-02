@@ -11,7 +11,11 @@ pipe = (
     .decode()
     .normalize()
     .select_variables("counts")
-    .quicklook("counts")
+    .quicklook(
+        "counts",
+        frame="SSE",
+        aggregation={"mode": "native"},
+    )
     .write("kaguya.esa1.counts", layer="normalized")
 )
 ```
@@ -66,10 +70,11 @@ results by day, streams KAGUYA ESA1 catalog shards, issues a
 `PipelineResult.run_id` for each `run()` call, skips
 already complete KAGUYA ESA1 outputs with `run(resume=True)`, records failed
 KAGUYA ESA1 shards with `run(on_error="continue")`, writes daily KAGUYA ESA1
-parquet shards with `write(..., partition="day")`, and can write a Matplotlib
-PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.
+parquet shards with `write(..., partition="day")`, and can write Matplotlib
+PNG/HTML quicklooks plus JSON metadata for KAGUYA ESA1 pipeline runs.
 Quicklook metadata records the pipeline run ID, source, stage names, time range,
-output dataset/layer, selected variable, backend, and artifact list.
+output dataset/layer, selected variable, backend, artifact list, and optional
+`frame` / `aggregation` values declared in the quicklook stage.
 
 KAGUYA ESA1 pipeline writes also add manifest provenance under
 `dataset.json["provenance"]`, including run ID, source, stages, run mode, time

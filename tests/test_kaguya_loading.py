@@ -300,7 +300,11 @@ def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
         .decode()
         .normalize()
         .select_variables("energy_flux", "counts", "quality")
-        .quicklook("esa1_counts")
+        .quicklook(
+            "esa1_counts",
+            frame="SSE",
+            aggregation={"mode": "native", "note": "pipeline-plan"},
+        )
         .write("kaguya.esa1.normalized", layer="normalized")
     )
 
@@ -318,6 +322,12 @@ def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
     )
     assert plan.output_dataset == "kaguya.esa1.normalized"
     assert plan.output_layer == "normalized"
+    quicklook_stage = plan.stages[4]
+    assert quicklook_stage.parameters["frame"] == "SSE"
+    assert quicklook_stage.parameters["aggregation"] == {
+        "mode": "native",
+        "note": "pipeline-plan",
+    }
 
 
 def test_pipeline_write_accepts_database_product_reference(tmp_path) -> None:

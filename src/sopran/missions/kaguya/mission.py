@@ -760,6 +760,7 @@ def _write_pipeline_quicklooks(
         backend = str(stage.parameters.get("backend", "matplotlib"))
         if backend != "matplotlib":
             raise ValueError("KAGUYA pipeline quicklook currently supports only matplotlib")
+        aggregation = stage.parameters.get("aggregation", {"mode": "native"})
         item = _pipeline_plot_item(data, variable, y=str(stage.parameters.get("y", "energy")))
         results.append(
             stack(item).quicklook(
@@ -768,7 +769,8 @@ def _write_pipeline_quicklooks(
                 formats=formats,
                 dataset_id=pipeline.output_dataset,
                 time_range=pipeline.time,
-                aggregation={"mode": "native"},
+                frame=stage.parameters.get("frame"),
+                aggregation=aggregation if isinstance(aggregation, dict) else {"mode": str(aggregation)},
                 metadata=_pipeline_quicklook_metadata(pipeline, variable, run_id=run_id),
             )
         )

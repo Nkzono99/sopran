@@ -9,7 +9,11 @@ pipe = (
     .decode()
     .normalize()
     .select_variables("counts")
-    .quicklook("counts")
+    .quicklook(
+        "counts",
+        frame="SSE",
+        aggregation={"mode": "native"},
+    )
     .write("kaguya.esa1.counts", layer="normalized")
 )
 
@@ -28,7 +32,8 @@ The dry-run result does not execute pipeline stages. It reports the source,
 time range, stage list, and output target.
 
 For KAGUYA ESA1, `run()` writes quicklooks under
-`<dataset>/preview/<name>.png` with a matching JSON metadata file.
+`<dataset>/preview/<name>.png` with a matching JSON metadata file. Use
+`formats=("png", "html")` when a static HTML report should be written too.
 
 Use `scan()` or `collect()` when the input already exists in the store:
 

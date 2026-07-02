@@ -371,7 +371,11 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
         kg.esa1.pipeline(spn.day("2008-01-01"))
         .decode()
         .select_variables("counts")
-        .quicklook("counts")
+        .quicklook(
+            "counts",
+            frame="SSE",
+            aggregation={"mode": "native", "cadence": "raw"},
+        )
         .write("kaguya.esa1.counts", layer="normalized")
         .run()
     )
@@ -390,7 +394,11 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
         "start": "2008-01-01T00:00:00Z",
         "stop": "2008-01-02T00:00:00Z",
     }
-    assert result.outputs[1].metadata["aggregation"] == {"mode": "native"}
+    assert result.outputs[1].metadata["frame"] == "SSE"
+    assert result.outputs[1].metadata["aggregation"] == {
+        "mode": "native",
+        "cadence": "raw",
+    }
 
 
 def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:
