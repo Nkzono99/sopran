@@ -9,7 +9,7 @@ The current implementation focuses on an end-to-end vertical slice:
 
 - KAGUYA/SELENE PACE ESA1 raw PBF discovery, local decode, `xarray` conversion,
   `polars` conversion, parquet storage, and plotting.
-- ARTEMIS FGM object API and store-backed normalized parquet loading.
+- ARTEMIS FGM and ESA object APIs with store-backed normalized parquet loading.
 - A filesystem `Store` with raw, normalized, features, models, and databases layers.
 - A pipeline API for scan, collect, append, replace, and dry-run planning.
 - Moon surface product skeletons for DEM, SVM, SZA, shadow, and illumination maps.

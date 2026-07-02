@@ -26,6 +26,18 @@ ARTEMIS_FGM_SCHEMA = InstrumentSchema(
     instrument="fgm",
     variables=(ARTEMIS_MAGNETIC_FIELD,),
 )
+ARTEMIS_ION_ENERGY_FLUX = VariableSchema(
+    name="ion_energy_flux",
+    aliases=("ion_eflux", "esa"),
+    dims=("time", "energy"),
+    units="eV/(cm^2 s sr eV)",
+    description="ARTEMIS ESA ion differential energy flux.",
+)
+ARTEMIS_ESA_SCHEMA = InstrumentSchema(
+    mission="artemis",
+    instrument="esa",
+    variables=(ARTEMIS_ION_ENERGY_FLUX,),
+)
 
 
 class Artemis:
@@ -57,11 +69,15 @@ class ArtemisProbe:
         self.mission = mission
         self.probe = probe
         self.fgm = ArtemisFgmInstrument(self)
+        self.esa = ArtemisEsaInstrument(self)
 
     def info(self) -> InfoPage:
         return InfoPage(
             title=f"ARTEMIS.{self.probe.upper()}",
-            lines=("fgm: fluxgate magnetometer",),
+            lines=(
+                "fgm: fluxgate magnetometer",
+                "esa: electrostatic analyzer",
+            ),
         )
 
     def guide(self, *, language: str = "ja") -> GuidePage:
@@ -81,8 +97,12 @@ class ArtemisFgmInstrument:
         self.b = self.magnetic_field
 
     @property
+    def instrument_id(self) -> str:
+        return "fgm"
+
+    @property
     def dataset_prefix(self) -> str:
-        return f"artemis.{self.probe.probe}.fgm"
+        return f"artemis.{self.probe.probe}.{self.instrument_id}"
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -100,6 +120,42 @@ class ArtemisFgmInstrument:
         return self.guide(language=language)
 
 
+class ArtemisEsaInstrument:
+    def __init__(self, probe: ArtemisProbe) -> None:
+        self.probe = probe
+        self.ion_energy_flux = ArtemisVariableEndpoint(
+            instrument=self,
+            schema=ARTEMIS_ION_ENERGY_FLUX,
+        )
+        self.ion_eflux = self.ion_energy_flux
+
+    @property
+    def instrument_id(self) -> str:
+        return "esa"
+
+    @property
+    def dataset_prefix(self) -> str:
+        return f"artemis.{self.probe.probe}.{self.instrument_id}"
+
+    def info(self) -> InfoPage:
+        return InfoPage(
+            title=f"ARTEMIS.{self.probe.probe.upper()}.ESA",
+            lines=(
+                f"{ARTEMIS_ION_ENERGY_FLUX.name}: "
+                f"{ARTEMIS_ION_ENERGY_FLUX.description}",
+            ),
+        )
+
+    def schema(self) -> InstrumentSchema:
+        return ARTEMIS_ESA_SCHEMA
+
+    def guide(self, *, language: str = "ja") -> GuidePage:
+        return self.probe.guide(language=language).with_schema(ARTEMIS_ESA_SCHEMA)
+
+    def help(self, *, language: str = "ja") -> GuidePage:
+        return self.guide(language=language)
+
+
 @dataclass(frozen=True)
 class ArtemisLoadPlan:
     dataset_id: str
@@ -107,7 +163,7 @@ class ArtemisLoadPlan:
 
 
 class ArtemisVariableEndpoint:
-    def __init__(self, instrument: ArtemisFgmInstrument, schema: VariableSchema) -> None:
+    def __init__(self, instrument: Any, schema: VariableSchema) -> None:
         self.instrument = instrument
         self._schema = schema
         self.name = schema.name
@@ -146,8 +202,9 @@ class ArtemisVariableEndpoint:
             ).collect()
         except DatasetNotFoundError as exc:
             probe = self.instrument.probe.probe.upper()
+            instrument = str(self.instrument.instrument_id).upper()
             raise NotImplementedError(
-                f"ARTEMIS {probe} FGM load is not implemented yet"
+                f"ARTEMIS {probe} {instrument} load is not implemented yet"
             ) from exc
         return SopranArray(
             name=self.name,
@@ -205,10 +262,11 @@ def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
         raise RuntimeError("xarray is required for ARTEMIS FGM load()") from exc
 
     if frame.is_empty():
+        secondary_dim = schema.dims[1] if len(schema.dims) > 1 else "value"
         return xr.DataArray(
             np.empty((0, 0)),
             dims=schema.dims,
-            coords={"time": [], "component": []},
+            coords={"time": [], secondary_dim: []},
             name=schema.name,
             attrs={"units": schema.units, "description": schema.description},
         )
@@ -220,21 +278,22 @@ def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
             (pl.col("time") >= time.start_iso) & (pl.col("time") < time.stop_iso)
         )
 
-    rows = frame.sort(["time", "component"]).to_dicts()
+    secondary_dim = schema.dims[1]
+    rows = frame.sort(["time", secondary_dim]).to_dicts()
     times = _unique(row["time"] for row in rows)
-    components = _unique(row["component"] for row in rows)
-    values = np.full((len(times), len(components)), np.nan)
+    secondary_values = _unique(row[secondary_dim] for row in rows)
+    values = np.full((len(times), len(secondary_values)), np.nan)
     time_index = {value: index for index, value in enumerate(times)}
-    component_index = {value: index for index, value in enumerate(components)}
+    secondary_index = {value: index for index, value in enumerate(secondary_values)}
     for row in rows:
-        values[time_index[row["time"]], component_index[row["component"]]] = row[
+        values[time_index[row["time"]], secondary_index[row[secondary_dim]]] = row[
             schema.name
         ]
 
     return xr.DataArray(
         values,
         dims=schema.dims,
-        coords={"time": times, "component": components},
+        coords={"time": times, secondary_dim: secondary_values},
         name=schema.name,
         attrs={"units": schema.units, "description": schema.description},
     )

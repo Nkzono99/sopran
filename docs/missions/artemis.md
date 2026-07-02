@@ -7,18 +7,22 @@ API.
 art = spn.Artemis()
 time = spn.day("2011-07-01")
 plan = art.p1.fgm.magnetic_field.plan(time)
+ion_plan = art.p1.esa.ion_energy_flux.plan(time)
 ```
 
 ## Implemented
 
 - P1 and P2 probe objects.
 - FGM `magnetic_field` endpoint with schema and plan objects.
+- ESA `ion_energy_flux` endpoint with schema and plan objects.
 - Store-backed normalized parquet loading for existing
-  `artemis.<probe>.fgm.magnetic_field` datasets.
+  `artemis.<probe>.fgm.magnetic_field` and
+  `artemis.<probe>.esa.ion_energy_flux` datasets.
 - Project case context through `case.artemis.p1.fgm.magnetic_field`.
 - `line()` PlotItem generation for FGM vector panels.
 - Bilingual package guides via `art.guide(language="ja")`,
-  `art.guide(language="en")`, and `art.p1.fgm.guide(language=...)`.
+  `art.guide(language="en")`, `art.p1.fgm.guide(language=...)`, and
+  `art.p1.esa.guide(language=...)`.
 
 ```python
 stack = case.stack(
@@ -32,5 +36,5 @@ fig = plot_result.fig
 
 - Connect CDAWeb/HAPI discovery.
 - Add raw download policy and provenance.
-- Preserve coordinate frame and vector component metadata in the normalized
-  schema.
+- Preserve coordinate frame, vector component, and energy-bin metadata in the
+  normalized schema.

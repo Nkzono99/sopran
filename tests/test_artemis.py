@@ -5,7 +5,10 @@ import pytest
 
 import sopran as spn
 from sopran.core.schema import InstrumentSchema
-from sopran.missions.artemis.mission import ARTEMIS_MAGNETIC_FIELD
+from sopran.missions.artemis.mission import (
+    ARTEMIS_ION_ENERGY_FLUX,
+    ARTEMIS_MAGNETIC_FIELD,
+)
 
 
 def test_artemis_probe_fgm_endpoint_exposes_schema_and_plan() -> None:
@@ -24,11 +27,28 @@ def test_artemis_probe_fgm_endpoint_exposes_schema_and_plan() -> None:
     assert plan.time == time
 
 
+def test_artemis_probe_esa_endpoint_exposes_schema_and_plan() -> None:
+    art = spn.Artemis()
+    time = spn.day("2011-07-01")
+
+    endpoint = art.p1.esa.ion_energy_flux
+    plan = endpoint.plan(time)
+
+    assert "esa" in str(art.p1.info())
+    assert "ion_energy_flux" in str(art.p1.esa.info())
+    assert art.p1.esa.schema().instrument == "esa"
+    assert endpoint.schema().dims == ("time", "energy")
+    assert endpoint.schema().units == "eV/(cm^2 s sr eV)"
+    assert plan.dataset_id == "artemis.p1.esa.ion_energy_flux"
+    assert plan.time == time
+
+
 def test_artemis_guides_return_markdown_pages() -> None:
     art = spn.Artemis()
 
     mission_guide = art.guide()
     fgm_guide = art.p1.fgm.guide()
+    esa_guide = art.p1.esa.guide()
     variable_guide = art.p1.fgm.magnetic_field.guide()
 
     assert mission_guide.language == "ja"
@@ -40,6 +60,9 @@ def test_artemis_guides_return_markdown_pages() -> None:
     )
     assert "| magnetic_field | time, component | nT |" in fgm_guide.to_markdown()
     assert "b, fgm" in fgm_guide.to_markdown()
+    assert "| ion_energy_flux | time, energy | eV/(cm^2 s sr eV) |" in (
+        esa_guide.to_markdown()
+    )
     assert art.help() == mission_guide
     assert art.p1.help() == mission_guide
     assert art.p1.fgm.help() == fgm_guide
@@ -271,6 +294,20 @@ def test_artemis_load_reads_normalized_magnetic_field_from_store(tmp_path) -> No
     assert array.values.tolist() == [[1.0, 2.0, 3.0]]
 
 
+def test_artemis_load_reads_normalized_ion_energy_flux_from_store(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2011-07-01")
+    _write_artemis_esa_dataset(store, time)
+
+    ion_flux = spn.Artemis(store=store).p1.esa.ion_energy_flux.load(time)
+    array = ion_flux.to_xarray()
+
+    assert ion_flux.name == "ion_energy_flux"
+    assert array.dims == ("time", "energy")
+    assert array.coords["energy"].values.tolist() == [100.0, 300.0]
+    assert array.values.tolist() == [[10.0, 30.0]]
+
+
 def test_artemis_variable_endpoint_builds_line_plot_item(tmp_path) -> None:
     import matplotlib
 
@@ -294,6 +331,16 @@ def test_top_level_load_reads_artemis_dataset_from_store(tmp_path) -> None:
     magnetic_field = spn.load("artemis.p1.fgm.magnetic_field", time, store=store)
 
     assert magnetic_field.to_xarray().values.tolist() == [[1.0, 2.0, 3.0]]
+
+
+def test_top_level_load_reads_artemis_esa_dataset_from_store(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2011-07-01")
+    _write_artemis_esa_dataset(store, time)
+
+    ion_flux = spn.load("artemis.p1.esa.ion_energy_flux", time, store=store)
+
+    assert ion_flux.to_xarray().values.tolist() == [[10.0, 30.0]]
 
 
 def test_project_case_artemis_uses_project_store_for_load(tmp_path) -> None:
@@ -361,6 +408,30 @@ def _write_artemis_fgm_dataset(store: spn.Store, time: spn.TimeRange) -> None:
             mission="artemis",
             instrument="p1.fgm",
             variables=(ARTEMIS_MAGNETIC_FIELD,),
+        ),
+        time_coverage=time,
+        frame=frame,
+    )
+
+
+def _write_artemis_esa_dataset(store: spn.Store, time: spn.TimeRange) -> None:
+    frame = pl.DataFrame(
+        {
+            "time": ["2011-07-01T00:00:00Z"] * 2,
+            "energy": [100.0, 300.0],
+            "ion_energy_flux": [10.0, 30.0],
+        }
+    )
+    store.write_parquet_dataset(
+        dataset_id="artemis.p1.esa.ion_energy_flux",
+        layer="normalized",
+        mission="artemis",
+        instrument="p1.esa",
+        product="ion_energy_flux",
+        schema=InstrumentSchema(
+            mission="artemis",
+            instrument="p1.esa",
+            variables=(ARTEMIS_ION_ENERGY_FLUX,),
         ),
         time_coverage=time,
         frame=frame,

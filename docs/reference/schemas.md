@@ -17,3 +17,9 @@ Update the schema objects first, then regenerate this page.
 | name | dims | units | dtype | frame | aliases | description |
 | --- | --- | --- | --- | --- | --- | --- |
 | magnetic_field | time, component | nT |  |  | b, fgm | ARTEMIS fluxgate magnetic field vector. |
+
+## artemis / esa
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| ion_energy_flux | time, energy | eV/(cm^2 s sr eV) |  |  | ion_eflux, esa | ARTEMIS ESA ion differential energy flux. |

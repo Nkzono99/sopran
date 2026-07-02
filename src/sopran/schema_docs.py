@@ -9,12 +9,13 @@ from sopran.core.schema import InstrumentSchema
 
 
 def builtin_schemas() -> tuple[InstrumentSchema, ...]:
-    from sopran.missions.artemis.mission import ARTEMIS_FGM_SCHEMA
+    from sopran.missions.artemis.mission import ARTEMIS_ESA_SCHEMA, ARTEMIS_FGM_SCHEMA
     from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
     return (
         KAGUYA_ESA1_SCHEMA,
         ARTEMIS_FGM_SCHEMA,
+        ARTEMIS_ESA_SCHEMA,
     )
 
 

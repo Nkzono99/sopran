@@ -2288,6 +2288,7 @@ M5: PlotStack minimum
 M6: ARTEMIS
   - p1.fgm.magnetic_field
   - p1.esa.ion_energy_flux
+  - store-backed normalized parquet loading skeleton for both endpoints
 
 M7: Moon / DEM / SVM
 ```
