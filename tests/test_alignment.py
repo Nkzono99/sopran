@@ -314,6 +314,59 @@ def test_alignment_result_writes_parquet_feature_table(tmp_path) -> None:
     ]
 
 
+def test_alignment_result_exports_long_feature_table() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([5.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="wave_power",
+    )
+
+    aligned = spn.align(
+        sza,
+        wave_power,
+        grid=bins,
+        method="nearest",
+        tolerance="2s",
+    )
+
+    assert aligned.to_polars(layout="long").to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "feature": "sza", "value": 70.0},
+        {"time": "2008-01-01T00:00:05Z", "feature": "wave_power", "value": 5.0},
+    ]
+
+
+def test_alignment_result_writes_long_parquet_feature_table(tmp_path) -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    aligned = spn.align(sza, grid=bins, method="nearest", tolerance="3s")
+
+    path = aligned.write_parquet(tmp_path / "features-long.parquet", layout="long")
+
+    assert path == tmp_path / "features-long.parquet"
+    assert pl.read_parquet(path).to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "feature": "sza", "value": 70.0}
+    ]
+
+
 def test_sample_table_uses_product_specific_alignment_methods() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),

@@ -124,6 +124,7 @@ ml_features = (
 `join="outer"` は全binを残し、`join="inner"` は欠損featureを含むbinを落とします。
 `fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
 `partial="keep"` はcadenceで割り切れない末尾binを残し、`partial="drop"` は捨てます。
+`to_polars(layout="long")` は `time`, `feature`, `value` 形式のtableを返します。
 `spn.align(...).write_parquet("features.parquet")` または
 `spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 

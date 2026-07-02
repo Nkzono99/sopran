@@ -61,6 +61,10 @@ drops bins that do not have every requested feature. Use `fill=<value>` with
 the outer join when downstream tools need explicit sentinel values instead of
 nulls.
 
+The default feature table layout is wide. `to_polars(layout="long")` returns a
+tidy `time`, `feature`, `value` table, which is often easier to facet or group
+in exploratory plotting tools.
+
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
 `magnetic_field_z`.

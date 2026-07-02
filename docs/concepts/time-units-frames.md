@@ -55,6 +55,14 @@ features = (
 frame = features.to_polars()
 ```
 
+The default table layout is wide, with one feature per column. Use
+`layout="long"` for a tidy `time`, `feature`, `value` table:
+
+```python
+long_frame = features.to_polars(layout="long")
+features.write_parquet("features-long.parquet", layout="long")
+```
+
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `mean`, `max`, or `median` alignment onto regular
 half-open bins. `nearest` samples the bin center; the other reducers aggregate

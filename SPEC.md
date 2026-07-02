@@ -1491,7 +1491,9 @@ stack = spn.stack(
 - `join="outer"` は全 time bin を保持し、欠損 feature を null にする既定動作とする。
 - `join="inner"` は null を含む bin を落とし、ML / 統計用の完全行 table を作る。
 - `fill=<value>` は `join="outer"` で残した欠損 feature を明示値で埋める。
-- `quality mask`, `wide/long` の扱いは feature table API の拡張点として残す。
+- `to_polars(layout="wide")` は feature ごとに列を持つ既定 table を返す。
+- `to_polars(layout="long")` は `time`, `feature`, `value` の tidy table を返す。
+- `quality mask` の扱いは feature table API の拡張点として残す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
@@ -1512,7 +1514,7 @@ features = spn.align(
     tolerance="5s",
     join="outer",
     fill=-1.0,
-).to_polars()
+).to_polars(layout="wide")
 ```
 
 product ごとに sampling rule が異なる場合は、`SampleTable` を使う。
@@ -1525,7 +1527,7 @@ features = (
     .add(case.kaguya.lrs.density.load(), method="median")
     .add(case.artemis.p1.fgm.magnetic_field.load(), method="nearest", tolerance="2s")
     .collect(join="inner")
-    .to_polars()
+    .to_polars(layout="long")
 )
 ```
 
@@ -1537,8 +1539,9 @@ v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `me
 `fill` が指定された場合は、`outer` で残った欠損 feature 値をその値で置き換える。
 `time x component` の vector product は
 `magnetic_field_x`, `magnetic_field_y`, `magnetic_field_z` のような wide columns へ展開する。
+`layout="long"` は wide column を `feature` 値へ畳む。
 スペクトル、distribution、`center sample` / `first` / `last` などの reducer、欠損処理、
-quality mask、wide/long table policy は後続 milestone とする。
+quality mask は後続 milestone とする。
 
 v0.1 の PlotStack は最小でよい。まずは KAGUYA ESA1 spectrogram と orbit altitude line を
 同じ UTC axis で縦に並べることを目標にする。`panel`, `datashader`, `html report`,

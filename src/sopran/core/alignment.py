@@ -10,6 +10,7 @@ from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 AlignMethod = Literal["nearest", "mean", "max", "median"]
 AlignmentMethod = Literal["nearest", "mean", "max", "median", "mixed"]
 JoinMode = Literal["outer", "inner"]
+TableLayout = Literal["wide", "long"]
 PartialPolicy = Literal["error", "keep", "drop"]
 _ALIGN_METHODS = ("nearest", "mean", "max", "median")
 _JOIN_MODES = ("outer", "inner")
@@ -57,15 +58,25 @@ class AlignmentResult:
     join: JoinMode = "outer"
     fill: Any | None = None
 
-    def to_polars(self):
+    def to_polars(self, *, layout: TableLayout = "wide"):
         import polars as pl
 
-        return pl.DataFrame(list(self.rows))
+        if layout == "wide":
+            return pl.DataFrame(list(self.rows))
+        if layout == "long":
+            return pl.DataFrame(
+                [
+                    {"time": row["time"], "feature": column, "value": row[column]}
+                    for row in self.rows
+                    for column in self.columns
+                ]
+            )
+        raise ValueError("layout must be 'wide' or 'long'")
 
-    def write_parquet(self, path: str | Path) -> Path:
+    def write_parquet(self, path: str | Path, *, layout: TableLayout = "wide") -> Path:
         output = Path(path)
         output.parent.mkdir(parents=True, exist_ok=True)
-        self.to_polars().write_parquet(output)
+        self.to_polars(layout=layout).write_parquet(output)
         return output
 
 
