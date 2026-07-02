@@ -2,7 +2,9 @@
 
 from sopran.bodies import Moon
 from sopran.core import AlignmentResult
+from sopran.core import BackendError, ConfigError, DecodeError, DownloadError
 from sopran.core import Database, DatasetNotFoundError, GuidePage, InfoPage
+from sopran.core import FrameTransformError, PipelineError, SchemaError
 from sopran.core import PlotArtifact, PlotItem, PlotPlan, ProductRef
 from sopran.core import PlotStack, SampleSpec, SampleTable, SopranError, Store, TimeRange
 from sopran.core import QuicklookResult
@@ -21,8 +23,13 @@ __all__ = [
     "InfoPage",
     "AlignmentResult",
     "Artemis",
+    "BackendError",
+    "ConfigError",
     "Database",
     "DatasetNotFoundError",
+    "DecodeError",
+    "DownloadError",
+    "FrameTransformError",
     "Kaguya",
     "Moon",
     "PlotArtifact",
@@ -30,11 +37,13 @@ __all__ = [
     "PlotPlan",
     "PlotStack",
     "Project",
+    "PipelineError",
     "ProductRef",
     "QuicklookResult",
     "Region",
     "SampleSpec",
     "SampleTable",
+    "SchemaError",
     "SopranError",
     "Store",
     "TimeRange",

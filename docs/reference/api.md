@@ -14,6 +14,8 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.pages.InfoPage
 
+::: sopran.core.errors
+
 ::: sopran.core.store.Store
 
 ::: sopran.core.project.Project

@@ -6,7 +6,17 @@ from sopran.core.alignment import (
     align,
     time_bins,
 )
-from sopran.core.errors import DatasetNotFoundError, SopranError
+from sopran.core.errors import (
+    BackendError,
+    ConfigError,
+    DatasetNotFoundError,
+    DecodeError,
+    DownloadError,
+    FrameTransformError,
+    PipelineError,
+    SchemaError,
+    SopranError,
+)
 from sopran.core.database import Database, ProductRef
 from sopran.core.loaders import load
 from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
@@ -28,9 +38,15 @@ __all__ = [
     "GuidePage",
     "InfoPage",
     "AlignmentResult",
+    "BackendError",
+    "ConfigError",
     "Database",
     "DatasetNotFoundError",
+    "DecodeError",
+    "DownloadError",
+    "FrameTransformError",
     "Pipeline",
+    "PipelineError",
     "PipelinePlan",
     "PipelineResult",
     "PipelineStage",
@@ -43,6 +59,7 @@ __all__ = [
     "SampleTable",
     "Store",
     "ProductRef",
+    "SchemaError",
     "SopranError",
     "TimeRange",
     "TimeBins",

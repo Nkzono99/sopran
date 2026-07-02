@@ -29,3 +29,19 @@ def test_scan_empty_registered_dataset_raises_dataset_not_found_error(tmp_path) 
         store.scan_dataset("kaguya.esa1.empty", layer="normalized")
 
     assert "kaguya.esa1.empty" in str(exc.value)
+
+
+def test_public_exception_hierarchy_matches_spec() -> None:
+    expected = (
+        "ConfigError",
+        "DownloadError",
+        "DecodeError",
+        "SchemaError",
+        "FrameTransformError",
+        "PipelineError",
+        "BackendError",
+    )
+
+    for name in expected:
+        error_type = getattr(spn, name)
+        assert issubclass(error_type, spn.SopranError)
