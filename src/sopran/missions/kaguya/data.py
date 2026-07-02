@@ -123,6 +123,8 @@ class KaguyaESA1Data:
         reduce_look: Literal["sum"] | None = None,
         dataset_id: str | None = None,
         layer: str = "normalized",
+        overwrite: bool = False,
+        append: bool = False,
     ) -> DatasetRecord:
         product = variable
         return store.write_parquet_dataset(
@@ -135,6 +137,8 @@ class KaguyaESA1Data:
             time_coverage=self.time,
             frame=self.to_polars(variable, reduce_look=reduce_look),
             source_files=tuple(str(path) for path in self.files),
+            overwrite=overwrite,
+            append=append,
         )
 
     def _empty_xarray(self, np: Any, xr: Any):

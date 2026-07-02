@@ -93,9 +93,16 @@ class Store:
         shard_path: str = "shards/part-000.parquet",
         compression: str = "zstd",
         overwrite: bool = False,
+        append: bool = False,
         producer: str = "sopran",
     ) -> DatasetRecord:
+        if append and overwrite:
+            raise ValueError("append and overwrite cannot both be true")
+
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+        existing_shards = _read_catalog_shards(record.catalog_path) if append else ()
+        if append and shard_path == "shards/part-000.parquet":
+            shard_path = _next_shard_path(existing_shards)
         target = _resolve_child(record.root, shard_path)
         if target.exists() and not overwrite:
             raise FileExistsError(f"Parquet shard already exists: {target}")
@@ -112,6 +119,7 @@ class Store:
             time_coverage=time_coverage,
             source_files=source_files,
             shards=(
+                *existing_shards,
                 {
                     "path": Path(shard_path).as_posix(),
                     "row_count": _frame_row_count(frame),
@@ -223,6 +231,38 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
     if not rows:
         rows = [{"path": "", "row_count": 0, "checksum": "", "status": "empty"}]
     pl.DataFrame(rows).write_parquet(path)
+
+
+def _read_catalog_shards(path: Path) -> tuple[dict[str, Any], ...]:
+    if not path.exists():
+        return ()
+
+    import polars as pl
+
+    rows = []
+    for row in pl.read_parquet(path).iter_rows(named=True):
+        shard_path = str(row.get("path") or "")
+        if not shard_path:
+            continue
+        rows.append(
+            {
+                "path": shard_path,
+                "row_count": int(row.get("row_count") or 0),
+                "checksum": str(row.get("checksum") or ""),
+                "status": str(row.get("status") or "complete"),
+            }
+        )
+    return tuple(rows)
+
+
+def _next_shard_path(shards: tuple[dict[str, Any], ...]) -> str:
+    existing = {str(shard.get("path") or "") for shard in shards}
+    index = 0
+    while True:
+        candidate = f"shards/part-{index:03d}.parquet"
+        if candidate not in existing:
+            return candidate
+        index += 1
 
 
 def _resolve_child(root: Path, child: str) -> Path:

@@ -229,7 +229,7 @@ class PaceInstrument(KaguyaInstrument):
     def pipeline(self, time: TimeRange) -> Pipeline:
         return Pipeline(source=f"kaguya.{self.sensor.lower()}", time=time, context=self)
 
-    def _run_pipeline(self, pipeline: Pipeline) -> PipelineResult:
+    def _run_pipeline(self, pipeline: Pipeline, *, mode: str = "create") -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
         if pipeline.output_dataset is None or pipeline.output_layer is None:
@@ -242,6 +242,8 @@ class PaceInstrument(KaguyaInstrument):
             variable=variable,
             dataset_id=pipeline.output_dataset,
             layer=pipeline.output_layer,
+            overwrite=mode == "replace",
+            append=mode == "append",
         )
         return PipelineResult(
             plan=pipeline.plan(),

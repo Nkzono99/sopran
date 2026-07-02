@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from sopran.core.time import TimeRange
+
+PipelineRunMode = Literal["create", "append", "replace"]
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,14 @@ class Pipeline:
             output_layer=self.output_layer,
         )
 
-    def run(self, *, dry_run: bool = False) -> PipelineResult:
+    def run(
+        self,
+        *,
+        dry_run: bool = False,
+        mode: PipelineRunMode = "create",
+    ) -> PipelineResult:
+        if mode not in ("create", "append", "replace"):
+            raise ValueError("mode must be 'create', 'append', or 'replace'")
         plan = self.plan()
         if dry_run:
             return PipelineResult(
@@ -89,7 +98,7 @@ class Pipeline:
             )
         runner = getattr(self.context, "_run_pipeline", None)
         if runner is not None:
-            return runner(self)
+            return runner(self, mode=mode)
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
     def _with_stage(self, name: str, **parameters: Any) -> Pipeline:

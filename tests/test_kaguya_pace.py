@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
+import pytest
 
 import sopran as spn
 from sopran import Store
@@ -243,6 +244,56 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     assert result.status == "complete"
     assert result.outputs[0].manifest()["dataset_id"] == "kaguya.esa1.counts"
     assert result.outputs[0].scan().collect().height == 2048
+
+
+def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+    pipe.run()
+
+    with pytest.raises(FileExistsError):
+        pipe.run()
+
+    result = pipe.run(mode="replace")
+
+    assert result.status == "complete"
+    assert result.outputs[0].catalog().height == 1
+    assert result.outputs[0].scan().collect().height == 2048
+
+
+def test_kaguya_esa1_pipeline_run_append_adds_counts_shard(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+    pipe.run()
+
+    result = pipe.run(mode="append")
+
+    catalog = result.outputs[0].catalog()
+    assert catalog.select("path").to_series().to_list() == [
+        "shards/part-000.parquet",
+        "shards/part-001.parquet",
+    ]
+    assert result.outputs[0].scan().collect().height == 4096
 
 
 def _write_type01_pbf(path: Path) -> None:
