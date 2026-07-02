@@ -31,6 +31,16 @@ Catalog rows currently include:
 
 The catalog is the boundary for append, replace, and lazy scan operations.
 
+Raw file sidecar layout:
+
+```text
+raw/kaguya/l2/example.dat
+raw/kaguya/l2/example.dat.sopran.json
+```
+
+The sidecar manifest records the relative raw path, mission, provider, download
+URL, acquisition time, SHA-256 checksum, and byte size.
+
 `dataset.json` includes dataset lifecycle metadata. `version` is the dataset
 content version and defaults to `"1"`. `status` is one of `scratch`,
 `candidate`, `adopted`, or `deprecated`, and defaults to `candidate`.

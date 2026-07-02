@@ -243,6 +243,31 @@ def test_store_parquet_writer_refuses_to_overwrite_existing_shard(tmp_path) -> N
         store.write_parquet_dataset(**kwargs)
 
 
+def test_store_registers_raw_file_manifest(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    raw_file = store.raw_path("kaguya", "l2", "example.dat")
+    raw_file.parent.mkdir(parents=True)
+    raw_file.write_bytes(b"raw payload")
+
+    record = store.register_raw_file(
+        "kaguya/l2/example.dat",
+        mission="kaguya",
+        provider="darts",
+        download_url="https://example.invalid/kaguya/l2/example.dat",
+    )
+
+    manifest = record.manifest()
+    assert record.path == raw_file
+    assert record.manifest_path == raw_file.with_name("example.dat.sopran.json")
+    assert manifest["path"] == "raw/kaguya/l2/example.dat"
+    assert manifest["mission"] == "kaguya"
+    assert manifest["provider"] == "darts"
+    assert manifest["download_url"] == "https://example.invalid/kaguya/l2/example.dat"
+    assert manifest["checksum"].startswith("sha256:")
+    assert manifest["size_bytes"] == len(b"raw payload")
+    assert manifest["acquired_at"].endswith("Z")
+
+
 def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     database = store.database("my_project")

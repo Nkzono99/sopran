@@ -47,6 +47,11 @@ extraction arguments.
 provenance object into `dataset.json`. Pipeline backends should use this for the
 pipeline source, stage list, mode, time range, and selected product or variable.
 
+Raw files are not renamed by SOPRAN. `Store.register_raw_file(...)` writes a
+sidecar manifest next to the raw file, named `<filename>.sopran.json`, with the
+relative raw path, mission, provider, download URL, acquisition time, checksum,
+and byte size.
+
 ## Dataset Registry
 
 `Store.datasets(refresh=True)` scans dataset manifests and writes

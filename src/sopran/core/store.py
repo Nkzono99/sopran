@@ -49,6 +49,31 @@ class Store:
     def registry_path(self, *parts: str) -> Path:
         return self.root.joinpath("registry", *parts)
 
+    def register_raw_file(
+        self,
+        path: Path | str,
+        *,
+        mission: str,
+        provider: str,
+        download_url: str | None = None,
+        acquired_at: str | None = None,
+    ) -> RawFileRecord:
+        raw_file = _resolve_raw_file(self.root, path)
+        if not raw_file.exists():
+            raise FileNotFoundError(f"Raw file not found: {raw_file}")
+        manifest_path = raw_file.with_name(f"{raw_file.name}.sopran.json")
+        manifest = {
+            "path": raw_file.relative_to(self.root).as_posix(),
+            "mission": mission,
+            "provider": provider,
+            "download_url": download_url,
+            "acquired_at": acquired_at or _utc_now_iso(),
+            "checksum": _sha256_file(raw_file),
+            "size_bytes": raw_file.stat().st_size,
+        }
+        _write_json(manifest_path, manifest)
+        return RawFileRecord(path=raw_file, manifest_path=manifest_path)
+
     def database(self, name: str):
         from sopran.core.database import Database
 
@@ -307,6 +332,15 @@ class DatasetRecord:
         return pl.scan_parquet([str(path) for path in paths])
 
 
+@dataclass(frozen=True)
+class RawFileRecord:
+    path: Path
+    manifest_path: Path
+
+    def manifest(self) -> dict[str, Any]:
+        return json.loads(self.manifest_path.read_text(encoding="utf-8"))
+
+
 def _dataset_parts(dataset_id: str) -> tuple[str, ...]:
     return tuple(part for part in dataset_id.split(".") if part)
 
@@ -471,6 +505,22 @@ def _resolve_child(root: Path, child: str) -> Path:
     resolved_root = root.resolve()
     if not target.is_relative_to(resolved_root):
         raise ValueError(f"Path escapes dataset root: {child}")
+    return target
+
+
+def _resolve_raw_file(root: Path, path: Path | str) -> Path:
+    raw_root = (root / "raw").resolve()
+    candidate = Path(path)
+    if candidate.is_absolute():
+        target = candidate.resolve()
+    else:
+        parts = candidate.parts
+        if parts and parts[0] == "raw":
+            target = (root / candidate).resolve()
+        else:
+            target = (raw_root / candidate).resolve()
+    if not target.is_relative_to(raw_root):
+        raise ValueError(f"Raw file path escapes raw root: {path}")
     return target
 
 
