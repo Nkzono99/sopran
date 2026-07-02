@@ -1656,6 +1656,8 @@ stack = spn.stack(
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに `dataset_id`、`time_range`、`frame`、`backend`、
   `aggregation` を標準 metadata key として保存する。
+- `plot(..., context=case)` と `quicklook(..., context=case)` は `case.metadata()` を
+  metadata の `context` に保存する。
 
 観測中に「ESA1 のスペクトルが変化した時に SZA、波動、LRS、磁場、軌道量はどうだったか」を
 見る用途では `PlotStack` を使い、各 product の native cadence を保持して並べる。
@@ -1758,7 +1760,7 @@ stack = case.stack(
 )
 
 stack.plan()
-stack.plot()
+stack.plot(context=case)
 stack.quicklook("wake_overview", context=case, formats=("png", "html"))
 ```
 

@@ -66,6 +66,7 @@ class PlotStack:
         self,
         *,
         backend: Literal["matplotlib"] = "matplotlib",
+        context: Any | None = None,
         figsize: tuple[float, float] | None = None,
     ) -> PlotResult:
         if not self.items:
@@ -100,15 +101,18 @@ class PlotStack:
         fig.autofmt_xdate()
         fig.tight_layout()
         plan = self.plan()
+        metadata = {
+            "backend": backend,
+            "panel_count": plan.panel_count,
+            "items": list(plan.items),
+        }
+        if context is not None:
+            metadata["context"] = _context_metadata(context)
         return PlotResult(
             fig=fig,
             axes=tuple(axes),
             backend=backend,
-            metadata={
-                "backend": backend,
-                "panel_count": plan.panel_count,
-                "items": list(plan.items),
-            },
+            metadata=metadata,
         )
 
     def quicklook(

@@ -125,6 +125,41 @@ stop = "2008-01-02T00:00:00"
     assert stack.plan().items == ("quality",)
 
 
+def test_plot_stack_plot_records_case_context_metadata(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+frame = "SSE"
+cache = true
+
+[cases.wake]
+start = "2008-01-01T00:00:00"
+stop = "2008-01-01T00:02:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    case = spn.Project(project_root).case("wake")
+
+    result = spn.stack(spn.line(quality)).plot(context=case)
+
+    assert result.metadata["context"] == case.metadata()
+
+
 def test_plot_stack_quicklook_writes_png_and_metadata(tmp_path) -> None:
     import matplotlib
 

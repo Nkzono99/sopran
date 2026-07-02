@@ -25,7 +25,7 @@ stack = case.stack(
     case.kaguya.esa1.quality.line(),
 )
 
-plot_result = stack.plot(backend="matplotlib")
+plot_result = stack.plot(backend="matplotlib", context=case)
 figure = plot_result.fig
 quicklook = stack.quicklook(
     "wake_overview",
@@ -39,6 +39,8 @@ quicklook = stack.quicklook(
 from different instruments or missions. The current backend is Matplotlib and
 is selected with `backend="matplotlib"`.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
+Pass `context=case` when the `PlotResult.metadata` should carry the case
+context.
 `quicklook()` writes `<name>.png`, optional `<name>.html`, and `<name>.json`.
 Pass `dataset_id`, `time_range`, `frame`, and `aggregation` when the quicklook
 should carry provenance into the JSON and HTML report. Pass `context=case` to
