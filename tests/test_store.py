@@ -344,6 +344,8 @@ def test_store_rebuilds_dataset_registry_index(tmp_path) -> None:
     ]
     assert index.select("layer").to_series().to_list() == ["features", "normalized"]
     assert index.select("schema_version").to_series().to_list() == ["0.1", "0.1"]
+    assert index.select("status").to_series().to_list() == ["candidate", "candidate"]
+    assert all(value.endswith("Z") for value in index.select("created_at").to_series().to_list())
     assert index.select("start").to_series().to_list() == [day.start_iso, day.start_iso]
     assert index.select("path").to_series().to_list() == [
         "features/kaguya/esa1/pitch_angle_distribution",

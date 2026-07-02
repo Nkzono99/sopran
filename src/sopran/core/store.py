@@ -494,6 +494,8 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
                     "schema_version": str(
                         manifest.get("schema_version") or _DATASET_SCHEMA_VERSION
                     ),
+                    "status": str(manifest.get("status") or ""),
+                    "created_at": str(manifest.get("created_at") or ""),
                     "start": str(time_coverage.get("start") or ""),
                     "stop": str(time_coverage.get("stop") or ""),
                     "path": dataset_root.relative_to(root).as_posix(),
@@ -512,6 +514,8 @@ def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
         "instrument": pl.Utf8,
         "product": pl.Utf8,
         "schema_version": pl.Utf8,
+        "status": pl.Utf8,
+        "created_at": pl.Utf8,
         "start": pl.Utf8,
         "stop": pl.Utf8,
         "path": pl.Utf8,

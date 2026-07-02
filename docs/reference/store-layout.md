@@ -51,4 +51,4 @@ registry/
 
 `datasets.parquet` is rebuilt by `Store.datasets(refresh=True)` and can be
 filtered with `layer`, `mission`, `instrument`, or `product`. Registry rows also
-include `schema_version` copied from each manifest.
+include `schema_version`, `status`, and `created_at` copied from each manifest.

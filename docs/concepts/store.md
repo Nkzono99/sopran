@@ -55,9 +55,9 @@ kaguya_features = store.datasets(layer="features", mission="kaguya")
 ```
 
 The registry records dataset ID, layer, mission, instrument, product, schema
-version, time coverage, and dataset path. It is an index over manifests;
-`dataset.json`, `schema.json`, and per-dataset `catalog.parquet` remain the
-source of truth.
+version, dataset status, creation time, time coverage, and dataset path. It is
+an index over manifests; `dataset.json`, `schema.json`, and per-dataset
+`catalog.parquet` remain the source of truth.
 
 ## Database Products
 
