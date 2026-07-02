@@ -11,6 +11,7 @@ pipe = (
     .decode()
     .normalize()
     .select_variables("counts")
+    .quicklook("counts")
     .write("kaguya.esa1.counts", layer="normalized")
 )
 ```
@@ -40,4 +41,5 @@ frame = lazy.collect()
 
 The current implementation is intentionally small. It records stage order,
 prevents accidental overwrite by default, supports explicit append/replace,
-and uses parquet catalog shards as the storage boundary.
+uses parquet catalog shards as the storage boundary, and can write a Matplotlib
+PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.

@@ -34,6 +34,7 @@ pipe = (
     .decode()
     .normalize()
     .select_variables("energy_flux", "counts", "quality")
+    .quicklook("esa1_counts")
     .write("kaguya.esa1.normalized", layer="normalized")
 )
 ```
@@ -52,3 +53,22 @@ pipe = (
 
 Rust backends should be large stages taking manifests, catalogs, shard paths,
 and JSON config. v0.1 uses Python reference implementations first.
+
+## Quicklook Stage
+
+`quicklook()` records a preview generation stage. The current KAGUYA ESA1
+Python backend writes Matplotlib PNG quicklooks and JSON metadata under the
+output dataset `preview/` directory after parquet output succeeds.
+
+```python
+(
+    kg.esa1.pipeline(time)
+    .decode()
+    .select_variables("counts")
+    .quicklook("counts")
+    .write("kaguya.esa1.counts", layer="normalized")
+    .run()
+)
+```
+
+The first implementation supports one selected variable and `backend="matplotlib"`.

@@ -62,6 +62,25 @@ class Pipeline:
     def derive(self, name: str, **parameters: Any) -> Pipeline:
         return self._with_stage("derive", name=name, **parameters)
 
+    def quicklook(
+        self,
+        name: str,
+        *,
+        formats: tuple[str, ...] = ("png",),
+        root: str | None = None,
+        y: str = "energy",
+        backend: str = "matplotlib",
+    ) -> Pipeline:
+        parameters = {
+            "quicklook_name": name,
+            "formats": tuple(formats),
+            "y": y,
+            "backend": backend,
+        }
+        if root is not None:
+            parameters["root"] = root
+        return self._with_stage("quicklook", **parameters)
+
     def write(self, dataset: str | Any, *, layer: str | None = None) -> Pipeline:
         dataset_id, output_layer = _write_target(dataset, layer)
         return Pipeline(

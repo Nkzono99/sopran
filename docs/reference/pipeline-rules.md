@@ -3,6 +3,7 @@
 - Attribute access does not execute.
 - Stage builders return a new `Pipeline`.
 - `write()` declares an output; it does not write until `run()`.
+- `quicklook()` declares preview artifacts; it does not render until `run()`.
 - `run()` fails on existing shards unless `mode="append"` or `mode="replace"`
   is explicit.
 - `scan()` returns a Polars `LazyFrame` when possible.

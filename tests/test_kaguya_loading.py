@@ -196,6 +196,7 @@ def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
         .decode()
         .normalize()
         .select_variables("energy_flux", "counts", "quality")
+        .quicklook("esa1_counts")
         .write("kaguya.esa1.normalized", layer="normalized")
     )
 
@@ -208,6 +209,7 @@ def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
         "decode",
         "normalize",
         "select_variables",
+        "quicklook",
         "write",
     )
     assert plan.output_dataset == "kaguya.esa1.normalized"

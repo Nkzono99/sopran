@@ -82,6 +82,7 @@ pipe = (
     kg.esa1.pipeline(time)
     .decode()
     .select_variables("counts")
+    .quicklook("counts")
     .write("kaguya.esa1.counts", layer="normalized")
 )
 pipe.run()                 # existing shard があれば失敗

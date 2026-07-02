@@ -9,12 +9,16 @@ pipe = (
     .decode()
     .normalize()
     .select_variables("counts")
+    .quicklook("counts")
     .write("kaguya.esa1.counts", layer="normalized")
 )
 
 plan = pipe.plan()
 result = pipe.run(dry_run=True)
 ```
+
+For KAGUYA ESA1, `run()` writes quicklooks under
+`<dataset>/preview/<name>.png` with a matching JSON metadata file.
 
 Use `scan()` or `collect()` when the input already exists in the store:
 

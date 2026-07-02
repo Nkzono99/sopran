@@ -305,11 +305,17 @@ class PaceInstrument(KaguyaInstrument):
             overwrite=mode == "replace",
             append=mode == "append",
         )
+        quicklooks = _write_pipeline_quicklooks(
+            data,
+            output,
+            pipeline=pipeline,
+            variable=variable,
+        )
         return PipelineResult(
             plan=pipeline.plan(),
             status="complete",
             message=f"Wrote {pipeline.output_dataset}",
-            outputs=(output,),
+            outputs=(output, *quicklooks),
         )
 
     def info(self) -> InfoPage:
@@ -392,6 +398,62 @@ def _load_endpoint_plot_array(
     if dims_to_reduce:
         array = getattr(array, reduction)(dims_to_reduce)
     return array
+
+
+def _write_pipeline_quicklooks(
+    data: KaguyaESA1Data,
+    output,
+    *,
+    pipeline: Pipeline,
+    variable: str,
+) -> tuple[object, ...]:
+    stages = [stage for stage in pipeline.stages if stage.name == "quicklook"]
+    if not stages:
+        return ()
+
+    from sopran.core.plotting import stack
+
+    results = []
+    for stage in stages:
+        name = str(stage.parameters["quicklook_name"])
+        root = stage.parameters.get("root")
+        if root is None:
+            root = output.root / "preview"
+        formats = tuple(stage.parameters.get("formats", ("png",)))
+        backend = str(stage.parameters.get("backend", "matplotlib"))
+        if backend != "matplotlib":
+            raise ValueError("KAGUYA pipeline quicklook currently supports only matplotlib")
+        item = _pipeline_plot_item(data, variable, y=str(stage.parameters.get("y", "energy")))
+        results.append(
+            stack(item).quicklook(
+                name,
+                root=root,
+                formats=formats,
+                metadata=_pipeline_quicklook_metadata(pipeline, variable),
+            )
+        )
+    return tuple(results)
+
+
+def _pipeline_plot_item(data: KaguyaESA1Data, variable: str, *, y: str):
+    array = getattr(data, variable)
+    dims = array.schema.dims
+    if "time" in dims and y in dims:
+        return array.spectrogram(y=y)
+    x = "time" if "time" in dims else dims[0]
+    return array.line(x=x)
+
+
+def _pipeline_quicklook_metadata(pipeline: Pipeline, variable: str) -> dict[str, object]:
+    return {
+        "pipeline": {
+            "source": pipeline.source,
+            "start": pipeline.time.start_iso,
+            "stop": pipeline.time.stop_iso,
+            "stages": [stage.name for stage in pipeline.stages],
+        },
+        "variable": variable,
+    }
 
 
 class LmagInstrument(KaguyaInstrument):

@@ -299,6 +299,32 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     assert result.outputs[0].scan().collect().height == 2048
 
 
+def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+
+    result = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .quicklook("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+        .run()
+    )
+
+    preview_root = result.outputs[0].root / "preview"
+    assert (preview_root / "counts.png").exists()
+    assert (preview_root / "counts.json").exists()
+    assert result.outputs[1].metadata["items"] == ["counts"]
+
+
 def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
