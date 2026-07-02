@@ -139,6 +139,32 @@ class FeatureMatrix:
             frame.insert(0, "time", list(self.time))
         return frame
 
+    def select(self, *columns: str) -> FeatureMatrix:
+        indices = []
+        for column in columns:
+            try:
+                indices.append(self.columns.index(column))
+            except ValueError as exc:
+                raise KeyError(column) from exc
+        metadata = dict(self.metadata)
+        metadata["columns"] = list(columns)
+        if "features" in metadata:
+            features_by_column = {
+                feature.get("column"): feature
+                for feature in metadata["features"]
+            }
+            metadata["features"] = [
+                features_by_column[column]
+                for column in columns
+                if column in features_by_column
+            ]
+        return FeatureMatrix(
+            values=self.values[:, indices],
+            columns=tuple(columns),
+            time=self.time,
+            metadata=metadata,
+        )
+
     def write_npz(self, path: str | Path) -> Path:
         import numpy as np
 

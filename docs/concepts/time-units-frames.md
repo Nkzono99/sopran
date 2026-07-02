@@ -42,6 +42,7 @@ features = spn.align(
 frame = features.to_feature_frame()
 metadata = features.feature_metadata()
 matrix = features.to_feature_matrix()
+matrix = matrix.select("sza", "wave_power")
 matrix_frame = matrix.to_pandas(include_time=True)
 matrix.write_npz("features.npz")
 matrix = spn.FeatureMatrix.read_npz("features.npz")
@@ -102,6 +103,8 @@ feature rules, grid metadata, row count, and time column name.
 `FeatureMatrix.to_pandas()` returns a pandas DataFrame, and `write_npz()` stores
 values, columns, time labels, and metadata JSON for lightweight ML handoff.
 Use `FeatureMatrix.read_npz()` to reload the same artifact.
+Use `FeatureMatrix.select(*columns)` before training when a model should receive
+only a chosen subset of aligned features.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`
