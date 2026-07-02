@@ -153,10 +153,10 @@ class AlignmentResult:
 
     def write_dataset(
         self,
-        store: Any,
-        dataset_id: str,
+        target: Any,
+        dataset_id: str | None = None,
         *,
-        layer: str = "features",
+        layer: str | None = None,
         mission: str = "analysis",
         instrument: str = "alignment",
         product: str | None = None,
@@ -174,15 +174,20 @@ class AlignmentResult:
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
     ):
+        store, output_dataset_id, output_layer = _dataset_write_target(
+            target,
+            dataset_id,
+            layer,
+        )
         dataset_parameters = dict(parameters or {})
         dataset_parameters["layout"] = layout
         dataset_parameters["alignment"] = self.metadata()
         return store.write_parquet_dataset(
-            dataset_id=dataset_id,
-            layer=layer,
+            dataset_id=output_dataset_id,
+            layer=output_layer,
             mission=mission,
             instrument=instrument,
-            product=product or _default_product_name(dataset_id),
+            product=product or _default_product_name(output_dataset_id),
             schema=_alignment_schema(
                 mission=mission,
                 instrument=instrument,
@@ -449,6 +454,24 @@ def _feature_rule(feature: _RequestedFeature) -> dict[str, Any]:
 
 def _default_product_name(dataset_id: str) -> str:
     return next((part for part in reversed(dataset_id.split(".")) if part), "features")
+
+
+def _dataset_write_target(
+    target: Any,
+    dataset_id: str | None,
+    layer: str | None,
+) -> tuple[Any, str, str]:
+    if dataset_id is not None:
+        return target, dataset_id, layer or "features"
+
+    target_dataset_id = getattr(target, "dataset_id", None)
+    target_layer = getattr(target, "layer", None)
+    store = getattr(target, "store", None)
+    if target_dataset_id is None or target_layer is None:
+        raise TypeError("write_dataset() expects a Store plus dataset_id or a ProductRef")
+    if store is None:
+        raise ValueError("ProductRef target must be backed by a Store")
+    return store, str(target_dataset_id), str(layer or target_layer)
 
 
 def _alignment_schema(

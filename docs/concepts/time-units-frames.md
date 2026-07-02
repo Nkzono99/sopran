@@ -53,6 +53,8 @@ dataset = features.write_dataset(
     "analysis.wake_context",
     source_datasets=("moon.sza", "artemis.p1.efi.wave_power"),
 )
+
+dataset = features.write_dataset(store.database("lunar_wake").product("wake_context"))
 ```
 
 Use `SampleTable` when each product needs its own rule, such as nearest SZA,

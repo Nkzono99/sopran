@@ -600,6 +600,34 @@ def test_alignment_result_writes_feature_dataset_to_store(tmp_path) -> None:
     ]
 
 
+def test_alignment_result_writes_to_database_product_reference(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    target = store.database("lunar_wake").product("wake_context")
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    aligned = spn.align(sza, grid=bins, method="nearest", tolerance="3s")
+
+    dataset = aligned.write_dataset(target)
+
+    assert dataset.root == store.database_path("lunar_wake", "wake_context")
+    assert dataset.manifest()["dataset_id"] == "lunar_wake.wake_context"
+    assert dataset.manifest()["layer"] == "databases"
+    assert dataset.manifest()["mission"] == "analysis"
+    assert dataset.manifest()["instrument"] == "alignment"
+    assert dataset.manifest()["product"] == "wake_context"
+    assert target.scan().collect().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0}
+    ]
+
+
 def test_alignment_result_exposes_feature_table_metadata() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
