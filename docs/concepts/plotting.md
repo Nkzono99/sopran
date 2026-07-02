@@ -12,7 +12,7 @@ counts.plot()
 
 ```python
 stack = spn.stack(
-    kg.esa1.counts.load(time).spectrogram(y="energy"),
+    kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),
     kg.esa1.quality.load(time).line(),
 )
 
@@ -26,7 +26,7 @@ lazy plot items directly:
 
 ```python
 stack = case.stack(
-    case.kaguya.esa1.counts.spectrogram(y="energy"),
+    case.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
     case.kaguya.esa1.quality.line(),
 )
 ```
@@ -34,6 +34,8 @@ stack = case.stack(
 Line panels can also plot 2D `time x component` arrays as multiple lines in
 one panel, which is the intended route for vector products such as magnetic
 field components.
+Pass `log_color=True` to spectrogram items when positive-valued spectra should
+use a logarithmic color scale in the Matplotlib backend.
 
 Plotting keeps native cadence. For machine-learning tables or statistical
 joins, create explicit time bins and align products separately:

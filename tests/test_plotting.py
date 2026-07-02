@@ -49,6 +49,29 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     assert result.metadata["items"] == ["counts", "quality"]
 
 
+def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib.colors import LogNorm
+
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    energy = np.array([10.0, 20.0, 30.0])
+    counts = xr.DataArray(
+        np.array([[1.0, 10.0, 100.0], [2.0, 20.0, 200.0]]),
+        dims=("time", "energy"),
+        coords={"time": times, "energy": energy},
+        name="counts",
+    )
+
+    result = spn.stack(spn.spectrogram(counts, y="energy", log_color=True)).plot()
+
+    assert isinstance(result.axes[0].collections[0].norm, LogNorm)
+
+
 def test_plot_stack_line_accepts_vector_time_series() -> None:
     import matplotlib
 

@@ -21,6 +21,7 @@ class PlotItem:
     name: str
     x: str = "time"
     y: str | None = None
+    log_color: bool = False
 
 
 @dataclass(frozen=True)
@@ -92,7 +93,13 @@ class PlotStack:
                 axis.plot(x_values, y_values)
             elif item.kind == "spectrogram":
                 x_values, y_values, z_values = _spectrogram_xyz(item)
-                axis.pcolormesh(x_values, y_values, z_values.T, shading="auto")
+                axis.pcolormesh(
+                    x_values,
+                    y_values,
+                    z_values.T,
+                    norm=_color_norm(item),
+                    shading="auto",
+                )
             else:
                 raise ValueError(f"Unsupported plot item kind: {item.kind}")
             axis.set_ylabel(item.name)
@@ -203,6 +210,7 @@ def spectrogram(
     y: str,
     x: str = "time",
     name: str | None = None,
+    log_color: bool = False,
 ) -> PlotItem:
     return PlotItem(
         kind="spectrogram",
@@ -210,6 +218,7 @@ def spectrogram(
         name=name or _data_name(data),
         x=x,
         y=y,
+        log_color=log_color,
     )
 
 
@@ -236,6 +245,14 @@ def _spectrogram_xyz(item: PlotItem) -> tuple[np.ndarray, np.ndarray, np.ndarray
     if values.ndim != 2:
         raise ValueError(f"Spectrogram plot expects 2D data, got shape {values.shape}")
     return _coord(data, item.x, axis=0), _coord(data, item.y, axis=1), values
+
+
+def _color_norm(item: PlotItem) -> Any | None:
+    if not item.log_color:
+        return None
+    from matplotlib.colors import LogNorm
+
+    return LogNorm()
 
 
 def _values(data: Any) -> np.ndarray:
