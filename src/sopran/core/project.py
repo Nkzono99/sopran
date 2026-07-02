@@ -4,6 +4,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from sopran.bodies import Moon
 from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
@@ -25,16 +26,23 @@ class Project:
         start: object | None = None,
         stop: object | None = None,
     ) -> Case:
-        if start is None or stop is None:
+        config: dict[str, Any] = {}
+        config_path = self.root / "sopran.toml"
+        if config_path.exists() or start is None or stop is None:
             config = self._read_config()
+        if start is None or stop is None:
             try:
                 case_config = config["cases"][name]
             except KeyError as exc:
-                config_path = self.root / "sopran.toml"
                 raise KeyError(f"Case {name!r} is not defined in {config_path}") from exc
             start = case_config["start"] if start is None else start
             stop = case_config["stop"] if stop is None else stop
-        return Case(project=self, name=name, time=period(start, stop))
+        return Case(
+            project=self,
+            name=name,
+            time=period(start, stop),
+            defaults=config.get("defaults", {}),
+        )
 
     def _read_config(self) -> dict[str, Any]:
         path = self.root / "sopran.toml"
@@ -43,12 +51,23 @@ class Project:
 
 
 class Case:
-    def __init__(self, *, project: Project, name: str, time: TimeRange) -> None:
+    def __init__(
+        self,
+        *,
+        project: Project,
+        name: str,
+        time: TimeRange,
+        defaults: dict[str, Any] | None = None,
+    ) -> None:
         self.project = project
         self.name = name
         self.time = time
+        defaults = defaults or {}
+        self.frame = defaults.get("frame")
+        self.cache = bool(defaults.get("cache", False))
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
         self.artemis = CaseMission(Artemis(), self)
+        self.moon = Moon()
 
     def stack(self, *items: PlotItem) -> PlotStack:
         return stack(*items)
