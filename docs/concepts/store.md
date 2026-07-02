@@ -27,8 +27,9 @@ shards/
 ```
 
 `catalog.parquet` records shard path, start/stop coverage, row count, checksum,
-and status. `dataset.json` records dataset ID, layer, mission, instrument,
-product, time coverage, source files, producer, and optional provenance.
+status, and schema version. `dataset.json` records dataset ID, layer, mission,
+instrument, product, schema version, time coverage, source files, producer, and
+optional provenance. `schema.json` also records the same schema version.
 
 `Store.write_parquet_dataset(..., provenance={...})` writes a structured
 provenance object into `dataset.json`. Pipeline backends should use this for the
@@ -45,9 +46,10 @@ index = store.datasets(refresh=True)
 kaguya_features = store.datasets(layer="features", mission="kaguya")
 ```
 
-The registry records dataset ID, layer, mission, instrument, product, time
-coverage, and dataset path. It is an index over manifests; `dataset.json`,
-`schema.json`, and per-dataset `catalog.parquet` remain the source of truth.
+The registry records dataset ID, layer, mission, instrument, product, schema
+version, time coverage, and dataset path. It is an index over manifests;
+`dataset.json`, `schema.json`, and per-dataset `catalog.parquet` remain the
+source of truth.
 
 ## Database Products
 

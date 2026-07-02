@@ -22,6 +22,7 @@ shards/
 Catalog rows currently include:
 
 - `path`
+- `schema_version`
 - `start`
 - `stop`
 - `row_count`
@@ -42,4 +43,5 @@ registry/
 ```
 
 `datasets.parquet` is rebuilt by `Store.datasets(refresh=True)` and can be
-filtered with `layer`, `mission`, `instrument`, or `product`.
+filtered with `layer`, `mission`, `instrument`, or `product`. Registry rows also
+include `schema_version` copied from each manifest.

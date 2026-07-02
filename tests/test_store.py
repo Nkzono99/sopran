@@ -41,16 +41,19 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     manifest = json.loads(dataset.manifest_path.read_text(encoding="utf-8"))
     assert manifest["dataset_id"] == "kaguya.esa1.energy_flux"
     assert manifest["layer"] == "normalized"
+    assert manifest["schema_version"] == "0.1"
     assert manifest["time_coverage"] == {
         "start": "2008-02-01T00:00:00Z",
         "stop": "2008-02-02T00:00:00Z",
     }
 
     schema = json.loads(dataset.schema_path.read_text(encoding="utf-8"))
+    assert schema["schema_version"] == "0.1"
     assert schema["variables"][0]["name"] == "energy_flux"
     assert schema["variables"][0]["dims"] == ["time", "energy", "look"]
 
     catalog = pl.read_parquet(dataset.catalog_path)
+    assert catalog.select("schema_version").to_series().to_list() == ["0.1"]
     assert catalog.select("path").to_series().to_list() == [
         "shards/year=2008/month=02/day=01/part-000.parquet"
     ]
@@ -264,6 +267,7 @@ def test_store_rebuilds_dataset_registry_index(tmp_path) -> None:
         "kaguya.esa1.counts",
     ]
     assert index.select("layer").to_series().to_list() == ["features", "normalized"]
+    assert index.select("schema_version").to_series().to_list() == ["0.1", "0.1"]
     assert index.select("start").to_series().to_list() == [day.start_iso, day.start_iso]
     assert index.select("path").to_series().to_list() == [
         "features/kaguya/esa1/pitch_angle_distribution",

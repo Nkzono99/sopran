@@ -850,6 +850,8 @@ logs/              # 必要に応じて生成ログ
 - `mission`
 - `instrument`
 - `product`
+- `schema_version`: v0.1 の初期値は `"0.1"` とし、`dataset.json`、`schema.json`、
+  `catalog.parquet`、`registry/datasets.parquet` に同じ値を保存する。
 - `version`
 - `status`: `scratch`, `candidate`, `adopted`, `deprecated`
 - `time_coverage`

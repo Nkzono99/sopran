@@ -13,6 +13,7 @@ from sopran.core.schema import InstrumentSchema
 from sopran.core.time import TimeRange, period
 
 _LAYERS = ("raw", "normalized", "features", "databases")
+_DATASET_SCHEMA_VERSION = "0.1"
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ class Store:
             "mission": mission,
             "instrument": instrument,
             "product": product,
+            "schema_version": _DATASET_SCHEMA_VERSION,
             "time_coverage": _time_coverage_to_json(time_coverage),
             "source_files": list(source_files),
             "producer": producer,
@@ -274,6 +276,7 @@ def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
     return {
         "mission": schema.mission,
         "instrument": schema.instrument,
+        "schema_version": _DATASET_SCHEMA_VERSION,
         "variables": [
             {
                 "name": variable.name,
@@ -300,6 +303,7 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
     rows = [
         {
             "path": shard.get("path", ""),
+            "schema_version": shard.get("schema_version", _DATASET_SCHEMA_VERSION),
             "start": shard.get("start", ""),
             "stop": shard.get("stop", ""),
             "row_count": int(shard.get("row_count", 0)),
@@ -312,6 +316,7 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
         rows = [
             {
                 "path": "",
+                "schema_version": _DATASET_SCHEMA_VERSION,
                 "start": "",
                 "stop": "",
                 "row_count": 0,
@@ -429,6 +434,9 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
                     "mission": str(manifest.get("mission") or ""),
                     "instrument": str(manifest.get("instrument") or ""),
                     "product": str(manifest.get("product") or ""),
+                    "schema_version": str(
+                        manifest.get("schema_version") or _DATASET_SCHEMA_VERSION
+                    ),
                     "start": str(time_coverage.get("start") or ""),
                     "stop": str(time_coverage.get("stop") or ""),
                     "path": dataset_root.relative_to(root).as_posix(),
@@ -446,6 +454,7 @@ def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
         "mission": pl.Utf8,
         "instrument": pl.Utf8,
         "product": pl.Utf8,
+        "schema_version": pl.Utf8,
         "start": pl.Utf8,
         "stop": pl.Utf8,
         "path": pl.Utf8,
