@@ -4,6 +4,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
 from sopran.missions.kaguya import Kaguya
@@ -46,6 +47,9 @@ class Case:
         self.name = name
         self.time = time
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
+
+    def stack(self, *items: PlotItem) -> PlotStack:
+        return stack(*items)
 
 
 class CaseKaguya:
