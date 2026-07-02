@@ -25,10 +25,12 @@ schema = spn.InstrumentSchema(
 )
 
 metadata = schema.to_metadata(schema_version="0.1")
+table = schema.to_markdown()
 ```
 
 `to_metadata()` is the shared machine-readable representation used by
-`schema.json` and documentation generation.
+`schema.json` and documentation generation. `to_markdown()` creates a variable
+table that can be embedded in mission and instrument guides.
 
 Use `validate_schema()` before returning loaded data or before trusting a
 derived table. Pass `variables=...` when only one product has been loaded from a

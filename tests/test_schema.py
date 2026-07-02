@@ -50,6 +50,34 @@ def test_instrument_schema_exports_machine_readable_metadata() -> None:
     }
 
 
+def test_instrument_schema_exports_markdown_variable_table() -> None:
+    schema = InstrumentSchema(
+        mission="artemis",
+        instrument="fgm",
+        variables=(
+            VariableSchema(
+                name="magnetic_field",
+                dims=("time", "component"),
+                units="nT",
+                dtype="float64",
+                frame="SSE",
+                description="Vector magnetic field.",
+                aliases=("b",),
+            ),
+        ),
+    )
+
+    assert schema.to_markdown() == "\n".join(
+        [
+            "# artemis / fgm schema",
+            "",
+            "| name | dims | units | dtype | frame | aliases | description |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| magnetic_field | time, component | nT | float64 | SSE | b | Vector magnetic field. |",
+        ]
+    )
+
+
 def test_validate_schema_accepts_selected_polars_variables() -> None:
     frame = pl.DataFrame(
         {

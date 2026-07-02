@@ -50,6 +50,29 @@ class InstrumentSchema:
             metadata["schema_version"] = schema_version
         return metadata
 
+    def to_markdown(self) -> str:
+        rows = [
+            f"# {self.mission} / {self.instrument} schema",
+            "",
+            "| name | dims | units | dtype | frame | aliases | description |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
+        rows.extend(
+            " | ".join(
+                (
+                    "| " + _markdown_cell(variable.name),
+                    _markdown_cell(", ".join(variable.dims)),
+                    _markdown_cell(variable.units),
+                    _markdown_cell(variable.dtype),
+                    _markdown_cell(variable.frame),
+                    _markdown_cell(", ".join(variable.aliases)),
+                    _markdown_cell(variable.description) + " |",
+                )
+            )
+            for variable in self.variables
+        )
+        return "\n".join(rows)
+
 
 def validate_schema(
     data: Any,
@@ -86,6 +109,12 @@ def _selected_variables(
     if variables is None:
         return schema.variables
     return tuple(schema.variable(name) for name in variables)
+
+
+def _markdown_cell(value: str | None) -> str:
+    if value is None:
+        return ""
+    return str(value).replace("|", "\\|")
 
 
 def _available_names(data: Any) -> set[str]:

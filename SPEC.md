@@ -1060,6 +1060,8 @@ Schema から生成または検証するもの:
 - `.info()` の変数一覧と説明。
 - `.schema()` の machine-readable 出力。`InstrumentSchema.to_metadata(schema_version=...)` と
   `VariableSchema.to_metadata()` を共通出口にし、`schema.json` と docs 生成で同じ構造を使う。
+- `InstrumentSchema.to_markdown()` の変数表。README / docs に貼れる Markdown table を
+  schema から生成し、手書き表とのズレを減らす。
 - README / docs の変数表、単位表、alias 表。
 - `VariableEndpoint` の metadata。
 - `KaguyaESA1Data` など typed data object の property validation。
