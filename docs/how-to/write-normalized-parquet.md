@@ -38,6 +38,7 @@ Use `only_failed=True` when a later backend should replay only failed shards:
 
 ```python
 record.update_shard_status("shards/part-000.parquet", "failed")
+failed = record.failed_shards()
 result = pipe.run(only_failed=True)
 ```
 

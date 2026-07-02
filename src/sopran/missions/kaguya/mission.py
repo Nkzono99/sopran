@@ -705,18 +705,14 @@ def _failed_pipeline_output(store: Store, pipeline: Pipeline):
 
 
 def _catalog_is_complete(output) -> bool:
-    rows = list(output.catalog().iter_rows(named=True))
-    if not rows:
+    shards = output.shards()
+    if not shards:
         return False
-    return all(str(row.get("status") or "") == "complete" for row in rows)
+    return all(str(shard.get("status") or "") == "complete" for shard in shards)
 
 
 def _failed_shard_count(output) -> int:
-    return sum(
-        1
-        for row in output.catalog().iter_rows(named=True)
-        if str(row.get("status") or "") == "failed"
-    )
+    return len(output.failed_shards())
 
 
 def _record_covers_time(output, pipeline: Pipeline) -> bool:

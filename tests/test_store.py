@@ -582,6 +582,51 @@ def test_dataset_record_update_shard_status_validates_status_and_path(tmp_path) 
         dataset.update_shard_status("shards/missing.parquet", "failed")
 
 
+def test_dataset_record_lists_shards_by_status(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    first = spn.day("2008-02-01")
+    second = spn.day("2008-02-02")
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+    }
+    store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=first,
+        frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
+    )
+    dataset = store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=second,
+        frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
+        append=True,
+    )
+    dataset.update_shard_status("shards/part-001.parquet", "failed")
+
+    assert [shard["path"] for shard in dataset.shards()] == [
+        "shards/part-000.parquet",
+        "shards/part-001.parquet",
+    ]
+    assert dataset.shards(status="failed") == dataset.failed_shards()
+    assert dataset.failed_shards() == (
+        {
+            "path": "shards/part-001.parquet",
+            "schema_version": "0.1",
+            "start": second.start_iso,
+            "stop": second.stop_iso,
+            "row_count": 1,
+            "checksum": dataset.shards(status="failed")[0]["checksum"],
+            "status": "failed",
+        },
+    )
+    with pytest.raises(ValueError, match="shard status"):
+        dataset.shards(status="unknown")
+
+
 def test_store_dataset_finds_registered_dataset_without_layer(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

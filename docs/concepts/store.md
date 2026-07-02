@@ -50,6 +50,9 @@ pipeline source, stage list, mode, time range, and selected product or variable.
 files.
 `DatasetRecord.update_shard_status(path, status)` updates a catalog shard status
 to `pending`, `running`, `complete`, `failed`, or `skipped`.
+`DatasetRecord.shards(status=...)` lists catalog shards, and
+`DatasetRecord.failed_shards()` returns the failed subset for resume and audit
+workflows.
 `Store.dataset_source_files(...)` resolves `dataset.json["source_files"]` into
 `RawFileRecord` objects so raw input checksums can be verified.
 `Store.verify_dataset(...)` checks both dataset shard checksums and raw input

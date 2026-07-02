@@ -421,6 +421,17 @@ class DatasetRecord:
 
         return pl.read_parquet(self.catalog_path)
 
+    def shards(self, *, status: str | None = None) -> tuple[dict[str, Any], ...]:
+        if status is not None:
+            _validate_catalog_shard_status(status)
+        shards = _read_catalog_shards(self.catalog_path)
+        if status is None:
+            return shards
+        return tuple(shard for shard in shards if shard.get("status") == status)
+
+    def failed_shards(self) -> tuple[dict[str, Any], ...]:
+        return self.shards(status="failed")
+
     def scan(self, *, dataset_id: str | None = None):
         import polars as pl
 
@@ -621,6 +632,9 @@ def _read_catalog_shards(path: Path) -> tuple[dict[str, Any], ...]:
         rows.append(
             {
                 "path": shard_path,
+                "schema_version": str(
+                    row.get("schema_version") or _DATASET_SCHEMA_VERSION
+                ),
                 "start": str(row.get("start") or ""),
                 "stop": str(row.get("stop") or ""),
                 "row_count": int(row.get("row_count") or 0),
