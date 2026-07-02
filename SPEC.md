@@ -1667,6 +1667,8 @@ stack = spn.stack(
 `PlotStack` の規則:
 
 - 描画では原則として各 product の native cadence を保ち、共有するのは UTC time axis にする。
+  `PlotResult.metadata` と quicklook metadata は `time_axis` に shared axis、UTC、
+  native cadence policy を残す。
 - 解析用の resampling / interpolation / cadence 統一は `spn.align(...)` で明示する。
 - 時間ビン化は `spn.time_bins(...)` が返す `TimeBins` を第一級 object として扱う。
 - `spn.time_bins(..., partial="error")` は cadence で割り切れない範囲を失敗させる既定動作とする。

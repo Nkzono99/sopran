@@ -50,6 +50,37 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     assert result.metadata["items"] == ["counts", "quality"]
 
 
+def test_plot_stack_records_shared_native_time_axis_metadata() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    counts = xr.DataArray(
+        np.array([10.0, 20.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="counts",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+
+    result = spn.stack(spn.line(counts), spn.line(quality)).plot()
+
+    assert result.metadata["time_axis"] == {
+        "shared": True,
+        "coordinates": ["time"],
+        "timezone": "UTC",
+        "cadence_policy": "native",
+    }
+
+
 def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     import matplotlib
 
@@ -700,6 +731,12 @@ def test_plot_stack_quicklook_writes_png_and_metadata(tmp_path) -> None:
     assert metadata["backend"] == "matplotlib"
     assert metadata["items"] == ["quality"]
     assert metadata["artifacts"] == ["wake_overview.png"]
+    assert metadata["time_axis"] == {
+        "shared": True,
+        "coordinates": ["time"],
+        "timezone": "UTC",
+        "cadence_policy": "native",
+    }
 
 
 def test_plot_stack_quicklook_writes_html_report(tmp_path) -> None:

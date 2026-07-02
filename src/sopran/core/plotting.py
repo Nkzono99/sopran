@@ -113,6 +113,7 @@ class PlotStack:
             "backend": backend,
             "panel_count": plan.panel_count,
             "items": list(plan.items),
+            "time_axis": _time_axis_metadata(self.items),
         }
         if context is not None:
             metadata["context"] = _context_metadata(context)
@@ -182,6 +183,7 @@ class PlotStack:
             "backend": backend,
             "panel_count": plan.panel_count,
             "items": list(plan.items),
+            "time_axis": _time_axis_metadata(self.items),
             "artifacts": [artifact.path.name for artifact in artifacts],
             "artifact_formats": [artifact.format for artifact in artifacts],
         }
@@ -222,6 +224,18 @@ class PlotStack:
 
 def stack(*items: PlotItem) -> PlotStack:
     return PlotStack(items=tuple(items))
+
+
+def _time_axis_metadata(items: tuple[PlotItem, ...]) -> dict[str, Any]:
+    coordinates = tuple(dict.fromkeys(item.x for item in items))
+    metadata: dict[str, Any] = {
+        "shared": True,
+        "coordinates": list(coordinates),
+        "cadence_policy": "native",
+    }
+    if "time" in coordinates:
+        metadata["timezone"] = "UTC"
+    return metadata
 
 
 def line(data: Any, *, x: str = "time", name: str | None = None) -> PlotItem:
