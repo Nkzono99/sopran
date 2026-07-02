@@ -52,6 +52,7 @@ class AlignmentResult:
     rows: tuple[dict[str, Any], ...]
     method: AlignmentMethod
     join: JoinMode = "outer"
+    fill: Any | None = None
 
     def to_polars(self):
         import polars as pl
@@ -93,6 +94,7 @@ def align(
     method: AlignMethod,
     tolerance: str | timedelta | None = None,
     join: JoinMode = "outer",
+    fill: Any | None = None,
 ) -> AlignmentResult:
     if not arrays:
         raise ValueError("align() requires at least one array")
@@ -108,7 +110,13 @@ def align(
         for index, array in enumerate(arrays)
         for feature in _features(array, index)
     )
-    return _collect_features(grid, requested_features, method=method, join=join)
+    return _collect_features(
+        grid,
+        requested_features,
+        method=method,
+        join=join,
+        fill=fill,
+    )
 
 
 @dataclass(frozen=True)
@@ -144,7 +152,12 @@ class SampleTable:
             ),
         )
 
-    def collect(self, *, join: JoinMode = "outer") -> AlignmentResult:
+    def collect(
+        self,
+        *,
+        join: JoinMode = "outer",
+        fill: Any | None = None,
+    ) -> AlignmentResult:
         if not self.specs:
             raise ValueError("SampleTable.collect() requires at least one sample")
         _validate_join(join)
@@ -162,7 +175,13 @@ class SampleTable:
             for index, spec in enumerate(self.specs)
             for feature in _features(spec.array, index)
         )
-        return _collect_features(self.grid, requested_features, method="mixed", join=join)
+        return _collect_features(
+            self.grid,
+            requested_features,
+            method="mixed",
+            join=join,
+            fill=fill,
+        )
 
 
 @dataclass(frozen=True)
@@ -179,6 +198,7 @@ def _collect_features(
     *,
     method: AlignmentMethod,
     join: JoinMode,
+    fill: Any | None,
 ) -> AlignmentResult:
     columns = tuple(feature.name for feature in features)
     rows = []
@@ -202,6 +222,14 @@ def _collect_features(
                 raise ValueError("method must be 'nearest', 'mean', 'max', or 'median'")
         if join == "inner" and any(row[column] is None for column in columns):
             continue
+        if fill is not None:
+            row.update(
+                {
+                    column: fill
+                    for column in columns
+                    if row[column] is None
+                }
+            )
         rows.append(row)
     return AlignmentResult(
         grid=grid,
@@ -209,6 +237,7 @@ def _collect_features(
         rows=tuple(rows),
         method=method,
         join=join,
+        fill=fill,
     )
 
 

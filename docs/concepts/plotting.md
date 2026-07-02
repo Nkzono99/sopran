@@ -57,7 +57,9 @@ features = (
 ```
 
 `join="outer"` keeps every bin with nulls for missing features. `join="inner"`
-drops bins that do not have every requested feature.
+drops bins that do not have every requested feature. Use `fill=<value>` with
+the outer join when downstream tools need explicit sentinel values instead of
+nulls.
 
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and

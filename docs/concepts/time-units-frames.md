@@ -57,6 +57,13 @@ The default `join="outer"` keeps every time bin and leaves missing feature
 values as null. Use `join="inner"` when a machine-learning or statistical table
 should keep only bins where every feature is present.
 
+If missing values should be explicit rather than null, pass a scalar `fill`
+value with the outer join:
+
+```python
+features = spn.align(sza, wave_power, grid=bins, method="nearest", fill=-1.0)
+```
+
 Coordinate frames and units are still early-stage. The design goal is to avoid
 reimplementing established space-physics and planetary geometry libraries. SPICE
 and SpacePy-family tools should be used for kernel-backed geometry and common

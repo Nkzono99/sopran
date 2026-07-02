@@ -122,6 +122,7 @@ ml_features = (
 観測量ごとに対応づけ方法を変える場合は `SampleTable` を使います。現在の reducer は
 `nearest`, `mean`, `max`, `median` です。
 `join="outer"` は全binを残し、`join="inner"` は欠損featureを含むbinを落とします。
+`fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
 `spn.align(...).write_parquet("features.parquet")` または
 `spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 
