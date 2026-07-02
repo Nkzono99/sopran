@@ -356,6 +356,39 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     assert log["elapsed_seconds"] >= 0
 
 
+def test_kaguya_esa1_pipeline_write_registers_database_product(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+    database = store.database("wake_events", create=True)
+
+    result = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write(database.product("raw_counts"))
+        .run()
+    )
+
+    assert result.status == "complete"
+    assert database.metadata()["products"] == [
+        {
+            "name": "raw_counts",
+            "dataset_id": "wake_events.raw_counts",
+            "layer": "databases",
+            "description": "",
+        }
+    ]
+    product = database.products()[0]
+    assert product.manifest()["dataset_id"] == "wake_events.raw_counts"
+    assert product.scan().collect().height == 2048
+
+
 def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> None:
     import matplotlib
 

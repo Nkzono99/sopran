@@ -108,6 +108,7 @@ class Pipeline:
     stages: tuple[PipelineStage, ...] = ()
     output_dataset: str | None = None
     output_layer: str | None = None
+    output_target: Any = None
     context: Any = None
 
     def download(self) -> Pipeline:
@@ -175,6 +176,7 @@ class Pipeline:
             ),
             output_dataset=dataset_id,
             output_layer=output_layer,
+            output_target=None if isinstance(dataset, str) else dataset,
             context=self.context,
         )
 
@@ -259,6 +261,7 @@ class Pipeline:
             stages=(*self.stages, PipelineStage(name, parameters)),
             output_dataset=self.output_dataset,
             output_layer=self.output_layer,
+            output_target=self.output_target,
             context=self.context,
         )
 

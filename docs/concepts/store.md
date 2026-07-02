@@ -127,6 +127,9 @@ product = db.register_product(
 pipe.write(db.product("event_table"))
 ```
 
+When a pipeline writes to `db.product(...)`, the completed dataset is registered
+in `database.json` after `run()` succeeds.
+
 Registered products can be listed later from `database.json`:
 
 ```python

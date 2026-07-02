@@ -408,6 +408,7 @@ class PaceInstrument(KaguyaInstrument):
                     only_failed=False,
                     on_error=on_error,
                 )
+                _adopt_pipeline_output(pipeline, existing)
                 return PipelineResult(
                     plan=pipeline.plan(),
                     status="skipped",
@@ -437,6 +438,7 @@ class PaceInstrument(KaguyaInstrument):
                     only_failed=True,
                     on_error=on_error,
                 )
+                _adopt_pipeline_output(pipeline, existing)
                 return PipelineResult(
                     plan=pipeline.plan(),
                     status="skipped",
@@ -481,6 +483,7 @@ class PaceInstrument(KaguyaInstrument):
                 replayed_shard_count=replayed_count,
                 on_error=on_error,
             )
+            _adopt_pipeline_output(pipeline, existing)
             return PipelineResult(
                 plan=pipeline.plan(),
                 status="complete",
@@ -578,6 +581,7 @@ class PaceInstrument(KaguyaInstrument):
             only_failed=only_failed,
             on_error=on_error,
         )
+        _adopt_pipeline_output(pipeline, output)
         return PipelineResult(
             plan=pipeline.plan(),
             status="complete",
@@ -964,6 +968,12 @@ def _complete_pipeline_output(store: Store, pipeline: Pipeline):
     if not _record_covers_time(output, pipeline):
         return None
     return output
+
+
+def _adopt_pipeline_output(pipeline: Pipeline, output) -> None:
+    adopter = getattr(pipeline.output_target, "adopt_dataset", None)
+    if callable(adopter):
+        adopter(output)
 
 
 def _failed_pipeline_output(store: Store, pipeline: Pipeline):

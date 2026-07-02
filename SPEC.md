@@ -878,6 +878,8 @@ databases/
 ```
 
 ユーザー拡張は `Database.register_product()` または pipeline の `write()` から行う。
+`pipeline.write(db.product("raw_pad")).run()` のように `ProductRef` を出力先にした場合は、
+run 完了後に書き込んだ dataset を `database.json` の product list に登録する。
 `store.database(name, create=True)` は `databases/<name>/database.json` を作成し、
 空の product list で database namespace を初期化する。既存 metadata は上書きしない。
 `features` layer に保存した再利用可能な解析 dataset を、研究テーマの database から
