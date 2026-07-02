@@ -334,6 +334,10 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
     assert (preview_root / "counts.png").exists()
     assert (preview_root / "counts.json").exists()
     assert result.outputs[1].metadata["items"] == ["counts"]
+    assert result.outputs[1].metadata["metadata"]["pipeline"]["output_dataset"] == (
+        "kaguya.esa1.counts"
+    )
+    assert result.outputs[1].metadata["metadata"]["pipeline"]["output_layer"] == "normalized"
 
 
 def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:

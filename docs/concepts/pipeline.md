@@ -54,7 +54,9 @@ The current implementation is intentionally small. It records stage order,
 prevents accidental overwrite by default, supports explicit append/replace,
 uses parquet catalog shards as the storage boundary, streams collected scan
 results by day, and can write a Matplotlib PNG quicklook plus JSON metadata for
-KAGUYA ESA1 pipeline runs.
+KAGUYA ESA1 pipeline runs. Quicklook metadata records the pipeline source,
+stage names, time range, output dataset/layer, selected variable, backend, and
+artifact list.
 
 KAGUYA ESA1 pipeline writes also add manifest provenance under
 `dataset.json["provenance"]`, including source, stages, run mode, time range,

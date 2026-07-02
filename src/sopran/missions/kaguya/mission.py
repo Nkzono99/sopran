@@ -532,6 +532,8 @@ def _pipeline_plot_item(data: KaguyaESA1Data, variable: str, *, y: str):
 def _pipeline_quicklook_metadata(pipeline: Pipeline, variable: str) -> dict[str, object]:
     return {
         "pipeline": {
+            "output_dataset": pipeline.output_dataset,
+            "output_layer": pipeline.output_layer,
             "source": pipeline.source,
             "start": pipeline.time.start_iso,
             "stop": pipeline.time.stop_iso,
