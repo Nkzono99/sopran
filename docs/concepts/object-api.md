@@ -28,7 +28,7 @@ share the same bilingual contract:
 page = kg.guide()
 page.language
 page.available_languages
-page.language_switcher()  # "Lang: 日本語 / English" when both languages exist
+page.language_switcher()  # "Lang: 日本語/English" when both languages exist
 ```
 
 `Project` and `Case` provide analysis context:

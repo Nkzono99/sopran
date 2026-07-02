@@ -86,6 +86,20 @@ value with the outer join:
 features = spn.align(sza, wave_power, grid=bins, method="nearest", fill=-1.0)
 ```
 
+Pass `quality_mask=<1D time series>` to `align()` or `SampleTable.collect()`
+when a coarse quality series should filter bins before the feature table is
+written. The mask is sampled at the bin center inside each bin; bins with a
+mask value of 0, `False`, or no mask sample are dropped:
+
+```python
+features = (
+    spn.SampleTable(bins)
+    .add(sza, method="nearest", tolerance="5s")
+    .add(wave_power, method="max")
+    .collect(join="inner", quality_mask=quality_flag)
+)
+```
+
 Coordinate frames and units are still early-stage. The design goal is to avoid
 reimplementing established space-physics and planetary geometry libraries. SPICE
 and SpacePy-family tools should be used for kernel-backed geometry and common

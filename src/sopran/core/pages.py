@@ -47,7 +47,7 @@ class GuidePage:
     def language_switcher(self) -> str:
         languages = self.available_languages or (self.language,)
         labels = (_LANGUAGE_LABELS.get(language, language) for language in languages)
-        return f"Lang: {' / '.join(labels)}"
+        return f"Lang: {'/'.join(labels)}"
 
     def _repr_markdown_(self) -> str:
         return self.to_markdown()

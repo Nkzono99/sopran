@@ -65,8 +65,8 @@ def test_guide_page_tracks_language_switch_metadata() -> None:
 
     assert page.language == "ja"
     assert page.available_languages == ("ja", "en")
-    assert page.language_switcher() == "Lang: 日本語 / English"
-    assert page.to_markdown().startswith("Lang: 日本語 / English\n\n# SOPRAN docs")
+    assert page.language_switcher() == "Lang: 日本語/English"
+    assert page.to_markdown().startswith("Lang: 日本語/English\n\n# SOPRAN docs")
 
 
 def test_artemis_load_is_explicitly_not_implemented_yet() -> None:

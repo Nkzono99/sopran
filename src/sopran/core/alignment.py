@@ -67,6 +67,7 @@ class AlignmentResult:
     method: AlignmentMethod
     join: JoinMode = "outer"
     fill: Any | None = None
+    quality_mask: bool = False
 
     def to_polars(self, *, layout: TableLayout = "wide"):
         import polars as pl
@@ -103,6 +104,7 @@ class AlignmentResult:
             },
             "join": self.join,
             "method": self.method,
+            "quality_mask": self.quality_mask,
         }
 
 
@@ -143,6 +145,7 @@ def align(
     tolerance: str | timedelta | None = None,
     join: JoinMode = "outer",
     fill: Any | None = None,
+    quality_mask: Any | None = None,
 ) -> AlignmentResult:
     if not arrays:
         raise ValueError("align() requires at least one array")
@@ -164,6 +167,9 @@ def align(
         method=method,
         join=join,
         fill=fill,
+        quality_mask_samples=(
+            _quality_mask_samples(quality_mask) if quality_mask is not None else None
+        ),
     )
 
 
@@ -205,6 +211,7 @@ class SampleTable:
         *,
         join: JoinMode = "outer",
         fill: Any | None = None,
+        quality_mask: Any | None = None,
     ) -> AlignmentResult:
         if not self.specs:
             raise ValueError("SampleTable.collect() requires at least one sample")
@@ -229,6 +236,11 @@ class SampleTable:
             method="mixed",
             join=join,
             fill=fill,
+            quality_mask_samples=(
+                _quality_mask_samples(quality_mask)
+                if quality_mask is not None
+                else None
+            ),
         )
 
 
@@ -247,10 +259,20 @@ def _collect_features(
     method: AlignmentMethod,
     join: JoinMode,
     fill: Any | None,
+    quality_mask_samples: tuple[tuple[datetime, float], ...] | None,
 ) -> AlignmentResult:
     columns = tuple(feature.name for feature in features)
     rows = []
     for bin_index, center in enumerate(grid.centers):
+        start = grid.edges[bin_index]
+        stop = grid.edges[bin_index + 1]
+        if quality_mask_samples is not None and not _quality_mask_allows(
+            quality_mask_samples,
+            center,
+            start,
+            stop,
+        ):
+            continue
         row: dict[str, Any] = {"time": _format_utc(center)}
         for feature in features:
             if feature.method == "nearest":
@@ -263,8 +285,8 @@ def _collect_features(
                 row[feature.name] = _bin_value(
                     feature.samples,
                     center,
-                    grid.edges[bin_index],
-                    grid.edges[bin_index + 1],
+                    start,
+                    stop,
                     feature.method,
                 )
             else:
@@ -287,6 +309,7 @@ def _collect_features(
         method=method,
         join=join,
         fill=fill,
+        quality_mask=quality_mask_samples is not None,
     )
 
 
@@ -322,6 +345,23 @@ def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:
             for component_index, component in enumerate(array.coords[component_dim].values)
         )
     raise ValueError("align() currently supports 1D time series or 2D time x component arrays")
+
+
+def _quality_mask_samples(array: Any) -> tuple[tuple[datetime, float], ...]:
+    features = _features(array, 0)
+    if len(features) != 1:
+        raise ValueError("quality_mask expects a 1D time series")
+    return features[0].samples
+
+
+def _quality_mask_allows(
+    samples: tuple[tuple[datetime, float], ...],
+    center: datetime,
+    start: datetime,
+    stop: datetime,
+) -> bool:
+    value = _bin_value(samples, center, start, stop, "center")
+    return value is not None and value > 0
 
 
 def _sample_values(times: Any, values: Any) -> tuple[tuple[datetime, float], ...]:

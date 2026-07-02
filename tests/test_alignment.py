@@ -86,6 +86,49 @@ def test_align_nearest_samples_arrays_to_time_bin_centers() -> None:
     ]
 
 
+def test_align_quality_mask_drops_masked_bins() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    quality = xr.DataArray(
+        np.array([1.0, 0.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="quality",
+    )
+
+    aligned = spn.align(
+        sza,
+        grid=bins,
+        method="nearest",
+        tolerance="3s",
+        quality_mask=quality,
+    )
+
+    assert aligned.quality_mask is True
+    assert aligned.metadata()["quality_mask"] is True
+    assert aligned.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0}
+    ]
+
+
 def test_align_mean_aggregates_arrays_inside_time_bins() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
@@ -480,6 +523,7 @@ def test_alignment_result_exposes_feature_table_metadata() -> None:
         },
         "join": "outer",
         "method": "nearest",
+        "quality_mask": False,
     }
 
 
@@ -651,4 +695,44 @@ def test_sample_table_fill_replaces_missing_feature_values() -> None:
     assert result.to_polars().to_dicts() == [
         {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 5.0},
         {"time": "2008-01-01T00:00:15Z", "sza": 80.0, "wave_power": -1.0},
+    ]
+
+
+def test_sample_table_quality_mask_drops_masked_bins() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    quality = xr.DataArray(
+        np.array([1.0, 0.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="quality",
+    )
+
+    result = (
+        spn.SampleTable(bins)
+        .add(sza, method="nearest", tolerance="3s")
+        .collect(quality_mask=quality)
+    )
+
+    assert result.quality_mask is True
+    assert result.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0}
     ]

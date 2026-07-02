@@ -107,13 +107,13 @@ features = spn.align(
     tolerance="5s",
 ).to_polars()
 
-# sza, wave_power, and density are loaded xarray-like products.
+# sza, wave_power, density, and quality_flag are loaded xarray-like products.
 ml_features = (
     spn.SampleTable(bins)
     .add(sza, method="nearest", tolerance="5s")
     .add(wave_power, method="max")
     .add(density, method="median")
-    .collect(join="inner")
+    .collect(join="inner", quality_mask=quality_flag)
     .to_polars()
 )
 ```
@@ -123,6 +123,7 @@ ml_features = (
 `nearest`, `center`, `mean`, `max`, `median`, `first`, `last` です。
 `join="outer"` は全binを残し、`join="inner"` は欠損featureを含むbinを落とします。
 `fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
+`quality_mask=<1D time series>` はbin内でcenterに近いmask値が0/False/欠損のbinを落とします。
 `partial="keep"` はcadenceで割り切れない末尾binを残し、`partial="drop"` は捨てます。
 `to_polars(layout="long")` は `time`, `feature`, `value` 形式のtableを返します。
 `metadata()` はgridやreducer条件を返し、保存時のmanifest材料にできます。
