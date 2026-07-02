@@ -10,6 +10,10 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.alignment.AlignmentResult
 
+::: sopran.core.pages.GuidePage
+
+::: sopran.core.pages.InfoPage
+
 ::: sopran.core.store.Store
 
 ::: sopran.core.project.Project

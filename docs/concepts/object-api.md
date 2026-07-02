@@ -20,6 +20,16 @@ scan, collect, or compute data. Execution happens at explicit methods:
 - `guide()`: return a Markdown guide object for notebooks and docs.
 - `example()`: return a short runnable Markdown example when implemented.
 
+`GuidePage` carries language metadata so package guides and public docs can
+share the same bilingual contract:
+
+```python
+page = kg.guide()
+page.language
+page.available_languages
+page.language_switcher()  # "Lang: 日本語 / English" when both languages exist
+```
+
 `Project` and `Case` provide analysis context:
 
 ```python
