@@ -43,6 +43,36 @@ def test_artemis_probe_esa_endpoint_exposes_schema_and_plan() -> None:
     assert plan.time == time
 
 
+def test_artemis_fgm_unknown_variable_error_lists_available_variables() -> None:
+    art = spn.Artemis()
+
+    with pytest.raises(AttributeError) as exc:
+        art.p1.fgm.field
+
+    message = str(exc.value)
+    assert "ARTEMIS.P1.FGM has no variable 'field'" in message
+    assert "Available variables:" in message
+    assert "magnetic_field" in message
+    assert "Did you mean:" in message
+    assert "art.p1.fgm.info()" in message
+    assert "art.p1.fgm.magnetic_field.load(time)" in message
+
+
+def test_artemis_esa_unknown_variable_error_lists_available_variables() -> None:
+    art = spn.Artemis()
+
+    with pytest.raises(AttributeError) as exc:
+        art.p1.esa.energy_flux
+
+    message = str(exc.value)
+    assert "ARTEMIS.P1.ESA has no variable 'energy_flux'" in message
+    assert "Available variables:" in message
+    assert "ion_energy_flux" in message
+    assert "Did you mean:" in message
+    assert "art.p1.esa.info()" in message
+    assert "art.p1.esa.ion_energy_flux.load(time)" in message
+
+
 def test_artemis_guides_return_markdown_pages() -> None:
     art = spn.Artemis()
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from difflib import get_close_matches
 from importlib.resources import files
 from typing import Any
 
@@ -119,6 +120,16 @@ class ArtemisFgmInstrument:
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
+    def __getattr__(self, name: str):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        raise _unknown_variable_error(
+            probe=self.probe.probe,
+            instrument=self.instrument_id,
+            name=name,
+            schema=ARTEMIS_FGM_SCHEMA,
+        )
+
 
 class ArtemisEsaInstrument:
     def __init__(self, probe: ArtemisProbe) -> None:
@@ -154,6 +165,16 @@ class ArtemisEsaInstrument:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def __getattr__(self, name: str):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        raise _unknown_variable_error(
+            probe=self.probe.probe,
+            instrument=self.instrument_id,
+            name=name,
+            schema=ARTEMIS_ESA_SCHEMA,
+        )
 
 
 @dataclass(frozen=True)
@@ -289,6 +310,35 @@ def _read_guide(*, title: str, language: str = "ja") -> GuidePage:
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,
         sources=sources,
+    )
+
+
+def _unknown_variable_error(
+    *,
+    probe: str,
+    instrument: str,
+    name: str,
+    schema: InstrumentSchema,
+) -> AttributeError:
+    variable_names = tuple(variable.name for variable in schema.variables)
+    aliases = {
+        alias: variable.name
+        for variable in schema.variables
+        for alias in variable.aliases
+    }
+    candidates = (*variable_names, *aliases)
+    matches = get_close_matches(name, candidates, n=1, cutoff=0.4)
+    suggestion = aliases.get(matches[0], matches[0]) if matches else variable_names[0]
+    available = "\n".join(f"  {variable.name}" for variable in schema.variables)
+    probe_path = probe.lower()
+    instrument_path = instrument.lower()
+    return AttributeError(
+        f"ARTEMIS.{probe.upper()}.{instrument.upper()} has no variable {name!r}.\n\n"
+        f"Available variables:\n{available}\n\n"
+        f"Did you mean:\n  {suggestion}?\n\n"
+        f"Try:\n"
+        f"  art.{probe_path}.{instrument_path}.info()\n"
+        f"  art.{probe_path}.{instrument_path}.{suggestion}.load(time)"
     )
 
 
