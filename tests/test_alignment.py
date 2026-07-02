@@ -172,3 +172,49 @@ def test_alignment_result_writes_parquet_feature_table(tmp_path) -> None:
     assert pl.read_parquet(path).to_dicts() == [
         {"time": "2008-01-01T00:00:05Z", "sza": 70.0}
     ]
+
+
+def test_sample_table_uses_product_specific_alignment_methods() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 3.0, 10.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:03",
+                    "2008-01-01T00:00:12",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+
+    result = (
+        spn.SampleTable(bins)
+        .add(sza, method="nearest", tolerance="3s")
+        .add(wave_power, method="mean")
+        .collect()
+    )
+
+    assert result.method == "mixed"
+    assert result.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 2.0},
+        {"time": "2008-01-01T00:00:15Z", "sza": 80.0, "wave_power": 10.0},
+    ]

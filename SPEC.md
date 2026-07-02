@@ -1475,7 +1475,9 @@ stack = spn.stack(
 - 描画では原則として各 product の native cadence を保ち、共有するのは UTC time axis にする。
 - 解析用の resampling / interpolation / cadence 統一は `spn.align(...)` で明示する。
 - 時間ビン化は `spn.time_bins(...)` が返す `TimeBins` を第一級 object として扱う。
-- `spn.align(...)` は `grid`, `method`, `tolerance`, `join`, `fill` を必須級の引数として扱う。
+- `spn.align(...)` は全 input に同じ `method`, `tolerance` を適用する簡易 API とする。
+- product ごとに reducer や tolerance を変える feature table は `spn.SampleTable(grid)` で作る。
+- `join`, `fill`, `quality mask`, `wide/long` の扱いは feature table API の拡張点として残す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
@@ -1497,10 +1499,24 @@ features = spn.align(
 ).to_polars()
 ```
 
-v0.1 の `spn.align` はまず 1D time series を `nearest` または `mean` で `TimeBins` の
+product ごとに sampling rule が異なる場合は、`SampleTable` を使う。
+
+```python
+features = (
+    spn.SampleTable(grid)
+    .add(case.moon.sza.load(), method="nearest", tolerance="5s")
+    .add(case.kaguya.lrs.wave_power.load(), method="mean")
+    .add(case.artemis.p1.fgm.magnetic_field.load(), method="nearest", tolerance="2s")
+    .collect()
+    .to_polars()
+)
+```
+
+v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest` または `mean` で `TimeBins` の
 center time に対応づける。`time x component` の vector product は
 `magnetic_field_x`, `magnetic_field_y`, `magnetic_field_z` のような wide columns へ展開する。
-スペクトル、distribution、複数 reducer、欠損処理、wide/long table policy は後続 milestone とする。
+スペクトル、distribution、`max` / `median` / `center sample` などの reducer、欠損処理、
+wide/long table policy は後続 milestone とする。
 
 v0.1 の PlotStack は最小でよい。まずは KAGUYA ESA1 spectrogram と orbit altitude line を
 同じ UTC axis で縦に並べることを目標にする。`panel`, `datashader`, `html report`,

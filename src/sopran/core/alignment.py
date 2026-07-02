@@ -8,6 +8,7 @@ from typing import Any, Literal
 from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 
 AlignMethod = Literal["nearest", "mean"]
+AlignmentMethod = Literal["nearest", "mean", "mixed"]
 
 
 @dataclass(frozen=True)
@@ -46,7 +47,7 @@ class AlignmentResult:
     grid: TimeBins
     columns: tuple[str, ...]
     rows: tuple[dict[str, Any], ...]
-    method: AlignMethod
+    method: AlignmentMethod
 
     def to_polars(self):
         import polars as pl
@@ -91,19 +92,98 @@ def align(
     if not arrays:
         raise ValueError("align() requires at least one array")
     tolerance_delta = _parse_duration(tolerance) if tolerance is not None else None
-    features = tuple(
-        feature
+    requested_features = tuple(
+        _RequestedFeature(
+            name=feature.name,
+            samples=feature.samples,
+            method=method,
+            tolerance=tolerance_delta,
+        )
         for index, array in enumerate(arrays)
         for feature in _features(array, index)
     )
+    return _collect_features(grid, requested_features, method=method)
+
+
+@dataclass(frozen=True)
+class SampleSpec:
+    """One input series and its alignment rule for a sampled feature table."""
+
+    array: Any
+    method: AlignMethod
+    tolerance: str | timedelta | None = None
+
+
+@dataclass(frozen=True)
+class SampleTable:
+    """Build a feature table with product-specific time alignment rules."""
+
+    grid: TimeBins
+    specs: tuple[SampleSpec, ...] = ()
+
+    def add(
+        self,
+        array: Any,
+        *,
+        method: AlignMethod,
+        tolerance: str | timedelta | None = None,
+    ) -> SampleTable:
+        if method not in ("nearest", "mean"):
+            raise ValueError("method must be 'nearest' or 'mean'")
+        return SampleTable(
+            grid=self.grid,
+            specs=(
+                *self.specs,
+                SampleSpec(array=array, method=method, tolerance=tolerance),
+            ),
+        )
+
+    def collect(self) -> AlignmentResult:
+        if not self.specs:
+            raise ValueError("SampleTable.collect() requires at least one sample")
+        requested_features = tuple(
+            _RequestedFeature(
+                name=feature.name,
+                samples=feature.samples,
+                method=spec.method,
+                tolerance=(
+                    _parse_duration(spec.tolerance)
+                    if spec.tolerance is not None
+                    else None
+                ),
+            )
+            for index, spec in enumerate(self.specs)
+            for feature in _features(spec.array, index)
+        )
+        return _collect_features(self.grid, requested_features, method="mixed")
+
+
+@dataclass(frozen=True)
+class _RequestedFeature:
+    name: str
+    samples: tuple[tuple[datetime, float], ...]
+    method: AlignMethod
+    tolerance: timedelta | None
+
+
+def _collect_features(
+    grid: TimeBins,
+    features: tuple[_RequestedFeature, ...],
+    *,
+    method: AlignmentMethod,
+) -> AlignmentResult:
     columns = tuple(feature.name for feature in features)
     rows = []
     for bin_index, center in enumerate(grid.centers):
         row: dict[str, Any] = {"time": _format_utc(center)}
         for feature in features:
-            if method == "nearest":
-                row[feature.name] = _nearest_value(feature.samples, center, tolerance_delta)
-            elif method == "mean":
+            if feature.method == "nearest":
+                row[feature.name] = _nearest_value(
+                    feature.samples,
+                    center,
+                    feature.tolerance,
+                )
+            elif feature.method == "mean":
                 row[feature.name] = _mean_value(
                     feature.samples,
                     grid.edges[bin_index],

@@ -1,4 +1,11 @@
-from sopran.core.alignment import AlignmentResult, TimeBins, align, time_bins
+from sopran.core.alignment import (
+    AlignmentResult,
+    SampleSpec,
+    SampleTable,
+    TimeBins,
+    align,
+    time_bins,
+)
 from sopran.core.errors import DatasetNotFoundError, SopranError
 from sopran.core.database import Database, ProductRef
 from sopran.core.loaders import load
@@ -32,6 +39,8 @@ __all__ = [
     "PlotPlan",
     "PlotStack",
     "QuicklookResult",
+    "SampleSpec",
+    "SampleTable",
     "Store",
     "ProductRef",
     "SopranError",

@@ -106,10 +106,21 @@ features = spn.align(
     method="nearest",
     tolerance="5s",
 ).to_polars()
+
+# sza and wave_power are loaded xarray-like products.
+ml_features = (
+    spn.SampleTable(bins)
+    .add(sza, method="nearest", tolerance="5s")
+    .add(wave_power, method="mean")
+    .collect()
+    .to_polars()
+)
 ```
 
 `time x component` の vector product は `magnetic_field_x` のような wide columns に展開します。
-`spn.align(...).write_parquet("features.parquet")` で feature table を保存できます。
+観測量ごとに対応づけ方法を変える場合は `SampleTable` を使います。
+`spn.align(...).write_parquet("features.parquet")` または
+`spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 
 raw file は `Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。
 たとえば ESA1 の 2008-01-01 は次の配置を探索します。
