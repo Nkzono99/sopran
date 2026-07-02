@@ -39,6 +39,13 @@ class Store:
     def database_path(self, *parts: str) -> Path:
         return self.root.joinpath("databases", *parts)
 
+    def database(self, name: str):
+        from sopran.core.database import Database
+
+        if not name:
+            raise ValueError("database name must not be empty")
+        return Database(name=name, root=self.database_path(name))
+
     def dataset_path(self, dataset_id: str, *, layer: str) -> Path:
         return self._layer_path(layer, *_dataset_parts(dataset_id))
 

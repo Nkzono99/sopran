@@ -1,4 +1,5 @@
 from sopran.core.errors import DatasetNotFoundError, SopranError
+from sopran.core.database import Database, ProductRef
 from sopran.core.loaders import load
 from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
 from sopran.core.pages import GuidePage, InfoPage
@@ -9,6 +10,7 @@ from sopran.core.time import TimeRange, day, month, period, year
 __all__ = [
     "GuidePage",
     "InfoPage",
+    "Database",
     "DatasetNotFoundError",
     "Pipeline",
     "PipelinePlan",
@@ -18,6 +20,7 @@ __all__ = [
     "PlotPlan",
     "PlotStack",
     "Store",
+    "ProductRef",
     "SopranError",
     "TimeRange",
     "day",

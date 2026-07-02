@@ -209,6 +209,26 @@ def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
     assert plan.output_layer == "normalized"
 
 
+def test_pipeline_write_accepts_database_product_reference(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    kg = spn.Kaguya(store=store)
+    product = store.database("wake_events").product("raw_counts")
+
+    pipe = (
+        kg.esa1.pipeline(spn.month("2008-02"))
+        .decode()
+        .select_variables("counts")
+        .write(product)
+    )
+
+    plan = pipe.plan()
+
+    assert product.dataset_id == "wake_events.raw_counts"
+    assert product.layer == "databases"
+    assert plan.output_dataset == "wake_events.raw_counts"
+    assert plan.output_layer == "databases"
+
+
 def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.month("2008-02")

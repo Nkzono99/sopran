@@ -62,13 +62,17 @@ class Pipeline:
     def derive(self, name: str, **parameters: Any) -> Pipeline:
         return self._with_stage("derive", name=name, **parameters)
 
-    def write(self, dataset: str, *, layer: str) -> Pipeline:
+    def write(self, dataset: str | Any, *, layer: str | None = None) -> Pipeline:
+        dataset_id, output_layer = _write_target(dataset, layer)
         return Pipeline(
             source=self.source,
             time=self.time,
-            stages=(*self.stages, PipelineStage("write", {"dataset": dataset, "layer": layer})),
-            output_dataset=dataset,
-            output_layer=layer,
+            stages=(
+                *self.stages,
+                PipelineStage("write", {"dataset": dataset_id, "layer": output_layer}),
+            ),
+            output_dataset=dataset_id,
+            output_layer=output_layer,
             context=self.context,
         )
 
@@ -110,3 +114,16 @@ class Pipeline:
             output_layer=self.output_layer,
             context=self.context,
         )
+
+
+def _write_target(dataset: str | Any, layer: str | None) -> tuple[str, str]:
+    if isinstance(dataset, str):
+        if layer is None:
+            raise TypeError("Pipeline.write() requires layer=... for string dataset IDs")
+        return dataset, layer
+
+    dataset_id = getattr(dataset, "dataset_id", None)
+    output_layer = layer or getattr(dataset, "layer", None)
+    if dataset_id is None or output_layer is None:
+        raise TypeError("Pipeline.write() expects a dataset ID string or ProductRef")
+    return str(dataset_id), str(output_layer)
