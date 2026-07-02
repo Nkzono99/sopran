@@ -234,7 +234,13 @@ def test_pipeline_write_accepts_database_product_reference(tmp_path) -> None:
 def test_pipeline_scan_reads_stored_normalized_variable(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.day("2008-01-01")
-    frame = pl.DataFrame({"time": ["2008-01-01T00:00:08Z"], "energy": [0], "counts": [64]})
+    frame = pl.DataFrame(
+        {
+            "time": ["2008-01-01T00:00:08Z", "2008-01-02T00:00:08Z"],
+            "energy": [0, 0],
+            "counts": [64, 128],
+        }
+    )
     store.write_parquet_dataset(
         dataset_id="kaguya.esa1.counts",
         layer="normalized",
@@ -249,7 +255,9 @@ def test_pipeline_scan_reads_stored_normalized_variable(tmp_path) -> None:
 
     lazy = kg.esa1.pipeline(time).from_normalized().select_variables("counts").scan()
 
-    assert lazy.collect().to_dicts() == frame.to_dicts()
+    assert lazy.collect().to_dicts() == [
+        {"time": "2008-01-01T00:00:08Z", "energy": 0, "counts": 64}
+    ]
 
 
 def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:

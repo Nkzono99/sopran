@@ -238,7 +238,13 @@ class PaceInstrument(KaguyaInstrument):
         variable = _pipeline_variable(pipeline)
         dataset_id = pipeline.output_dataset or f"kaguya.esa1.{variable}"
         layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
-        return self.mission.store.scan_dataset(dataset_id, layer=layer)
+        lazy = self.mission.store.scan_dataset(dataset_id, layer=layer)
+        import polars as pl
+
+        return lazy.filter(
+            (pl.col("time") >= pipeline.time.start_iso)
+            & (pl.col("time") < pipeline.time.stop_iso)
+        )
 
     def _run_pipeline(self, pipeline: Pipeline, *, mode: str = "create") -> PipelineResult:
         if self.sensor != "ESA1":
