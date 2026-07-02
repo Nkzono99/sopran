@@ -975,3 +975,30 @@ stop = "2008-01-01T00:02:00"
     assert metadata["context"] == case.metadata()
     assert "&quot;context&quot;: {" in html
     assert "&quot;frame&quot;: &quot;SSE&quot;" in html
+
+
+def test_plot_stack_quicklook_accepts_to_metadata_object_as_context(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+    result = spn.stack(spn.line(quality)).quicklook(
+        "region_context",
+        root=tmp_path,
+        context=region,
+    )
+
+    metadata = json.loads((tmp_path / "region_context.json").read_text(encoding="utf-8"))
+    assert result.metadata["context"] == region.to_metadata()
+    assert metadata["context"] == region.to_metadata()

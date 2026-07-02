@@ -424,6 +424,11 @@ def _optional_metadata(value: Any) -> dict[str, Any] | None:
         metadata = metadata()
     if isinstance(metadata, Mapping):
         return _metadata_value(metadata)
+    to_metadata = getattr(value, "to_metadata", None)
+    if callable(to_metadata):
+        metadata = to_metadata()
+    if isinstance(metadata, Mapping):
+        return _metadata_value(metadata)
     return None
 
 

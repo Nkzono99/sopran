@@ -264,6 +264,23 @@ def test_project_save_accepts_loaded_array_as_context(tmp_path) -> None:
     assert metadata["context"] == data.metadata
 
 
+def test_project_save_accepts_to_metadata_object_as_context(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    project = spn.Project(project_root, store=Store(tmp_path / "store"))
+    data = KaguyaESA1Data(time=spn.day("2008-02-01")).quality
+    region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+    artifact = project.save(
+        data,
+        "interim/kaguya_esa1_quality_region_context",
+        context=region,
+    )
+
+    metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
+    assert metadata["context"] == region.to_metadata()
+
+
 def test_project_save_records_loaded_object_source_metadata(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()

@@ -439,6 +439,11 @@ def _context_metadata(context: Any) -> dict[str, Any]:
         metadata = metadata()
     if isinstance(metadata, Mapping):
         return _metadata_value(metadata)
+    to_metadata = getattr(context, "to_metadata", None)
+    if callable(to_metadata):
+        metadata = to_metadata()
+    if isinstance(metadata, Mapping):
+        return _metadata_value(metadata)
     raise TypeError("context must be a metadata mapping or expose metadata")
 
 

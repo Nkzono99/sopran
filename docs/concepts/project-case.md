@@ -51,10 +51,11 @@ metadata. Use it when a plot, interim artifact, or pipeline run needs to carry
 the same analysis context into provenance. Feature tables created with
 `AlignmentResult.write_dataset(..., context=case)` store the same metadata in
 the dataset manifest.
-Context-aware APIs accept a metadata mapping, an object with `metadata()`, or an
-object with a JSON-ready `metadata` property. Loaded `SopranArray` values can
-therefore be passed as `context=quality` when the artifact should record the
-loaded variable itself.
+Context-aware APIs accept a metadata mapping, an object with `metadata()`, an
+object with a JSON-ready `metadata` property, or an object with `to_metadata()`.
+Loaded `SopranArray` values can therefore be passed as `context=quality` when
+the artifact should record the loaded variable itself. Region-like objects can
+be passed directly when their `to_metadata()` output is the desired context.
 
 When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
 relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain

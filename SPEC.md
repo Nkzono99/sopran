@@ -469,7 +469,8 @@ surface product は、`time` が明示されていない場合に `case.time.sta
 defaults、region metadata を JSON-ready dict として返し、plot、artifact、pipeline provenance に
 同じ context を残すための共通入口にする。
 `context=` を受ける API は JSON-ready mapping、`metadata()` method を持つ object、
-または `metadata` property が JSON-ready mapping の object を同じ provenance context として扱う。
+`metadata` property が JSON-ready mapping の object、または `to_metadata()` method を持つ
+object を同じ provenance context として扱う。
 保存も project に紐づける。
 
 ```python

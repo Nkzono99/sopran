@@ -283,6 +283,31 @@ def test_store_writes_dataset_parameters_into_manifest(tmp_path) -> None:
     }
 
 
+def test_store_accepts_to_metadata_object_as_context(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    region = spn.Region(
+        lon=(120, 160),
+        lat=(-45, -10),
+        body="moon",
+        lon_direction="west_positive",
+    )
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="analysis.region_context",
+        layer="features",
+        mission="analysis",
+        instrument="region",
+        product="context",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+        context=region,
+    )
+
+    assert dataset.manifest()["context"] == region.to_metadata()
+
+
 def test_store_writes_source_datasets_into_manifest(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")
