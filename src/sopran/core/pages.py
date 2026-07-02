@@ -53,7 +53,7 @@ class GuidePage:
         return self.to_markdown()
 
     def show(self) -> None:
-        print(self.markdown)
+        print(self.to_markdown())
 
     def open(self) -> None:
         if self.url is None:

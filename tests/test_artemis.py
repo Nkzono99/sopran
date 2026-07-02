@@ -69,6 +69,20 @@ def test_guide_page_tracks_language_switch_metadata() -> None:
     assert page.to_markdown().startswith("Lang: 日本語/English\n\n# SOPRAN docs")
 
 
+def test_guide_page_show_includes_language_switcher(capsys) -> None:
+    page = spn.GuidePage(
+        title="SOPRAN docs",
+        markdown="# SOPRAN docs",
+        source="docs",
+        language="ja",
+        available_languages=("ja", "en"),
+    )
+
+    page.show()
+
+    assert capsys.readouterr().out.startswith("Lang: 日本語/English\n\n# SOPRAN docs")
+
+
 def test_artemis_load_is_explicitly_not_implemented_yet() -> None:
     art = spn.Artemis()
 
