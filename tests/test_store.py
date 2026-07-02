@@ -53,6 +53,7 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
         "sopran": spn.__version__,
     }
     assert manifest["parameters"] == {}
+    assert manifest["source_datasets"] == []
     assert manifest["time_coverage"] == {
         "start": "2008-02-01T00:00:00Z",
         "stop": "2008-02-02T00:00:00Z",
@@ -157,6 +158,28 @@ def test_store_writes_dataset_parameters_into_manifest(tmp_path) -> None:
         "binning": "none",
         "quality_mask": ["valid_energy", "valid_look_direction"],
     }
+
+
+def test_store_writes_source_datasets_into_manifest(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.pitch_angle_distribution",
+        layer="features",
+        mission="kaguya",
+        instrument="esa1",
+        product="pitch_angle_distribution",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "pad": [1.0]}),
+        source_datasets=("kaguya.esa1.counts", "kaguya.orbit.position"),
+    )
+
+    assert dataset.manifest()["source_datasets"] == [
+        "kaguya.esa1.counts",
+        "kaguya.orbit.position",
+    ]
 
 
 def test_store_rejects_unknown_dataset_status(tmp_path) -> None:
@@ -377,6 +400,7 @@ def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
         time_coverage=first,
         frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
         source_files=("raw/first.dat",),
+        source_datasets=("source.first",),
     )
 
     dataset = store.write_parquet_dataset(
@@ -384,6 +408,7 @@ def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
         time_coverage=second,
         frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
         source_files=("raw/second.dat",),
+        source_datasets=("source.second",),
         append=True,
     )
 
@@ -396,6 +421,7 @@ def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
         second.start_iso,
     ]
     assert dataset.manifest()["source_files"] == ["raw/first.dat", "raw/second.dat"]
+    assert dataset.manifest()["source_datasets"] == ["source.first", "source.second"]
 
 
 def test_dataset_record_scans_its_catalog_shards(tmp_path) -> None:

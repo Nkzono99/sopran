@@ -856,7 +856,7 @@ logs/              # 必要に応じて生成ログ
 - `status`: `scratch`, `candidate`, `adopted`, `deprecated` のいずれか。
   初期保存は `candidate` を default とする。
 - `time_coverage`
-- `source_datasets`
+- `source_datasets`: 派生 dataset の入力になった dataset ID。append 時は重複なく merge する。
 - `source_files`
 - `provenance`: pipeline source、stage list、run mode、time range、input/output target、
   selected variable/product、parameters。

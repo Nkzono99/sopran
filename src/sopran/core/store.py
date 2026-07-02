@@ -88,6 +88,7 @@ class Store:
         schema: InstrumentSchema,
         time_coverage: TimeRange | None,
         source_files: tuple[str, ...] = (),
+        source_datasets: tuple[str, ...] = (),
         shards: tuple[dict[str, Any], ...] = (),
         producer: str = "sopran",
         provenance: dict[str, Any] | None = None,
@@ -107,6 +108,7 @@ class Store:
             "status": status,
             "created_at": _utc_now_iso(),
             "time_coverage": _time_coverage_to_json(time_coverage),
+            "source_datasets": list(source_datasets),
             "source_files": list(source_files),
             "producer": producer,
             "software": _software_metadata(),
@@ -134,6 +136,7 @@ class Store:
         time_coverage: TimeRange,
         frame: Any,
         source_files: tuple[str, ...] = (),
+        source_datasets: tuple[str, ...] = (),
         shard_path: str = "shards/part-000.parquet",
         compression: str = "zstd",
         overwrite: bool = False,
@@ -153,6 +156,11 @@ class Store:
         manifest_source_files = (
             _merge_source_files(record.manifest_path, source_files) if append else source_files
         )
+        manifest_source_datasets = (
+            _merge_source_datasets(record.manifest_path, source_datasets)
+            if append
+            else source_datasets
+        )
         if append and shard_path == "shards/part-000.parquet":
             shard_path = _next_shard_path(existing_shards)
         target = _resolve_child(record.root, shard_path)
@@ -170,6 +178,7 @@ class Store:
             schema=schema,
             time_coverage=manifest_time_coverage,
             source_files=manifest_source_files,
+            source_datasets=manifest_source_datasets,
             shards=(
                 *existing_shards,
                 {
@@ -390,6 +399,17 @@ def _merge_source_files(path: Path, new: tuple[str, ...]) -> tuple[str, ...]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     merged = []
     for source in (*manifest.get("source_files", []), *new):
+        if source not in merged:
+            merged.append(str(source))
+    return tuple(merged)
+
+
+def _merge_source_datasets(path: Path, new: tuple[str, ...]) -> tuple[str, ...]:
+    if not path.exists():
+        return new
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    merged = []
+    for source in (*manifest.get("source_datasets", []), *new):
         if source not in merged:
             merged.append(str(source))
     return tuple(merged)
