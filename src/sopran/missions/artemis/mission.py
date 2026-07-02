@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.resources import files
 
-from sopran.core.pages import InfoPage
+from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange
 
@@ -32,6 +33,9 @@ class Artemis:
             ),
         )
 
+    def guide(self) -> GuidePage:
+        return _read_guide(title="ARTEMIS")
+
 
 class ArtemisProbe:
     def __init__(self, mission: Artemis, probe: str) -> None:
@@ -44,6 +48,9 @@ class ArtemisProbe:
             title=f"ARTEMIS.{self.probe.upper()}",
             lines=("fgm: fluxgate magnetometer",),
         )
+
+    def guide(self) -> GuidePage:
+        return self.mission.guide()
 
 
 class ArtemisFgmInstrument:
@@ -64,6 +71,9 @@ class ArtemisFgmInstrument:
             title=f"ARTEMIS.{self.probe.probe.upper()}.FGM",
             lines=(f"{ARTEMIS_MAGNETIC_FIELD.name}: {ARTEMIS_MAGNETIC_FIELD.description}",),
         )
+
+    def guide(self) -> GuidePage:
+        return self.probe.guide()
 
 
 @dataclass(frozen=True)
@@ -91,6 +101,9 @@ class ArtemisVariableEndpoint:
     def schema(self) -> VariableSchema:
         return self._schema
 
+    def guide(self) -> GuidePage:
+        return self.instrument.guide()
+
     def plan(self, time: TimeRange) -> ArtemisLoadPlan:
         return ArtemisLoadPlan(
             dataset_id=f"{self.instrument.dataset_prefix}.{self.name}",
@@ -100,3 +113,14 @@ class ArtemisVariableEndpoint:
     def load(self, time: TimeRange):
         probe = self.instrument.probe.probe.upper()
         raise NotImplementedError(f"ARTEMIS {probe} FGM load is not implemented yet")
+
+
+def _read_guide(*, title: str) -> GuidePage:
+    markdown = files("sopran.missions.artemis").joinpath("README.md").read_text(
+        encoding="utf-8"
+    )
+    return GuidePage(
+        title=title,
+        markdown=markdown,
+        source="sopran.missions.artemis/README.md",
+    )

@@ -20,6 +20,33 @@ def test_artemis_probe_fgm_endpoint_exposes_schema_and_plan() -> None:
     assert plan.time == time
 
 
+def test_artemis_guides_return_markdown_pages() -> None:
+    art = spn.Artemis()
+
+    mission_guide = art.guide()
+    fgm_guide = art.p1.fgm.guide()
+    variable_guide = art.p1.fgm.magnetic_field.guide()
+
+    assert "# ARTEMIS" in mission_guide.to_markdown()
+    assert "FGM" in fgm_guide.to_markdown()
+    assert variable_guide.source == "sopran.missions.artemis/README.md"
+
+
+def test_guide_page_open_uses_public_url(monkeypatch) -> None:
+    opened = []
+    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    page = spn.GuidePage(
+        title="SOPRAN docs",
+        markdown="# SOPRAN docs",
+        source="docs",
+        url="https://example.com/sopran",
+    )
+
+    page.open()
+
+    assert opened == ["https://example.com/sopran"]
+
+
 def test_artemis_load_is_explicitly_not_implemented_yet() -> None:
     art = spn.Artemis()
 

@@ -27,6 +27,7 @@ class GuidePage:
     title: str
     markdown: str
     source: str
+    url: str | None = None
 
     def __str__(self) -> str:
         return self.markdown
@@ -39,3 +40,10 @@ class GuidePage:
 
     def show(self) -> None:
         print(self.markdown)
+
+    def open(self) -> None:
+        if self.url is None:
+            raise ValueError(f"GuidePage has no public URL: {self.source}")
+        import webbrowser
+
+        webbrowser.open(self.url)
