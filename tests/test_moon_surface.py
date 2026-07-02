@@ -22,7 +22,6 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     sza_plan = moon.sza.plan(
         time="2008-02-01T12:00:00Z",
         region=normalized,
-        geometry="spice",
     )
 
     assert normalized.lon == (-10.0, 10.0)

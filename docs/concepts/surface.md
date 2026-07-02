@@ -18,7 +18,6 @@ dem_plan = moon.dem.plan(
 sza_plan = moon.sza.plan(
     time="2008-02-01T12:00:00Z",
     region=normalized,
-    geometry="spice",
 )
 metadata = dem_plan.to_metadata()
 ```
@@ -49,7 +48,7 @@ Mission modules may discover provider files, but body-fixed semantics belong to
 Terrain-aware shadow and illumination products must eventually record DEM,
 solar position, body shape, projection, and longitude-domain metadata.
 `moon.sza` is a planning endpoint for solar zenith angle products; the current
-source ID is `computed.spice.sza`.
+source ID is `computed.spice.sza`. Its default `geometry` metadata is `spice`.
 
 When a surface endpoint is reached through a `Project` case, case context is
 applied as a default:

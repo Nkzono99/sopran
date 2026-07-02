@@ -20,7 +20,6 @@ shadow_plan = moon.shadow.plan(
 sza_plan = moon.sza.plan(
     time="2008-02-01T12:00:00Z",
     region=region,
-    geometry="spice",
 )
 metadata = shadow_plan.to_metadata()
 ```
@@ -38,6 +37,8 @@ sza_plan = case.moon.sza.plan()
 `projection` and `area_or_point` are written to every surface plan. Use
 `projection="polar_stereo"` as a short alias when you want
 `polar_stereographic` metadata.
+SZA plans default to `geometry="spice"` so the intended geometry backend is
+recorded even before the SPICE-backed computation backend is implemented.
 
 For regions that cross the 0/360 degree boundary:
 

@@ -72,6 +72,7 @@ lon_domain = "0_360"
     assert shadow_plan.parameters["time"] == "2008-02-01T12:00:00Z"
     assert sza_plan.parameters["region"] == case.region
     assert sza_plan.parameters["time"] == "2008-02-01T12:00:00Z"
+    assert sza_plan.parameters["geometry"] == "spice"
 
 
 def test_project_case_exports_json_ready_context_metadata(tmp_path) -> None:

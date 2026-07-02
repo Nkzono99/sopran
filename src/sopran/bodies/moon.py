@@ -109,7 +109,7 @@ class SurfaceEndpoint:
         return SurfacePlan(
             body=self.body.name,
             product=self.product,
-            parameters=_surface_parameters(parameters),
+            parameters=_surface_parameters(self.product, parameters),
         )
 
     def load(self, **parameters: Any) -> None:
@@ -229,8 +229,10 @@ def _metadata_value(value: Any) -> Any:
     return value
 
 
-def _surface_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(parameters)
+    if product == "sza" and "geometry" not in normalized:
+        normalized["geometry"] = "spice"
     normalized["projection"] = _canonical_projection(
         str(normalized.get("projection", "native"))
     )
