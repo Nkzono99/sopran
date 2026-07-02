@@ -44,7 +44,9 @@ runtime 系は標準 dependencies にも含めます。
 ## 現在動く最小 API
 
 KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF decode、
-`xarray`/`polars` 変換、parquet 保存、最小 PlotStack までの縦切りを実装し始めています。
+`xarray`/`polars` 変換、parquet 保存、Pipeline scan/run、最小 PlotStack までの縦切りを
+実装し始めています。ARTEMIS FGM は normalized parquet が Store にある場合の load skeleton を
+用意しています。
 
 ```python
 import sopran as spn
@@ -60,6 +62,19 @@ esa1 = kg.esa1.load(time)
 ds = esa1.to_xarray()
 counts = esa1.to_polars("counts", reduce_look="sum")
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
+
+pipe = (
+    kg.esa1.pipeline(time)
+    .decode()
+    .select_variables("counts")
+    .write("kaguya.esa1.counts", layer="normalized")
+)
+pipe.run()                 # existing shard があれば失敗
+pipe.run(mode="replace")   # 明示置換
+pipe.run(mode="append")    # catalog に shard を追加
+
+lazy = kg.esa1.pipeline(time).from_normalized().select_variables("counts").scan()
+counts_frame = lazy.collect()
 
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy"),
@@ -87,6 +102,7 @@ case = prj.case("wake_20080201")
 
 counts = case.kaguya.esa1.counts.load()
 artemis_b_plan = case.artemis.p1.fgm.magnetic_field.plan()
+moon_dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
 
 stack = case.stack(
     counts.spectrogram(y="energy"),
@@ -103,6 +119,19 @@ region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
 dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=region, resolution="512ppd")
 shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00", dem=dem_plan)
+```
+
+ユーザー定義の database product は Store 配下に metadata と空 dataset として登録できます。
+
+```python
+db = store.database("lunar_wake")
+product = db.register_product(
+    name="event_table",
+    schema=kg.esa1.schema(),
+    description="hand-curated lunar wake events",
+)
+
+pipe.write(db.product("event_table"))
 ```
 
 ## 予定ディレクトリ
@@ -145,6 +174,7 @@ not be copied into the Apache-2.0 core without a separate license review.
 
 ## 開発状況
 
-現在は KAGUYA ESA1 の local PBF decode、xarray/polars 変換、parquet 保存、
-PlotStack、Project/Case、Moon surface skeleton、ARTEMIS FGM skeleton を実装し始めています。
+現在は KAGUYA ESA1 の local PBF decode、xarray/polars 変換、parquet 保存、Pipeline run/scan、
+PlotStack、Project/Case、Moon surface skeleton、ARTEMIS FGM normalized store load skeleton を
+実装し始めています。
 詳細設計は `SPEC.md`, `STORE.md`, `PIPELINE.md`, `SURFACE.md`, `PLOTTING.md` に分けます。
