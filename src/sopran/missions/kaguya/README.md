@@ -1,0 +1,33 @@
+# KAGUYA/SELENE
+
+KAGUYA/SELENE support is the first SOPRAN vertical slice. The current
+implementation focuses on local public archive discovery and PACE ESA1 raw PBF
+decode.
+
+## Implemented
+
+- PACE ESA1/ESA2/IMA/IEA public PBF path planning.
+- LMAG public path planning.
+- Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
+- ESA1 typed data object with `to_xarray()`, `to_polars()`, and
+  `write_parquet()`.
+- Minimal Matplotlib `PlotStack` integration through top-level
+  `sopran.stack()`.
+
+## Raw File Layout
+
+Keep provider paths under the raw KAGUYA PDS3 root:
+
+```text
+raw/kaguya/pds3/
+  sln-l-pace-3-pbf1-v3.0/YYYYMMDD/data/IPACE_PBF1_YYMMDD_ESA1_V003.dat.gz
+```
+
+Use `kg.esa1.select(day).remote_files()` to inspect expected public archive
+paths before downloading or copying data into the store.
+
+## Current Limits
+
+Calibration from counts to physical energy flux is not implemented yet. ESA1
+`energy_flux` is represented as NaN in decoded xarray output until calibration
+tables and SPEDAS parity tests are ported.

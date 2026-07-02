@@ -20,3 +20,22 @@ class InfoPage:
 
     def show(self) -> None:
         print(str(self))
+
+
+@dataclass(frozen=True)
+class GuidePage:
+    title: str
+    markdown: str
+    source: str
+
+    def __str__(self) -> str:
+        return self.markdown
+
+    def to_markdown(self) -> str:
+        return self.markdown
+
+    def _repr_markdown_(self) -> str:
+        return self.to_markdown()
+
+    def show(self) -> None:
+        print(self.markdown)

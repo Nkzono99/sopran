@@ -106,6 +106,18 @@ def test_kaguya_mission_and_esa1_instrument_are_discoverable(tmp_path) -> None:
     assert "energy_flux" in str(kg.esa1.info())
 
 
+def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    mission_guide = kg.guide()
+    esa1_guide = kg.esa1.guide()
+
+    assert "KAGUYA/SELENE" in str(mission_guide)
+    assert "PACE ESA1" in str(esa1_guide)
+    assert kg.guide("esa1") == esa1_guide
+    assert "# KAGUYA/SELENE" in mission_guide._repr_markdown_()
+
+
 def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.period("2008-02-01", "2008-02-02")

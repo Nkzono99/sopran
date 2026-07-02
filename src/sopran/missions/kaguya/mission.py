@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
 from typing import Literal
 
 from sopran.core import Store
-from sopran.core.pages import InfoPage
+from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange
@@ -62,6 +63,14 @@ class Kaguya:
                 "lmag: Lunar MAGnetometer",
             ),
         )
+
+    def guide(self, topic: str | None = None) -> GuidePage:
+        if topic is None:
+            return _read_guide("README.md", title="KAGUYA/SELENE")
+        normalized = topic.lower().replace("-", "").replace("_", "")
+        if normalized in {"esa1", "esas1", "paceesa1"}:
+            return _read_guide("ESA1.md", title="PACE ESA1")
+        raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
 
 @dataclass(frozen=True)
@@ -222,6 +231,11 @@ class PaceInstrument(KaguyaInstrument):
             else (),
         )
 
+    def guide(self) -> GuidePage:
+        if self.sensor == "ESA1":
+            return _read_guide("ESA1.md", title="PACE ESA1")
+        return _read_guide("README.md", title=f"KAGUYA {self.sensor}")
+
     def schema(self):
         if self.sensor != "ESA1":
             raise NotImplementedError(f"Schema is not implemented for {self.sensor}")
@@ -270,4 +284,13 @@ def _missing_time_error(endpoint: str) -> ValueError:
         'Examples:\n  time = spn.period("2008-02-01", "2008-02-02")\n'
         f"  kg.esa1.energy_flux.load(time)\n\n"
         "Or use a Project case:\n  case.kaguya.esa1.energy_flux.load()"
+    )
+
+
+def _read_guide(name: str, *, title: str) -> GuidePage:
+    markdown = files("sopran.missions.kaguya").joinpath(name).read_text(encoding="utf-8")
+    return GuidePage(
+        title=title,
+        markdown=markdown,
+        source=f"sopran.missions.kaguya/{name}",
     )
