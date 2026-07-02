@@ -118,6 +118,40 @@ def test_loaded_array_info_returns_info_page() -> None:
     assert "Raw counts." in str(info)
 
 
+def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=quality,
+    )
+
+    result = loaded.quicklook("quality_review", root=tmp_path, formats=("png", "html"))
+
+    assert isinstance(result, spn.QuicklookResult)
+    assert (tmp_path / "quality_review.png").exists()
+    assert (tmp_path / "quality_review.html").exists()
+    assert result.metadata["dataset_id"] == "quality"
+    assert result.metadata["time_range"] == {
+        "start": "2008-01-01T00:00:00Z",
+        "stop": "2008-01-02T00:00:00Z",
+    }
+    assert result.metadata["items"] == ["quality"]
+
+
 def test_plot_stack_line_accepts_vector_time_series() -> None:
     import matplotlib
 

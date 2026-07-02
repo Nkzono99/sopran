@@ -47,6 +47,37 @@ class SopranArray:
 
         return line(self.to_xarray(), x=x, name=name or self.name)
 
+    def quicklook(
+        self,
+        name: str | None = None,
+        *,
+        root: str | Path = ".",
+        formats: tuple[str, ...] = ("png",),
+        backend: str = "matplotlib",
+        x: str = "time",
+        frame: str | None = None,
+        aggregation: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        context: Any | None = None,
+        figsize: tuple[float, float] | None = None,
+    ):
+        from sopran.core.plotting import stack
+
+        quicklook_name = name or self.name
+        return stack(self.line(x=x)).quicklook(
+            quicklook_name,
+            root=root,
+            formats=formats,
+            backend=backend,  # type: ignore[arg-type]
+            dataset_id=self.name,
+            time_range=self.time,
+            frame=frame or self.schema.frame,
+            aggregation=aggregation,
+            metadata=metadata,
+            context=context,
+            figsize=figsize,
+        )
+
     def spectrogram(
         self,
         *,

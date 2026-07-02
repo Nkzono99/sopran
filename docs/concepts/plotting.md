@@ -6,7 +6,11 @@ model. The beginner path is explicit:
 ```python
 counts = kg.esa1.counts.load(time)
 counts.plot()
+counts.quicklook("counts_review", root="reports", formats=("png", "html"))
 ```
+
+`SopranArray.quicklook()` writes a one-panel PlotStack quicklook for the loaded
+variable and records standard metadata such as the variable name and time range.
 
 `PlotStack` provides a SPEDAS/tplot-like multi-panel time-series view:
 
