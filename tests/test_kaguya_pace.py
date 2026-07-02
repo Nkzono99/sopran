@@ -413,6 +413,35 @@ def test_kaguya_esa1_pipeline_run_append_adds_counts_shard(tmp_path: Path) -> No
     assert result.outputs[0].scan().collect().height == 4096
 
 
+def test_kaguya_esa1_pipeline_run_resume_skips_complete_dataset(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+    first = pipe.run()
+
+    result = pipe.run(resume=True)
+
+    assert result.status == "skipped"
+    assert result.outputs[0].root == first.outputs[0].root
+    assert result.outputs[0].catalog().height == 1
+    assert result.outputs[0].scan().collect().height == 2048
+    assert result.log_path == result.outputs[0].root / "logs" / f"{result.run_id}.json"
+    log = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log["status"] == "skipped"
+    assert log["resume"] is True
+    assert log["row_count"] == 2048
+    assert log["shards"][0]["status"] == "complete"
+
+
 def _write_type01_pbf(path: Path) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE

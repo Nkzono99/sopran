@@ -23,3 +23,13 @@ pipe.run()
 pipe.run(mode="append")
 pipe.run(mode="replace")
 ```
+
+Use `resume=True` when a completed catalog should be reused instead of failing
+on the existing shard:
+
+```python
+result = pipe.run(resume=True)
+```
+
+For KAGUYA ESA1, the current resume behavior skips execution only when the
+existing catalog is complete for the requested time range.

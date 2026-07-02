@@ -9,6 +9,7 @@ from time import perf_counter
 from typing import Literal
 
 from sopran.core import Store
+from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import VariableSchema
@@ -351,6 +352,7 @@ class PaceInstrument(KaguyaInstrument):
         *,
         mode: str = "create",
         run_id: str,
+        resume: bool = False,
     ) -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
@@ -358,6 +360,26 @@ class PaceInstrument(KaguyaInstrument):
             raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
 
         started = perf_counter()
+        if resume:
+            existing = _complete_pipeline_output(self.mission.store, pipeline)
+            if existing is not None:
+                log_path = _write_pipeline_log(
+                    existing,
+                    pipeline=pipeline,
+                    run_id=run_id,
+                    status="skipped",
+                    elapsed_seconds=perf_counter() - started,
+                    resume=True,
+                )
+                return PipelineResult(
+                    plan=pipeline.plan(),
+                    status="skipped",
+                    message=f"Skipped {pipeline.output_dataset}; complete catalog already exists.",
+                    outputs=(existing,),
+                    run_id=run_id,
+                    log_path=log_path,
+                )
+
         variable = _pipeline_variable(pipeline)
         data = self.load(pipeline.time, download="never")
         output = data.write_parquet(
@@ -387,6 +409,7 @@ class PaceInstrument(KaguyaInstrument):
             run_id=run_id,
             status="complete",
             elapsed_seconds=perf_counter() - started,
+            resume=resume,
         )
         return PipelineResult(
             plan=pipeline.plan(),
@@ -619,6 +642,32 @@ def _pipeline_dataset_provenance(
     }
 
 
+def _complete_pipeline_output(store: Store, pipeline: Pipeline):
+    try:
+        output = store.dataset(str(pipeline.output_dataset), layer=str(pipeline.output_layer))
+    except DatasetNotFoundError:
+        return None
+    if not _catalog_is_complete(output):
+        return None
+    if not _record_covers_time(output, pipeline):
+        return None
+    return output
+
+
+def _catalog_is_complete(output) -> bool:
+    rows = list(output.catalog().iter_rows(named=True))
+    if not rows:
+        return False
+    return all(str(row.get("status") or "") == "complete" for row in rows)
+
+
+def _record_covers_time(output, pipeline: Pipeline) -> bool:
+    coverage = output.manifest().get("time_coverage") or {}
+    start = str(coverage.get("start") or "")
+    stop = str(coverage.get("stop") or "")
+    return start <= pipeline.time.start_iso and stop >= pipeline.time.stop_iso
+
+
 def _write_pipeline_log(
     output,
     *,
@@ -626,12 +675,14 @@ def _write_pipeline_log(
     run_id: str,
     status: str,
     elapsed_seconds: float,
+    resume: bool = False,
 ) -> Path:
     shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
     payload = {
         "run_id": run_id,
         "status": status,
+        "resume": resume,
         "elapsed_seconds": elapsed_seconds,
         "plan": {
             "source": pipeline.source,

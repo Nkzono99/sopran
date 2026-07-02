@@ -24,6 +24,7 @@ pipe.run(dry_run=True)
 pipe.run()
 pipe.run(mode="append")
 pipe.run(mode="replace")
+pipe.run(resume=True)
 ```
 
 Read existing normalized data with Polars:
@@ -53,10 +54,11 @@ true shard, orbit, or provider-native streaming.
 The current implementation is intentionally small. It records stage order,
 prevents accidental overwrite by default, supports explicit append/replace,
 uses parquet catalog shards as the storage boundary, streams collected scan
-results by day, issues a `PipelineResult.run_id` for each `run()` call, and can
-write a Matplotlib PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline
-runs. Quicklook metadata records the pipeline run ID, source, stage names, time
-range, output dataset/layer, selected variable, backend, and artifact list.
+results by day, issues a `PipelineResult.run_id` for each `run()` call, skips
+already complete KAGUYA ESA1 outputs with `run(resume=True)`, and can write a
+Matplotlib PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.
+Quicklook metadata records the pipeline run ID, source, stage names, time range,
+output dataset/layer, selected variable, backend, and artifact list.
 
 KAGUYA ESA1 pipeline writes also add manifest provenance under
 `dataset.json["provenance"]`, including run ID, source, stages, run mode, time
@@ -66,3 +68,8 @@ Dataset-writing KAGUYA ESA1 runs write a structured log to
 `dataset_root/logs/<run_id>.json`; the same path is returned as
 `PipelineResult.log_path`. The log records status, elapsed seconds, plan fields,
 stage parameters, shard metadata, and total row count.
+
+The first resume behavior is conservative: when the existing catalog is
+`complete` and the manifest time coverage contains the requested range, KAGUYA
+ESA1 returns `PipelineResult.status == "skipped"` and writes a skip log. Failed
+or partial shard replay is a later backend feature.

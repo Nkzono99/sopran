@@ -6,6 +6,10 @@
 - `quicklook()` declares preview artifacts; it does not render until `run()`.
 - `run()` fails on existing shards unless `mode="append"` or `mode="replace"`
   is explicit.
+- `run(resume=True)` may skip execution when the output catalog is already
+  complete for the requested range.
+- `resume=True` is mutually exclusive with `mode="append"` and
+  `mode="replace"`.
 - `scan()` returns a Polars `LazyFrame` when possible.
 - `collect()` is a thin materialization helper over `scan().collect()`.
 - `stream(partition="all")` yields one collected frame in the generic fallback.
