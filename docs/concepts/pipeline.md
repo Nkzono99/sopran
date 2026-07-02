@@ -81,12 +81,13 @@ parquet shards with `write(..., partition="day")`, accepts
 policy for that execution, and can write Matplotlib
 PNG/HTML quicklooks plus JSON metadata for KAGUYA ESA1 pipeline runs.
 Quicklook metadata records the pipeline run ID, source, stage names, time range,
-output dataset/layer, selected variable, backend, artifact list, and optional
-`frame` / `aggregation` values declared in the quicklook stage.
+download policy, output dataset/layer, selected variable, backend, artifact
+list, and optional `frame` / `aggregation` values declared in the quicklook
+stage.
 
 KAGUYA ESA1 pipeline writes also add manifest provenance under
-`dataset.json["provenance"]`, including run ID, source, stages, run mode, time
-range, output dataset/layer, and selected variable.
+`dataset.json["provenance"]`, including run ID, source, stages, run mode,
+download policy, time range, output dataset/layer, and selected variable.
 
 `write(..., partition="day")` stores KAGUYA ESA1 output under Hive-style paths
 such as `shards/year=2008/month=01/day=01/part-000.parquet` and records
@@ -94,9 +95,9 @@ such as `shards/year=2008/month=01/day=01/part-000.parquet` and records
 
 Dataset-writing KAGUYA ESA1 runs write a structured log to
 `dataset_root/logs/<run_id>.json`; the same path is returned as
-`PipelineResult.log_path`. The log records run mode, status, start/finish
-timestamps, elapsed seconds, plan fields, stage parameters, shard metadata, and
-total row count. The `stages` field records the declared stage list, while
+`PipelineResult.log_path`. The log records run mode, download policy, status,
+start/finish timestamps, elapsed seconds, plan fields, stage parameters, shard
+metadata, and total row count. The `stages` field records the declared stage list, while
 `stage_logs` records status, timestamps, elapsed seconds, row count, and shard
 count for each declared stage.
 

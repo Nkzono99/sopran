@@ -2147,10 +2147,11 @@ download した raw file は checksum または size / timestamp を catalog に
 - `resume=True` で catalog status から再開する。
 
 v0.1 では `Pipeline.run()` が `PipelineResult.run_id` を返す。dataset を書く
-backend は同じ run ID を `dataset.json["provenance"]["pipeline"]["run_id"]` に残し、
-quicklook を生成する場合は quicklook metadata にも同じ run ID を入れる。KAGUYA ESA1 の
+backend は同じ run ID と download policy を
+`dataset.json["provenance"]["pipeline"]` に残し、quicklook を生成する場合は quicklook
+metadata にも同じ run ID と download policy を入れる。KAGUYA ESA1 の
 dataset-writing pipeline は `dataset_root/logs/<run_id>.json` に structured log を保存し、
-run mode、started_at、finished_at、stage list、output target、shard row count、
+run mode、download policy、started_at、finished_at、stage list、output target、shard row count、
 合計 row count、elapsed seconds を記録する。`stages` は宣言された stage list、
 `stage_logs` は stage ごとの status、started_at、finished_at、elapsed_seconds、
 row_count、shard_count を持つ。

@@ -416,6 +416,7 @@ class PaceInstrument(KaguyaInstrument):
                     resume=True,
                     only_failed=False,
                     on_error=on_error,
+                    download=download,
                 )
                 _adopt_pipeline_output(pipeline, existing)
                 return PipelineResult(
@@ -446,6 +447,7 @@ class PaceInstrument(KaguyaInstrument):
                     resume=False,
                     only_failed=True,
                     on_error=on_error,
+                    download=download,
                 )
                 _adopt_pipeline_output(pipeline, existing)
                 return PipelineResult(
@@ -469,6 +471,7 @@ class PaceInstrument(KaguyaInstrument):
                 variable=variable,
                 mode=mode,
                 run_id=run_id,
+                download=download,
             )
             quicklooks = ()
             if _pipeline_has_quicklook(pipeline):
@@ -479,6 +482,7 @@ class PaceInstrument(KaguyaInstrument):
                     pipeline=pipeline,
                     variable=variable,
                     run_id=run_id,
+                    download=download,
                 )
             log_path = _write_pipeline_log(
                 existing,
@@ -492,6 +496,7 @@ class PaceInstrument(KaguyaInstrument):
                 only_failed=True,
                 replayed_shard_count=replayed_count,
                 on_error=on_error,
+                download=download,
             )
             _adopt_pipeline_output(pipeline, existing)
             return PipelineResult(
@@ -532,6 +537,7 @@ class PaceInstrument(KaguyaInstrument):
                         variable=variable,
                         mode=mode,
                         run_id=run_id,
+                        download=download,
                     ),
                 )
         except FileExistsError:
@@ -546,6 +552,7 @@ class PaceInstrument(KaguyaInstrument):
                 variable=variable,
                 mode=mode,
                 run_id=run_id,
+                download=download,
             )
             log_path = _write_pipeline_log(
                 output,
@@ -558,6 +565,7 @@ class PaceInstrument(KaguyaInstrument):
                 resume=resume,
                 only_failed=only_failed,
                 on_error=on_error,
+                download=download,
                 errors=(_pipeline_error(stage, exc),),
             )
             return PipelineResult(
@@ -579,6 +587,7 @@ class PaceInstrument(KaguyaInstrument):
                 pipeline=pipeline,
                 variable=variable,
                 run_id=run_id,
+                download=download,
             )
         log_path = _write_pipeline_log(
             output,
@@ -591,6 +600,7 @@ class PaceInstrument(KaguyaInstrument):
             resume=resume,
             only_failed=only_failed,
             on_error=on_error,
+            download=download,
         )
         _adopt_pipeline_output(pipeline, output)
         return PipelineResult(
@@ -792,6 +802,7 @@ def _write_pipeline_quicklooks(
     pipeline: Pipeline,
     variable: str,
     run_id: str,
+    download: str,
 ) -> tuple[object, ...]:
     stages = [stage for stage in pipeline.stages if stage.name == "quicklook"]
     if not stages:
@@ -820,7 +831,12 @@ def _write_pipeline_quicklooks(
                 time_range=pipeline.time,
                 frame=stage.parameters.get("frame"),
                 aggregation=aggregation if isinstance(aggregation, dict) else {"mode": str(aggregation)},
-                metadata=_pipeline_quicklook_metadata(pipeline, variable, run_id=run_id),
+                metadata=_pipeline_quicklook_metadata(
+                    pipeline,
+                    variable,
+                    run_id=run_id,
+                    download=download,
+                ),
             )
         )
     return tuple(results)
@@ -840,9 +856,11 @@ def _pipeline_quicklook_metadata(
     variable: str,
     *,
     run_id: str,
+    download: str,
 ) -> dict[str, object]:
     return {
         "pipeline": {
+            "download": download,
             "output_dataset": pipeline.output_dataset,
             "output_layer": pipeline.output_layer,
             "run_id": run_id,
@@ -861,9 +879,11 @@ def _pipeline_dataset_provenance(
     variable: str,
     mode: str,
     run_id: str,
+    download: str,
 ) -> dict[str, object]:
     return {
         "pipeline": {
+            "download": download,
             "mode": mode,
             "output_dataset": pipeline.output_dataset,
             "output_layer": pipeline.output_layer,
@@ -884,6 +904,7 @@ def _write_failed_pipeline_output(
     variable: str,
     mode: str,
     run_id: str,
+    download: str,
 ):
     return store.register_dataset(
         dataset_id=str(pipeline.output_dataset),
@@ -908,6 +929,7 @@ def _write_failed_pipeline_output(
             variable=variable,
             mode=mode,
             run_id=run_id,
+            download=download,
         ),
     )
 
@@ -943,6 +965,7 @@ def _write_daily_partitioned_pipeline_output(
                 variable=variable,
                 mode=mode,
                 run_id=run_id,
+                download=download,
             ),
         )
     if output is None:
@@ -957,6 +980,7 @@ def _update_pipeline_dataset_provenance(
     variable: str,
     mode: str,
     run_id: str,
+    download: str,
 ) -> None:
     manifest = output.manifest()
     manifest["provenance"] = _pipeline_dataset_provenance(
@@ -964,6 +988,7 @@ def _update_pipeline_dataset_provenance(
         variable=variable,
         mode=mode,
         run_id=run_id,
+        download=download,
     )
     output.manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True, default=str) + "\n",
@@ -1122,6 +1147,7 @@ def _write_pipeline_log(
     only_failed: bool = False,
     replayed_shard_count: int = 0,
     on_error: str = "fail",
+    download: str,
     errors: tuple[dict[str, str], ...] = (),
 ) -> Path:
     shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
@@ -1137,6 +1163,7 @@ def _write_pipeline_log(
         "resume": resume,
         "only_failed": only_failed,
         "on_error": on_error,
+        "download": download,
         "failed_shard_count": failed_shard_count,
         "replayed_shard_count": replayed_shard_count,
         "errors": [_jsonable(error) for error in errors],

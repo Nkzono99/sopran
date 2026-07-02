@@ -302,6 +302,7 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     manifest = result.outputs[0].manifest()
     assert manifest["dataset_id"] == "kaguya.esa1.counts"
     assert manifest["provenance"]["pipeline"] == {
+        "download": "never",
         "mode": "create",
         "output_dataset": "kaguya.esa1.counts",
         "output_layer": "normalized",
@@ -318,6 +319,7 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     assert log["run_id"] == result.run_id
     assert log["status"] == "complete"
     assert log["mode"] == "create"
+    assert log["download"] == "never"
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["started_at"])
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["finished_at"])
     started_at = datetime.fromisoformat(log["started_at"].replace("Z", "+00:00"))
@@ -427,6 +429,7 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
         "kaguya.esa1.counts"
     )
     assert result.outputs[1].metadata["metadata"]["pipeline"]["output_layer"] == "normalized"
+    assert result.outputs[1].metadata["metadata"]["pipeline"]["download"] == "never"
     assert result.outputs[1].metadata["metadata"]["pipeline"]["run_id"] == result.run_id
     assert result.outputs[1].metadata["dataset_id"] == "kaguya.esa1.counts"
     assert result.outputs[1].metadata["time_range"] == {
