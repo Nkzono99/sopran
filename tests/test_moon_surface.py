@@ -95,3 +95,25 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     assert "DEM" in moon.dem.guide().to_markdown()
     assert moon.help() == moon.guide()
     assert moon.dem.help() == moon.dem.guide()
+
+
+def test_moon_surface_guides_can_switch_language() -> None:
+    moon = spn.Moon()
+
+    moon_ja = moon.guide(language="ja")
+    moon_en = moon.guide(language="en")
+    dem_ja = moon.dem.guide(language="ja")
+    shadow_ja = moon.shadow.guide(language="ja")
+
+    assert moon_ja.language == "ja"
+    assert moon_en.language == "en"
+    assert moon_ja.available_languages == ("ja", "en")
+    assert moon_ja.language_switcher() == "Lang: 日本語/English"
+    assert "月面プロダクト" in moon_ja.to_markdown()
+    assert "Moon Surface Products" in moon_en.to_markdown()
+    assert "DEM" in dem_ja.to_markdown()
+    assert "shadow" in shadow_ja.to_markdown().lower()
+    assert moon.help(language="ja") == moon_ja
+    assert moon.dem.help(language="ja") == dem_ja
+    with pytest.raises(ValueError, match="language"):
+        moon.guide(language="fr")

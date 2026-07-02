@@ -1395,8 +1395,8 @@ kg.esa1.energy_flux.help(language="en")
 
 moon.info()
 moon.dem.info()
-moon.dem.guide()
-moon.dem.help()
+moon.dem.guide(language="ja")
+moon.dem.help(language="en")
 ```
 
 `info()` は console で読みやすい短い text を持つ `InfoPage` のような軽い object を返す。

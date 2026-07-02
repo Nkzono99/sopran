@@ -17,6 +17,13 @@ Implemented endpoints:
 - `moon.shadow`
 - `moon.illumination`
 
+The body and surface endpoints expose bilingual package guides:
+
+```python
+moon.guide(language="ja")
+moon.dem.guide(language="en")
+```
+
 The current implementation records plans only. Full terrain-aware shadow and
 illumination calculation will require DEM data, solar geometry, body shape,
 projection metadata, and explicit longitude-domain handling.

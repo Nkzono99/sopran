@@ -17,6 +17,8 @@ plan = art.p1.fgm.magnetic_field.plan(time)
   `artemis.<probe>.fgm.magnetic_field` datasets.
 - Project case context through `case.artemis.p1.fgm.magnetic_field`.
 - `line()` PlotItem generation for FGM vector panels.
+- Bilingual package guides via `art.guide(language="ja")`,
+  `art.guide(language="en")`, and `art.p1.fgm.guide(language=...)`.
 
 ```python
 stack = case.stack(

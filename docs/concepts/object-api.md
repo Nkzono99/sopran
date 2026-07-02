@@ -35,8 +35,8 @@ page.show()               # prints the same Markdown, including the switcher
 ```
 
 Mission, instrument, and variable endpoints should pass the same `language=`
-keyword through to their package guide resources. KAGUYA currently supports
-Japanese and English package guides for the mission and PACE ESA1 pages.
+keyword through to their package guide resources. KAGUYA, ARTEMIS, and Moon
+surface guides currently expose Japanese and English guide pages.
 
 `Project` and `Case` provide analysis context:
 

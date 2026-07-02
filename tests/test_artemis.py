@@ -39,6 +39,30 @@ def test_artemis_guides_return_markdown_pages() -> None:
     assert variable_guide.source == "sopran.missions.artemis/README.md"
 
 
+def test_artemis_guides_can_switch_language() -> None:
+    art = spn.Artemis()
+
+    mission_ja = art.guide(language="ja")
+    mission_en = art.guide(language="en")
+    fgm_ja = art.p1.fgm.guide(language="ja")
+    variable_ja = art.p1.fgm.magnetic_field.guide(language="ja")
+
+    assert mission_ja.language == "ja"
+    assert mission_en.language == "en"
+    assert mission_ja.available_languages == ("ja", "en")
+    assert mission_ja.language_switcher() == "Lang: 日本語/English"
+    assert "ARTEMIS は" in mission_ja.to_markdown()
+    assert "lunar-orbiting THEMIS probes" in mission_en.to_markdown()
+    assert "FGM" in fgm_ja.to_markdown()
+    assert variable_ja == fgm_ja
+    assert art.help(language="ja") == mission_ja
+    assert art.p1.help(language="ja") == mission_ja
+    assert art.p1.fgm.help(language="ja") == fgm_ja
+    assert art.p1.fgm.magnetic_field.help(language="ja") == variable_ja
+    with pytest.raises(ValueError, match="language"):
+        art.guide(language="fr")
+
+
 def test_guide_page_open_uses_public_url(monkeypatch) -> None:
     opened = []
     monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))

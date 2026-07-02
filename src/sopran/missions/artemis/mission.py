@@ -11,6 +11,7 @@ from sopran.core.schema import VariableSchema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange
 
+_GUIDE_LANGUAGES = ("ja", "en")
 
 ARTEMIS_MAGNETIC_FIELD = VariableSchema(
     name="magnetic_field",
@@ -38,11 +39,11 @@ class Artemis:
             ),
         )
 
-    def guide(self) -> GuidePage:
-        return _read_guide(title="ARTEMIS")
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return _read_guide(title="ARTEMIS", language=language)
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
 
 class ArtemisProbe:
@@ -57,11 +58,11 @@ class ArtemisProbe:
             lines=("fgm: fluxgate magnetometer",),
         )
 
-    def guide(self) -> GuidePage:
-        return self.mission.guide()
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return self.mission.guide(language=language)
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
 
 class ArtemisFgmInstrument:
@@ -83,11 +84,11 @@ class ArtemisFgmInstrument:
             lines=(f"{ARTEMIS_MAGNETIC_FIELD.name}: {ARTEMIS_MAGNETIC_FIELD.description}",),
         )
 
-    def guide(self) -> GuidePage:
-        return self.probe.guide()
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return self.probe.guide(language=language)
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
 
 @dataclass(frozen=True)
@@ -115,11 +116,11 @@ class ArtemisVariableEndpoint:
     def schema(self) -> VariableSchema:
         return self._schema
 
-    def guide(self) -> GuidePage:
-        return self.instrument.guide()
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return self.instrument.guide(language=language)
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
     def plan(self, time: TimeRange) -> ArtemisLoadPlan:
         return ArtemisLoadPlan(
@@ -156,14 +157,26 @@ class ArtemisVariableEndpoint:
         )
 
 
-def _read_guide(*, title: str) -> GuidePage:
-    markdown = files("sopran.missions.artemis").joinpath("README.md").read_text(
-        encoding="utf-8"
-    )
+def _read_guide(*, title: str, language: str = "en") -> GuidePage:
+    if language not in _GUIDE_LANGUAGES:
+        raise ValueError(f"ARTEMIS guide language is not available: {language}")
+    package = files("sopran.missions.artemis")
+    resource_name = "README.ja.md" if language == "ja" else "README.md"
+    markdown = package.joinpath(resource_name).read_text(encoding="utf-8")
+    translations = {
+        available_language: package.joinpath(
+            "README.ja.md" if available_language == "ja" else "README.md"
+        ).read_text(encoding="utf-8")
+        for available_language in _GUIDE_LANGUAGES
+        if available_language != language
+    }
     return GuidePage(
         title=title,
         markdown=markdown,
-        source="sopran.missions.artemis/README.md",
+        source=f"sopran.missions.artemis/{resource_name}",
+        language=language,
+        available_languages=_GUIDE_LANGUAGES,
+        translations=translations,
     )
 
 

@@ -5,6 +5,8 @@ from typing import Any
 
 from sopran.core.pages import GuidePage, InfoPage
 
+_GUIDE_LANGUAGES = ("ja", "en")
+
 
 @dataclass(frozen=True)
 class SurfacePlan:
@@ -42,15 +44,16 @@ class Moon:
             ),
         )
 
-    def guide(self) -> GuidePage:
-        return GuidePage(
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return _guide_page(
             title="Moon Surface Products",
-            markdown=_MOON_GUIDE,
             source="sopran.bodies.moon",
+            markdowns=_MOON_GUIDES,
+            language=language,
         )
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
     def map(self, product: str) -> SurfaceEndpoint:
         try:
@@ -81,15 +84,16 @@ class SurfaceEndpoint:
             ),
         )
 
-    def guide(self) -> GuidePage:
-        return GuidePage(
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return _guide_page(
             title=f"Moon {self.label}",
-            markdown=_SURFACE_GUIDES.get(self.product, _MOON_GUIDE),
             source=f"sopran.bodies.moon.{self.product}",
+            markdowns=_SURFACE_GUIDES.get(self.product, _MOON_GUIDES),
+            language=language,
         )
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
     def sources(self) -> tuple[str, ...]:
         return _SURFACE_SOURCES.get(self.product, ())
@@ -110,7 +114,8 @@ class SurfaceEndpoint:
         raise NotImplementedError(f"Moon.{plan.product}.compute() is not implemented yet")
 
 
-_MOON_GUIDE = """# Moon Surface Products
+_MOON_GUIDES = {
+    "en": """# Moon Surface Products
 
 SOPRAN uses a body-first API for Moon surface products. Mission modules provide
 provider-specific discovery, while `spn.Moon()` owns body-fixed DEM, SVM,
@@ -119,30 +124,69 @@ shadow, illumination, projection, and region semantics.
 The v0.1 implementation is a planning skeleton. Terrain-aware shadow and
 illumination backends will require DEM data, solar geometry, body shape, and
 explicit longitude/projection metadata.
-"""
+""",
+    "ja": """# Moon Surface Products
+
+SOPRAN は月面プロダクトを body-first API として扱います。mission module は
+provider-specific discovery を担当し、`spn.Moon()` は月固定 DEM、SVM、shadow、
+illumination、projection、region semantics を受け持ちます。
+
+v0.1 実装は planning skeleton です。terrain-aware shadow と illumination backend では
+DEM data、solar geometry、body shape、longitude/projection metadata を明示的に扱います。
+""",
+}
 
 _SURFACE_GUIDES = {
-    "dem": """# Moon DEM
+    "dem": {
+        "en": """# Moon DEM
 
 DEM products represent body-fixed lunar elevation rasters. Planned metadata
 includes source, resolution, datum or shape model, longitude domain, projection,
 and area-or-point interpretation.
 """,
-    "svm": """# Moon SVM
+        "ja": """# Moon DEM
+
+DEM product は月固定の elevation raster を表します。予定している metadata には source、
+resolution、datum または shape model、longitude domain、projection、area-or-point
+interpretation を含めます。
+""",
+    },
+    "svm": {
+        "en": """# Moon SVM
 
 SVM products represent lunar surface vector maps or classified map layers.
 They share the same body-fixed region and projection metadata as DEM products.
 """,
-    "shadow": """# Moon Shadow Map
+        "ja": """# Moon SVM
+
+SVM product は lunar surface vector map または classified map layer を表します。
+DEM product と同じ body-fixed region と projection metadata を共有します。
+""",
+    },
+    "shadow": {
+        "en": """# Moon Shadow Map
 
 Shadow products must be computed from DEM terrain, solar position, body shape,
 and projection metadata. The current endpoint only records plans.
 """,
-    "illumination": """# Moon Illumination Map
+        "ja": """# Moon Shadow Map
+
+Shadow product は DEM terrain、solar position、body shape、projection metadata から
+計算する必要があります。現在の endpoint は plan の記録だけを行います。
+""",
+    },
+    "illumination": {
+        "en": """# Moon Illumination Map
 
 Illumination products will represent solar incidence and visibility derived
 from DEM terrain and SPICE-backed solar geometry.
 """,
+        "ja": """# Moon Illumination Map
+
+Illumination product は DEM terrain と SPICE-backed solar geometry から導く
+solar incidence と visibility を表す予定です。
+""",
+    },
 }
 
 _SURFACE_SOURCES = {
@@ -161,3 +205,26 @@ def _metadata_value(value: Any) -> Any:
     if isinstance(value, (tuple, list)):
         return [_metadata_value(item) for item in value]
     return value
+
+
+def _guide_page(
+    *,
+    title: str,
+    source: str,
+    markdowns: dict[str, str],
+    language: str,
+) -> GuidePage:
+    if language not in _GUIDE_LANGUAGES:
+        raise ValueError(f"Moon guide language is not available: {language}")
+    return GuidePage(
+        title=title,
+        markdown=markdowns[language],
+        source=source,
+        language=language,
+        available_languages=_GUIDE_LANGUAGES,
+        translations={
+            available_language: markdowns[available_language]
+            for available_language in _GUIDE_LANGUAGES
+            if available_language != language
+        },
+    )
