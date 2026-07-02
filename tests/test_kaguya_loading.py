@@ -301,6 +301,36 @@ def test_kaguya_esa1_variable_typo_suggests_available_endpoint(tmp_path) -> None
     assert "kg.esa1.info()" in message
 
 
+def test_kaguya_esa1_variable_typo_uses_schema_aliases_for_suggestion(
+    tmp_path,
+) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    with pytest.raises(AttributeError) as exc:
+        _ = kg.esa1.qualty
+
+    message = str(exc.value)
+    assert "Kaguya.ESA1 has no variable 'qualty'" in message
+    assert "Available variables:" in message
+    assert "quality" in message
+    assert "Did you mean:\n  quality?" in message
+    assert "kg.esa1.quality.load(time)" in message
+
+
+def test_kaguya_esa1_variable_alias_typo_suggests_canonical_variable(
+    tmp_path,
+) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    with pytest.raises(AttributeError) as exc:
+        _ = kg.esa1.quality_flag
+
+    message = str(exc.value)
+    assert "Kaguya.ESA1 has no variable 'quality_flag'" in message
+    assert "Did you mean:\n  quality?" in message
+    assert "kg.esa1.quality.load(time)" in message
+
+
 def test_kaguya_esa1_load_without_time_explains_required_period(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
 

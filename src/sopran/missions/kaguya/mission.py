@@ -4,6 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from difflib import get_close_matches
 from importlib.resources import files
 from pathlib import Path
 from time import perf_counter
@@ -323,9 +324,10 @@ class PaceInstrument(KaguyaInstrument):
     def __getattr__(self, name: str):
         if name.startswith("__") or self.sensor != "ESA1":
             raise AttributeError(name)
-        variables = tuple(variable.name for variable in KAGUYA_ESA1_SCHEMA.variables)
-        suggestion = "energy_flux" if name == "flux" else variables[0]
-        available = "\n".join(f"  {variable}" for variable in variables)
+        suggestion = _schema_variable_suggestion(name)
+        available = "\n".join(
+            f"  {variable.name}" for variable in KAGUYA_ESA1_SCHEMA.variables
+        )
         raise AttributeError(
             f"Kaguya.{self.name} has no variable {name!r}.\n\n"
             f"Available variables:\n{available}\n\n"
@@ -1189,6 +1191,21 @@ def _missing_time_error(endpoint: str) -> ValueError:
         f"  kg.esa1.energy_flux.load(time)\n\n"
         "Or use a Project case:\n  case.kaguya.esa1.energy_flux.load()"
     )
+
+
+def _schema_variable_suggestion(name: str) -> str:
+    aliases = {
+        alias: variable.name
+        for variable in KAGUYA_ESA1_SCHEMA.variables
+        for alias in variable.aliases
+    }
+    aliases["flux"] = "energy_flux"
+    canonical_names = tuple(variable.name for variable in KAGUYA_ESA1_SCHEMA.variables)
+    candidates = (*canonical_names, *aliases)
+    matches = get_close_matches(name, candidates, n=1, cutoff=0.4)
+    if matches:
+        return aliases.get(matches[0], matches[0])
+    return canonical_names[0]
 
 
 def _read_guide(name: str, *, title: str, language: str = "ja") -> GuidePage:

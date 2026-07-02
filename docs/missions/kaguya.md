@@ -14,6 +14,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
   and `write_parquet()`.
 - Variable endpoint plotting and `PlotStack` integration.
 - Pipeline run, append, replace, scan, and collect for ESA1 counts.
+- ESA1 unknown variable errors use schema aliases to suggest canonical
+  variables and next `info()` / `load()` calls.
 - `example()` pages on `Kaguya`, `kg.esa1`, and ESA1 variable endpoints.
 - Bilingual package guides via `kg.guide(language="ja")`,
   `kg.guide(language="en")`, and `kg.esa1.guide(language=...)`.
