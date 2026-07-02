@@ -26,6 +26,7 @@ class KaguyaESA1Data:
             time=self.time,
             schema=KAGUYA_ESA1_SCHEMA.variable("energy_flux"),
             files=self.files,
+            xr=self.to_xarray()["energy_flux"],
         )
 
     @property
@@ -39,6 +40,7 @@ class KaguyaESA1Data:
             time=self.time,
             schema=KAGUYA_ESA1_SCHEMA.variable("counts"),
             files=self.files,
+            xr=self.to_xarray()["counts"],
         )
 
     @cached_property
@@ -48,6 +50,7 @@ class KaguyaESA1Data:
             time=self.time,
             schema=KAGUYA_ESA1_SCHEMA.variable("energy"),
             files=self.files,
+            xr=self.to_xarray()["energy"],
         )
 
     @cached_property
@@ -57,6 +60,7 @@ class KaguyaESA1Data:
             time=self.time,
             schema=KAGUYA_ESA1_SCHEMA.variable("quality"),
             files=self.files,
+            xr=self.to_xarray()["quality"],
         )
 
     @cached_property
