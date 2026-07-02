@@ -43,6 +43,10 @@ bins = spn.time_bins(case.time, cadence="10s")
 features = spn.align(sza, wave_power, grid=bins, method="mean").to_polars()
 ```
 
+Vector products such as ARTEMIS FGM are expanded to wide feature columns when
+aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
+`magnetic_field_z`.
+
 The v0.1 implementation uses Matplotlib. HoloViz, Datashader, Panel dashboards,
 and HTML quicklooks are planned for larger interactive products. Current
 `quicklook()` output is a Matplotlib PNG plus a small JSON metadata file.

@@ -84,30 +84,65 @@ def align(
     if not arrays:
         raise ValueError("align() requires at least one array")
     tolerance_delta = _parse_duration(tolerance) if tolerance is not None else None
-    columns = tuple(_array_name(array, index) for index, array in enumerate(arrays))
+    features = tuple(
+        feature
+        for index, array in enumerate(arrays)
+        for feature in _features(array, index)
+    )
+    columns = tuple(feature.name for feature in features)
     rows = []
     for bin_index, center in enumerate(grid.centers):
         row: dict[str, Any] = {"time": _format_utc(center)}
-        for column, array in zip(columns, arrays, strict=True):
-            samples = _samples(array)
+        for feature in features:
             if method == "nearest":
-                row[column] = _nearest_value(samples, center, tolerance_delta)
+                row[feature.name] = _nearest_value(feature.samples, center, tolerance_delta)
             elif method == "mean":
-                row[column] = _mean_value(samples, grid.edges[bin_index], grid.edges[bin_index + 1])
+                row[feature.name] = _mean_value(
+                    feature.samples,
+                    grid.edges[bin_index],
+                    grid.edges[bin_index + 1],
+                )
             else:
                 raise ValueError("method must be 'nearest' or 'mean'")
         rows.append(row)
     return AlignmentResult(grid=grid, columns=columns, rows=tuple(rows), method=method)
 
 
-def _samples(array: Any) -> tuple[tuple[datetime, float], ...]:
+@dataclass(frozen=True)
+class _FeatureSeries:
+    name: str
+    samples: tuple[tuple[datetime, float], ...]
+
+
+def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:
     if hasattr(array, "to_xarray"):
         array = array.to_xarray()
-    if not hasattr(array, "dims") or tuple(array.dims) != ("time",):
-        raise ValueError("align() currently supports 1D arrays with dims=('time',)")
-
+    if not hasattr(array, "dims"):
+        raise ValueError("align() expects xarray-like data with dims")
+    dims = tuple(array.dims)
     times = array.coords["time"].values
-    values = array.values
+    name = _array_name(array, index)
+    if dims == ("time",):
+        return (
+            _FeatureSeries(
+                name=name,
+                samples=_sample_values(times, array.values),
+            ),
+        )
+    if len(dims) == 2 and dims[0] == "time":
+        component_dim = dims[1]
+        values = array.values
+        return tuple(
+            _FeatureSeries(
+                name=f"{name}_{_coord_label(component)}",
+                samples=_sample_values(times, values[:, component_index]),
+            )
+            for component_index, component in enumerate(array.coords[component_dim].values)
+        )
+    raise ValueError("align() currently supports 1D time series or 2D time x component arrays")
+
+
+def _sample_values(times: Any, values: Any) -> tuple[tuple[datetime, float], ...]:
     return tuple(
         (_parse_datetime(str(time_value)), float(value))
         for time_value, value in zip(times, values, strict=True)
@@ -143,6 +178,11 @@ def _array_name(array: Any, index: int) -> str:
     if name:
         return str(name)
     return f"value_{index}"
+
+
+def _coord_label(value: Any) -> str:
+    text = str(value)
+    return "".join(character if character.isalnum() else "_" for character in text).strip("_")
 
 
 def _parse_duration(value: str | timedelta | None) -> timedelta:

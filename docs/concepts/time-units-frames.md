@@ -24,8 +24,9 @@ features = spn.align(sza, wave_power, grid=bins, method="nearest", tolerance="5s
 frame = features.to_polars()
 ```
 
-The first implementation supports 1D time series and `nearest` or `mean`
-alignment onto regular half-open bins.
+The first implementation supports 1D time series and `time x component` vector
+series with `nearest` or `mean` alignment onto regular half-open bins. Vector
+series are expanded to wide columns such as `magnetic_field_x`.
 
 Coordinate frames and units are still early-stage. The design goal is to avoid
 reimplementing established space-physics and planetary geometry libraries. SPICE

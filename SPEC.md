@@ -1477,8 +1477,9 @@ features = spn.align(
 ```
 
 v0.1 の `spn.align` はまず 1D time series を `nearest` または `mean` で `TimeBins` の
-center time に対応づける。スペクトル、distribution、vector component の列展開、複数 reducer、
-欠損処理、wide/long table policy は後続 milestone とする。
+center time に対応づける。`time x component` の vector product は
+`magnetic_field_x`, `magnetic_field_y`, `magnetic_field_z` のような wide columns へ展開する。
+スペクトル、distribution、複数 reducer、欠損処理、wide/long table policy は後続 milestone とする。
 
 v0.1 の PlotStack は最小でよい。まずは KAGUYA ESA1 spectrogram と orbit altitude line を
 同じ UTC axis で縦に並べることを目標にする。`panel`, `datashader`, `html report`,
