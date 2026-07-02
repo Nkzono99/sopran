@@ -53,3 +53,36 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     assert catalog.select("path").to_series().to_list() == [
         "shards/year=2008/month=02/day=01/part-000.parquet"
     ]
+
+
+def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    frame = pl.DataFrame(
+        {
+            "time": ["2008-02-01T00:00:08Z"],
+            "energy": [0],
+            "counts": [64],
+        }
+    )
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=frame,
+        source_files=("raw/kaguya/example.dat.gz",),
+    )
+
+    shard = dataset.root / "shards" / "part-000.parquet"
+    catalog = pl.read_parquet(dataset.catalog_path)
+
+    assert shard.exists()
+    assert pl.read_parquet(shard).to_dicts() == frame.to_dicts()
+    assert catalog.select("path").to_series().to_list() == ["shards/part-000.parquet"]
+    assert catalog.select("row_count").to_series().to_list() == [1]
+    assert catalog.select("checksum").to_series().to_list()[0].startswith("sha256:")

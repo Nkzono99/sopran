@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +76,47 @@ class Store:
         _write_json(record.schema_path, _schema_to_json(schema))
         _write_catalog(record.catalog_path, shards)
         return record
+
+    def write_parquet_dataset(
+        self,
+        *,
+        dataset_id: str,
+        layer: str,
+        mission: str,
+        instrument: str,
+        product: str,
+        schema: InstrumentSchema,
+        time_coverage: TimeRange,
+        frame: Any,
+        source_files: tuple[str, ...] = (),
+        shard_path: str = "shards/part-000.parquet",
+        compression: str = "zstd",
+        producer: str = "sopran",
+    ) -> DatasetRecord:
+        record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+        target = _resolve_child(record.root, shard_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        frame.write_parquet(target, compression=compression)
+
+        return self.register_dataset(
+            dataset_id=dataset_id,
+            layer=layer,
+            mission=mission,
+            instrument=instrument,
+            product=product,
+            schema=schema,
+            time_coverage=time_coverage,
+            source_files=source_files,
+            shards=(
+                {
+                    "path": Path(shard_path).as_posix(),
+                    "row_count": _frame_row_count(frame),
+                    "checksum": _sha256_file(target),
+                    "status": "complete",
+                },
+            ),
+            producer=producer,
+        )
 
     def _layer_path(self, layer: str, *parts: str) -> Path:
         if layer == "raw":
@@ -147,3 +190,28 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
     if not rows:
         rows = [{"path": "", "row_count": 0, "checksum": "", "status": "empty"}]
     pl.DataFrame(rows).write_parquet(path)
+
+
+def _resolve_child(root: Path, child: str) -> Path:
+    target = (root / child).resolve()
+    resolved_root = root.resolve()
+    if not target.is_relative_to(resolved_root):
+        raise ValueError(f"Path escapes dataset root: {child}")
+    return target
+
+
+def _frame_row_count(frame: Any) -> int:
+    height = getattr(frame, "height", None)
+    if height is not None:
+        return int(height)
+    if isinstance(frame, Mapping):
+        return len(frame)
+    return int(len(frame))
+
+
+def _sha256_file(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()}"
