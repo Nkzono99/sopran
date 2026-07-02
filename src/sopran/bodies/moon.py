@@ -52,6 +52,19 @@ class Moon:
     def help(self) -> GuidePage:
         return self.guide()
 
+    def map(self, product: str) -> SurfaceEndpoint:
+        try:
+            return {
+                "dem": self.dem,
+                "svm": self.svm,
+                "shadow": self.shadow,
+                "illumination": self.illumination,
+            }[product]
+        except KeyError as exc:
+            raise ValueError(
+                "Unknown Moon surface product. Available products: dem, svm, shadow, illumination"
+            ) from exc
+
 
 class SurfaceEndpoint:
     def __init__(self, body: Moon, product: str, label: str) -> None:

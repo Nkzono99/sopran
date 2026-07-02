@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 import sopran as spn
 
 
@@ -35,6 +37,15 @@ def test_moon_surface_endpoints_list_stable_source_ids() -> None:
     assert "lro.lola.dem" in moon.dem.sources()
     assert moon.svm.sources() == ("kaguya.lism.svm",)
     assert "legacy.shadowmap_sza" in moon.shadow.sources()
+
+
+def test_moon_map_returns_surface_endpoint_by_name() -> None:
+    moon = spn.Moon()
+
+    assert moon.map("svm") is moon.svm
+    assert moon.map("dem") is moon.dem
+    with pytest.raises(ValueError, match="Unknown Moon surface product"):
+        moon.map("unknown")
 
 
 def test_surface_plan_exports_json_ready_metadata() -> None:

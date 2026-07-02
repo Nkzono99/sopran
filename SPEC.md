@@ -1152,7 +1152,7 @@ dem.sample(lon=135.2, lat=-12.4, lon_domain="0_360")
 dem.profile(path=case.kaguya.orbit.ground_track.load())
 ```
 
-`moon.map("svm")` のような文字列 API は補助として残してよいが、主導線にはしない。
+`moon.map("svm")` のような文字列 API は補助として残すが、主導線にはしない。
 
 mission 側には provider-specific shortcut を置く。
 
