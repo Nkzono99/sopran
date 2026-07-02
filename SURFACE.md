@@ -2,7 +2,7 @@
 
 Status: draft
 
-Surface products cover body-fixed map data such as Moon DEM, SVM, albedo,
+Surface products cover body-fixed map data such as Moon DEM, SVM, SZA, albedo,
 geology maps, shadow maps, illumination maps, footprints, and projected
 overlays.
 
@@ -13,6 +13,7 @@ moon = spn.Moon()
 region = spn.maps.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
 dem = moon.dem.load(source="kaguya.tc.dem", region=region)
+sza = moon.sza.plan(time="2008-02-01T12:00:00", region=region)
 shadow = moon.shadow.compute(time="2008-02-01T12:00:00", dem=dem)
 ```
 
@@ -28,7 +29,9 @@ v0.1 keeps this as an API skeleton. Full terrain-aware shadow and illumination
 calculation is a later milestone.
 
 Surface products must preserve body, datum/shape, lon domain, lon direction,
-lat type, projection, CRS, resolution, and area-or-point metadata.
+lat type, projection, CRS, resolution, area-or-point, and geometry_source
+metadata when geometry is involved. `geometry` is accepted as a compatibility
+alias and normalized to the same value as `geometry_source`.
 
 The current `Region` utility supports longitude-domain conversion,
 0/360-boundary detection, longitude span, and simple point containment:

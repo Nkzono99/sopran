@@ -39,6 +39,8 @@ sza_plan = case.moon.sza.plan()
 `polar_stereographic` metadata.
 SZA plans default to `geometry_source="spice"` so the intended geometry backend
 is recorded even before the SPICE-backed computation backend is implemented.
+Passing the compatibility alias `geometry="spice"` writes the same value to
+`geometry_source`.
 
 For regions that cross the 0/360 degree boundary:
 

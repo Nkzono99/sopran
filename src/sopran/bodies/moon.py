@@ -231,10 +231,13 @@ def _metadata_value(value: Any) -> Any:
 
 def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(parameters)
-    if product == "sza":
-        geometry = str(
-            normalized.get("geometry_source", normalized.get("geometry", "spice"))
-        )
+    if (
+        product == "sza"
+        or "geometry_source" in normalized
+        or "geometry" in normalized
+    ):
+        default_geometry = "spice" if product == "sza" else None
+        geometry = _geometry_source(normalized, default=default_geometry)
         normalized["geometry"] = geometry
         normalized["geometry_source"] = geometry
     normalized["projection"] = _canonical_projection(
@@ -244,6 +247,13 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
         str(normalized.get("area_or_point", "area"))
     )
     return normalized
+
+
+def _geometry_source(parameters: dict[str, Any], *, default: str | None) -> str:
+    value = parameters.get("geometry_source", parameters.get("geometry", default))
+    if value is None:
+        raise ValueError("geometry_source cannot be empty")
+    return str(value)
 
 
 def _canonical_projection(projection: str) -> str:

@@ -59,6 +59,24 @@ def test_moon_sza_plan_normalizes_geometry_source_alias() -> None:
     assert plan.parameters["geometry"] == "naif_spice"
 
 
+def test_surface_plan_normalizes_geometry_aliases_when_provided() -> None:
+    moon = spn.Moon()
+
+    illumination = moon.illumination.plan(
+        time="2008-02-01T12:00:00Z",
+        geometry_source="naif_spice",
+    )
+    shadow = moon.shadow.plan(
+        time="2008-02-01T12:00:00Z",
+        geometry="spice",
+    )
+
+    assert illumination.parameters["geometry_source"] == "naif_spice"
+    assert illumination.parameters["geometry"] == "naif_spice"
+    assert shadow.parameters["geometry_source"] == "spice"
+    assert shadow.parameters["geometry"] == "spice"
+
+
 def test_moon_map_returns_surface_endpoint_by_name() -> None:
     moon = spn.Moon()
 
