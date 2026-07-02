@@ -22,6 +22,19 @@ bin_table = bins.to_polars()
 bin_metadata = bins.metadata()
 ```
 
+When event boundaries or analysis windows define the grid better than a fixed
+cadence, pass explicit edges:
+
+```python
+event_bins = spn.time_bins(
+    edges=[
+        "2008-02-01T00:00:00Z",
+        "2008-02-01T00:03:30Z",
+        "2008-02-01T00:05:00Z",
+    ],
+)
+```
+
 ## Time Bins And Alignment
 
 Use `PlotStack` when you want to inspect products together without changing
@@ -94,6 +107,8 @@ grid, alignment method, join mode, fill policy, and detailed bin edges/centers
 so the same information can be written into a dataset manifest. It also stores
 `features`, a per-output-column list of the selected reducer and tolerance, so
 mixed `SampleTable` rules are reproducible.
+Custom edge grids are marked with `partial="custom"` and preserve the exact
+user-provided intervals instead of forcing them onto a regular cadence.
 For ML and statistical tables, `to_feature_frame()` returns only feature
 columns by default, while `to_feature_frame(include_time=True)` keeps the bin
 center in the `time` column. `feature_metadata()` returns the feature columns,

@@ -48,6 +48,20 @@ pandas_frame = matrix.to_pandas(include_time=True)
 feature_metadata = aligned.feature_metadata()
 ```
 
+For event-centered reviews or hand-curated intervals, define the grid with
+explicit edges and reuse the same alignment API:
+
+```python
+event_bins = spn.time_bins(
+    edges=[
+        "2008-02-01T00:00:00Z",
+        "2008-02-01T00:03:30Z",
+        "2008-02-01T00:05:00Z",
+    ],
+)
+event_features = spn.align(sza, wave_power, grid=event_bins, method="mean")
+```
+
 When each product needs a different sampling rule, use `SampleTable`:
 
 ```python

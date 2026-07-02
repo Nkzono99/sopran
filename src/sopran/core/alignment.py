@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -22,7 +23,7 @@ AlignmentMethod = Literal[
 ]
 JoinMode = Literal["outer", "inner"]
 TableLayout = Literal["wide", "long"]
-PartialPolicy = Literal["error", "keep", "drop"]
+PartialPolicy = Literal["error", "keep", "drop", "custom"]
 _ALIGN_METHODS = ("nearest", "center", "mean", "max", "median", "first", "last")
 _ALIGN_METHODS_TEXT = "'nearest', 'center', 'mean', 'max', 'median', 'first', or 'last'"
 _JOIN_MODES = ("outer", "inner")
@@ -73,6 +74,8 @@ class TimeBins:
 
     @property
     def is_partial(self) -> tuple[bool, ...]:
+        if self.partial == "custom":
+            return tuple(False for _ in self.durations_seconds)
         durations = self.durations_seconds
         if not durations:
             return ()
@@ -324,9 +327,10 @@ class AlignmentResult:
 
 
 def time_bins(
-    time: TimeRange,
+    time: TimeRange | None = None,
     *,
-    cadence: str | timedelta,
+    cadence: str | timedelta | None = None,
+    edges: Sequence[object] | None = None,
     label: Literal["center"] = "center",
     closed: Literal["left"] = "left",
     partial: PartialPolicy = "error",
@@ -335,6 +339,36 @@ def time_bins(
         raise ValueError("time_bins() currently supports label='center' only")
     if closed != "left":
         raise ValueError("time_bins() currently supports closed='left' only")
+    if edges is not None:
+        if cadence is not None:
+            raise ValueError("time_bins() accepts either edges or cadence, not both")
+        parsed_edges = tuple(_parse_datetime(edge) for edge in edges)
+        if len(parsed_edges) < 2:
+            raise ValueError("time_bins(edges=...) requires at least two edges")
+        if any(
+            stop <= start
+            for start, stop in zip(
+                parsed_edges[:-1],
+                parsed_edges[1:],
+                strict=True,
+            )
+        ):
+            raise ValueError("time_bins(edges=...) requires strictly increasing edges")
+        if time is None:
+            time = TimeRange(parsed_edges[0], parsed_edges[-1])
+        elif time.start != parsed_edges[0] or time.stop != parsed_edges[-1]:
+            raise ValueError("time must match the first and last custom edges")
+        return TimeBins(
+            time=time,
+            edges=parsed_edges,
+            label=label,
+            closed=closed,
+            partial="custom",
+        )
+    if time is None:
+        raise ValueError("time_bins() requires time when edges are not provided")
+    if cadence is None:
+        raise ValueError("time_bins() requires cadence when edges are not provided")
     if partial not in _PARTIAL_POLICIES:
         raise ValueError("partial must be 'error', 'keep', or 'drop'")
     step = _parse_duration(cadence)

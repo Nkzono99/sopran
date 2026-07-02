@@ -94,6 +94,61 @@ def test_time_bins_export_bin_table_and_metadata() -> None:
     assert bins.metadata()["is_partial"] == [False, False, True]
 
 
+def test_time_bins_can_build_user_defined_edges() -> None:
+    bins = spn.time_bins(
+        edges=[
+            "2008-01-01T00:00:00Z",
+            "2008-01-01T00:00:07Z",
+            "2008-01-01T00:00:20Z",
+        ],
+    )
+
+    assert bins.count == 2
+    assert bins.start_iso == "2008-01-01T00:00:00Z"
+    assert bins.stop_iso == "2008-01-01T00:00:20Z"
+    assert bins.centers_iso == (
+        "2008-01-01T00:00:03Z",
+        "2008-01-01T00:00:13Z",
+    )
+    assert bins.durations_seconds == (7.0, 13.0)
+    assert bins.is_partial == (False, False)
+    assert bins.partial == "custom"
+    assert bins.metadata()["partial"] == "custom"
+
+
+def test_align_aggregates_arrays_inside_user_defined_time_bins() -> None:
+    bins = spn.time_bins(
+        edges=[
+            "2008-01-01T00:00:00Z",
+            "2008-01-01T00:00:07Z",
+            "2008-01-01T00:00:20Z",
+        ],
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 5.0, 10.0, 14.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:06",
+                    "2008-01-01T00:00:08",
+                    "2008-01-01T00:00:19",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+
+    aligned = spn.align(wave_power, grid=bins, method="mean")
+
+    assert aligned.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:03Z", "wave_power": 3.0},
+        {"time": "2008-01-01T00:00:13Z", "wave_power": 12.0},
+    ]
+
+
 def test_align_nearest_samples_arrays_to_time_bin_centers() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:30Z"),
