@@ -91,6 +91,9 @@ class Pipeline:
             return scanner(self)
         raise NotImplementedError("Pipeline.scan() backend is not implemented yet")
 
+    def collect(self):
+        return self.scan().collect()
+
     def run(
         self,
         *,
