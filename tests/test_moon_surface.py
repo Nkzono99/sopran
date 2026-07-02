@@ -266,6 +266,27 @@ def test_surface_plan_records_shape_and_inherits_datum_from_dem() -> None:
     assert shadow_plan.parameters["datum"] == "mean_radius"
 
 
+def test_surface_plan_inherits_projection_and_area_from_dem() -> None:
+    moon = spn.Moon()
+
+    dem_plan = moon.dem.plan(
+        source="kaguya.tc.dem",
+        projection="polar_stereo",
+        area_or_point="point",
+    )
+    shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00Z", dem=dem_plan)
+    illumination_plan = moon.illumination.plan(
+        time="2008-02-01T12:00:00Z",
+        dem=dem_plan,
+        projection="orthographic",
+    )
+
+    assert shadow_plan.parameters["projection"] == "polar_stereographic"
+    assert shadow_plan.parameters["area_or_point"] == "point"
+    assert illumination_plan.parameters["projection"] == "orthographic"
+    assert illumination_plan.parameters["area_or_point"] == "point"
+
+
 def test_surface_plan_rejects_unknown_shape_model() -> None:
     moon = spn.Moon()
 

@@ -263,10 +263,10 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
     if datum is not None:
         normalized["datum"] = str(datum)
     normalized["projection"] = _canonical_projection(
-        str(normalized.get("projection", "native"))
+        str(normalized.get("projection", reference.get("projection", "native")))
     )
     normalized["area_or_point"] = _canonical_area_or_point(
-        str(normalized.get("area_or_point", "area"))
+        str(normalized.get("area_or_point", reference.get("area_or_point", "area")))
     )
     return normalized
 

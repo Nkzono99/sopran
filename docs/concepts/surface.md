@@ -25,8 +25,8 @@ metadata = dem_plan.to_metadata()
 `SurfacePlan` metadata always records `shape`, `lon_domain`, `lon_direction`,
 `lat_type`, `projection`, and `area_or_point`. Region-backed plans inherit the
 longitude and latitude conventions from `region`; shadow and illumination plans
-inherit shape, datum, and coordinate conventions from `dem=<SurfacePlan>` when
-no explicit value is passed.
+inherit shape, datum, coordinate conventions, projection, and area-or-point
+metadata from `dem=<SurfacePlan>` when no explicit value is passed.
 Defaults are `lon_domain="0_360"`, `lon_direction="east_positive"`,
 `lat_type="planetocentric"`, `shape="spherical"`, `projection="native"`, and
 `area_or_point="area"`. The `minus180_180`, `sphere`, `spice`, `body_radii`,

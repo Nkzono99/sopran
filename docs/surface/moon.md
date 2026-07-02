@@ -39,6 +39,6 @@ projection metadata, and explicit longitude-domain handling.
 Every surface plan records `shape`, `lon_domain`, `lon_direction`, `lat_type`,
 `projection`, and `area_or_point`. Region-backed plans inherit coordinate
 conventions from `region`, and derived plans such as `moon.shadow.plan(dem=...)`
-inherit shape, datum, and coordinate conventions from the DEM plan. Omitted
-values default to `spherical`, `0_360`, `east_positive`, `planetocentric`,
-`native`, and `area`.
+inherit shape, datum, coordinate conventions, projection, and area-or-point
+metadata from the DEM plan. Omitted values default to `spherical`, `0_360`,
+`east_positive`, `planetocentric`, `native`, and `area`.
