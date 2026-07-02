@@ -536,7 +536,8 @@ F:/sopran_cache/
 - dataset manifest の `source_files` から raw sidecar manifest へ辿り、入力 raw file の
   checksum を検証できる API を持つ。
 - dataset 単位で Parquet shard checksum と入力 raw file checksum をまとめて検証できる
-  integrity API を持つ。
+  integrity API を持つ。partial run の通常解析対象だけを確認する場合は
+  `Store.verify_dataset(..., shard_status="complete")` のように shard status を指定できる。
 - ユーザーが拡張した database を登録する。
 
 責務分担:
@@ -934,6 +935,8 @@ complete shard がない dataset は `DatasetNotFoundError` として扱う。
 `DatasetRecord.verify_checksums(status="complete")` は `scan()` と同じ complete shard だけを
 検証する。failed / skipped shard を可視化しつつ通常解析対象だけを確認したい場合は
 status 指定を使う。
+dataset 単位の integrity check でも `Store.verify_dataset(..., shard_status="complete")` が
+同じ shard status filter を使い、必要なら入力 raw file checksum も同時に検証する。
 shard の再生成は `DatasetRecord.replace_shard(path, frame=..., time_coverage=...)` で
 同じ path を上書きし、catalog の `checksum`, `row_count`, `status` を更新する。
 

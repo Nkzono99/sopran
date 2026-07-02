@@ -74,7 +74,9 @@ elapsed seconds, declared stage parameters, per-stage row/shard counts, shard
 rows, and total row count.
 `Store.dataset_source_files(...)` resolves the manifest `source_files` list back
 to raw sidecar records. `Store.verify_dataset(...)` checks both dataset shard
-checksums and raw input checksums.
+checksums and raw input checksums. Use
+`Store.verify_dataset(..., shard_status="complete")` when a partial dataset
+should be audited only for the complete shards that normal scans can read.
 
 Registry layout:
 

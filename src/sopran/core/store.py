@@ -315,9 +315,10 @@ class Store:
         *,
         layer: str | None = None,
         source_files: bool = True,
+        shard_status: str | None = None,
     ) -> bool:
         record = self.dataset(dataset_id, layer=layer)
-        if not record.verify_checksums():
+        if not record.verify_checksums(status=shard_status):
             return False
         if source_files:
             try:

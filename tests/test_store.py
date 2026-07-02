@@ -517,6 +517,56 @@ def test_store_verifies_dataset_integrity_with_source_files(tmp_path) -> None:
     assert not store.verify_dataset("kaguya.esa1.counts", layer="normalized", source_files=False)
 
 
+def test_store_verify_dataset_can_limit_audit_by_shard_status(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    first = spn.day("2008-02-01")
+    second = spn.day("2008-02-02")
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+    }
+    store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=first,
+        frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
+    )
+    dataset = store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=second,
+        frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
+        append=True,
+    )
+    dataset.update_shard_status("shards/part-001.parquet", "failed")
+    (dataset.root / "shards" / "part-001.parquet").write_bytes(b"broken shard")
+
+    assert not store.verify_dataset(
+        "kaguya.esa1.counts", layer="normalized", source_files=False
+    )
+    assert store.verify_dataset(
+        "kaguya.esa1.counts",
+        layer="normalized",
+        source_files=False,
+        shard_status="complete",
+    )
+    assert not store.verify_dataset(
+        "kaguya.esa1.counts",
+        layer="normalized",
+        source_files=False,
+        shard_status="failed",
+    )
+    with pytest.raises(ValueError, match="shard status"):
+        store.verify_dataset(
+            "kaguya.esa1.counts",
+            layer="normalized",
+            source_files=False,
+            shard_status="unknown",
+        )
+
+
 def test_dataset_record_verifies_catalog_shard_checksums(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

@@ -62,7 +62,8 @@ cataloged shard and refreshes its checksum, row count, time coverage, and status
 `Store.dataset_source_files(...)` resolves `dataset.json["source_files"]` into
 `RawFileRecord` objects so raw input checksums can be verified.
 `Store.verify_dataset(...)` checks both dataset shard checksums and raw input
-checksums for a dataset.
+checksums for a dataset. Pass `shard_status="complete"` to restrict the shard
+checksum audit to the same complete shard set used by `scan()`.
 
 Raw files are not renamed by SOPRAN. `Store.register_raw_file(...)` writes a
 sidecar manifest next to the raw file, named `<filename>.sopran.json`, with the
