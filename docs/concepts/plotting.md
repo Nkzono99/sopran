@@ -89,6 +89,8 @@ column by default; use `include_time=True` when the bin center should travel
 with the features.
 `to_feature_matrix()` returns numpy-compatible values plus feature columns,
 time labels, and metadata in a small object for ML libraries.
+Use `FeatureMatrix.to_polars()` or `FeatureMatrix.to_pandas()` when a downstream
+tool expects a table again.
 Use `FeatureMatrix.write_npz()` when a compact local artifact is more convenient
 than a Parquet feature table, and `FeatureMatrix.read_npz()` to load it again.
 Use `FeatureMatrix.select()` to keep only the columns a downstream model should

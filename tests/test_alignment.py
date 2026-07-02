@@ -976,6 +976,14 @@ def test_feature_matrix_exports_pandas_and_npz(tmp_path) -> None:
         {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 2.0},
         {"time": "2008-01-01T00:00:15Z", "sza": 80.0, "wave_power": 10.0},
     ]
+    assert matrix.to_polars().to_dicts() == [
+        {"sza": 70.0, "wave_power": 2.0},
+        {"sza": 80.0, "wave_power": 10.0},
+    ]
+    assert matrix.to_polars(include_time=True).to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0, "wave_power": 2.0},
+        {"time": "2008-01-01T00:00:15Z", "sza": 80.0, "wave_power": 10.0},
+    ]
 
     path = matrix.write_npz(tmp_path / "features.npz")
 

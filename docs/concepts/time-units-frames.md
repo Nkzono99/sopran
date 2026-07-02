@@ -121,8 +121,9 @@ center in the `time` column. `feature_metadata()` returns the feature columns,
 feature rules, grid metadata, row count, and time column name.
 `to_feature_matrix()` returns a `FeatureMatrix` object with numpy-compatible
 `values`, feature `columns`, bin-center `time`, and the same feature metadata.
-`FeatureMatrix.to_pandas()` returns a pandas DataFrame, and `write_npz()` stores
-values, columns, time labels, and metadata JSON for lightweight ML handoff.
+`FeatureMatrix.to_polars()` and `FeatureMatrix.to_pandas()` return feature
+tables, and `write_npz()` stores values, columns, time labels, and metadata JSON
+for lightweight ML handoff.
 Use `FeatureMatrix.read_npz()` to reload the same artifact.
 Use `FeatureMatrix.select(*columns)` before training when a model should receive
 only a chosen subset of aligned features.

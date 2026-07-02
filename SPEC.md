@@ -1650,7 +1650,8 @@ stack = spn.stack(
   `include_time=True` の場合は bin center の `time` 列も残す。
 - `to_feature_matrix()` は scikit-learn などに渡しやすい numpy 互換の `values` と、
   `columns`, `time`, `metadata` を持つ `FeatureMatrix` を返す。
-- `FeatureMatrix.to_pandas(include_time=False)` は pandas DataFrame を返し、
+- `FeatureMatrix.to_polars(include_time=False)` / `to_pandas(include_time=False)` は
+  feature table を Polars / pandas DataFrame として返す。
   `FeatureMatrix.write_npz(path)` は values、columns、time、metadata JSON を保存する。
   `FeatureMatrix.read_npz(path)` は同じ artifact を読み戻す。
 - `FeatureMatrix.select(*columns)` は ML 入力列を明示的に絞り、metadata の columns/features も

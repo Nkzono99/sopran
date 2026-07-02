@@ -142,6 +142,14 @@ class FeatureMatrix:
             frame.insert(0, "time", list(self.time))
         return frame
 
+    def to_polars(self, *, include_time: bool = False):
+        import polars as pl
+
+        frame = pl.DataFrame(self.values, schema=list(self.columns), orient="row")
+        if include_time:
+            frame.insert_column(0, pl.Series("time", list(self.time)))
+        return frame
+
     def select(self, *columns: str) -> FeatureMatrix:
         indices = []
         for column in columns:
