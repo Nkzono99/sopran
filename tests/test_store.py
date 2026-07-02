@@ -180,6 +180,41 @@ def test_store_dataset_finds_registered_dataset_without_layer(tmp_path) -> None:
         store.dataset("unknown.dataset")
 
 
+def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    first = spn.day("2008-02-01")
+    second = spn.day("2008-02-02")
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+    }
+    store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=first,
+        frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
+    )
+
+    dataset = store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=second,
+        frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
+        append=True,
+    )
+
+    assert dataset.manifest()["time_coverage"] == {
+        "start": first.start_iso,
+        "stop": second.stop_iso,
+    }
+    assert dataset.catalog().select("start").to_series().to_list() == [
+        first.start_iso,
+        second.start_iso,
+    ]
+
+
 def test_dataset_record_scans_its_catalog_shards(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

@@ -10,7 +10,7 @@ from typing import Any
 
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema
-from sopran.core.time import TimeRange
+from sopran.core.time import TimeRange, period
 
 
 @dataclass(frozen=True)
@@ -123,6 +123,9 @@ class Store:
 
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         existing_shards = _read_catalog_shards(record.catalog_path) if append else ()
+        manifest_time_coverage = (
+            _merge_time_coverage(record.manifest_path, time_coverage) if append else time_coverage
+        )
         if append and shard_path == "shards/part-000.parquet":
             shard_path = _next_shard_path(existing_shards)
         target = _resolve_child(record.root, shard_path)
@@ -138,7 +141,7 @@ class Store:
             instrument=instrument,
             product=product,
             schema=schema,
-            time_coverage=time_coverage,
+            time_coverage=manifest_time_coverage,
             source_files=source_files,
             shards=(
                 *existing_shards,
@@ -277,6 +280,17 @@ def _time_coverage_to_json(time_coverage: TimeRange | None) -> dict[str, str] | 
         "start": time_coverage.start_iso,
         "stop": time_coverage.stop_iso,
     }
+
+
+def _merge_time_coverage(path: Path, new: TimeRange | None) -> TimeRange | None:
+    if new is None or not path.exists():
+        return new
+    existing = json.loads(path.read_text(encoding="utf-8")).get("time_coverage")
+    if not existing:
+        return new
+    start = min(str(existing["start"]), new.start_iso)
+    stop = max(str(existing["stop"]), new.stop_iso)
+    return period(start, stop)
 
 
 def _read_catalog_shards(path: Path) -> tuple[dict[str, Any], ...]:
