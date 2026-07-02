@@ -17,6 +17,16 @@ plan = pipe.plan()
 result = pipe.run(dry_run=True)
 ```
 
+Inspect the plan in structured or readable form:
+
+```python
+plan.to_dict()
+print(result)
+```
+
+The dry-run result does not execute pipeline stages. It reports the source,
+time range, stage list, and output target.
+
 For KAGUYA ESA1, `run()` writes quicklooks under
 `<dataset>/preview/<name>.png` with a matching JSON metadata file.
 

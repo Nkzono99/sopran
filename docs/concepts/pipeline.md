@@ -27,6 +27,10 @@ pipe.run(mode="replace")
 pipe.run(resume=True)
 ```
 
+`PipelinePlan.to_dict()` gives a JSON-like execution plan with source, time
+range, stage parameters, and output target. `str(pipe.run(dry_run=True))` renders
+the same plan as readable text for terminal logs and notebooks.
+
 Read existing normalized data with Polars:
 
 ```python

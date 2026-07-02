@@ -383,16 +383,45 @@ def test_pipeline_collect_materializes_stored_normalized_data(tmp_path) -> None:
 def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.month("2008-02")
-    pipe = kg.esa1.pipeline(time).download().decode().write(
-        "kaguya.esa1.counts",
-        layer="normalized",
+    pipe = (
+        kg.esa1.pipeline(time)
+        .download()
+        .decode()
+        .select_variables("counts")
+        .write(
+            "kaguya.esa1.counts",
+            layer="normalized",
+        )
     )
 
     result = pipe.run(dry_run=True)
 
     assert result.status == "planned"
-    assert result.plan.stage_names == ("download", "decode", "write")
+    assert result.plan.stage_names == ("download", "decode", "select_variables", "write")
     assert result.plan.output_dataset == "kaguya.esa1.counts"
+    assert result.plan.to_dict() == {
+        "source": "kaguya.esa1",
+        "start": "2008-02-01T00:00:00Z",
+        "stop": "2008-03-01T00:00:00Z",
+        "output_dataset": "kaguya.esa1.counts",
+        "output_layer": "normalized",
+        "stages": [
+            {"name": "download", "parameters": {}},
+            {"name": "decode", "parameters": {}},
+            {"name": "select_variables", "parameters": {"names": ["counts"]}},
+            {
+                "name": "write",
+                "parameters": {"dataset": "kaguya.esa1.counts", "layer": "normalized"},
+            },
+        ],
+    }
+    text = str(result)
+    assert "SOPRAN pipeline result" in text
+    assert "status: planned" in text
+    assert "source: kaguya.esa1" in text
+    assert "time: 2008-02-01T00:00:00Z .. 2008-03-01T00:00:00Z" in text
+    assert "output: kaguya.esa1.counts (normalized)" in text
+    assert "- select_variables names=['counts']" in text
 
 
 def test_project_case_supplies_time_to_kaguya_endpoints(tmp_path) -> None:

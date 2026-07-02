@@ -4,6 +4,8 @@
 - Stage builders return a new `Pipeline`.
 - `write()` declares an output; it does not write until `run()`.
 - `quicklook()` declares preview artifacts; it does not render until `run()`.
+- `run(dry_run=True)` returns a planned `PipelineResult` without executing
+  stages; its plan can be inspected with `to_dict()` or `str(result)`.
 - `run()` fails on existing shards unless `mode="append"` or `mode="replace"`
   is explicit.
 - `run(resume=True)` may skip execution when the output catalog is already

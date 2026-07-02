@@ -30,6 +30,39 @@ class PipelinePlan:
     def stage_names(self) -> tuple[str, ...]:
         return tuple(stage.name for stage in self.stages)
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source": self.source,
+            "start": self.time.start_iso,
+            "stop": self.time.stop_iso,
+            "output_dataset": self.output_dataset,
+            "output_layer": self.output_layer,
+            "stages": [
+                {
+                    "name": stage.name,
+                    "parameters": _jsonable(stage.parameters),
+                }
+                for stage in self.stages
+            ],
+        }
+
+    def to_text(self) -> str:
+        lines = [
+            "SOPRAN pipeline plan",
+            f"source: {self.source}",
+            f"time: {self.time.start_iso} .. {self.time.stop_iso}",
+            f"output: {_format_output(self.output_dataset, self.output_layer)}",
+            "stages:",
+        ]
+        lines.extend(
+            f"- {stage.name}{_format_parameters(stage.parameters)}"
+            for stage in self.stages
+        )
+        return "\n".join(lines)
+
+    def __str__(self) -> str:
+        return self.to_text()
+
 
 @dataclass(frozen=True)
 class PipelineResult:
@@ -39,6 +72,30 @@ class PipelineResult:
     outputs: tuple[Any, ...] = ()
     run_id: str = ""
     log_path: Path | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "message": self.message,
+            "run_id": self.run_id,
+            "log_path": str(self.log_path) if self.log_path is not None else None,
+            "plan": self.plan.to_dict(),
+        }
+
+    def to_text(self) -> str:
+        lines = [
+            "SOPRAN pipeline result",
+            f"status: {self.status}",
+            f"run_id: {self.run_id}",
+            f"message: {self.message}",
+        ]
+        if self.log_path is not None:
+            lines.append(f"log: {self.log_path}")
+        lines.extend(("", self.plan.to_text()))
+        return "\n".join(lines)
+
+    def __str__(self) -> str:
+        return self.to_text()
 
 
 @dataclass(frozen=True)
@@ -187,6 +244,33 @@ def _write_target(dataset: str | Any, layer: str | None) -> tuple[str, str]:
 def _new_pipeline_run_id() -> str:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     return f"run_{stamp}_{uuid4().hex[:8]}"
+
+
+def _jsonable(value: object) -> object:
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, Path):
+        return value.as_posix()
+    return value
+
+
+def _format_output(dataset: str | None, layer: str | None) -> str:
+    if dataset is None:
+        return "(not set)"
+    if layer is None:
+        return dataset
+    return f"{dataset} ({layer})"
+
+
+def _format_parameters(parameters: dict[str, Any]) -> str:
+    if not parameters:
+        return ""
+    normalized = _jsonable(parameters)
+    if not isinstance(normalized, dict):
+        return f" {normalized!r}"
+    return " " + " ".join(f"{key}={value!r}" for key, value in normalized.items())
 
 
 def _stream_frame_by_day(frame: Any):

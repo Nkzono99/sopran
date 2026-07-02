@@ -1900,7 +1900,9 @@ dataset-writing pipeline は `dataset_root/logs/<run_id>.json` に structured lo
 stage list、output target、shard row count、合計 row count、elapsed seconds を記録する。
 `resume=True` はまず complete catalog が既に要求 time range を覆う場合に再実行を skip し、
 `PipelineResult.status == "skipped"` と skip log を返す。failed / partial shard の再実行は
-後続 milestone で扱う。
+後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
+`PipelineResult.to_text()` / `str(result)` で source、time range、stage list、
+output target を確認できる。
 
 ### Rust backend contract
 
