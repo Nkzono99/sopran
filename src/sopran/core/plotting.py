@@ -50,9 +50,16 @@ class PlotStack:
             items=tuple(item.name for item in self.items),
         )
 
-    def plot(self, *, figsize: tuple[float, float] | None = None) -> Any:
+    def plot(
+        self,
+        *,
+        backend: Literal["matplotlib"] = "matplotlib",
+        figsize: tuple[float, float] | None = None,
+    ) -> Any:
         if not self.items:
             raise ValueError("PlotStack requires at least one item")
+        if backend != "matplotlib":
+            raise ValueError("PlotStack.plot() currently supports only matplotlib")
 
         import matplotlib.pyplot as plt
 
@@ -88,12 +95,15 @@ class PlotStack:
         *,
         root: str | Path = ".",
         formats: tuple[str, ...] = ("png",),
+        backend: Literal["matplotlib"] = "matplotlib",
         metadata: dict[str, Any] | None = None,
         figsize: tuple[float, float] | None = None,
     ) -> QuicklookResult:
         target_root = Path(root)
         target_root.mkdir(parents=True, exist_ok=True)
-        fig = self.plot(figsize=figsize)
+        if backend != "matplotlib":
+            raise ValueError("PlotStack.quicklook() currently supports only matplotlib")
+        fig = self.plot(backend=backend, figsize=figsize)
         plan = self.plan()
         artifacts = []
         for format_name in formats:
@@ -105,7 +115,7 @@ class PlotStack:
 
         payload = {
             "name": name,
-            "backend": "matplotlib",
+            "backend": backend,
             "panel_count": plan.panel_count,
             "items": list(plan.items),
             "artifacts": [artifact.path.name for artifact in artifacts],

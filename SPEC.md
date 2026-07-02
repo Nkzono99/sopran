@@ -1595,9 +1595,9 @@ v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `ce
 `layout="long"` は wide column を `feature` 値へ畳む。
 スペクトル、distribution、より詳細な欠損処理は後続 milestone とする。
 
-v0.1 の PlotStack は最小でよい。まずは KAGUYA ESA1 spectrogram と orbit altitude line を
-同じ UTC axis で縦に並べることを目標にする。`panel`, `datashader`, `html report`,
-long-term quicklook は後続 milestone とする。
+v0.1 の PlotStack は最小でよい。`backend="matplotlib"` を受け取り、まずは KAGUYA ESA1
+spectrogram と orbit altitude line を同じ UTC axis で縦に並べることを目標にする。
+`panel`, `datashader`, `html report`, long-term quicklook は後続 milestone とする。
 
 ```python
 stack = case.stack(

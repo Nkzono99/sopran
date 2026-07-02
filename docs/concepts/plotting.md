@@ -17,8 +17,8 @@ stack = spn.stack(
 )
 
 stack.plan()
-stack.plot()
-stack.quicklook("wake_overview", root="reports")
+stack.plot(backend="matplotlib")
+stack.quicklook("wake_overview", root="reports", backend="matplotlib")
 ```
 
 When a `Project` case supplies the time range, variable endpoints can create
@@ -70,6 +70,7 @@ Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
 `magnetic_field_z`.
 
-The v0.1 implementation uses Matplotlib. HoloViz, Datashader, Panel dashboards,
-and HTML quicklooks are planned for larger interactive products. Current
-`quicklook()` output is a Matplotlib PNG plus a small JSON metadata file.
+The v0.1 implementation accepts `backend="matplotlib"`. HoloViz, Datashader,
+Panel dashboards, and HTML quicklooks are planned for larger interactive
+products. Current `quicklook()` output is a Matplotlib PNG plus a small JSON
+metadata file.

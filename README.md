@@ -107,8 +107,8 @@ stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy"),
     kg.esa1.quality.load(time).line(),
 )
-fig = stack.plot()
-quicklook = stack.quicklook("esa1_counts", root="reports")
+fig = stack.plot(backend="matplotlib")
+quicklook = stack.quicklook("esa1_counts", root="reports", backend="matplotlib")
 
 bins = spn.time_bins(time, cadence="10s", partial="keep")
 features = spn.align(
