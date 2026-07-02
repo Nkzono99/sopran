@@ -14,6 +14,18 @@ class Region:
     body: str = "moon"
     lon_domain: LonDomain = "0_360"
 
+    @property
+    def crosses_lon_boundary(self) -> bool:
+        return self.lon[0] > self.lon[1]
+
+    @property
+    def lon_span(self) -> float:
+        start, stop = self.lon
+        if stop >= start:
+            return float(stop - start)
+        domain_width = 360.0
+        return float((stop + domain_width) - start)
+
     def to_lon_domain(self, lon_domain: LonDomain) -> Region:
         if lon_domain == self.lon_domain:
             return self
@@ -22,6 +34,16 @@ class Region:
             lon=tuple(_convert_lon(value, lon_domain) for value in self.lon),
             lon_domain=lon_domain,
         )
+
+    def contains_lon(self, lon: float) -> bool:
+        value = _convert_lon(lon, self.lon_domain)
+        start, stop = self.lon
+        if start <= stop:
+            return start <= value <= stop
+        return value >= start or value <= stop
+
+    def contains(self, lon: float, lat: float) -> bool:
+        return self.contains_lon(lon) and self.lat[0] <= lat <= self.lat[1]
 
 
 def _convert_lon(value: float, lon_domain: LonDomain) -> float:

@@ -29,3 +29,12 @@ calculation is a later milestone.
 
 Surface products must preserve body, datum/shape, lon domain, lon direction,
 lat type, projection, CRS, resolution, and area-or-point metadata.
+
+The current `Region` utility supports longitude-domain conversion,
+0/360-boundary detection, longitude span, and simple point containment:
+
+```python
+region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
+region.contains(355, 0)
+region.to_lon_domain("-180_180")
+```

@@ -16,6 +16,14 @@ shadow_plan = moon.shadow.plan(
 )
 ```
 
+For regions that cross the 0/360 degree boundary:
+
+```python
+region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
+region.contains(355, 0)
+region.to_lon_domain("-180_180")
+```
+
 These endpoints are planning skeletons for now. Full terrain-aware computation
 is planned after DEM, projection, body shape, and solar geometry semantics are
 locked down.
