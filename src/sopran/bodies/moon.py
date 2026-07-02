@@ -12,6 +12,13 @@ class SurfacePlan:
     product: str
     parameters: dict[str, Any]
 
+    def to_metadata(self) -> dict[str, Any]:
+        return {
+            "body": self.body,
+            "product": self.product,
+            "parameters": _metadata_value(self.parameters),
+        }
+
 
 class Moon:
     """Body-first entry point for Moon surface products."""
@@ -131,3 +138,13 @@ _SURFACE_SOURCES = {
     "shadow": ("legacy.shadowmap_sza",),
     "illumination": (),
 }
+
+
+def _metadata_value(value: Any) -> Any:
+    if hasattr(value, "to_metadata"):
+        return value.to_metadata()
+    if isinstance(value, dict):
+        return {str(key): _metadata_value(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_metadata_value(item) for item in value]
+    return value

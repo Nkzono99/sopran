@@ -45,6 +45,14 @@ class Region:
     def contains(self, lon: float, lat: float) -> bool:
         return self.contains_lon(lon) and self.lat[0] <= lat <= self.lat[1]
 
+    def to_metadata(self) -> dict[str, object]:
+        return {
+            "body": self.body,
+            "lon": [float(self.lon[0]), float(self.lon[1])],
+            "lat": [float(self.lat[0]), float(self.lat[1])],
+            "lon_domain": self.lon_domain,
+        }
+
 
 def _convert_lon(value: float, lon_domain: LonDomain) -> float:
     if lon_domain == "0_360":

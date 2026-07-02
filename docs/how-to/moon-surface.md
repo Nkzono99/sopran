@@ -15,6 +15,7 @@ shadow_plan = moon.shadow.plan(
     time="2008-02-01T12:00:00Z",
     dem=dem_plan,
 )
+metadata = shadow_plan.to_metadata()
 ```
 
 For regions that cross the 0/360 degree boundary:

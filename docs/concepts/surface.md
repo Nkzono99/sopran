@@ -9,6 +9,7 @@ region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
 moon.dem.sources()
 normalized = region.to_lon_domain("-180_180")
 dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=normalized)
+metadata = dem_plan.to_metadata()
 ```
 
 Regions understand longitude-domain wrapping:

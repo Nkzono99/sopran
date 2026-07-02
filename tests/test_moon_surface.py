@@ -37,6 +37,46 @@ def test_moon_surface_endpoints_list_stable_source_ids() -> None:
     assert "legacy.shadowmap_sza" in moon.shadow.sources()
 
 
+def test_surface_plan_exports_json_ready_metadata() -> None:
+    moon = spn.Moon()
+    region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon").to_lon_domain(
+        "-180_180"
+    )
+    dem_plan = moon.dem.plan(
+        source="kaguya.tc.dem",
+        region=region,
+        resolution="512ppd",
+    )
+    shadow_plan = moon.shadow.plan(
+        time="2008-02-01T12:00:00Z",
+        dem=dem_plan,
+        model="sphere",
+    )
+
+    assert shadow_plan.to_metadata() == {
+        "body": "moon",
+        "product": "shadow",
+        "parameters": {
+            "time": "2008-02-01T12:00:00Z",
+            "dem": {
+                "body": "moon",
+                "product": "dem",
+                "parameters": {
+                    "source": "kaguya.tc.dem",
+                    "region": {
+                        "body": "moon",
+                        "lon": [-10.0, 10.0],
+                        "lat": [-5.0, 5.0],
+                        "lon_domain": "-180_180",
+                    },
+                    "resolution": "512ppd",
+                },
+            },
+            "model": "sphere",
+        },
+    }
+
+
 def test_moon_surface_guides_return_markdown_pages() -> None:
     moon = spn.Moon()
 

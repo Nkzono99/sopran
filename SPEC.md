@@ -1189,6 +1189,8 @@ normalized/
 
 表面座標は暗黙にしない。`SurfaceProduct` とその具体型である `DemProduct`,
 `SvmProduct`, `ShadowProduct`, `IlluminationProduct` は metadata に次を持つ。
+v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の前段となり、
+`Region` や入れ子の DEM plan を JSON-ready な dict に展開する。
 
 - `body`: `moon`, `earth`, `mars` など。
 - `datum` / `shape`: spherical、ellipsoid、triaxial、または SPICE body radii。
