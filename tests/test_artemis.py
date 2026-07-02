@@ -43,6 +43,16 @@ def test_artemis_probe_esa_endpoint_exposes_schema_and_plan() -> None:
     assert plan.time == time
 
 
+def test_artemis_variable_endpoint_info_lists_aliases() -> None:
+    art = spn.Artemis()
+
+    fgm_info = str(art.p1.fgm.magnetic_field.info())
+    esa_info = str(art.p1.esa.ion_energy_flux.info())
+
+    assert "aliases: b, fgm" in fgm_info
+    assert "aliases: ion_eflux, esa" in esa_info
+
+
 def test_artemis_fgm_unknown_variable_error_lists_available_variables() -> None:
     art = spn.Artemis()
 

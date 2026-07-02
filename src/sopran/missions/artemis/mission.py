@@ -196,6 +196,7 @@ class ArtemisVariableEndpoint:
                 f"description: {self._schema.description}",
                 f"dims: {self._schema.dims}",
                 f"units: {self._schema.units}",
+                f"aliases: {', '.join(self._schema.aliases) or 'none'}",
             ),
         )
 

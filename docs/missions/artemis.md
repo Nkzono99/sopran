@@ -24,6 +24,8 @@ ion_plan = art.p1.esa.ion_energy_flux.plan(time)
   and `spectrogram()` PlotItem generation for ESA energy spectra.
 - Unknown variable and missing-time errors list available variables or the
   required time range pattern, plus the next `info()` / `load()` calls to try.
+- Variable endpoint `info()` includes schema aliases such as `b`, `fgm`, and
+  `ion_eflux`.
 - Bilingual package guides via `art.guide(language="ja")`,
   `art.guide(language="en")`, `art.p1.fgm.guide(language=...)`, and
   `art.p1.esa.guide(language=...)`.
