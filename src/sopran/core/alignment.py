@@ -58,6 +58,65 @@ class TimeBins:
     def centers_iso(self) -> tuple[str, ...]:
         return tuple(_format_utc(center) for center in self.centers)
 
+    @property
+    def edges_iso(self) -> tuple[str, ...]:
+        return tuple(_format_utc(edge) for edge in self.edges)
+
+    @property
+    def durations_seconds(self) -> tuple[float, ...]:
+        return tuple(
+            (stop - start).total_seconds()
+            for start, stop in zip(self.edges[:-1], self.edges[1:], strict=True)
+        )
+
+    @property
+    def is_partial(self) -> tuple[bool, ...]:
+        durations = self.durations_seconds
+        if not durations:
+            return ()
+        regular = durations[0]
+        return tuple(duration < regular for duration in durations)
+
+    def to_polars(self):
+        import polars as pl
+
+        return pl.DataFrame(
+            [
+                {
+                    "index": index,
+                    "start": _format_utc(start),
+                    "stop": _format_utc(stop),
+                    "center": _format_utc(center),
+                    "duration_seconds": duration,
+                    "is_partial": is_partial,
+                }
+                for index, (start, stop, center, duration, is_partial) in enumerate(
+                    zip(
+                        self.edges[:-1],
+                        self.edges[1:],
+                        self.centers,
+                        self.durations_seconds,
+                        self.is_partial,
+                        strict=True,
+                    )
+                )
+            ]
+        )
+
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "centers": list(self.centers_iso),
+            "closed": self.closed,
+            "count": self.count,
+            "durations_seconds": list(self.durations_seconds),
+            "edges": list(self.edges_iso),
+            "is_partial": list(self.is_partial),
+            "label": self.label,
+            "partial": self.partial,
+            "start": self.start_iso,
+            "stop": self.stop_iso,
+        }
+
 
 @dataclass(frozen=True)
 class AlignmentResult:
@@ -94,14 +153,7 @@ class AlignmentResult:
         return {
             "columns": list(self.columns),
             "fill": self.fill,
-            "grid": {
-                "closed": self.grid.closed,
-                "count": self.grid.count,
-                "label": self.grid.label,
-                "partial": self.grid.partial,
-                "start": self.grid.start_iso,
-                "stop": self.grid.stop_iso,
-            },
+            "grid": self.grid.metadata(),
             "join": self.join,
             "method": self.method,
             "quality_mask": self.quality_mask,

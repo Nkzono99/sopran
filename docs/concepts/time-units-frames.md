@@ -18,6 +18,8 @@ short final bin, or `partial="drop"` to discard it:
 
 ```python
 bins = spn.time_bins(time, cadence="10s", partial="keep")
+bin_table = bins.to_polars()
+bin_metadata = bins.metadata()
 ```
 
 ## Time Bins And Alignment
@@ -65,8 +67,10 @@ features.write_parquet("features-long.parquet", layout="long")
 metadata = features.metadata()
 ```
 
-`metadata()` returns the columns, bin grid, alignment method, join mode, and
-fill policy so the same information can be written into a dataset manifest.
+`TimeBins.to_polars()` returns one row per bin with `start`, `stop`, `center`,
+`duration_seconds`, and `is_partial`. `metadata()` returns the columns, bin
+grid, alignment method, join mode, fill policy, and detailed bin edges/centers
+so the same information can be written into a dataset manifest.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`

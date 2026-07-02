@@ -56,6 +56,43 @@ def test_time_bins_can_drop_partial_tail_bin() -> None:
     )
 
 
+def test_time_bins_export_bin_table_and_metadata() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
+        cadence="10s",
+        partial="keep",
+    )
+
+    assert bins.to_polars().to_dicts() == [
+        {
+            "index": 0,
+            "start": "2008-01-01T00:00:00Z",
+            "stop": "2008-01-01T00:00:10Z",
+            "center": "2008-01-01T00:00:05Z",
+            "duration_seconds": 10.0,
+            "is_partial": False,
+        },
+        {
+            "index": 1,
+            "start": "2008-01-01T00:00:10Z",
+            "stop": "2008-01-01T00:00:20Z",
+            "center": "2008-01-01T00:00:15Z",
+            "duration_seconds": 10.0,
+            "is_partial": False,
+        },
+        {
+            "index": 2,
+            "start": "2008-01-01T00:00:20Z",
+            "stop": "2008-01-01T00:00:24Z",
+            "center": "2008-01-01T00:00:22Z",
+            "duration_seconds": 4.0,
+            "is_partial": True,
+        },
+    ]
+    assert bins.metadata()["durations_seconds"] == [10.0, 10.0, 4.0]
+    assert bins.metadata()["is_partial"] == [False, False, True]
+
+
 def test_align_nearest_samples_arrays_to_time_bin_centers() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:30Z"),
@@ -515,7 +552,20 @@ def test_alignment_result_exposes_feature_table_metadata() -> None:
         "fill": -1.0,
         "grid": {
             "closed": "left",
+            "centers": [
+                "2008-01-01T00:00:05Z",
+                "2008-01-01T00:00:15Z",
+                "2008-01-01T00:00:22Z",
+            ],
             "count": 3,
+            "durations_seconds": [10.0, 10.0, 4.0],
+            "edges": [
+                "2008-01-01T00:00:00Z",
+                "2008-01-01T00:00:10Z",
+                "2008-01-01T00:00:20Z",
+                "2008-01-01T00:00:24Z",
+            ],
+            "is_partial": [False, False, True],
             "label": "center",
             "partial": "keep",
             "start": "2008-01-01T00:00:00Z",
