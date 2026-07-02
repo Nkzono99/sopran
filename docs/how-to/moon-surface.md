@@ -4,6 +4,7 @@
 moon = spn.Moon()
 region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 sources = moon.dem.sources()
+shadow_endpoint = moon.map("shadow_map")
 
 dem_plan = moon.dem.plan(
     source="kaguya.tc.dem",

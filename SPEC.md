@@ -1251,6 +1251,9 @@ dem.profile(path=case.kaguya.orbit.ground_track.load())
 ```
 
 `moon.map("svm")` のような文字列 API は補助として残すが、主導線にはしない。
+補助 API も schema を source of truth とし、`moon.map("shadow_map")`,
+`moon.map("solar_zenith_angle")`, `moon.map("elevation")` のような alias は
+canonical endpoint (`moon.shadow`, `moon.sza`, `moon.dem`) に解決する。
 
 mission 側には provider-specific shortcut を置く。
 

@@ -114,6 +114,11 @@ def test_moon_map_returns_surface_endpoint_by_name() -> None:
     assert moon.map("svm") is moon.svm
     assert moon.map("dem") is moon.dem
     assert moon.map("sza") is moon.sza
+    assert moon.map("elevation") is moon.dem
+    assert moon.map("height") is moon.dem
+    assert moon.map("shadow_map") is moon.shadow
+    assert moon.map("shadow_fraction") is moon.shadow
+    assert moon.map("solar_zenith_angle") is moon.sza
     with pytest.raises(ValueError, match="Unknown Moon surface product"):
         moon.map("unknown")
 

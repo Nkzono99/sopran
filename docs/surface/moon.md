@@ -25,6 +25,15 @@ Implemented endpoints:
 - `moon.illumination`
 - `moon.sza`
 
+`moon.map(product)` accepts canonical product names and schema aliases:
+
+```python
+moon.map("dem")
+moon.map("elevation")
+moon.map("shadow_map")
+moon.map("solar_zenith_angle")
+```
+
 Use `info()` for a short console summary. Endpoint-level info includes stable
 source IDs, dimensions, units, frame, and aliases:
 

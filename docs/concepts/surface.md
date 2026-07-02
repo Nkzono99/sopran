@@ -8,6 +8,7 @@ region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
 
 moon.dem.sources()
 moon.map("svm")
+moon.map("shadow_map")  # schema alias for moon.shadow
 normalized = region.to_lon_domain("-180_180")
 dem_plan = moon.dem.plan(
     source="kaguya.tc.dem",

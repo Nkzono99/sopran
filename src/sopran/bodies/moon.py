@@ -94,18 +94,26 @@ metadata = shadow_plan.to_metadata()
         )
 
     def map(self, product: str) -> SurfaceEndpoint:
+        endpoints = {
+            "dem": self.dem,
+            "svm": self.svm,
+            "shadow": self.shadow,
+            "illumination": self.illumination,
+            "sza": self.sza,
+        }
         try:
-            return {
-                "dem": self.dem,
-                "svm": self.svm,
-                "shadow": self.shadow,
-                "illumination": self.illumination,
-                "sza": self.sza,
-            }[product]
+            canonical = MOON_SURFACE_SCHEMA.variable(product).name
+            return endpoints[canonical]
         except KeyError as exc:
             raise ValueError(
                 "Unknown Moon surface product. Available products: "
-                "dem, svm, shadow, illumination, sza"
+                + _format_list(variable.name for variable in MOON_SURFACE_SCHEMA.variables)
+                + ". Aliases: "
+                + _format_list(
+                    alias
+                    for variable in MOON_SURFACE_SCHEMA.variables
+                    for alias in variable.aliases
+                )
             ) from exc
 
 
