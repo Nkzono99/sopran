@@ -521,6 +521,8 @@ F:/sopran_cache/
   product / dataset version / schema version / status / created_at / time coverage で
   dataset を一覧・探索する。Python API では `Store.datasets(time_range=...)` を使い、
   dataset の `time_coverage` と指定した半開区間 `[start, stop)` が重なる dataset を返す。
+  manifest 作成時刻は `created_after` / `created_before` で半開区間
+  `[created_after, created_before)` として絞り込む。
 - raw file の checksum、download URL、取得日時を記録する。初期実装では raw file の隣に
   `<filename>.sopran.json` sidecar manifest を置き、`registry/raw_files.parquet` に
   mission / provider / provider path / filename / version / checksum / acquired_at の

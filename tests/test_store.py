@@ -625,6 +625,54 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
     ]
 
 
+def test_store_filters_dataset_registry_by_created_at(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    day = spn.day("2008-02-01")
+    old = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "counts": [64]}),
+    )
+    recent = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.energy_flux",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="energy_flux",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "energy_flux": [1.0]}),
+    )
+
+    _set_created_at(old, "2026-07-01T00:00:00Z")
+    _set_created_at(recent, "2026-07-02T12:00:00Z")
+    store.datasets(refresh=True)
+
+    created_on_second = store.datasets(
+        created_after="2026-07-02T00:00:00Z",
+        created_before="2026-07-03T00:00:00Z",
+    )
+    before_second = store.datasets(created_before="2026-07-02T00:00:00Z")
+
+    assert created_on_second.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.energy_flux"
+    ]
+    assert before_second.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.counts"
+    ]
+
+
+def _set_created_at(record, created_at: str) -> None:
+    manifest = record.manifest()
+    manifest["created_at"] = created_at
+    record.manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+
 def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
     store = Store(tmp_path / "store")
     first = spn.day("2008-02-01")

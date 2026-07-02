@@ -333,6 +333,8 @@ class Store:
         dataset_version: str | None = None,
         status: str | None = None,
         time_range: TimeRange | None = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
         refresh: bool = False,
     ):
         import polars as pl
@@ -360,6 +362,12 @@ class Store:
                 (pl.col("start") < time_range.stop_iso)
                 & (pl.col("stop") > time_range.start_iso)
             )
+        if created_after is not None or created_before is not None:
+            frame = frame.filter(pl.col("created_at") != "")
+        if created_after is not None:
+            frame = frame.filter(pl.col("created_at") >= created_after)
+        if created_before is not None:
+            frame = frame.filter(pl.col("created_at") < created_before)
         return frame.sort(["layer", "dataset_id"])
 
     def _layer_path(self, layer: str, *parts: str) -> Path:

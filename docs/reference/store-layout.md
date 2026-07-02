@@ -71,10 +71,12 @@ registry/
 
 `datasets.parquet` is rebuilt by `Store.datasets(refresh=True)` and can be
 filtered with `layer`, `mission`, `instrument`, `product`, `dataset_version`,
-`schema_version`, `status`, or `time_range`. The `time_range` filter uses
-half-open interval overlap against each dataset's `start` and `stop` coverage.
-Registry rows also include `version`, `schema_version`, `status`, and
-`created_at` copied from each manifest.
+`schema_version`, `status`, `time_range`, `created_after`, or
+`created_before`. The `time_range` filter uses half-open interval overlap
+against each dataset's `start` and `stop` coverage. Created-at filters use the
+half-open interval `[created_after, created_before)`. Registry rows also
+include `version`, `schema_version`, `status`, and `created_at` copied from each
+manifest.
 
 `raw_files.parquet` is rebuilt by `Store.raw_files(refresh=True)` from raw
 sidecar manifests and can be filtered with `mission`, `provider`, `filename`,
