@@ -26,3 +26,10 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert shadow_plan.product == "shadow"
     assert "Moon" in str(moon.info())
     assert "DEM" in str(moon.dem.info())
+
+
+def test_moon_surface_guides_return_markdown_pages() -> None:
+    moon = spn.Moon()
+
+    assert "# Moon Surface Products" in moon.guide().to_markdown()
+    assert "DEM" in moon.dem.guide().to_markdown()

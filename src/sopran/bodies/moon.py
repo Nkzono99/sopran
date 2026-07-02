@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sopran.core.pages import InfoPage
+from sopran.core.pages import GuidePage, InfoPage
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,13 @@ class Moon:
             ),
         )
 
+    def guide(self) -> GuidePage:
+        return GuidePage(
+            title="Moon Surface Products",
+            markdown=_MOON_GUIDE,
+            source="sopran.bodies.moon",
+        )
+
 
 class SurfaceEndpoint:
     def __init__(self, body: Moon, product: str, label: str) -> None:
@@ -51,6 +58,13 @@ class SurfaceEndpoint:
             ),
         )
 
+    def guide(self) -> GuidePage:
+        return GuidePage(
+            title=f"Moon {self.label}",
+            markdown=_SURFACE_GUIDES.get(self.product, _MOON_GUIDE),
+            source=f"sopran.bodies.moon.{self.product}",
+        )
+
     def plan(self, **parameters: Any) -> SurfacePlan:
         return SurfacePlan(
             body=self.body.name,
@@ -65,3 +79,39 @@ class SurfaceEndpoint:
     def compute(self, **parameters: Any) -> None:
         plan = self.plan(**parameters)
         raise NotImplementedError(f"Moon.{plan.product}.compute() is not implemented yet")
+
+
+_MOON_GUIDE = """# Moon Surface Products
+
+SOPRAN uses a body-first API for Moon surface products. Mission modules provide
+provider-specific discovery, while `spn.Moon()` owns body-fixed DEM, SVM,
+shadow, illumination, projection, and region semantics.
+
+The v0.1 implementation is a planning skeleton. Terrain-aware shadow and
+illumination backends will require DEM data, solar geometry, body shape, and
+explicit longitude/projection metadata.
+"""
+
+_SURFACE_GUIDES = {
+    "dem": """# Moon DEM
+
+DEM products represent body-fixed lunar elevation rasters. Planned metadata
+includes source, resolution, datum or shape model, longitude domain, projection,
+and area-or-point interpretation.
+""",
+    "svm": """# Moon SVM
+
+SVM products represent lunar surface vector maps or classified map layers.
+They share the same body-fixed region and projection metadata as DEM products.
+""",
+    "shadow": """# Moon Shadow Map
+
+Shadow products must be computed from DEM terrain, solar position, body shape,
+and projection metadata. The current endpoint only records plans.
+""",
+    "illumination": """# Moon Illumination Map
+
+Illumination products will represent solar incidence and visibility derived
+from DEM terrain and SPICE-backed solar geometry.
+""",
+}
