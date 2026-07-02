@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import polars as pl
 import xarray as xr
 
 import sopran as spn
@@ -149,4 +150,25 @@ def test_align_mean_aggregates_vector_components_inside_bins() -> None:
             "magnetic_field_y": 3.0,
             "magnetic_field_z": 4.0,
         }
+    ]
+
+
+def test_alignment_result_writes_parquet_feature_table(tmp_path) -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    aligned = spn.align(sza, grid=bins, method="nearest", tolerance="3s")
+
+    path = aligned.write_parquet(tmp_path / "features.parquet")
+
+    assert path == tmp_path / "features.parquet"
+    assert pl.read_parquet(path).to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 70.0}
     ]

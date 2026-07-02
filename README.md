@@ -109,6 +109,7 @@ features = spn.align(
 ```
 
 `time x component` の vector product は `magnetic_field_x` のような wide columns に展開します。
+`spn.align(...).write_parquet("features.parquet")` で feature table を保存できます。
 
 raw file は `Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。
 たとえば ESA1 の 2008-01-01 は次の配置を探索します。

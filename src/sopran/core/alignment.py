@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Literal
 
 from sopran.core.time import TimeRange, _format_utc, _parse_datetime
@@ -51,6 +52,12 @@ class AlignmentResult:
         import polars as pl
 
         return pl.DataFrame(list(self.rows))
+
+    def write_parquet(self, path: str | Path) -> Path:
+        output = Path(path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        self.to_polars().write_parquet(output)
+        return output
 
 
 def time_bins(

@@ -22,6 +22,7 @@ for statistics or machine learning:
 bins = spn.time_bins(time, cadence="10s")
 features = spn.align(sza, wave_power, grid=bins, method="nearest", tolerance="5s")
 frame = features.to_polars()
+features.write_parquet("features.parquet")
 ```
 
 The first implementation supports 1D time series and `time x component` vector
