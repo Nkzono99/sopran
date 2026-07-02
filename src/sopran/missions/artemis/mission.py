@@ -12,6 +12,7 @@ from sopran.core.store import Store
 from sopran.core.time import TimeRange
 
 _GUIDE_LANGUAGES = ("ja", "en")
+_PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/missions/artemis/"
 
 ARTEMIS_MAGNETIC_FIELD = VariableSchema(
     name="magnetic_field",
@@ -188,6 +189,7 @@ def _read_guide(*, title: str, language: str = "en") -> GuidePage:
         title=title,
         markdown=markdown,
         source=f"sopran.missions.artemis/{resource_name}",
+        url=_PUBLIC_DOC_URL,
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,

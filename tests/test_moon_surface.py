@@ -93,6 +93,8 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
 
     assert "# Moon Surface Products" in moon.guide().to_markdown()
     assert "DEM" in moon.dem.guide().to_markdown()
+    assert moon.guide().url == "https://nkzono99.github.io/sopran/surface/moon/"
+    assert moon.dem.guide().url == moon.guide().url
     assert moon.help() == moon.guide()
     assert moon.dem.help() == moon.dem.guide()
 
@@ -109,6 +111,9 @@ def test_moon_surface_guides_can_switch_language() -> None:
     assert moon_en.language == "en"
     assert moon_ja.available_languages == ("ja", "en")
     assert moon_ja.language_switcher() == "Lang: 日本語/English"
+    assert moon_ja.with_language("en").url == (
+        "https://nkzono99.github.io/sopran/surface/moon/"
+    )
     assert "月面プロダクト" in moon_ja.to_markdown()
     assert "Moon Surface Products" in moon_en.to_markdown()
     assert "DEM" in dem_ja.to_markdown()

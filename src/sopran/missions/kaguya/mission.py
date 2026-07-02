@@ -27,6 +27,10 @@ from sopran.missions.kaguya.sensors import normalize_sensor
 
 DownloadMode = Literal["never", "missing", "always"]
 _GUIDE_LANGUAGES = ("ja", "en")
+_PUBLIC_DOC_URLS = {
+    "README.md": "https://nkzono99.github.io/sopran/missions/kaguya/",
+    "ESA1.md": "https://nkzono99.github.io/sopran/missions/kaguya-esa1/",
+}
 
 
 class Kaguya:
@@ -1204,6 +1208,7 @@ def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
         title=title,
         markdown=markdown,
         source=f"sopran.missions.kaguya/{resource_name}",
+        url=_PUBLIC_DOC_URLS.get(name),
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,

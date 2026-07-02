@@ -6,6 +6,7 @@ from typing import Any
 from sopran.core.pages import GuidePage, InfoPage
 
 _GUIDE_LANGUAGES = ("ja", "en")
+_PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/surface/moon/"
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class Moon:
             source="sopran.bodies.moon",
             markdowns=_MOON_GUIDES,
             language=language,
+            url=_PUBLIC_DOC_URL,
         )
 
     def help(self, *, language: str = "en") -> GuidePage:
@@ -90,6 +92,7 @@ class SurfaceEndpoint:
             source=f"sopran.bodies.moon.{self.product}",
             markdowns=_SURFACE_GUIDES.get(self.product, _MOON_GUIDES),
             language=language,
+            url=_PUBLIC_DOC_URL,
         )
 
     def help(self, *, language: str = "en") -> GuidePage:
@@ -213,6 +216,7 @@ def _guide_page(
     source: str,
     markdowns: dict[str, str],
     language: str,
+    url: str | None = None,
 ) -> GuidePage:
     if language not in _GUIDE_LANGUAGES:
         raise ValueError(f"Moon guide language is not available: {language}")
@@ -220,6 +224,7 @@ def _guide_page(
         title=title,
         markdown=markdowns[language],
         source=source,
+        url=url,
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations={

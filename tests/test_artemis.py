@@ -43,6 +43,9 @@ def test_artemis_guides_return_markdown_pages() -> None:
     assert art.p1.fgm.help() == fgm_guide
     assert art.p1.fgm.magnetic_field.help() == variable_guide
     assert variable_guide.source == "sopran.missions.artemis/README.md"
+    assert mission_guide.url == "https://nkzono99.github.io/sopran/missions/artemis/"
+    assert fgm_guide.url == mission_guide.url
+    assert variable_guide.url == mission_guide.url
 
 
 def test_artemis_guides_can_switch_language() -> None:
@@ -57,6 +60,9 @@ def test_artemis_guides_can_switch_language() -> None:
     assert mission_en.language == "en"
     assert mission_ja.available_languages == ("ja", "en")
     assert mission_ja.language_switcher() == "Lang: 日本語/English"
+    assert mission_ja.with_language("en").url == (
+        "https://nkzono99.github.io/sopran/missions/artemis/"
+    )
     assert "ARTEMIS は" in mission_ja.to_markdown()
     assert "lunar-orbiting THEMIS probes" in mission_en.to_markdown()
     assert "FGM" in fgm_ja.to_markdown()
