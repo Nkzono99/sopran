@@ -1423,6 +1423,8 @@ page.url         # 公開 docs URL。未設定なら None
 page.language    # "ja", "en" など
 page.available_languages
 page.language_switcher()  # "Lang: 日本語/English"
+page.to_markdown(language="en")  # 指定言語の Markdown。未整備なら既定言語へ fallback 可
+page.with_language("en")         # language と本文を切り替えた GuidePage を返す
 ```
 
 Jupyter では `_repr_markdown_()` を実装し、`kg.guide()` を最後の式に置くだけで

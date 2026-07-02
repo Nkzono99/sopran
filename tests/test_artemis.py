@@ -69,6 +69,35 @@ def test_guide_page_tracks_language_switch_metadata() -> None:
     assert page.to_markdown().startswith("Lang: 日本語/English\n\n# SOPRAN docs")
 
 
+def test_guide_page_can_switch_language_content() -> None:
+    page = spn.GuidePage(
+        title="SOPRAN docs",
+        markdown="# SOPRAN docs\n\n日本語の説明。",
+        source="docs/ja/index.md",
+        language="ja",
+        available_languages=("ja", "en"),
+        translations={
+            "en": "# SOPRAN docs\n\nEnglish guide.",
+        },
+    )
+
+    english = page.with_language("en")
+
+    assert page.to_markdown(language="ja").startswith(
+        "Lang: 日本語/English\n\n# SOPRAN docs\n\n日本語の説明。"
+    )
+    assert page.to_markdown(language="en").startswith(
+        "Lang: 日本語/English\n\n# SOPRAN docs\n\nEnglish guide."
+    )
+    assert english.language == "en"
+    assert english.markdown == "# SOPRAN docs\n\nEnglish guide."
+    assert english.to_markdown().startswith(
+        "Lang: 日本語/English\n\n# SOPRAN docs\n\nEnglish guide."
+    )
+    with pytest.raises(ValueError, match="language"):
+        page.with_language("fr")
+
+
 def test_guide_page_show_includes_language_switcher(capsys) -> None:
     page = spn.GuidePage(
         title="SOPRAN docs",

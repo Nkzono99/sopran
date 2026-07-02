@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
 
 _LANGUAGE_LABELS = {
     "ja": "日本語",
@@ -35,14 +36,23 @@ class GuidePage:
     url: str | None = None
     language: str = "en"
     available_languages: tuple[str, ...] = ("en",)
+    translations: Mapping[str, str] | None = None
 
     def __str__(self) -> str:
         return self.to_markdown()
 
-    def to_markdown(self) -> str:
+    def to_markdown(self, *, language: str | None = None) -> str:
+        markdown = self._markdown_for(language or self.language)
         if len(self.available_languages) > 1:
-            return f"{self.language_switcher()}\n\n{self.markdown}"
-        return self.markdown
+            return f"{self.language_switcher()}\n\n{markdown}"
+        return markdown
+
+    def with_language(self, language: str) -> GuidePage:
+        return replace(
+            self,
+            language=language,
+            markdown=self._markdown_for(language),
+        )
 
     def language_switcher(self) -> str:
         languages = self.available_languages or (self.language,)
@@ -61,3 +71,12 @@ class GuidePage:
         import webbrowser
 
         webbrowser.open(self.url)
+
+    def _markdown_for(self, language: str) -> str:
+        if language not in (self.available_languages or (self.language,)):
+            raise ValueError(f"GuidePage language is not available: {language}")
+        if language == self.language:
+            return self.markdown
+        if self.translations and language in self.translations:
+            return self.translations[language]
+        return self.markdown

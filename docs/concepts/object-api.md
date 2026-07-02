@@ -29,6 +29,8 @@ page = kg.guide()
 page.language
 page.available_languages
 page.language_switcher()  # "Lang: 日本語/English" when both languages exist
+page.to_markdown(language="en")
+page.with_language("en")
 page.show()               # prints the same Markdown, including the switcher
 ```
 
