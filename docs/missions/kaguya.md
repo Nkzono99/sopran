@@ -13,7 +13,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, `to_pandas()`,
   and `write_parquet()`.
 - Variable endpoint plotting and `PlotStack` integration.
-- Pipeline run, append, replace, scan, and collect for ESA1 counts.
+- Pipeline run, append, replace, scan, collect, and per-run download policy
+  override for ESA1 counts.
 - ESA1 unknown variable errors use schema aliases to suggest canonical
   variables and next `info()` / `load()` calls.
 - ESA1 missing-time errors show examples for the exact instrument or variable

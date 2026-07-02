@@ -72,11 +72,36 @@ def test_pipeline_run_forwards_on_error_policy_to_backend() -> None:
     assert result["kwargs"]["mode"] == "create"
 
 
+def test_pipeline_run_forwards_download_policy_to_backend() -> None:
+    class RunContext:
+        def _run_pipeline(self, pipeline: Pipeline, *, download: str | None, **kwargs):
+            return {"source": pipeline.source, "download": download, "kwargs": kwargs}
+
+    pipe = Pipeline(
+        source="test.source",
+        time=spn.day("2008-02-01"),
+        context=RunContext(),
+    )
+
+    result = pipe.run(download="always")
+
+    assert result["source"] == "test.source"
+    assert result["download"] == "always"
+    assert result["kwargs"]["mode"] == "create"
+
+
 def test_pipeline_run_validates_on_error_policy() -> None:
     pipe = Pipeline(source="test.source", time=spn.day("2008-02-01"))
 
     with pytest.raises(ValueError, match="on_error"):
         pipe.run(on_error="skip")
+
+
+def test_pipeline_run_validates_download_policy() -> None:
+    pipe = Pipeline(source="test.source", time=spn.day("2008-02-01"))
+
+    with pytest.raises(ValueError, match="download"):
+        pipe.run(download="refresh")  # type: ignore[arg-type]
 
 
 def test_pipeline_write_records_partition_policy() -> None:

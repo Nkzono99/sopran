@@ -29,6 +29,8 @@ pipe.run()
 pipe.run(mode="append")
 pipe.run(mode="replace")
 pipe.run(resume=True)
+pipe.run(download="never")
+pipe.run(download="always")
 ```
 
 `PipelinePlan.to_dict()` gives a JSON-like execution plan with source, time
@@ -74,7 +76,9 @@ results by day, streams KAGUYA ESA1 catalog shards, issues a
 `PipelineResult.run_id` for each `run()` call, skips
 already complete KAGUYA ESA1 outputs with `run(resume=True)`, records failed
 KAGUYA ESA1 shards with `run(on_error="continue")`, writes daily KAGUYA ESA1
-parquet shards with `write(..., partition="day")`, and can write Matplotlib
+parquet shards with `write(..., partition="day")`, accepts
+`run(download="never"|"missing"|"always")` to override the mission download
+policy for that execution, and can write Matplotlib
 PNG/HTML quicklooks plus JSON metadata for KAGUYA ESA1 pipeline runs.
 Quicklook metadata records the pipeline run ID, source, stage names, time range,
 output dataset/layer, selected variable, backend, artifact list, and optional

@@ -706,6 +706,32 @@ def test_kaguya_esa1_pipeline_run_on_error_continue_records_failed_shard(
     assert replayed.outputs[0].scan().collect().height == 2048
 
 
+def test_kaguya_esa1_pipeline_run_uses_explicit_download_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    kg = spn.Kaguya(store=store, download="never")
+    seen_downloads = []
+
+    def fake_load(time, *, download=None):
+        seen_downloads.append(download)
+        raise FileNotFoundError("missing test input")
+
+    monkeypatch.setattr(kg.esa1, "load", fake_load)
+
+    result = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+        .run(on_error="continue", download="always")
+    )
+
+    assert result.status == "partial"
+    assert seen_downloads == ["always"]
+
+
 def test_kaguya_esa1_pipeline_run_only_failed_replays_failed_shards(
     tmp_path: Path,
 ) -> None:

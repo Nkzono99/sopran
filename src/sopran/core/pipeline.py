@@ -10,6 +10,7 @@ from sopran.core.time import TimeRange
 
 PipelineRunMode = Literal["create", "append", "replace"]
 PipelineOnError = Literal["fail", "continue"]
+PipelineDownloadMode = Literal["never", "missing", "always"]
 PipelineStreamPartition = Literal["all", "day", "shard", "orbit"]
 PipelineWritePartition = Literal["day"]
 
@@ -222,11 +223,14 @@ class Pipeline:
         resume: bool = False,
         only_failed: bool = False,
         on_error: PipelineOnError = "fail",
+        download: PipelineDownloadMode | None = None,
     ) -> PipelineResult:
         if mode not in ("create", "append", "replace"):
             raise ValueError("mode must be 'create', 'append', or 'replace'")
         if on_error not in ("fail", "continue"):
             raise ValueError("on_error must be 'fail' or 'continue'")
+        if download not in (None, "never", "missing", "always"):
+            raise ValueError("download must be 'never', 'missing', or 'always'")
         if resume and mode != "create":
             raise ValueError("resume=True requires mode='create'")
         if only_failed and mode != "create":
@@ -251,6 +255,7 @@ class Pipeline:
                 resume=resume,
                 only_failed=only_failed,
                 on_error=on_error,
+                download=download,
             )
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 

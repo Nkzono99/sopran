@@ -385,11 +385,14 @@ class PaceInstrument(KaguyaInstrument):
         resume: bool = False,
         only_failed: bool = False,
         on_error: str = "fail",
+        download: str | None = None,
     ) -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
         if pipeline.output_dataset is None or pipeline.output_layer is None:
             raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
+        download = self.mission.download if download is None else download
+        _validate_download_mode(download)
 
         started = perf_counter()
         started_at = _utc_now_iso()
@@ -452,6 +455,7 @@ class PaceInstrument(KaguyaInstrument):
                 self,
                 existing,
                 variable=variable,
+                download=download,
             )
             _update_pipeline_dataset_provenance(
                 existing,
@@ -462,7 +466,7 @@ class PaceInstrument(KaguyaInstrument):
             )
             quicklooks = ()
             if _pipeline_has_quicklook(pipeline):
-                data = self.load(pipeline.time, download="never")
+                data = self.load(pipeline.time, download=download)
                 quicklooks = _write_pipeline_quicklooks(
                     data,
                     existing,
@@ -504,9 +508,10 @@ class PaceInstrument(KaguyaInstrument):
                     variable=variable,
                     mode=mode,
                     run_id=run_id,
+                    download=download,
                 )
             else:
-                loaded = self.load(pipeline.time, download="never")
+                loaded = self.load(pipeline.time, download=download)
                 _ensure_pipeline_input_files(loaded, self, pipeline.time)
                 data = loaded
                 output = data.write_parquet(
@@ -560,7 +565,7 @@ class PaceInstrument(KaguyaInstrument):
         quicklooks = ()
         if _pipeline_has_quicklook(pipeline):
             if data is None:
-                data = self.load(pipeline.time, download="never")
+                data = self.load(pipeline.time, download=download)
                 _ensure_pipeline_input_files(data, self, pipeline.time)
             quicklooks = _write_pipeline_quicklooks(
                 data,
@@ -878,6 +883,7 @@ def _write_daily_partitioned_pipeline_output(
     variable: str,
     mode: str,
     run_id: str,
+    download: str,
 ):
     if mode == "replace":
         raise NotImplementedError(
@@ -886,7 +892,7 @@ def _write_daily_partitioned_pipeline_output(
 
     output = None
     for index, chunk_time in enumerate(_daily_time_ranges(pipeline.time)):
-        data = instrument.load(chunk_time, download="never")
+        data = instrument.load(chunk_time, download=download)
         _ensure_pipeline_input_files(data, instrument, chunk_time)
         output = data.write_parquet(
             instrument.mission.store,
@@ -1002,11 +1008,12 @@ def _replay_failed_pipeline_shards(
     output,
     *,
     variable: str,
+    download: str,
 ) -> int:
     replayed = 0
     for shard in output.failed_shards():
         shard_time = _shard_time_range(shard)
-        data = instrument.load(shard_time, download="never")
+        data = instrument.load(shard_time, download=download)
         _ensure_pipeline_input_files(data, instrument, shard_time)
         output.replace_shard(
             str(shard["path"]),
