@@ -115,4 +115,5 @@ Registered products can be listed later from `database.json`:
 products = db.products()
 products[0].name
 products[0].dataset_id
+lazy = products[0].scan()
 ```

@@ -1962,6 +1962,9 @@ events = db.product("events")
 )
 ```
 
+`db.product(name)` は `ProductRef` を返す。`ProductRef.scan()` は Store に登録済みの
+`databases/<db>/<product>` dataset を Polars LazyFrame として読む。
+
 ### 独自 mission
 
 初期から完全な plugin system は作らないが、将来的に次の protocol を用意する。

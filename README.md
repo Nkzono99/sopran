@@ -200,6 +200,7 @@ product = db.register_product(
 )
 
 pipe.write(db.product("event_table"))
+events = db.product("event_table").scan()
 ```
 
 ## 予定ディレクトリ

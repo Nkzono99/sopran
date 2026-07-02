@@ -421,6 +421,26 @@ def test_database_lists_registered_products_from_metadata(tmp_path) -> None:
     assert database.metadata()["products"][1]["description"] == "context around each event"
 
 
+def test_database_product_reference_scans_dataset(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-02-01")
+    product = store.database("wake_events").product("raw_counts")
+    store.write_parquet_dataset(
+        dataset_id=product.dataset_id,
+        layer=product.layer,
+        mission="wake_events",
+        instrument="wake_events",
+        product=product.name,
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "counts": [64]}),
+    )
+
+    scanned = product.scan().collect()
+
+    assert scanned.select("counts").to_series().to_list() == [64]
+
+
 def test_store_scans_registered_parquet_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")
