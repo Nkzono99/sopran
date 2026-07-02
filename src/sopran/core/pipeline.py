@@ -30,6 +30,7 @@ class PipelineResult:
     plan: PipelinePlan
     status: str
     message: str
+    outputs: tuple[Any, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class Pipeline:
     stages: tuple[PipelineStage, ...] = ()
     output_dataset: str | None = None
     output_layer: str | None = None
+    context: Any = None
 
     def download(self) -> Pipeline:
         return self._with_stage("download")
@@ -65,6 +67,7 @@ class Pipeline:
             stages=(*self.stages, PipelineStage("write", {"dataset": dataset, "layer": layer})),
             output_dataset=dataset,
             output_layer=layer,
+            context=self.context,
         )
 
     def plan(self) -> PipelinePlan:
@@ -84,6 +87,9 @@ class Pipeline:
                 status="planned",
                 message="Dry run only; no pipeline stages were executed.",
             )
+        runner = getattr(self.context, "_run_pipeline", None)
+        if runner is not None:
+            return runner(self)
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
     def _with_stage(self, name: str, **parameters: Any) -> Pipeline:
@@ -93,4 +99,5 @@ class Pipeline:
             stages=(*self.stages, PipelineStage(name, parameters)),
             output_dataset=self.output_dataset,
             output_layer=self.output_layer,
+            context=self.context,
         )

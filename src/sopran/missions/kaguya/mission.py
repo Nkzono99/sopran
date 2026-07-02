@@ -7,7 +7,7 @@ from typing import Literal
 
 from sopran.core import Store
 from sopran.core.pages import GuidePage, InfoPage
-from sopran.core.pipeline import Pipeline
+from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange
 from sopran.missions.kaguya.data import KaguyaESA1Data
@@ -227,7 +227,28 @@ class PaceInstrument(KaguyaInstrument):
         return paths
 
     def pipeline(self, time: TimeRange) -> Pipeline:
-        return Pipeline(source=f"kaguya.{self.sensor.lower()}", time=time)
+        return Pipeline(source=f"kaguya.{self.sensor.lower()}", time=time, context=self)
+
+    def _run_pipeline(self, pipeline: Pipeline) -> PipelineResult:
+        if self.sensor != "ESA1":
+            raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
+        if pipeline.output_dataset is None or pipeline.output_layer is None:
+            raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
+
+        variable = _pipeline_variable(pipeline)
+        data = self.load(pipeline.time, download="never")
+        output = data.write_parquet(
+            self.mission.store,
+            variable=variable,
+            dataset_id=pipeline.output_dataset,
+            layer=pipeline.output_layer,
+        )
+        return PipelineResult(
+            plan=pipeline.plan(),
+            status="complete",
+            message=f"Wrote {pipeline.output_dataset}",
+            outputs=(output,),
+        )
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -303,3 +324,15 @@ def _read_guide(name: str, *, title: str) -> GuidePage:
         markdown=markdown,
         source=f"sopran.missions.kaguya/{name}",
     )
+
+
+def _pipeline_variable(pipeline: Pipeline) -> str:
+    for stage in pipeline.stages:
+        if stage.name == "select_variables":
+            names = stage.parameters.get("names", ())
+            if len(names) != 1:
+                raise NotImplementedError("KAGUYA ESA1 pipeline run expects one selected variable")
+            return str(names[0])
+    if pipeline.output_dataset:
+        return pipeline.output_dataset.split(".")[-1]
+    return "counts"
