@@ -492,7 +492,7 @@ case.kaguya.esa1.energy_flux.plot()
 ### 1. Context / Store
 
 `Store` はデータ保存と探索の中心にする。単なる path wrapper ではなく、
-raw、normalized、features、databases、cache の場所と registry を管理する。
+raw、normalized、features、models、databases、cache の場所と registry を管理する。
 解析 workspace は `Project` の責務であり、Store と混ぜない。
 
 ```python
@@ -511,8 +511,8 @@ F:/sopran_data/
   raw/              # 公式配布データ。provider path と checksum を保つ
   normalized/       # decoded / cleaned parquet, arrow, zarr
   features/         # PAD, moment, spectrum, orbit context など再利用する高レベル指標
-  databases/        # ユーザー定義または研究テーマ単位の採用DB
   models/           # 学習済みモデルや calibration-derived artifact
+  databases/        # ユーザー定義または研究テーマ単位の採用DB
   registry/         # dataset registry, manifest index
 
 F:/sopran_cache/
@@ -552,7 +552,7 @@ F:/sopran_cache/
 
 ```text
 Store
-  raw / normalized / features / databases / registry の物理データリポジトリ
+  raw / normalized / features / models / databases / registry の物理データリポジトリ
 
 Project
   cases / notebooks / scripts / outputs / figures / local config の解析 workspace

@@ -15,7 +15,7 @@ from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema, validate_schema
 from sopran.core.time import TimeRange, period
 
-_LAYERS = ("raw", "normalized", "features", "databases")
+_LAYERS = ("raw", "normalized", "features", "models", "databases")
 _DATASET_SCHEMA_VERSION = "0.1"
 _DATASET_STATUSES = ("scratch", "candidate", "adopted", "deprecated")
 _CATALOG_SHARD_STATUSES = ("pending", "running", "complete", "failed", "skipped")
@@ -43,6 +43,9 @@ class Store:
 
     def features_path(self, *parts: str) -> Path:
         return self.root.joinpath("features", *parts)
+
+    def models_path(self, *parts: str) -> Path:
+        return self.root.joinpath("models", *parts)
 
     def database_path(self, *parts: str) -> Path:
         return self.root.joinpath("databases", *parts)
@@ -391,9 +394,11 @@ class Store:
             return self.normalized_path(*parts)
         if layer == "features":
             return self.features_path(*parts)
+        if layer == "models":
+            return self.models_path(*parts)
         if layer == "databases":
             return self.database_path(*parts)
-        raise ValueError("layer must be raw, normalized, features, or databases")
+        raise ValueError("layer must be raw, normalized, features, models, or databases")
 
 
 @dataclass(frozen=True)

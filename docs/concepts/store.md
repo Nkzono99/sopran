@@ -13,11 +13,12 @@ The main layers are:
 raw          provider files, naming preserved
 normalized   decoded instrument quantities in scan-friendly formats
 features     derived analysis products
+models       learned models and calibration-derived artifacts
 databases    user or project-defined logical products
 cache        local cache for transient work
 ```
 
-Normalized, features, and database datasets use:
+Normalized, features, models, and database datasets use:
 
 ```text
 dataset.json

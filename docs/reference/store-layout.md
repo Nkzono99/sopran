@@ -5,6 +5,7 @@ sopran_data/
   raw/
   normalized/
   features/
+  models/
   databases/
   registry/
   cache/
