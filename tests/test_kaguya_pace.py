@@ -334,6 +334,21 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
             "parameters": {"dataset": "kaguya.esa1.counts", "layer": "normalized"},
         },
     ]
+    assert [stage["name"] for stage in log["stage_logs"]] == [
+        "decode",
+        "select_variables",
+        "write",
+    ]
+    assert all(stage["status"] == "complete" for stage in log["stage_logs"])
+    assert all(stage["elapsed_seconds"] >= 0 for stage in log["stage_logs"])
+    assert all(
+        re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", stage["started_at"])
+        for stage in log["stage_logs"]
+    )
+    assert all(
+        re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", stage["finished_at"])
+        for stage in log["stage_logs"]
+    )
     assert log["row_count"] == 2048
     assert log["shards"][0]["row_count"] == 2048
     assert log["elapsed_seconds"] >= 0
@@ -448,6 +463,11 @@ def test_kaguya_esa1_pipeline_run_resume_skips_complete_dataset(tmp_path: Path) 
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["started_at"])
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["finished_at"])
     assert log["resume"] is True
+    assert [stage["status"] for stage in log["stage_logs"]] == [
+        "skipped",
+        "skipped",
+        "skipped",
+    ]
     assert log["row_count"] == 2048
     assert log["shards"][0]["status"] == "complete"
 

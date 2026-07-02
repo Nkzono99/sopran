@@ -687,13 +687,14 @@ def _write_pipeline_log(
 ) -> Path:
     shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
+    finished_at = _utc_now_iso()
     payload = {
         "run_id": run_id,
         "mode": mode,
         "status": status,
         "resume": resume,
         "started_at": started_at,
-        "finished_at": _utc_now_iso(),
+        "finished_at": finished_at,
         "elapsed_seconds": elapsed_seconds,
         "plan": {
             "source": pipeline.source,
@@ -709,6 +710,13 @@ def _write_pipeline_log(
             }
             for stage in pipeline.stages
         ],
+        "stage_logs": _pipeline_stage_logs(
+            pipeline,
+            status=status,
+            started_at=started_at,
+            finished_at=finished_at,
+            elapsed_seconds=elapsed_seconds,
+        ),
         "row_count": row_count,
         "shards": shards,
     }
@@ -719,6 +727,27 @@ def _write_pipeline_log(
         encoding="utf-8",
     )
     return path
+
+
+def _pipeline_stage_logs(
+    pipeline: Pipeline,
+    *,
+    status: str,
+    started_at: str,
+    finished_at: str,
+    elapsed_seconds: float,
+) -> list[dict[str, object]]:
+    return [
+        {
+            "name": stage.name,
+            "status": status,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "elapsed_seconds": elapsed_seconds,
+            "parameters": _jsonable(stage.parameters),
+        }
+        for stage in pipeline.stages
+    ]
 
 
 def _utc_now_iso() -> str:
