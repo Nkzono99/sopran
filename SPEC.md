@@ -193,45 +193,29 @@ Rust へ移植する処理だけとする。その場合も、外部ライブラ
 
 ### 依存関係の扱い
 
-SOPRAN は研究・解析用途を主対象にするが、標準インストールを重くしすぎると
-`spacepy`, `cartopy`, `rasterio`, `geopandas`, `panel`, `pyspedas` などで
-環境衝突や CI 失敗が起きやすい。したがって、public quickstart が動く core と、
-研究環境向けの `sopran[full]` を分ける。
+SOPRAN は研究・解析用途を主対象にする。依存を小さく保つこと自体の価値は
+このプロジェクトでは高くないため、KAGUYA/ARTEMIS、SPICE、SpacePy、MAP/DEM/SVM、
+Matplotlib/HoloViz 系の runtime backend は標準 dependencies に含める。
+ただし `import sopran` 自体は重くしすぎず、重い backend は必要な module / method に
+入った時点で遅延 import する。
 
 ```text
 pip install sopran
-  core:
+  runtime:
     numpy, scipy, xarray, pandas, polars, pyarrow
     astropy, cdflib, matplotlib, requests
-
-pip install "sopran[kaguya]"
-  KAGUYA reader / PDS support:
     pdr, pds4-tools, spiceypy
-
-pip install "sopran[artemis]"
-  ARTEMIS / CDAWeb / HAPI support:
     cdasws, hapiclient, pyspedas, spacepy
-
-pip install "sopran[moon]"
-  DEM, SVM, raster, projection, SPICE geometry:
-    spiceypy, cartopy, rasterio, rioxarray, pyproj, shapely, geopandas, pyogrio
-
-pip install "sopran[viz]"
-  interactive plotting:
+    cartopy, rasterio, rioxarray, pyproj, shapely, geopandas, pyogrio
     hvplot, holoviews, bokeh, datashader, panel, geoviews
-
-pip install "sopran[full]"
-  research environment:
-    all runtime optional backends
+    sunpy, plasmapy, aacgmv2, apexpy
 
 pip install "sopran[dev]"
   pytest, ruff, mypy, build tools
 ```
 
-`import sopran` 自体は重くしすぎない。可視化 backend、SPICE、SpacePy、Cartopy、
-Rasterio、GeoPandas などは
-必要な module / method に入った時点で import する。つまり「研究用の全部入りは
-`sopran[full]` で入れられる」が、「標準 install と top-level import は軽く保つ」設計にする。
+optional extras は用途別の目印として `kaguya`, `artemis`, `moon`, `viz`, `geospace`,
+`full`, `dev` を残してよいが、runtime 系は標準 dependencies にも入れる。
 
 `pyarrow` は Polars の通常の parquet scan/write を動かすための必須実装ではなく、
 Arrow table/array 互換、pandas/xarray 連携、partitioned dataset、Parquet metadata や

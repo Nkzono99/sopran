@@ -28,8 +28,9 @@ ARTEMIS など、月周辺の衛星データ解析を主対象にします。
 
 ## 依存関係
 
-SOPRAN は標準インストールを KAGUYA ESA1 の quickstart が動く core dependency に抑え、
-研究環境では `sopran[full]` を推奨します。
+SOPRAN は研究・解析環境でそのまま使えることを優先し、KAGUYA/ARTEMIS、SPICE、
+SpacePy、MAP/DEM/SVM、Matplotlib/HoloViz 系の runtime backend を標準 dependencies に
+含めます。`optional-dependencies` は用途別の目印と開発環境向けに残しています。
 
 ```text
 pip install sopran
@@ -37,7 +38,8 @@ pip install "sopran[full]"
 pip install "sopran[dev]"
 ```
 
-optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `dev` に分けます。
+optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `dev` に分けますが、
+runtime 系は標準 dependencies にも含めます。
 
 ## 現在動く最小 API
 
