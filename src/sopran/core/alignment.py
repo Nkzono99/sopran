@@ -89,6 +89,22 @@ class AlignmentResult:
         self.to_polars(layout=layout).write_parquet(output)
         return output
 
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "columns": list(self.columns),
+            "fill": self.fill,
+            "grid": {
+                "closed": self.grid.closed,
+                "count": self.grid.count,
+                "label": self.grid.label,
+                "partial": self.grid.partial,
+                "start": self.grid.start_iso,
+                "stop": self.grid.stop_iso,
+            },
+            "join": self.join,
+            "method": self.method,
+        }
+
 
 def time_bins(
     time: TimeRange,

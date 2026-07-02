@@ -62,7 +62,11 @@ The default table layout is wide, with one feature per column. Use
 ```python
 long_frame = features.to_polars(layout="long")
 features.write_parquet("features-long.parquet", layout="long")
+metadata = features.metadata()
 ```
+
+`metadata()` returns the columns, bin grid, alignment method, join mode, and
+fill policy so the same information can be written into a dataset manifest.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`

@@ -447,6 +447,42 @@ def test_alignment_result_writes_long_parquet_feature_table(tmp_path) -> None:
     ]
 
 
+def test_alignment_result_exposes_feature_table_metadata() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
+        cadence="10s",
+        partial="keep",
+    )
+    sza = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    aligned = spn.align(
+        sza,
+        grid=bins,
+        method="nearest",
+        tolerance="3s",
+        fill=-1.0,
+    )
+
+    assert aligned.metadata() == {
+        "columns": ["sza"],
+        "fill": -1.0,
+        "grid": {
+            "closed": "left",
+            "count": 3,
+            "label": "center",
+            "partial": "keep",
+            "start": "2008-01-01T00:00:00Z",
+            "stop": "2008-01-01T00:00:24Z",
+        },
+        "join": "outer",
+        "method": "nearest",
+    }
+
+
 def test_sample_table_uses_product_specific_alignment_methods() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),

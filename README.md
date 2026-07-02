@@ -125,6 +125,7 @@ ml_features = (
 `fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
 `partial="keep"` はcadenceで割り切れない末尾binを残し、`partial="drop"` は捨てます。
 `to_polars(layout="long")` は `time`, `feature`, `value` 形式のtableを返します。
+`metadata()` はgridやreducer条件を返し、保存時のmanifest材料にできます。
 `spn.align(...).write_parquet("features.parquet")` または
 `spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 

@@ -1493,6 +1493,7 @@ stack = spn.stack(
 - `fill=<value>` は `join="outer"` で残した欠損 feature を明示値で埋める。
 - `to_polars(layout="wide")` は feature ごとに列を持つ既定 table を返す。
 - `to_polars(layout="long")` は `time`, `feature`, `value` の tidy table を返す。
+- `AlignmentResult.metadata()` は columns、grid、method、join、fill を返し、manifest/provenance に使う。
 - `quality mask` の扱いは feature table API の拡張点として残す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
@@ -1514,7 +1515,9 @@ features = spn.align(
     tolerance="5s",
     join="outer",
     fill=-1.0,
-).to_polars(layout="wide")
+)
+frame = features.to_polars(layout="wide")
+metadata = features.metadata()
 ```
 
 product ごとに sampling rule が異なる場合は、`SampleTable` を使う。
@@ -1527,8 +1530,9 @@ features = (
     .add(case.kaguya.lrs.density.load(), method="median")
     .add(case.artemis.p1.fgm.magnetic_field.load(), method="center")
     .collect(join="inner")
-    .to_polars(layout="long")
 )
+frame = features.to_polars(layout="long")
+metadata = features.metadata()
 ```
 
 v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `center`, `mean`,
