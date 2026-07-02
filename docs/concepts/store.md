@@ -99,7 +99,7 @@ and per-dataset `catalog.parquet` remain the source of truth.
 User-defined products live under the `databases` layer:
 
 ```python
-db = store.database("lunar_wake")
+db = store.database("lunar_wake", create=True)
 product = db.register_product(
     name="event_table",
     schema=kg.esa1.schema(),

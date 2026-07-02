@@ -389,6 +389,15 @@ def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) 
     assert dataset.catalog().select("status").to_series().to_list() == ["empty"]
 
 
+def test_store_creates_database_metadata_when_requested(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+
+    database = store.database("my_project", create=True)
+
+    assert database.metadata() == {"name": "my_project", "products": []}
+    assert (database.root / "database.json").exists()
+
+
 def test_database_lists_registered_products_from_metadata(tmp_path) -> None:
     store = Store(tmp_path / "store")
     database = store.database("my_project")

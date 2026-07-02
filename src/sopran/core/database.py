@@ -25,6 +25,20 @@ class Database:
     root: Path
     store: Any
 
+    def create(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        path = self.root / "database.json"
+        if not path.exists():
+            path.write_text(
+                json.dumps(
+                    {"name": self.name, "products": []},
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
     def product(self, name: str) -> ProductRef:
         if not name:
             raise ValueError("database product name must not be empty")

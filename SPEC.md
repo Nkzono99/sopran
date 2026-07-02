@@ -835,9 +835,11 @@ databases/
 ```
 
 ユーザー拡張は `Database.register_product()` または pipeline の `write()` から行う。
+`store.database(name, create=True)` は `databases/<name>/database.json` を作成し、
+空の product list で database namespace を初期化する。既存 metadata は上書きしない。
 
 ```python
-db = store.database("my_project")
+db = store.database("my_project", create=True)
 
 db.register_product(
     name="event_table",

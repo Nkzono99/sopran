@@ -133,12 +133,15 @@ class Store:
             frame = frame.filter(pl.col("acquired_at") < acquired_before)
         return frame.sort("path")
 
-    def database(self, name: str):
+    def database(self, name: str, *, create: bool = False):
         from sopran.core.database import Database
 
         if not name:
             raise ValueError("database name must not be empty")
-        return Database(name=name, root=self.database_path(name), store=self)
+        database = Database(name=name, root=self.database_path(name), store=self)
+        if create:
+            database.create()
+        return database
 
     def dataset_path(self, dataset_id: str, *, layer: str) -> Path:
         return self._layer_path(layer, *_dataset_parts(dataset_id))

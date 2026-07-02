@@ -192,7 +192,7 @@ shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00", dem=dem_plan)
 ユーザー定義の database product は Store 配下に metadata と空 dataset として登録できます。
 
 ```python
-db = store.database("lunar_wake")
+db = store.database("lunar_wake", create=True)
 product = db.register_product(
     name="event_table",
     schema=kg.esa1.schema(),
