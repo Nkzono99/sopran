@@ -66,6 +66,7 @@ nav:
       - surface/moon.md
   - Reference:
       - reference/api.md
+      - reference/schemas.md
       - reference/store-layout.md
       - reference/pipeline-rules.md
       - reference/configuration.md

@@ -17,6 +17,7 @@ from sopran.core.project import Project
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
+from sopran.schema_docs import builtin_schemas, schema_reference_markdown
 
 __version__ = "0.0.0"
 
@@ -54,11 +55,13 @@ __all__ = [
     "VariableSchema",
     "__version__",
     "align",
+    "builtin_schemas",
     "day",
     "line",
     "load",
     "month",
     "period",
+    "schema_reference_markdown",
     "spectrogram",
     "stack",
     "time_bins",

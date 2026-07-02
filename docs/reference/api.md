@@ -16,6 +16,10 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.schema.validate_schema
 
+::: sopran.schema_docs.builtin_schemas
+
+::: sopran.schema_docs.schema_reference_markdown
+
 ::: sopran.core.pages.GuidePage
 
 ::: sopran.core.pages.InfoPage
