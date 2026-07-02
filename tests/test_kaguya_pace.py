@@ -137,6 +137,26 @@ stop = "2008-01-02T00:00:00"
     assert axes is not None
 
 
+def test_loaded_sopran_array_builds_spectrogram_plot_item(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    kg = spn.Kaguya(store=store)
+    counts = kg.esa1.counts.load(spn.day("2008-01-01"))
+    quality = kg.esa1.quality.load(spn.day("2008-01-01"))
+
+    stack = spn.stack(counts.spectrogram(y="energy"), quality.line())
+
+    assert stack.plan().items == ("counts", "quality")
+    assert len(stack.plot().axes) == 2
+
+
 def test_top_level_load_dispatches_kaguya_variable_dataset_id(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
