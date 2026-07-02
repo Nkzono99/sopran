@@ -8,6 +8,7 @@ from sopran.bodies import Moon
 from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
+from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
 
@@ -27,14 +28,15 @@ class Project:
         stop: object | None = None,
     ) -> Case:
         config: dict[str, Any] = {}
+        case_config: dict[str, Any] = {}
         config_path = self.root / "sopran.toml"
         if config_path.exists() or start is None or stop is None:
             config = self._read_config()
+        if config:
+            case_config = config.get("cases", {}).get(name, {})
+        if (start is None or stop is None) and not case_config:
+            raise KeyError(f"Case {name!r} is not defined in {config_path}")
         if start is None or stop is None:
-            try:
-                case_config = config["cases"][name]
-            except KeyError as exc:
-                raise KeyError(f"Case {name!r} is not defined in {config_path}") from exc
             start = case_config["start"] if start is None else start
             stop = case_config["stop"] if stop is None else stop
         return Case(
@@ -42,6 +44,7 @@ class Project:
             name=name,
             time=period(start, stop),
             defaults=config.get("defaults", {}),
+            region=_case_region(config.get("defaults", {}), case_config),
         )
 
     def _read_config(self) -> dict[str, Any]:
@@ -58,6 +61,7 @@ class Case:
         name: str,
         time: TimeRange,
         defaults: dict[str, Any] | None = None,
+        region: Region | None = None,
     ) -> None:
         self.project = project
         self.name = name
@@ -65,6 +69,7 @@ class Case:
         defaults = defaults or {}
         self.frame = defaults.get("frame")
         self.cache = bool(defaults.get("cache", False))
+        self.region = region
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
         self.artemis = CaseMission(Artemis(store=project.store), self)
         self.moon = Moon()
@@ -167,3 +172,22 @@ class CaseVariableEndpoint:
 
     def __getattr__(self, name: str):
         return getattr(self._endpoint, name)
+
+
+def _case_region(
+    defaults: dict[str, Any],
+    case_config: dict[str, Any],
+) -> Region | None:
+    region = case_config.get("region") or defaults.get("region")
+    if region is None:
+        return None
+    lon = tuple(float(value) for value in region["lon"])
+    lat = tuple(float(value) for value in region["lat"])
+    if len(lon) != 2 or len(lat) != 2:
+        raise ValueError("case region lon and lat must each contain two values")
+    return Region(
+        lon=lon,
+        lat=lat,
+        body=str(region.get("body", "moon")),
+        lon_domain=region.get("lon_domain", "0_360"),
+    )

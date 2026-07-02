@@ -450,10 +450,17 @@ cache = true
 [cases.wake_20080201]
 start = "2008-02-01T00:00:00"
 stop = "2008-02-01T12:00:00"
+
+[cases.wake_20080201.region]
+body = "moon"
+lon = [120, 160]
+lat = [-45, -10]
+lon_domain = "0_360"
 ```
 
 `case.<mission>.<instrument>.<variable>` は時間範囲が確定していても endpoint を返す。
 `.load()` は case の start/stop/default frame/cache policy を既定値として使う。
+`[cases.<name>.region]` または `[defaults.region]` は `case.region` として `spn.Region` に変換する。
 保存も project に紐づける。
 
 ```python

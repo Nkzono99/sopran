@@ -16,6 +16,12 @@ cache = true
 [cases.wake]
 start = "2008-02-01T00:00:00"
 stop = "2008-02-02T00:00:00"
+
+[cases.wake.region]
+body = "moon"
+lon = [350, 10]
+lat = [-5, 5]
+lon_domain = "0_360"
 """.strip(),
         encoding="utf-8",
     )
@@ -25,6 +31,7 @@ stop = "2008-02-02T00:00:00"
 
     assert case.frame == "SSE"
     assert case.cache is True
+    assert case.region == spn.Region(lon=(350.0, 10.0), lat=(-5.0, 5.0), body="moon")
     assert plan.body == "moon"
     assert plan.product == "dem"
     assert plan.parameters["source"] == "kaguya.tc.dem"
@@ -43,3 +50,4 @@ def test_project_case_allows_explicit_time_without_config_file(tmp_path) -> None
     assert case.time.start_iso == "2008-02-01T00:00:00Z"
     assert case.frame is None
     assert case.cache is False
+    assert case.region is None

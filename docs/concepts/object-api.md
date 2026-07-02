@@ -39,5 +39,5 @@ case = project.case("wake_20080201")
 
 counts = case.kaguya.esa1.counts.load()
 plan = case.artemis.p1.fgm.magnetic_field.plan()
-dem = case.moon.dem.plan(source="kaguya.tc.dem")
+dem = case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
 ```

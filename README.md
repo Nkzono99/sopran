@@ -166,7 +166,7 @@ case = prj.case("wake_20080201")
 
 counts = case.kaguya.esa1.counts.load()
 artemis_b_plan = case.artemis.p1.fgm.magnetic_field.plan()
-moon_dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
+moon_dem_plan = case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
 
 stack = case.stack(
     counts.spectrogram(y="energy"),

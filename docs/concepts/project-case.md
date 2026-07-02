@@ -18,6 +18,12 @@ cache = true
 [cases.wake_20080201]
 start = "2008-02-01T00:00:00"
 stop = "2008-02-02T00:00:00"
+
+[cases.wake_20080201.region]
+body = "moon"
+lon = [120, 160]
+lat = [-45, -10]
+lon_domain = "0_360"
 ```
 
 Case objects provide mission and body context:
@@ -25,5 +31,8 @@ Case objects provide mission and body context:
 ```python
 case.kaguya.esa1.counts.load()
 case.artemis.p1.fgm.magnetic_field.plan()
-case.moon.dem.plan(source="kaguya.tc.dem")
+case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
 ```
+
+`case.region` is `None` when no region is configured. Case-specific region
+settings override `[defaults.region]`.
