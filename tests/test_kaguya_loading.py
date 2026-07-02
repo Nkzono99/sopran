@@ -142,6 +142,8 @@ def test_kaguya_guides_can_switch_language(tmp_path) -> None:
     assert mission_en.language == "en"
     assert mission_ja.available_languages == ("ja", "en")
     assert mission_ja.language_switcher() == "Lang: 日本語/English"
+    assert mission_ja.source == "sopran.missions.kaguya/README.ja.md"
+    assert mission_ja.with_language("en").source == "sopran.missions.kaguya/README.md"
     assert "KAGUYA/SELENE は SOPRAN" in mission_ja.to_markdown()
     assert "vertical slice" in mission_en.to_markdown()
     assert "PACE ESA1 は" in esa1_ja.to_markdown()

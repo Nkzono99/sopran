@@ -1185,6 +1185,7 @@ def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
         resource = package.joinpath(name)
     markdown = resource.read_text(encoding="utf-8")
     translations = {}
+    sources = {}
     for available_language in _GUIDE_LANGUAGES:
         if available_language == language:
             continue
@@ -1194,6 +1195,7 @@ def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
             translation_name = name
             translation = package.joinpath(name)
         translations[available_language] = translation.read_text(encoding="utf-8")
+        sources[available_language] = f"sopran.missions.kaguya/{translation_name}"
     return GuidePage(
         title=title,
         markdown=markdown,
@@ -1201,6 +1203,7 @@ def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,
+        sources=sources,
     )
 
 

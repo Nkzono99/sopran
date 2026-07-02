@@ -37,6 +37,8 @@ class GuidePage:
     language: str = "en"
     available_languages: tuple[str, ...] = ("en",)
     translations: Mapping[str, str] | None = None
+    sources: Mapping[str, str] | None = None
+    urls: Mapping[str, str | None] | None = None
 
     def __str__(self) -> str:
         return self.to_markdown()
@@ -52,6 +54,8 @@ class GuidePage:
             self,
             language=language,
             markdown=self._markdown_for(language),
+            source=self._source_for(language),
+            url=self._url_for(language),
         )
 
     def language_switcher(self) -> str:
@@ -80,3 +84,21 @@ class GuidePage:
         if self.translations and language in self.translations:
             return self.translations[language]
         return self.markdown
+
+    def _source_for(self, language: str) -> str:
+        if language not in (self.available_languages or (self.language,)):
+            raise ValueError(f"GuidePage language is not available: {language}")
+        if language == self.language:
+            return self.source
+        if self.sources and language in self.sources:
+            return self.sources[language]
+        return self.source
+
+    def _url_for(self, language: str) -> str | None:
+        if language not in (self.available_languages or (self.language,)):
+            raise ValueError(f"GuidePage language is not available: {language}")
+        if language == self.language:
+            return self.url
+        if self.urls and language in self.urls:
+            return self.urls[language]
+        return self.url

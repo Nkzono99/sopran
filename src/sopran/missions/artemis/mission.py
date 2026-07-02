@@ -170,6 +170,12 @@ def _read_guide(*, title: str, language: str = "en") -> GuidePage:
         for available_language in _GUIDE_LANGUAGES
         if available_language != language
     }
+    sources = {
+        available_language: "sopran.missions.artemis/"
+        + ("README.ja.md" if available_language == "ja" else "README.md")
+        for available_language in _GUIDE_LANGUAGES
+        if available_language != language
+    }
     return GuidePage(
         title=title,
         markdown=markdown,
@@ -177,6 +183,7 @@ def _read_guide(*, title: str, language: str = "en") -> GuidePage:
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,
+        sources=sources,
     )
 
 

@@ -29,8 +29,12 @@ page = kg.guide(language="ja")
 page.language
 page.available_languages
 page.language_switcher()  # "Lang: 日本語/English" when both languages exist
+page.source               # current package resource path
+page.sources              # language-specific package resource paths
+page.url                  # current public docs URL, if configured
+page.urls                 # language-specific public docs URLs, if configured
 page.to_markdown(language="en")
-page.with_language("en")
+page.with_language("en")  # switches body, source, and URL together
 page.show()               # prints the same Markdown, including the switcher
 ```
 

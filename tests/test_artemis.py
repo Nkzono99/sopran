@@ -98,8 +98,15 @@ def test_guide_page_can_switch_language_content() -> None:
         title="SOPRAN docs",
         markdown="# SOPRAN docs\n\n日本語の説明。",
         source="docs/ja/index.md",
+        sources={
+            "en": "docs/en/index.md",
+        },
         language="ja",
         available_languages=("ja", "en"),
+        url="https://example.com/ja/",
+        urls={
+            "en": "https://example.com/en/",
+        },
         translations={
             "en": "# SOPRAN docs\n\nEnglish guide.",
         },
@@ -115,6 +122,8 @@ def test_guide_page_can_switch_language_content() -> None:
     )
     assert english.language == "en"
     assert english.markdown == "# SOPRAN docs\n\nEnglish guide."
+    assert english.source == "docs/en/index.md"
+    assert english.url == "https://example.com/en/"
     assert english.to_markdown().startswith(
         "Lang: 日本語/English\n\n# SOPRAN docs\n\nEnglish guide."
     )
