@@ -78,6 +78,23 @@ def test_kaguya_esa1_variable_endpoint_returns_loaded_data_array(tmp_path: Path)
     assert axes is not None
 
 
+def test_kaguya_esa1_variable_endpoint_can_plot_with_time(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    kg = spn.Kaguya(store=store)
+
+    axes = kg.esa1.counts.plot(spn.day("2008-01-01"))
+
+    assert axes is not None
+
+
 def test_kaguya_esa1_to_polars_sums_counts_by_energy(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"

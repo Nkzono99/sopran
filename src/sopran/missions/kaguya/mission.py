@@ -162,6 +162,15 @@ class VariableEndpoint:
         data = self.instrument.load(time, download=download)
         return getattr(data, self.name)
 
+    def plot(
+        self,
+        time: TimeRange | None = None,
+        *,
+        download: DownloadMode = "never",
+        **kwargs,
+    ):
+        return self.load(time, download=download).plot(**kwargs)
+
 
 class KaguyaInstrument:
     def __init__(self, mission: Kaguya, name: str) -> None:
