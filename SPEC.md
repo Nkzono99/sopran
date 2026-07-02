@@ -666,6 +666,10 @@ loaded.trange
 
 `SopranArray` のように既に `.schema` 属性として `VariableSchema` を持つ loaded object は、
 互換性のため `.schema()` でも同じ schema object を返せるようにする。
+`loaded.trange` は `TimeRange` を返す `loaded.time` の標準 alias とする。
+`loaded.metadata` は JSON-ready な dict とし、少なくとも `type`, `name`, `time_range`,
+`schema`, `source_files` を含める。plot、quicklook、Project artifact、Store manifest に
+渡しても意味が変わらない軽量 provenance snapshot として扱う。
 
 Lazy product の共通操作:
 

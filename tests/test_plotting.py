@@ -136,6 +136,42 @@ def test_loaded_array_schema_is_callable_like_endpoint_schema() -> None:
     assert schema.units == "flag"
 
 
+def test_loaded_array_exposes_trange_and_json_ready_metadata(tmp_path) -> None:
+    source = tmp_path / "raw" / "kaguya" / "esa1.pbf"
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="quality",
+            dims=("time",),
+            units="flag",
+            frame="SELENE_SC",
+            description="Quality flag.",
+        ),
+        files=(source,),
+    )
+
+    assert loaded.trange is loaded.time
+    assert loaded.metadata == {
+        "type": "SopranArray",
+        "name": "quality",
+        "time_range": {
+            "start": "2008-01-01T00:00:00Z",
+            "stop": "2008-01-02T00:00:00Z",
+        },
+        "schema": {
+            "name": "quality",
+            "dims": ["time"],
+            "units": "flag",
+            "dtype": None,
+            "frame": "SELENE_SC",
+            "description": "Quality flag.",
+            "aliases": [],
+        },
+        "source_files": [str(source)],
+    }
+
+
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
     import matplotlib
 

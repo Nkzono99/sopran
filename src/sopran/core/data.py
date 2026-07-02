@@ -19,6 +19,23 @@ class SopranArray:
     files: tuple[Path, ...] = ()
     xr: Any = None
 
+    @property
+    def trange(self) -> TimeRange:
+        return self.time
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "type": type(self).__name__,
+            "name": self.name,
+            "time_range": {
+                "start": self.time.start_iso,
+                "stop": self.time.stop_iso,
+            },
+            "schema": self.schema.to_metadata(),
+            "source_files": [str(path) for path in self.files],
+        }
+
     def info(self) -> InfoPage:
         lines = [
             f"dims: {', '.join(self.schema.dims)}",
