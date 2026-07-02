@@ -126,3 +126,23 @@ def test_dataset_record_scans_its_catalog_shards(tmp_path) -> None:
     scanned = dataset.scan().collect()
 
     assert scanned.to_dicts() == frame.to_dicts()
+
+
+def test_dataset_record_reads_manifest_schema_and_catalog(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    frame = pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]})
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=frame,
+    )
+
+    assert dataset.manifest()["dataset_id"] == "kaguya.esa1.counts"
+    assert dataset.schema()["instrument"] == "esa1"
+    assert dataset.catalog().select("row_count").to_series().to_list() == [1]

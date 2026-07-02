@@ -151,10 +151,21 @@ class DatasetRecord:
     def catalog_path(self) -> Path:
         return self.root / "catalog.parquet"
 
+    def manifest(self) -> dict[str, Any]:
+        return json.loads(self.manifest_path.read_text(encoding="utf-8"))
+
+    def schema(self) -> dict[str, Any]:
+        return json.loads(self.schema_path.read_text(encoding="utf-8"))
+
+    def catalog(self):
+        import polars as pl
+
+        return pl.read_parquet(self.catalog_path)
+
     def scan(self, *, dataset_id: str | None = None):
         import polars as pl
 
-        catalog = pl.read_parquet(self.catalog_path)
+        catalog = self.catalog()
         paths = [
             _resolve_child(self.root, path)
             for path in catalog.select("path").to_series().to_list()
