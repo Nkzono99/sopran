@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import html
+from io import BytesIO
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -125,23 +128,30 @@ class PlotStack:
         plot_result = self.plot(backend=backend, figsize=figsize)
         fig = plot_result.fig
         plan = self.plan()
-        artifacts = []
-        for format_name in formats:
-            if format_name != "png":
-                raise ValueError("PlotStack.quicklook() currently supports only png")
-            path = target_root / f"{name}.{format_name}"
-            fig.savefig(path)
-            artifacts.append(PlotArtifact(path=path, format=format_name))
-
+        artifacts = tuple(
+            PlotArtifact(path=target_root / f"{name}.{format_name}", format=format_name)
+            for format_name in formats
+        )
         payload = {
             "name": name,
             "backend": backend,
             "panel_count": plan.panel_count,
             "items": list(plan.items),
             "artifacts": [artifact.path.name for artifact in artifacts],
+            "artifact_formats": [artifact.format for artifact in artifacts],
         }
         if metadata:
             payload["metadata"] = metadata
+        for artifact in artifacts:
+            if artifact.format == "png":
+                fig.savefig(artifact.path)
+            elif artifact.format == "html":
+                artifact.path.write_text(
+                    _html_quicklook(name=name, fig=fig, metadata=payload),
+                    encoding="utf-8",
+                )
+            else:
+                raise ValueError("PlotStack.quicklook() currently supports png and html")
         metadata_path = target_root / f"{name}.json"
         metadata_path.write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
@@ -149,7 +159,7 @@ class PlotStack:
         )
         return QuicklookResult(
             name=name,
-            artifacts=tuple(artifacts),
+            artifacts=artifacts,
             metadata_path=metadata_path,
             metadata=payload,
         )
@@ -227,6 +237,29 @@ def _coord(data: Any, name: str, *, axis: int) -> np.ndarray:
     if hasattr(data, "coords") and name in data.coords:
         return np.asarray(data.coords[name].values)
     return np.arange(_values(data).shape[axis])
+
+
+def _html_quicklook(*, name: str, fig: Any, metadata: dict[str, Any]) -> str:
+    image_buffer = BytesIO()
+    fig.savefig(image_buffer, format="png")
+    encoded_image = base64.b64encode(image_buffer.getvalue()).decode("ascii")
+    escaped_name = html.escape(name, quote=True)
+    metadata_json = json.dumps(metadata, indent=2, sort_keys=True)
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f"  <title>{escaped_name}</title>\n"
+        "</head>\n"
+        "<body>\n"
+        f"  <h1>{escaped_name}</h1>\n"
+        f'  <img alt="{escaped_name}" src="data:image/png;base64,{encoded_image}">\n'
+        "  <h2>Metadata</h2>\n"
+        f"  <pre>{html.escape(metadata_json)}</pre>\n"
+        "</body>\n"
+        "</html>\n"
+    )
 
 
 def _data_name(data: Any) -> str:

@@ -150,3 +150,40 @@ def test_plot_stack_quicklook_writes_png_and_metadata(tmp_path) -> None:
     assert metadata["backend"] == "matplotlib"
     assert metadata["items"] == ["quality"]
     assert metadata["artifacts"] == ["wake_overview.png"]
+
+
+def test_plot_stack_quicklook_writes_html_report(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    stack = spn.stack(spn.line(quality))
+
+    result = stack.quicklook(
+        "wake_overview",
+        root=tmp_path,
+        formats=("png", "html"),
+        metadata={"case": "wake"},
+        backend="matplotlib",
+    )
+
+    metadata = json.loads((tmp_path / "wake_overview.json").read_text(encoding="utf-8"))
+    html = (tmp_path / "wake_overview.html").read_text(encoding="utf-8")
+    assert [artifact.format for artifact in result.artifacts] == ["png", "html"]
+    assert metadata["artifacts"] == ["wake_overview.png", "wake_overview.html"]
+    assert metadata["artifact_formats"] == ["png", "html"]
+    assert metadata["metadata"] == {"case": "wake"}
+    assert '<img alt="wake_overview"' in html
+    assert "data:image/png;base64," in html
+    assert "&quot;artifact_formats&quot;: [" in html
+    assert "wake_overview.html" in html
+    assert "&quot;case&quot;: &quot;wake&quot;" in html

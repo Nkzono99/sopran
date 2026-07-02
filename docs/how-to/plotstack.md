@@ -9,7 +9,12 @@ stack = spn.stack(
 plan = stack.plan()
 plot_result = stack.plot(backend="matplotlib")
 figure = plot_result.fig
-result = stack.quicklook("wake_overview", root="reports", backend="matplotlib")
+result = stack.quicklook(
+    "wake_overview",
+    root="reports",
+    formats=("png", "html"),
+    backend="matplotlib",
+)
 ```
 
 With a project case, omit the repeated time argument and let the case provide it:
@@ -28,4 +33,4 @@ figure = plot_result.fig
 from different instruments or missions. The current backend is Matplotlib and
 is selected with `backend="matplotlib"`.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
-`quicklook()` writes `<name>.png` and `<name>.json`.
+`quicklook()` writes `<name>.png`, optional `<name>.html`, and `<name>.json`.

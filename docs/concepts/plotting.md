@@ -86,7 +86,7 @@ aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
 
 The v0.1 implementation accepts `backend="matplotlib"`. `plot()` returns a
 `PlotResult` with `fig`, `axes`, `backend`, and metadata so quicklook and
-notebook workflows can share the same plot description. HoloViz, Datashader,
-Panel dashboards, and HTML quicklooks are planned for larger interactive
-products. Current `quicklook()` output is a Matplotlib PNG plus a small JSON
-metadata file.
+notebook workflows can share the same plot description. Current `quicklook()`
+output can include a Matplotlib PNG, a static HTML report with the PNG embedded,
+and a small JSON metadata file. HoloViz, Datashader, Panel dashboards, and
+interactive HTML quicklooks are planned for larger interactive products.

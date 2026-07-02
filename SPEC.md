@@ -1714,7 +1714,9 @@ schema、catalog、manifest を作り、`parameters["alignment"]` に同じ meta
 
 v0.1 の PlotStack は最小でよい。`backend="matplotlib"` を受け取り、まずは KAGUYA ESA1
 spectrogram と orbit altitude line を同じ UTC axis で縦に並べることを目標にする。
-`panel`, `datashader`, `html report`, long-term quicklook は後続 milestone とする。
+`quicklook(formats=("png", "html"))` は Matplotlib PNG と、その PNG を埋め込んだ静的 HTML、
+metadata JSON を保存する。`panel`, `datashader`, interactive HTML、long-term quicklook は
+後続 milestone とする。
 
 ```python
 stack = case.stack(
