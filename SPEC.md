@@ -915,6 +915,8 @@ pending -> running -> complete
 ```
 
 失敗 shard は再実行できるようにする。
+v0.1 では `DatasetRecord.update_shard_status(path, status)` で catalog の shard status を
+`pending`, `running`, `complete`, `failed`, `skipped` のいずれかに更新できるようにする。
 
 ```python
 pipe.run(resume=True)

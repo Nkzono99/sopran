@@ -32,7 +32,9 @@ Catalog rows currently include:
 
 The catalog is the boundary for append, replace, and lazy scan operations.
 `DatasetRecord.verify_checksums()` compares catalog checksums with the current
-shard files.
+shard files. `DatasetRecord.update_shard_status(path, status)` updates the
+catalog status for one shard; allowed statuses are `pending`, `running`,
+`complete`, `failed`, and `skipped`.
 
 Raw file sidecar layout:
 

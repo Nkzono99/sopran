@@ -18,6 +18,7 @@ from sopran.core.time import TimeRange, period
 _LAYERS = ("raw", "normalized", "features", "databases")
 _DATASET_SCHEMA_VERSION = "0.1"
 _DATASET_STATUSES = ("scratch", "candidate", "adopted", "deprecated")
+_CATALOG_SHARD_STATUSES = ("pending", "running", "complete", "failed", "skipped")
 
 
 @dataclass(frozen=True)
@@ -445,6 +446,23 @@ class DatasetRecord:
                 return False
         return True
 
+    def update_shard_status(self, shard_path: str | Path, status: str) -> DatasetRecord:
+        _validate_catalog_shard_status(status)
+        import polars as pl
+
+        path_text = Path(shard_path).as_posix()
+        catalog = self.catalog()
+        if path_text not in catalog.select("path").to_series().to_list():
+            raise KeyError(f"Shard not found in catalog: {path_text}")
+        updated = catalog.with_columns(
+            pl.when(pl.col("path") == path_text)
+            .then(pl.lit(status))
+            .otherwise(pl.col("status"))
+            .alias("status")
+        )
+        updated.write_parquet(self.catalog_path)
+        return self
+
 
 @dataclass(frozen=True)
 class RawFileRecord:
@@ -495,6 +513,12 @@ def _validate_dataset_status(status: str) -> None:
     if status not in _DATASET_STATUSES:
         allowed = ", ".join(_DATASET_STATUSES)
         raise ValueError(f"status must be one of: {allowed}")
+
+
+def _validate_catalog_shard_status(status: str) -> None:
+    if status not in _CATALOG_SHARD_STATUSES:
+        allowed = ", ".join(_CATALOG_SHARD_STATUSES)
+        raise ValueError(f"shard status must be one of: {allowed}")
 
 
 def _sopran_version() -> str:

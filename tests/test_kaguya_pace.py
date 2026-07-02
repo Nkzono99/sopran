@@ -525,6 +525,28 @@ def test_kaguya_esa1_pipeline_run_only_failed_requires_existing_catalog(
         pipe.run(only_failed=True)
 
 
+def test_kaguya_esa1_pipeline_run_only_failed_detects_failed_shards(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+    dataset = pipe.run().outputs[0]
+    dataset.update_shard_status("shards/part-000.parquet", "failed")
+
+    with pytest.raises(NotImplementedError):
+        pipe.run(only_failed=True)
+
+
 def _write_type01_pbf(path: Path) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE

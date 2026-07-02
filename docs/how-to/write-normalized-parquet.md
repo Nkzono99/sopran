@@ -37,6 +37,7 @@ existing catalog is complete for the requested time range.
 Use `only_failed=True` when a later backend should replay only failed shards:
 
 ```python
+record.update_shard_status("shards/part-000.parquet", "failed")
 result = pipe.run(only_failed=True)
 ```
 
