@@ -40,21 +40,23 @@ joins, create explicit time bins and align products separately:
 
 ```python
 bins = spn.time_bins(case.time, cadence="10s")
-features = spn.align(sza, wave_power, grid=bins, method="mean", join="inner").to_polars()
+aligned = spn.align(sza, wave_power, grid=bins, method="mean", join="inner")
+features = aligned.to_feature_frame()
+feature_metadata = aligned.feature_metadata()
 ```
 
 When each product needs a different sampling rule, use `SampleTable`:
 
 ```python
-features = (
+aligned = (
     spn.SampleTable(bins)
     .add(sza, method="nearest", tolerance="5s")
     .add(wave_power, method="max")
     .add(density, method="median")
     .add(event_flag, method="last")
     .collect(join="inner")
-    .to_polars()
 )
+features = aligned.to_feature_frame(include_time=True)
 ```
 
 `join="outer"` keeps every bin with nulls for missing features. `join="inner"`
@@ -65,6 +67,9 @@ nulls.
 The default feature table layout is wide. `to_polars(layout="long")` returns a
 tidy `time`, `feature`, `value` table, which is often easier to facet or group
 in exploratory plotting tools.
+`to_feature_frame()` returns the ML/statistics input table without the time
+column by default; use `include_time=True` when the bin center should travel
+with the features.
 
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and

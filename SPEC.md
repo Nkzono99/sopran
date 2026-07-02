@@ -1616,10 +1616,14 @@ stack = spn.stack(
 - `fill=<value>` は `join="outer"` で残した欠損 feature を明示値で埋める。
 - `to_polars(layout="wide")` は feature ごとに列を持つ既定 table を返す。
 - `to_polars(layout="long")` は `time`, `feature`, `value` の tidy table を返す。
+- `to_feature_frame(include_time=False)` は ML / 統計入力向けに feature 列だけを返す。
+  `include_time=True` の場合は bin center の `time` 列も残す。
 - `quality_mask=<1D time series>` は各 bin 内で center に最も近い mask sample を評価し、
   0、False、欠損の bin を feature table から落とす。
 - `AlignmentResult.metadata()` は columns、feature ごとの method/tolerance、grid、method、
   join、fill、quality_mask を返し、manifest/provenance に使う。
+- `AlignmentResult.feature_metadata()` は `to_feature_frame()` と対になる軽量 metadata として、
+  feature columns、feature rules、grid、row count、time column 名を返す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
@@ -1641,8 +1645,8 @@ features = spn.align(
     join="outer",
     fill=-1.0,
 )
-frame = features.to_polars(layout="wide")
-metadata = features.metadata()
+frame = features.to_feature_frame()
+metadata = features.feature_metadata()
 
 dataset = features.write_dataset(
     store,

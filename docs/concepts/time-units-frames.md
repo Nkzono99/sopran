@@ -39,7 +39,8 @@ features = spn.align(
     tolerance="5s",
     join="inner",
 )
-frame = features.to_polars()
+frame = features.to_feature_frame()
+metadata = features.feature_metadata()
 features.write_parquet("features.parquet")
 ```
 
@@ -69,13 +70,14 @@ features = (
     .add(event_flag, method="last")
     .collect(join="inner")
 )
-frame = features.to_polars()
+frame = features.to_feature_frame()
 ```
 
 The default table layout is wide, with one feature per column. Use
 `layout="long"` for a tidy `time`, `feature`, `value` table:
 
 ```python
+wide_frame_with_time = features.to_feature_frame(include_time=True)
 long_frame = features.to_polars(layout="long")
 features.write_parquet("features-long.parquet", layout="long")
 metadata = features.metadata()
@@ -87,6 +89,10 @@ grid, alignment method, join mode, fill policy, and detailed bin edges/centers
 so the same information can be written into a dataset manifest. It also stores
 `features`, a per-output-column list of the selected reducer and tolerance, so
 mixed `SampleTable` rules are reproducible.
+For ML and statistical tables, `to_feature_frame()` returns only feature
+columns by default, while `to_feature_frame(include_time=True)` keeps the bin
+center in the `time` column. `feature_metadata()` returns the feature columns,
+feature rules, grid metadata, row count, and time column name.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`

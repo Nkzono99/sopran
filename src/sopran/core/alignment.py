@@ -145,6 +145,10 @@ class AlignmentResult:
             )
         raise ValueError("layout must be 'wide' or 'long'")
 
+    def to_feature_frame(self, *, include_time: bool = False):
+        columns = ("time", *self.columns) if include_time else self.columns
+        return self.to_polars(layout="wide").select(list(columns))
+
     def write_parquet(self, path: str | Path, *, layout: TableLayout = "wide") -> Path:
         output = Path(path)
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -225,6 +229,15 @@ class AlignmentResult:
             "join": self.join,
             "method": self.method,
             "quality_mask": self.quality_mask,
+        }
+
+    def feature_metadata(self) -> dict[str, Any]:
+        return {
+            "columns": list(self.columns),
+            "features": list(self.feature_rules),
+            "grid": self.grid.metadata(),
+            "rows": len(self.rows),
+            "time_column": "time",
         }
 
 
