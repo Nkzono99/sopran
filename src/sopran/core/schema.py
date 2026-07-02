@@ -52,6 +52,7 @@ def validate_schema(
             + f". Available variables: {', '.join(sorted(names)) or '(none)'}"
         )
     _validate_dtypes(data, selected)
+    _validate_units(data, selected)
     _validate_frames(data, selected)
     _validate_xarray_dims(data, selected)
     return data
@@ -197,6 +198,39 @@ def _frame_for_name(data: Any, name: str) -> str | None:
         value = attrs.get("frame")
         return str(value) if value is not None else None
     return None
+
+
+def _validate_units(data: Any, variables: tuple[VariableSchema, ...]) -> None:
+    for variable in variables:
+        if variable.units is None:
+            continue
+        name = _matching_name(data, variable)
+        if name is None:
+            continue
+        actual = _unit_for_name(data, name)
+        if actual is None:
+            continue
+        if _normalize_unit(actual) != _normalize_unit(variable.units):
+            raise SchemaError(
+                f"Schema validation failed; {variable.name} units are {actual}, "
+                f"expected {variable.units}"
+            )
+
+
+def _unit_for_name(data: Any, name: str) -> str | None:
+    attrs = getattr(data, "attrs", {})
+    if hasattr(data, "data_vars") and hasattr(data, "__getitem__"):
+        variable_attrs = getattr(data[name], "attrs", {})
+        value = variable_attrs.get("units") or attrs.get("units")
+        return str(value) if value is not None else None
+    if getattr(data, "name", None) == name:
+        value = attrs.get("units")
+        return str(value) if value is not None else None
+    return None
+
+
+def _normalize_unit(unit: str) -> str:
+    return str(unit).strip()
 
 
 def _normalize_frame(frame: str) -> str:

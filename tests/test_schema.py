@@ -85,3 +85,30 @@ def test_validate_schema_rejects_xarray_frame_mismatch() -> None:
 
     with pytest.raises(spn.SchemaError, match="magnetic_field.*frame"):
         spn.validate_schema(dataset, schema)
+
+
+def test_validate_schema_rejects_xarray_units_mismatch() -> None:
+    schema = InstrumentSchema(
+        mission="artemis",
+        instrument="fgm",
+        variables=(
+            VariableSchema(
+                name="magnetic_field",
+                dims=("time", "component"),
+                units="nT",
+            ),
+        ),
+    )
+    dataset = xr.Dataset(
+        data_vars={
+            "magnetic_field": (
+                ("time", "component"),
+                np.array([[1.0, 2.0, 3.0]]),
+                {"units": "T"},
+            ),
+        },
+        coords={"time": ["2011-07-01T00:00:00Z"], "component": ["x", "y", "z"]},
+    )
+
+    with pytest.raises(spn.SchemaError, match="magnetic_field.*units"):
+        spn.validate_schema(dataset, schema)
