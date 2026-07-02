@@ -44,7 +44,7 @@ class Store:
 
         if not name:
             raise ValueError("database name must not be empty")
-        return Database(name=name, root=self.database_path(name))
+        return Database(name=name, root=self.database_path(name), store=self)
 
     def dataset_path(self, dataset_id: str, *, layer: str) -> Path:
         return self._layer_path(layer, *_dataset_parts(dataset_id))
@@ -58,7 +58,7 @@ class Store:
         instrument: str,
         product: str,
         schema: InstrumentSchema,
-        time_coverage: TimeRange,
+        time_coverage: TimeRange | None,
         source_files: tuple[str, ...] = (),
         shards: tuple[dict[str, Any], ...] = (),
         producer: str = "sopran",
@@ -73,10 +73,7 @@ class Store:
                 "mission": mission,
                 "instrument": instrument,
                 "product": product,
-                "time_coverage": {
-                    "start": time_coverage.start_iso,
-                    "stop": time_coverage.stop_iso,
-                },
+                "time_coverage": _time_coverage_to_json(time_coverage),
                 "source_files": list(source_files),
                 "producer": producer,
             },
@@ -240,8 +237,26 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
         for shard in shards
     ]
     if not rows:
-        rows = [{"path": "", "row_count": 0, "checksum": "", "status": "empty"}]
+        rows = [
+            {
+                "path": "",
+                "start": "",
+                "stop": "",
+                "row_count": 0,
+                "checksum": "",
+                "status": "empty",
+            }
+        ]
     pl.DataFrame(rows).write_parquet(path)
+
+
+def _time_coverage_to_json(time_coverage: TimeRange | None) -> dict[str, str] | None:
+    if time_coverage is None:
+        return None
+    return {
+        "start": time_coverage.start_iso,
+        "stop": time_coverage.stop_iso,
+    }
 
 
 def _read_catalog_shards(path: Path) -> tuple[dict[str, Any], ...]:

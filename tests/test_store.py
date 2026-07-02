@@ -111,6 +111,33 @@ def test_store_parquet_writer_refuses_to_overwrite_existing_shard(tmp_path) -> N
         store.write_parquet_dataset(**kwargs)
 
 
+def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    database = store.database("my_project")
+
+    dataset = database.register_product(
+        name="event_table",
+        schema=KAGUYA_ESA1_SCHEMA,
+        description="hand-curated lunar wake events",
+    )
+
+    metadata = json.loads((database.root / "database.json").read_text(encoding="utf-8"))
+    assert metadata["name"] == "my_project"
+    assert metadata["products"] == [
+        {
+            "name": "event_table",
+            "dataset_id": "my_project.event_table",
+            "layer": "databases",
+            "description": "hand-curated lunar wake events",
+        }
+    ]
+    assert dataset.root == store.database_path("my_project", "event_table")
+    assert dataset.manifest()["dataset_id"] == "my_project.event_table"
+    assert dataset.manifest()["layer"] == "databases"
+    assert dataset.manifest()["time_coverage"] is None
+    assert dataset.catalog().select("status").to_series().to_list() == ["empty"]
+
+
 def test_store_scans_registered_parquet_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")
