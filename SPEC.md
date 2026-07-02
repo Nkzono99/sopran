@@ -1899,7 +1899,8 @@ quicklook を生成する場合は quicklook metadata にも同じ run ID を入
 dataset-writing pipeline は `dataset_root/logs/<run_id>.json` に structured log を保存し、
 run mode、started_at、finished_at、stage list、output target、shard row count、
 合計 row count、elapsed seconds を記録する。`stages` は宣言された stage list、
-`stage_logs` は stage ごとの status、started_at、finished_at、elapsed_seconds を持つ。
+`stage_logs` は stage ごとの status、started_at、finished_at、elapsed_seconds、
+row_count、shard_count を持つ。
 `resume=True` はまず complete catalog が既に要求 time range を覆う場合に再実行を skip し、
 `PipelineResult.status == "skipped"` と skip log を返す。failed / partial shard の再実行は
 後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と

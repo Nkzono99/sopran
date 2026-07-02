@@ -25,8 +25,8 @@
 - Dataset-writing pipeline backends should write a structured log under the
   dataset `logs/` directory and expose it through `PipelineResult.log_path`.
   The log should include run mode, status, start/finish timestamps, elapsed
-  seconds, declared stage parameters, per-stage log entries, shard rows, and
-  total row count.
+  seconds, declared stage parameters, per-stage row/shard counts, shard rows,
+  and total row count.
 - Quicklook-producing backends should write the same run ID into quicklook
   metadata so preview artifacts can be traced to the dataset-writing run.
 

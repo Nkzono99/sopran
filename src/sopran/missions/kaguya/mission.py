@@ -716,6 +716,8 @@ def _write_pipeline_log(
             started_at=started_at,
             finished_at=finished_at,
             elapsed_seconds=elapsed_seconds,
+            row_count=row_count,
+            shard_count=len(shards),
         ),
         "row_count": row_count,
         "shards": shards,
@@ -736,6 +738,8 @@ def _pipeline_stage_logs(
     started_at: str,
     finished_at: str,
     elapsed_seconds: float,
+    row_count: int,
+    shard_count: int,
 ) -> list[dict[str, object]]:
     return [
         {
@@ -744,6 +748,8 @@ def _pipeline_stage_logs(
             "started_at": started_at,
             "finished_at": finished_at,
             "elapsed_seconds": elapsed_seconds,
+            "row_count": row_count,
+            "shard_count": shard_count,
             "parameters": _jsonable(stage.parameters),
         }
         for stage in pipeline.stages

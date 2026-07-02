@@ -73,8 +73,8 @@ Dataset-writing KAGUYA ESA1 runs write a structured log to
 `PipelineResult.log_path`. The log records run mode, status, start/finish
 timestamps, elapsed seconds, plan fields, stage parameters, shard metadata, and
 total row count. The `stages` field records the declared stage list, while
-`stage_logs` records status, timestamps, and elapsed seconds for each declared
-stage.
+`stage_logs` records status, timestamps, elapsed seconds, row count, and shard
+count for each declared stage.
 
 The first resume behavior is conservative: when the existing catalog is
 `complete` and the manifest time coverage contains the requested range, KAGUYA
