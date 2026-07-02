@@ -32,6 +32,9 @@ moon.guide(language="ja")
 moon.dem.guide(language="en")
 ```
 
+The guide pages include schema tables generated from the same runtime schema
+objects used by `schema()`.
+
 They also expose short runnable examples as `GuidePage` snippets:
 
 ```python

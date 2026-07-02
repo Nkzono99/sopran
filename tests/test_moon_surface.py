@@ -158,6 +158,12 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     assert moon.guide().language == "ja"
     assert "月面プロダクト" in moon.guide().to_markdown()
     assert "DEM" in moon.dem.guide().to_markdown()
+    assert "| name | dims | units | dtype | frame | aliases | description |" in (
+        moon.guide().to_markdown()
+    )
+    assert "| dem | lat, lon | m | float64 | Moon body-fixed |" in (
+        moon.dem.guide().to_markdown()
+    )
     assert moon.guide().url == "https://nkzono99.github.io/sopran/surface/moon/"
     assert moon.dem.guide().url == moon.guide().url
     assert moon.help() == moon.guide()

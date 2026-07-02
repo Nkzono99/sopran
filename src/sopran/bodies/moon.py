@@ -55,7 +55,7 @@ class Moon:
             markdowns=_MOON_GUIDES,
             language=language,
             url=_PUBLIC_DOC_URL,
-        )
+        ).with_schema(MOON_SURFACE_SCHEMA)
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
@@ -129,7 +129,7 @@ class SurfaceEndpoint:
             markdowns=_SURFACE_GUIDES.get(self.product, _MOON_GUIDES),
             language=language,
             url=_PUBLIC_DOC_URL,
-        )
+        ).with_schema(_surface_product_schema(self.product))
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
@@ -561,6 +561,14 @@ def _guide_page(
             for available_language in _GUIDE_LANGUAGES
             if available_language != language
         },
+    )
+
+
+def _surface_product_schema(product: str) -> InstrumentSchema:
+    return InstrumentSchema(
+        mission="moon",
+        instrument=f"surface.{product}",
+        variables=(MOON_SURFACE_SCHEMA.variable(product),),
     )
 
 
