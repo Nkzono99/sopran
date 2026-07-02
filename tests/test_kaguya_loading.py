@@ -130,6 +130,32 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     assert "# KAGUYA/SELENE" in mission_guide._repr_markdown_()
 
 
+def test_kaguya_guides_can_switch_language(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    mission_ja = kg.guide(language="ja")
+    mission_en = kg.guide(language="en")
+    esa1_ja = kg.esa1.guide(language="ja")
+    energy_flux_ja = kg.esa1.energy_flux.guide(language="ja")
+
+    assert mission_ja.language == "ja"
+    assert mission_en.language == "en"
+    assert mission_ja.available_languages == ("ja", "en")
+    assert mission_ja.language_switcher() == "Lang: 日本語/English"
+    assert "KAGUYA/SELENE は SOPRAN" in mission_ja.to_markdown()
+    assert "vertical slice" in mission_en.to_markdown()
+    assert "PACE ESA1 は" in esa1_ja.to_markdown()
+    assert "energy_flux" in energy_flux_ja.to_markdown()
+    assert "vertical slice" in mission_ja.to_markdown(language="en")
+    assert kg.help(language="ja") == mission_ja
+    assert kg.guide("esa1", language="ja") == esa1_ja
+    assert kg.help("esa1", language="ja") == esa1_ja
+    assert kg.esa1.help(language="ja") == esa1_ja
+    assert kg.esa1.energy_flux.help(language="ja") == energy_flux_ja
+    with pytest.raises(ValueError, match="language"):
+        kg.guide(language="fr")
+
+
 def test_kaguya_examples_return_markdown_pages(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
 

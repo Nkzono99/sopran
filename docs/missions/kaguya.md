@@ -15,6 +15,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
 - Variable endpoint plotting and `PlotStack` integration.
 - Pipeline run, append, replace, scan, and collect for ESA1 counts.
 - `example()` pages on `Kaguya`, `kg.esa1`, and ESA1 variable endpoints.
+- Bilingual package guides via `kg.guide(language="ja")`,
+  `kg.guide(language="en")`, and `kg.esa1.guide(language=...)`.
 
 ## Raw File Layout
 

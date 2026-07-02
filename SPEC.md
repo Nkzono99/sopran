@@ -1379,17 +1379,19 @@ moon = spn.Moon()
 
 kg.info()             # KAGUYA の短い概要
 kg.guide()            # KAGUYA README を参照
+kg.guide(language="ja")
+kg.guide(language="en")
 kg.help()             # kg.guide() の alias
 kg.guide("lrs")       # KAGUYA/LRS README を参照
-kg.help("lrs")        # topic 指定も guide() と同じ
+kg.help("lrs", language="ja")  # topic / language 指定も guide() と同じ
 
 kg.lrs.info()
-kg.lrs.guide()
-kg.lrs.help()
+kg.lrs.guide(language="ja")
+kg.lrs.help(language="en")
 
 kg.esa1.energy_flux.info()
-kg.esa1.energy_flux.guide()
-kg.esa1.energy_flux.help()
+kg.esa1.energy_flux.guide(language="ja")
+kg.esa1.energy_flux.help(language="en")
 
 moon.info()
 moon.dem.info()

@@ -25,7 +25,7 @@ scan, collect, or compute data. Execution happens at explicit methods:
 share the same bilingual contract:
 
 ```python
-page = kg.guide()
+page = kg.guide(language="ja")
 page.language
 page.available_languages
 page.language_switcher()  # "Lang: 日本語/English" when both languages exist
@@ -33,6 +33,10 @@ page.to_markdown(language="en")
 page.with_language("en")
 page.show()               # prints the same Markdown, including the switcher
 ```
+
+Mission, instrument, and variable endpoints should pass the same `language=`
+keyword through to their package guide resources. KAGUYA currently supports
+Japanese and English package guides for the mission and PACE ESA1 pages.
 
 `Project` and `Case` provide analysis context:
 

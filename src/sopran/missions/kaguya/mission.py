@@ -26,6 +26,7 @@ from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 from sopran.missions.kaguya.sensors import normalize_sensor
 
 DownloadMode = Literal["never", "missing", "always"]
+_GUIDE_LANGUAGES = ("ja", "en")
 
 
 class Kaguya:
@@ -71,16 +72,16 @@ class Kaguya:
             ),
         )
 
-    def guide(self, topic: str | None = None) -> GuidePage:
+    def guide(self, topic: str | None = None, *, language: str = "en") -> GuidePage:
         if topic is None:
-            return _read_guide("README.md", title="KAGUYA/SELENE")
+            return _read_guide("README.md", title="KAGUYA/SELENE", language=language)
         normalized = topic.lower().replace("-", "").replace("_", "")
         if normalized in {"esa1", "esas1", "paceesa1"}:
-            return _read_guide("ESA1.md", title="PACE ESA1")
+            return _read_guide("ESA1.md", title="PACE ESA1", language=language)
         raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
-    def help(self, topic: str | None = None) -> GuidePage:
-        return self.guide(topic)
+    def help(self, topic: str | None = None, *, language: str = "en") -> GuidePage:
+        return self.guide(topic, language=language)
 
     def example(self) -> GuidePage:
         return _example_page(
@@ -180,11 +181,11 @@ class VariableEndpoint:
     def schema(self) -> VariableSchema:
         return self._schema
 
-    def guide(self) -> GuidePage:
-        return self.instrument.guide()
+    def guide(self, *, language: str = "en") -> GuidePage:
+        return self.instrument.guide(language=language)
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
     def example(self) -> GuidePage:
         return _example_page(
@@ -588,13 +589,13 @@ class PaceInstrument(KaguyaInstrument):
             else (),
         )
 
-    def guide(self) -> GuidePage:
+    def guide(self, *, language: str = "en") -> GuidePage:
         if self.sensor == "ESA1":
-            return _read_guide("ESA1.md", title="PACE ESA1")
-        return _read_guide("README.md", title=f"KAGUYA {self.sensor}")
+            return _read_guide("ESA1.md", title="PACE ESA1", language=language)
+        return _read_guide("README.md", title=f"KAGUYA {self.sensor}", language=language)
 
-    def help(self) -> GuidePage:
-        return self.guide()
+    def help(self, *, language: str = "en") -> GuidePage:
+        return self.guide(language=language)
 
     def example(self) -> GuidePage:
         if self.sensor != "ESA1":
@@ -1173,13 +1174,41 @@ def _missing_time_error(endpoint: str) -> ValueError:
     )
 
 
-def _read_guide(name: str, *, title: str) -> GuidePage:
-    markdown = files("sopran.missions.kaguya").joinpath(name).read_text(encoding="utf-8")
+def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
+    if language not in _GUIDE_LANGUAGES:
+        raise ValueError(f"KAGUYA guide language is not available: {language}")
+    package = files("sopran.missions.kaguya")
+    resource_name = _guide_resource_name(name, language)
+    resource = package.joinpath(resource_name)
+    if not resource.is_file():
+        resource_name = name
+        resource = package.joinpath(name)
+    markdown = resource.read_text(encoding="utf-8")
+    translations = {}
+    for available_language in _GUIDE_LANGUAGES:
+        if available_language == language:
+            continue
+        translation_name = _guide_resource_name(name, available_language)
+        translation = package.joinpath(translation_name)
+        if not translation.is_file():
+            translation_name = name
+            translation = package.joinpath(name)
+        translations[available_language] = translation.read_text(encoding="utf-8")
     return GuidePage(
         title=title,
         markdown=markdown,
-        source=f"sopran.missions.kaguya/{name}",
+        source=f"sopran.missions.kaguya/{resource_name}",
+        language=language,
+        available_languages=_GUIDE_LANGUAGES,
+        translations=translations,
     )
+
+
+def _guide_resource_name(name: str, language: str) -> str:
+    if language == "en":
+        return name
+    path = Path(name)
+    return f"{path.stem}.{language}{path.suffix}"
 
 
 def _example_page(title: str, markdown: str) -> GuidePage:
