@@ -2,10 +2,10 @@
 
 from sopran.bodies import Moon
 from sopran.core import GuidePage, InfoPage, PlotItem, PlotPlan, PlotStack, Store, TimeRange
-from sopran.core import day, line, month, period
-from sopran.maps import Region
+from sopran.core import day, line, load, month, period
 from sopran.core import spectrogram, stack, year
 from sopran.core.project import Project
+from sopran.maps import Region
 from sopran.missions.kaguya import Kaguya
 
 __version__ = "0.0.0"
@@ -25,6 +25,7 @@ __all__ = [
     "__version__",
     "day",
     "line",
+    "load",
     "month",
     "period",
     "spectrogram",

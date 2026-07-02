@@ -121,6 +121,19 @@ stop = "2008-01-02T00:00:00"
     assert axes is not None
 
 
+def test_top_level_load_dispatches_kaguya_variable_dataset_id(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+
+    counts = spn.load("kaguya.esa1.counts", spn.day("2008-01-01"), store=store)
+
+    assert counts.name == "counts"
+    assert counts.to_xarray().shape == (1, 32, 64)
+
+
 def test_kaguya_esa1_to_polars_sums_counts_by_energy(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"

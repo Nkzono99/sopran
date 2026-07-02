@@ -1,3 +1,4 @@
+from sopran.core.loaders import load
 from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.plotting import PlotItem, PlotPlan, PlotStack, line, spectrogram, stack
@@ -17,6 +18,7 @@ __all__ = [
     "Store",
     "TimeRange",
     "day",
+    "load",
     "line",
     "month",
     "period",
