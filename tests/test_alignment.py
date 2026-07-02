@@ -23,6 +23,39 @@ def test_time_bins_build_regular_half_open_bins() -> None:
     )
 
 
+def test_time_bins_can_keep_partial_tail_bin() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
+        cadence="10s",
+        partial="keep",
+    )
+
+    assert bins.partial == "keep"
+    assert bins.count == 3
+    assert bins.stop_iso == "2008-01-01T00:00:24Z"
+    assert bins.centers_iso == (
+        "2008-01-01T00:00:05Z",
+        "2008-01-01T00:00:15Z",
+        "2008-01-01T00:00:22Z",
+    )
+
+
+def test_time_bins_can_drop_partial_tail_bin() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
+        cadence="10s",
+        partial="drop",
+    )
+
+    assert bins.partial == "drop"
+    assert bins.count == 2
+    assert bins.stop_iso == "2008-01-01T00:00:20Z"
+    assert bins.centers_iso == (
+        "2008-01-01T00:00:05Z",
+        "2008-01-01T00:00:15Z",
+    )
+
+
 def test_align_nearest_samples_arrays_to_time_bin_centers() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:30Z"),

@@ -99,7 +99,7 @@ stack = spn.stack(
 fig = stack.plot()
 quicklook = stack.quicklook("esa1_counts", root="reports")
 
-bins = spn.time_bins(time, cadence="10s")
+bins = spn.time_bins(time, cadence="10s", partial="keep")
 features = spn.align(
     kg.esa1.quality.load(time),
     grid=bins,
@@ -123,6 +123,7 @@ ml_features = (
 `nearest`, `mean`, `max`, `median` です。
 `join="outer"` は全binを残し、`join="inner"` は欠損featureを含むbinを落とします。
 `fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
+`partial="keep"` はcadenceで割り切れない末尾binを残し、`partial="drop"` は捨てます。
 `spn.align(...).write_parquet("features.parquet")` または
 `spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 

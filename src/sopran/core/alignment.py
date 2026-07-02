@@ -10,8 +10,10 @@ from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 AlignMethod = Literal["nearest", "mean", "max", "median"]
 AlignmentMethod = Literal["nearest", "mean", "max", "median", "mixed"]
 JoinMode = Literal["outer", "inner"]
+PartialPolicy = Literal["error", "keep", "drop"]
 _ALIGN_METHODS = ("nearest", "mean", "max", "median")
 _JOIN_MODES = ("outer", "inner")
+_PARTIAL_POLICIES = ("error", "keep", "drop")
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class TimeBins:
     edges: tuple[datetime, ...]
     label: Literal["center"] = "center"
     closed: Literal["left"] = "left"
+    partial: PartialPolicy = "error"
 
     @property
     def count(self) -> int:
@@ -72,20 +75,28 @@ def time_bins(
     cadence: str | timedelta,
     label: Literal["center"] = "center",
     closed: Literal["left"] = "left",
+    partial: PartialPolicy = "error",
 ) -> TimeBins:
     if label != "center":
         raise ValueError("time_bins() currently supports label='center' only")
     if closed != "left":
         raise ValueError("time_bins() currently supports closed='left' only")
+    if partial not in _PARTIAL_POLICIES:
+        raise ValueError("partial must be 'error', 'keep', or 'drop'")
     step = _parse_duration(cadence)
     edges = [time.start]
     current = time.start
     while current < time.stop:
-        current = current + step
-        if current > time.stop:
-            raise ValueError("cadence must divide the requested time range exactly")
+        next_edge = current + step
+        if next_edge > time.stop:
+            if partial == "keep":
+                edges.append(time.stop)
+            elif partial == "error":
+                raise ValueError("cadence must divide the requested time range exactly")
+            break
+        current = next_edge
         edges.append(current)
-    return TimeBins(time=time, edges=tuple(edges), label=label, closed=closed)
+    return TimeBins(time=time, edges=tuple(edges), label=label, closed=closed, partial=partial)
 
 
 def align(

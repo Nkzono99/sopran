@@ -12,6 +12,14 @@ year = spn.year("2008")
 The interval is `[start, stop)`. This avoids double-counting records at
 boundaries when appending daily or monthly shards.
 
+`time_bins()` is strict by default: `partial="error"` raises if the requested
+range is not exactly divisible by the cadence. Use `partial="keep"` to retain a
+short final bin, or `partial="drop"` to discard it:
+
+```python
+bins = spn.time_bins(time, cadence="10s", partial="keep")
+```
+
 ## Time Bins And Alignment
 
 Use `PlotStack` when you want to inspect products together without changing

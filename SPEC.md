@@ -1484,6 +1484,8 @@ stack = spn.stack(
 - 描画では原則として各 product の native cadence を保ち、共有するのは UTC time axis にする。
 - 解析用の resampling / interpolation / cadence 統一は `spn.align(...)` で明示する。
 - 時間ビン化は `spn.time_bins(...)` が返す `TimeBins` を第一級 object として扱う。
+- `spn.time_bins(..., partial="error")` は cadence で割り切れない範囲を失敗させる既定動作とする。
+- `partial="keep"` は末尾の短い bin を残し、`partial="drop"` は末尾の短い bin を捨てる。
 - `spn.align(...)` は全 input に同じ `method`, `tolerance` を適用する簡易 API とする。
 - product ごとに reducer や tolerance を変える feature table は `spn.SampleTable(grid)` で作る。
 - `join="outer"` は全 time bin を保持し、欠損 feature を null にする既定動作とする。
@@ -1500,7 +1502,7 @@ stack = spn.stack(
 nearest、mean、max、median、center sample などの reducer を選ぶ。
 
 ```python
-grid = spn.time_bins(case.time, cadence="10s")
+grid = spn.time_bins(case.time, cadence="10s", partial="keep")
 
 features = spn.align(
     case.moon.sza.load(),
@@ -1530,6 +1532,7 @@ features = (
 v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `mean`, `max`,
 `median` で `TimeBins` に対応づける。`nearest` は center time の最近傍を取り、
 `mean`, `max`, `median` は半開区間 `[start, stop)` の bin 内 sample を集約する。
+`TimeBins.partial` は末尾の不完全 bin の扱いを記録する。
 `join="outer"` は全 bin を保持し、`join="inner"` はいずれかの feature が欠けた bin を落とす。
 `fill` が指定された場合は、`outer` で残った欠損 feature 値をその値で置き換える。
 `time x component` の vector product は
