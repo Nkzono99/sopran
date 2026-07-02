@@ -18,6 +18,7 @@ stack = spn.stack(
 
 stack.plan()
 plot_result = stack.plot(backend="matplotlib")
+stack.explore(backend="panel")
 stack.quicklook("wake_overview", root="reports", backend="matplotlib")
 ```
 
@@ -36,6 +37,8 @@ one panel, which is the intended route for vector products such as magnetic
 field components.
 Pass `log_color=True` to spectrogram items when positive-valued spectra should
 use a logarithmic color scale in the Matplotlib backend.
+Use `stack.explore(backend="panel")` when a notebook or browser workflow should
+show the same PlotStack figure and metadata in a Panel view.
 
 Plotting keeps native cadence. For machine-learning tables or statistical
 joins, create explicit time bins and align products separately:

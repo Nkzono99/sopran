@@ -122,6 +122,34 @@ class PlotStack:
             metadata=metadata,
         )
 
+    def explore(
+        self,
+        *,
+        backend: Literal["panel"] = "panel",
+        context: Any | None = None,
+        figsize: tuple[float, float] | None = None,
+    ):
+        if backend != "panel":
+            raise ValueError("PlotStack.explore() currently supports only panel")
+
+        import panel as pn
+
+        plot_result = self.plot(
+            backend="matplotlib",
+            context=context,
+            figsize=figsize,
+        )
+        metadata = dict(plot_result.metadata)
+        metadata["explore_backend"] = backend
+        return pn.Column(
+            pn.pane.Matplotlib(plot_result.fig, tight=True),
+            pn.pane.Markdown(
+                "```json\n"
+                + json.dumps(metadata, indent=2, sort_keys=True)
+                + "\n```"
+            ),
+        )
+
     def quicklook(
         self,
         name: str,

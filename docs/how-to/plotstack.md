@@ -9,6 +9,7 @@ stack = spn.stack(
 plan = stack.plan()
 plot_result = stack.plot(backend="matplotlib")
 figure = plot_result.fig
+view = stack.explore(backend="panel")
 result = stack.quicklook(
     "wake_overview",
     root="reports",
@@ -40,6 +41,8 @@ from different instruments or missions. The current backend is Matplotlib and
 is selected with `backend="matplotlib"`.
 Use `log_color=True` on spectrogram items for positive-valued spectra that need
 a logarithmic color scale.
+`explore(backend="panel")` returns a Panel view containing the same Matplotlib
+figure and metadata for notebook or browser inspection.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
 Pass `context=case` when the `PlotResult.metadata` should carry the case
 context.

@@ -143,6 +143,31 @@ def test_plot_stack_accepts_matplotlib_backend_argument() -> None:
         stack.plot(backend="hvplot")
 
 
+def test_plot_stack_explore_returns_panel_view() -> None:
+    import matplotlib
+    import panel as pn
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    stack = spn.stack(spn.line(quality))
+
+    view = stack.explore(backend="panel")
+
+    assert isinstance(view, pn.Column)
+    assert len(view) == 2
+    with pytest.raises(ValueError, match="currently supports only panel"):
+        stack.explore(backend="hvplot")
+
+
 def test_project_case_builds_plot_stack(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()
