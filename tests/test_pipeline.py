@@ -74,3 +74,16 @@ def test_pipeline_run_validates_on_error_policy() -> None:
 
     with pytest.raises(ValueError, match="on_error"):
         pipe.run(on_error="skip")
+
+
+def test_pipeline_write_records_partition_policy() -> None:
+    pipe = Pipeline(
+        source="test.source",
+        time=spn.day("2008-02-01"),
+    ).write("test.dataset", layer="normalized", partition="day")
+
+    assert pipe.stages[-1].parameters == {
+        "dataset": "test.dataset",
+        "layer": "normalized",
+        "partition": "day",
+    }

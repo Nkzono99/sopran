@@ -607,6 +607,8 @@ pipe = (
 - `stream()` は shard / day / orbit 単位の iterator として返す。
   v0.1 の generic fallback は `scan().collect()` した結果から `partition="all"` と
   `partition="day"` を提供し、`shard` / `orbit` は mission backend に委譲する。
+- `write(..., partition="day")` は保存時に日別 shard を作る指示とし、v0.1 では
+  KAGUYA ESA1 が Hive-style path の daily parquet shard を生成する。
 
 ```python
 product = pipe.collect()
@@ -894,6 +896,7 @@ Pipeline の `write()` は保存先を明示する。
 ```python
 .write("kaguya/esa1/records", layer="normalized")
 .write("kaguya/esa1/pitch_angle_distribution", layer="features")
+.write("kaguya/esa1/counts", layer="normalized", partition="day")
 .write(db.product("raw_pad"))
 ```
 
@@ -905,6 +908,11 @@ pipe.run(mode="append")     # catalog に shard を追加
 pipe.run(mode="replace")    # 明示時のみ置き換え
 pipe.run(dry_run=True)      # 入出力計画だけ表示
 ```
+
+KAGUYA ESA1 の `partition="day"` は
+`shards/year=YYYY/month=MM/day=DD/part-000.parquet` を作り、manifest の
+`partitioning` に `["year", "month", "day"]` を記録する。`mode="replace"` と日別
+partition の組み合わせは v0.1 では未対応とする。
 
 大量処理では shard 単位で status を記録する。
 
@@ -2066,6 +2074,7 @@ M4: Pipeline minimum
   - select_variables(...)
   - scan() with Polars
   - stream(partition="all" / "day") fallback
+  - write(partition="day") for KAGUYA ESA1 daily parquet shards
 
 M5: PlotStack minimum
   - spectrogram + line panels

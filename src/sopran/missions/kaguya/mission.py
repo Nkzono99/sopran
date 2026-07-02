@@ -14,7 +14,7 @@ from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import VariableSchema
-from sopran.core.time import TimeRange, period
+from sopran.core.time import TimeRange, day, period
 from sopran.missions.kaguya.data import KaguyaESA1Data
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
@@ -462,25 +462,35 @@ class PaceInstrument(KaguyaInstrument):
             )
 
         variable = _pipeline_variable(pipeline)
+        partition = _pipeline_partition(pipeline)
         data = None
         try:
-            loaded = self.load(pipeline.time, download="never")
-            _ensure_pipeline_input_files(loaded, self, pipeline.time)
-            data = loaded
-            output = data.write_parquet(
-                self.mission.store,
-                variable=variable,
-                dataset_id=pipeline.output_dataset,
-                layer=pipeline.output_layer,
-                overwrite=mode == "replace",
-                append=mode == "append",
-                provenance=_pipeline_dataset_provenance(
+            if partition == "day":
+                output = _write_daily_partitioned_pipeline_output(
+                    self,
                     pipeline,
                     variable=variable,
                     mode=mode,
                     run_id=run_id,
-                ),
-            )
+                )
+            else:
+                loaded = self.load(pipeline.time, download="never")
+                _ensure_pipeline_input_files(loaded, self, pipeline.time)
+                data = loaded
+                output = data.write_parquet(
+                    self.mission.store,
+                    variable=variable,
+                    dataset_id=pipeline.output_dataset,
+                    layer=pipeline.output_layer,
+                    overwrite=mode == "replace",
+                    append=mode == "append",
+                    provenance=_pipeline_dataset_provenance(
+                        pipeline,
+                        variable=variable,
+                        mode=mode,
+                        run_id=run_id,
+                    ),
+                )
         except FileExistsError:
             raise
         except Exception as exc:
@@ -515,13 +525,18 @@ class PaceInstrument(KaguyaInstrument):
                 run_id=run_id,
                 log_path=log_path,
             )
-        quicklooks = _write_pipeline_quicklooks(
-            data,
-            output,
-            pipeline=pipeline,
-            variable=variable,
-            run_id=run_id,
-        )
+        quicklooks = ()
+        if _pipeline_has_quicklook(pipeline):
+            if data is None:
+                data = self.load(pipeline.time, download="never")
+                _ensure_pipeline_input_files(data, self, pipeline.time)
+            quicklooks = _write_pipeline_quicklooks(
+                data,
+                output,
+                pipeline=pipeline,
+                variable=variable,
+                run_id=run_id,
+            )
         log_path = _write_pipeline_log(
             output,
             pipeline=pipeline,
@@ -800,6 +815,43 @@ def _write_failed_pipeline_output(
     )
 
 
+def _write_daily_partitioned_pipeline_output(
+    instrument: PaceInstrument,
+    pipeline: Pipeline,
+    *,
+    variable: str,
+    mode: str,
+    run_id: str,
+):
+    if mode == "replace":
+        raise NotImplementedError(
+            "KAGUYA ESA1 partition='day' does not support mode='replace' yet"
+        )
+
+    output = None
+    for index, chunk_time in enumerate(_daily_time_ranges(pipeline.time)):
+        data = instrument.load(chunk_time, download="never")
+        _ensure_pipeline_input_files(data, instrument, chunk_time)
+        output = data.write_parquet(
+            instrument.mission.store,
+            variable=variable,
+            dataset_id=pipeline.output_dataset,
+            layer=str(pipeline.output_layer),
+            shard_path=_daily_partition_shard_path(chunk_time),
+            append=mode == "append" or index > 0,
+            partitioning=("year", "month", "day"),
+            provenance=_pipeline_dataset_provenance(
+                pipeline,
+                variable=variable,
+                mode=mode,
+                run_id=run_id,
+            ),
+        )
+    if output is None:
+        raise ValueError("Pipeline time range did not produce any daily shard")
+    return output
+
+
 def _update_pipeline_dataset_provenance(
     output,
     pipeline: Pipeline,
@@ -823,6 +875,14 @@ def _update_pipeline_dataset_provenance(
 
 def _pipeline_has_quicklook(pipeline: Pipeline) -> bool:
     return any(stage.name == "quicklook" for stage in pipeline.stages)
+
+
+def _pipeline_partition(pipeline: Pipeline) -> str | None:
+    for stage in reversed(pipeline.stages):
+        if stage.name == "write":
+            partition = stage.parameters.get("partition")
+            return str(partition) if partition is not None else None
+    return None
 
 
 def _complete_pipeline_output(store: Store, pipeline: Pipeline):
@@ -889,6 +949,26 @@ def _ensure_pipeline_input_files(
     raise FileNotFoundError(
         f"No local KAGUYA ESA1 raw files found for {time.start_iso} .. {time.stop_iso}. "
         f"Expected: {expected}"
+    )
+
+
+def _daily_time_ranges(time: TimeRange) -> tuple[TimeRange, ...]:
+    ranges = []
+    for label in time.days():
+        full_day = day(label)
+        start = max(time.start, full_day.start)
+        stop = min(time.stop, full_day.stop)
+        if stop > start:
+            ranges.append(TimeRange(start, stop))
+    return tuple(ranges)
+
+
+def _daily_partition_shard_path(time: TimeRange) -> str:
+    return (
+        f"shards/year={time.start.year:04d}/"
+        f"month={time.start.month:02d}/"
+        f"day={time.start.day:02d}/"
+        "part-000.parquet"
     )
 
 

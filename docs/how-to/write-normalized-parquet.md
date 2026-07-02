@@ -24,6 +24,18 @@ pipe.run(mode="append")
 pipe.run(mode="replace")
 ```
 
+For daily KAGUYA ESA1 shards, declare the partition on `write()`:
+
+```python
+result = (
+    kg.esa1.pipeline(spn.period("2008-01-01", "2008-01-03"))
+    .decode()
+    .select_variables("counts")
+    .write("kaguya.esa1.counts", layer="normalized", partition="day")
+    .run()
+)
+```
+
 Use `resume=True` when a completed catalog should be reused instead of failing
 on the existing shard:
 

@@ -11,6 +11,7 @@ from sopran.core.time import TimeRange
 PipelineRunMode = Literal["create", "append", "replace"]
 PipelineOnError = Literal["fail", "continue"]
 PipelineStreamPartition = Literal["all", "day", "shard", "orbit"]
+PipelineWritePartition = Literal["day"]
 
 
 @dataclass(frozen=True)
@@ -145,14 +146,25 @@ class Pipeline:
             parameters["root"] = root
         return self._with_stage("quicklook", **parameters)
 
-    def write(self, dataset: str | Any, *, layer: str | None = None) -> Pipeline:
+    def write(
+        self,
+        dataset: str | Any,
+        *,
+        layer: str | None = None,
+        partition: PipelineWritePartition | None = None,
+    ) -> Pipeline:
+        if partition not in (None, "day"):
+            raise ValueError("partition must be 'day' when provided")
         dataset_id, output_layer = _write_target(dataset, layer)
+        parameters = {"dataset": dataset_id, "layer": output_layer}
+        if partition is not None:
+            parameters["partition"] = partition
         return Pipeline(
             source=self.source,
             time=self.time,
             stages=(
                 *self.stages,
-                PipelineStage("write", {"dataset": dataset_id, "layer": output_layer}),
+                PipelineStage("write", parameters),
             ),
             output_dataset=dataset_id,
             output_layer=output_layer,

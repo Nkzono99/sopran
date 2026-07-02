@@ -60,7 +60,8 @@ prevents accidental overwrite by default, supports explicit append/replace,
 uses parquet catalog shards as the storage boundary, streams collected scan
 results by day, issues a `PipelineResult.run_id` for each `run()` call, skips
 already complete KAGUYA ESA1 outputs with `run(resume=True)`, records failed
-KAGUYA ESA1 shards with `run(on_error="continue")`, and can write a Matplotlib
+KAGUYA ESA1 shards with `run(on_error="continue")`, writes daily KAGUYA ESA1
+parquet shards with `write(..., partition="day")`, and can write a Matplotlib
 PNG quicklook plus JSON metadata for KAGUYA ESA1 pipeline runs.
 Quicklook metadata records the pipeline run ID, source, stage names, time range,
 output dataset/layer, selected variable, backend, and artifact list.
@@ -68,6 +69,10 @@ output dataset/layer, selected variable, backend, and artifact list.
 KAGUYA ESA1 pipeline writes also add manifest provenance under
 `dataset.json["provenance"]`, including run ID, source, stages, run mode, time
 range, output dataset/layer, and selected variable.
+
+`write(..., partition="day")` stores KAGUYA ESA1 output under Hive-style paths
+such as `shards/year=2008/month=01/day=01/part-000.parquet` and records
+`["year", "month", "day"]` in `dataset.json["partitioning"]`.
 
 Dataset-writing KAGUYA ESA1 runs write a structured log to
 `dataset_root/logs/<run_id>.json`; the same path is returned as

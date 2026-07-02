@@ -123,8 +123,10 @@ class KaguyaESA1Data:
         reduce_look: Literal["sum"] | None = None,
         dataset_id: str | None = None,
         layer: str = "normalized",
+        shard_path: str = "shards/part-000.parquet",
         overwrite: bool = False,
         append: bool = False,
+        partitioning: tuple[str, ...] = (),
         provenance: dict[str, Any] | None = None,
     ) -> DatasetRecord:
         product = variable
@@ -138,8 +140,10 @@ class KaguyaESA1Data:
             time_coverage=self.time,
             frame=self.to_polars(variable, reduce_look=reduce_look),
             source_files=tuple(str(path) for path in self.files),
+            shard_path=shard_path,
             overwrite=overwrite,
             append=append,
+            partitioning=partitioning,
             provenance=provenance,
         )
 

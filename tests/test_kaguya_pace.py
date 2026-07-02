@@ -437,6 +437,51 @@ def test_kaguya_esa1_pipeline_run_append_adds_counts_shard(tmp_path: Path) -> No
     assert result.outputs[0].scan().collect().height == 4096
 
 
+def test_kaguya_esa1_pipeline_run_writes_daily_partitioned_shards(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    files = (
+        "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz",
+        "sln-l-pace-3-pbf1-v3.0/20080102/data/IPACE_PBF1_080102_ESA1_V003.dat.gz",
+    )
+    for index, remote_file in enumerate(files):
+        cached = store.raw_path("kaguya", "pds3") / remote_file
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        _write_type01_pbf_gzip(
+            cached,
+            tmp_path / f"scratch-{index}.dat",
+            yyyymmdd=20080101 + index,
+        )
+    kg = spn.Kaguya(store=store)
+    time = spn.period("2008-01-01", "2008-01-03")
+
+    result = (
+        kg.esa1.pipeline(time)
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized", partition="day")
+        .run()
+    )
+
+    dataset = result.outputs[0]
+    assert dataset.manifest()["partitioning"] == ["year", "month", "day"]
+    catalog = dataset.catalog()
+    assert catalog.select("path").to_series().to_list() == [
+        "shards/year=2008/month=01/day=01/part-000.parquet",
+        "shards/year=2008/month=01/day=02/part-000.parquet",
+    ]
+    assert catalog.select("start").to_series().to_list() == [
+        "2008-01-01T00:00:00Z",
+        "2008-01-02T00:00:00Z",
+    ]
+    assert catalog.select("row_count").to_series().to_list() == [2048, 2048]
+    assert dataset.scan().collect().height == 4096
+    log = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log["row_count"] == 4096
+    assert [stage["shard_count"] for stage in log["stage_logs"]] == [2, 2, 2]
+
+
 def test_kaguya_esa1_pipeline_run_resume_skips_complete_dataset(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
@@ -608,7 +653,7 @@ def test_kaguya_esa1_pipeline_run_only_failed_replays_failed_shards(
     assert log["replayed_shard_count"] == 1
 
 
-def _write_type01_pbf(path: Path) -> None:
+def _write_type01_pbf(path: Path, *, yyyymmdd: int = 20080101) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE
 
@@ -617,7 +662,7 @@ def _write_type01_pbf(path: Path) -> None:
     header[3] = 0x01
     header[5] = 16000
     header[6] = 16
-    header[19] = 20080101
+    header[19] = yyyymmdd
     header[20] = 0
     header[25] = 0
 
@@ -633,7 +678,12 @@ def _write_type01_pbf(path: Path) -> None:
         file.write(trash.tobytes())
 
 
-def _write_type01_pbf_gzip(gzip_path: Path, scratch_path: Path) -> None:
-    _write_type01_pbf(scratch_path)
+def _write_type01_pbf_gzip(
+    gzip_path: Path,
+    scratch_path: Path,
+    *,
+    yyyymmdd: int = 20080101,
+) -> None:
+    _write_type01_pbf(scratch_path, yyyymmdd=yyyymmdd)
     with scratch_path.open("rb") as source, gzip.open(gzip_path, "wb") as target:
         target.write(source.read())

@@ -3,6 +3,9 @@
 - Attribute access does not execute.
 - Stage builders return a new `Pipeline`.
 - `write()` declares an output; it does not write until `run()`.
+- `write(..., partition="day")` declares daily output shards. KAGUYA ESA1 writes
+  Hive-style daily parquet paths and records `year`, `month`, and `day`
+  partitioning in the manifest.
 - `quicklook()` declares preview artifacts; it does not render until `run()`.
 - `run(dry_run=True)` returns a planned `PipelineResult` without executing
   stages; its plan can be inspected with `to_dict()` or `str(result)`.
