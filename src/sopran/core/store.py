@@ -126,6 +126,9 @@ class Store:
         manifest_time_coverage = (
             _merge_time_coverage(record.manifest_path, time_coverage) if append else time_coverage
         )
+        manifest_source_files = (
+            _merge_source_files(record.manifest_path, source_files) if append else source_files
+        )
         if append and shard_path == "shards/part-000.parquet":
             shard_path = _next_shard_path(existing_shards)
         target = _resolve_child(record.root, shard_path)
@@ -142,7 +145,7 @@ class Store:
             product=product,
             schema=schema,
             time_coverage=manifest_time_coverage,
-            source_files=source_files,
+            source_files=manifest_source_files,
             shards=(
                 *existing_shards,
                 {
@@ -291,6 +294,17 @@ def _merge_time_coverage(path: Path, new: TimeRange | None) -> TimeRange | None:
     start = min(str(existing["start"]), new.start_iso)
     stop = max(str(existing["stop"]), new.stop_iso)
     return period(start, stop)
+
+
+def _merge_source_files(path: Path, new: tuple[str, ...]) -> tuple[str, ...]:
+    if not path.exists():
+        return new
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    merged = []
+    for source in (*manifest.get("source_files", []), *new):
+        if source not in merged:
+            merged.append(str(source))
+    return tuple(merged)
 
 
 def _read_catalog_shards(path: Path) -> tuple[dict[str, Any], ...]:

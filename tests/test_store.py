@@ -196,12 +196,14 @@ def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
         **kwargs,
         time_coverage=first,
         frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
+        source_files=("raw/first.dat",),
     )
 
     dataset = store.write_parquet_dataset(
         **kwargs,
         time_coverage=second,
         frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
+        source_files=("raw/second.dat",),
         append=True,
     )
 
@@ -213,6 +215,7 @@ def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
         first.start_iso,
         second.start_iso,
     ]
+    assert dataset.manifest()["source_files"] == ["raw/first.dat", "raw/second.dat"]
 
 
 def test_dataset_record_scans_its_catalog_shards(tmp_path) -> None:
