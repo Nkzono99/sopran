@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from sopran.core.errors import DatasetNotFoundError
 from sopran.core.store import Store
 from sopran.core.time import TimeRange
 
@@ -22,4 +23,4 @@ def load(dataset_id: str, time: TimeRange, *, store: Store | None = None, **kwar
             return esa1.load(time, **kwargs)
         if len(parts) == 3:
             return getattr(esa1, parts[2]).load(time, **kwargs)
-    raise KeyError(f"Unknown SOPRAN dataset ID: {dataset_id}")
+    raise DatasetNotFoundError(f"Unknown SOPRAN dataset ID: {dataset_id}")

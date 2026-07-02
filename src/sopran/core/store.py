@@ -8,6 +8,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
+from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema
 from sopran.core.time import TimeRange
 
@@ -129,7 +130,7 @@ class Store:
             if path
         ]
         if not paths:
-            raise FileNotFoundError(f"Dataset has no parquet shards: {dataset_id}")
+            raise DatasetNotFoundError(f"Dataset has no parquet shards: {dataset_id}")
         return pl.scan_parquet([str(path) for path in paths])
 
     def _layer_path(self, layer: str, *parts: str) -> Path:

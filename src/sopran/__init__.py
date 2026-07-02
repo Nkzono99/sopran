@@ -1,7 +1,8 @@
 """Satellite Observation Package for Retrieval, Analysis, and Navigation."""
 
 from sopran.bodies import Moon
-from sopran.core import GuidePage, InfoPage, PlotItem, PlotPlan, PlotStack, Store, TimeRange
+from sopran.core import DatasetNotFoundError, GuidePage, InfoPage, PlotItem, PlotPlan
+from sopran.core import PlotStack, SopranError, Store, TimeRange
 from sopran.core import day, line, load, month, period
 from sopran.core import spectrogram, stack, year
 from sopran.core.project import Project
@@ -13,6 +14,7 @@ __version__ = "0.0.0"
 __all__ = [
     "GuidePage",
     "InfoPage",
+    "DatasetNotFoundError",
     "Kaguya",
     "Moon",
     "PlotItem",
@@ -20,6 +22,7 @@ __all__ = [
     "PlotStack",
     "Project",
     "Region",
+    "SopranError",
     "Store",
     "TimeRange",
     "__version__",
