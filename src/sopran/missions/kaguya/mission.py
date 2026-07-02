@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
@@ -33,7 +34,9 @@ class Kaguya:
         data_root: Path | str | None = None,
         fallback_roots: list[Path | str] | tuple[Path | str, ...] = (),
         source: KaguyaFileSource | None = None,
+        download: DownloadMode | None = None,
     ) -> None:
+        self.download = _default_download_mode(download)
         self.store = store or Store()
         if source is None:
             local_root = (
@@ -106,7 +109,14 @@ class KaguyaQuery:
     def remote_urls(self) -> list[str]:
         return [self.instrument.mission.source.remote_url(path) for path in self.remote_files()]
 
-    def files(self, *, download: DownloadMode = "never", overwrite: bool = False) -> list[Path]:
+    def files(
+        self,
+        *,
+        download: DownloadMode | None = None,
+        overwrite: bool = False,
+    ) -> list[Path]:
+        download = self.instrument.mission.download if download is None else download
+        _validate_download_mode(download)
         paths: list[Path] = []
         for remote_file in self.remote_files():
             path = self.instrument.mission.source.local_path(remote_file)
@@ -118,8 +128,6 @@ class KaguyaQuery:
                 path = self.instrument.mission.source.download(remote_file, overwrite=False)
             elif download == "always":
                 path = self.instrument.mission.source.download(remote_file, overwrite=True)
-            else:
-                raise ValueError("download must be 'never', 'missing', or 'always'")
             if overwrite or path.exists():
                 paths.append(path)
         return paths
@@ -205,7 +213,7 @@ fig = stack.plot()
             remote_files=self.instrument.remote_files_for_period(time),
         )
 
-    def load(self, time: TimeRange | None = None, *, download: DownloadMode = "never"):
+    def load(self, time: TimeRange | None = None, *, download: DownloadMode | None = None):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         data = self.instrument.load(time, download=download)
@@ -215,7 +223,7 @@ fig = stack.plot()
         self,
         time: TimeRange | None = None,
         *,
-        download: DownloadMode = "never",
+        download: DownloadMode | None = None,
         **kwargs,
     ):
         return self.load(time, download=download).plot(**kwargs)
@@ -226,7 +234,7 @@ fig = stack.plot()
         *,
         x: str = "time",
         name: str | None = None,
-        download: DownloadMode = "never",
+        download: DownloadMode | None = None,
     ):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -245,7 +253,7 @@ fig = stack.plot()
         y: str,
         x: str = "time",
         name: str | None = None,
-        download: DownloadMode = "never",
+        download: DownloadMode | None = None,
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
     ):
@@ -437,7 +445,7 @@ fig = stack.plot()
         self,
         time: TimeRange | None = None,
         *,
-        download: DownloadMode = "never",
+        download: DownloadMode | None = None,
     ) -> KaguyaESA1Data:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.name}")
@@ -465,11 +473,30 @@ def _filter_lazy_by_time(lazy, time: TimeRange):
     )
 
 
+def _validate_download_mode(download: str) -> None:
+    if download not in ("never", "missing", "always"):
+        raise ValueError("download must be 'never', 'missing', or 'always'")
+
+
+def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
+    if download is None:
+        if _truthy_env("SOPRAN_OFFLINE"):
+            download = "never"
+        else:
+            download = os.environ.get("SOPRAN_DOWNLOAD_MODE", "never")
+    _validate_download_mode(download)
+    return download
+
+
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _load_endpoint_plot_array(
     endpoint: VariableEndpoint,
     time: TimeRange,
     *,
-    download: DownloadMode,
+    download: DownloadMode | None,
     x: str,
     y: str,
     reduce_dims: tuple[str, ...] | None,

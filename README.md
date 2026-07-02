@@ -67,7 +67,7 @@ KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF d
 import sopran as spn
 
 store = spn.Store("F:/sopran_data")
-kg = spn.Kaguya(store=store)
+kg = spn.Kaguya(store=store, download="never")
 time = spn.day("2008-01-01")
 
 kg.esa1.energy_flux.info()

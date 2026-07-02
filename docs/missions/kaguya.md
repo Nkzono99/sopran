@@ -8,6 +8,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
 - PACE ESA1/ESA2/IMA/IEA public PBF path planning.
 - LMAG public path planning.
 - Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
+- Mission default download policy via `Kaguya(download=...)`,
+  `SOPRAN_DOWNLOAD_MODE`, and `SOPRAN_OFFLINE`.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, `to_pandas()`,
   and `write_parquet()`.
 - Variable endpoint plotting and `PlotStack` integration.

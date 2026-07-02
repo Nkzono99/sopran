@@ -158,6 +158,45 @@ def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path
     assert flux.time == time
 
 
+def test_kaguya_uses_mission_default_download_policy(tmp_path) -> None:
+    class FakeSource:
+        def __init__(self, root):
+            self.root = root
+            self.downloaded = []
+
+        def local_path(self, remote_file):
+            return self.root / remote_file
+
+        def download(self, remote_file, *, overwrite=False):
+            self.downloaded.append((remote_file, overwrite))
+            path = self.local_path(remote_file)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"downloaded")
+            return path
+
+    source = FakeSource(tmp_path / "raw")
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), source=source, download="missing")
+
+    data = kg.esa1.load(spn.day("2008-01-01"))
+
+    assert data.files == (source.local_path(source.downloaded[0][0]),)
+    assert source.downloaded[0][1] is False
+
+
+def test_kaguya_reads_default_download_policy_from_environment(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SOPRAN_DOWNLOAD_MODE", "missing")
+
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    assert kg.download == "missing"
+
+    monkeypatch.setenv("SOPRAN_OFFLINE", "1")
+
+    offline = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    assert offline.download == "never"
+
+
 def test_kaguya_esa1_exposes_core_variable_endpoints(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.period("2008-02-01", "2008-02-02")

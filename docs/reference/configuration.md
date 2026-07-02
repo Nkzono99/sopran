@@ -29,6 +29,8 @@ Environment variables:
 
 - `SOPRAN_DATA_ROOT`: default store root.
 - `SOPRAN_CACHE_ROOT`: optional cache root override.
+- `SOPRAN_DOWNLOAD_MODE`: default mission download policy when not passed explicitly.
+- `SOPRAN_OFFLINE`: when truthy, default mission download policy becomes `never`.
 
 When `Project(root)` creates its own `Store`, `[store].data_root` and
 `[store].cache_root` are resolved relative to the project root unless they are

@@ -1877,6 +1877,10 @@ pipe.run(download="always")
 - `refresh`: remote metadata を確認し、必要なら更新。
 - `always`: 明示時のみ再取得。
 
+v0.1 の KAGUYA API は `never`, `missing`, `always` を実装する。`SOPRAN_DOWNLOAD_MODE` は
+明示 `download=` がない場合の mission default とし、`SOPRAN_OFFLINE` が truthy な場合は
+default を `never` にする。
+
 download した raw file は checksum または size / timestamp を catalog に残す。
 
 ### Logging and progress
