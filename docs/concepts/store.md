@@ -136,6 +136,7 @@ Registered products can be listed later from `database.json`:
 products = db.products()
 products[0].name
 products[0].dataset_id
+products[0].description
 products[0].info()
 products[0].manifest()
 products[0].schema()

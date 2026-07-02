@@ -2239,7 +2239,7 @@ events = db.product("events")
 `db.product(name)` は `ProductRef` を返す。`ProductRef.scan()` は Store に登録済みの
 `databases/<db>/<product>` dataset を Polars LazyFrame として読む。探索用には
 `ProductRef.info()`, `ProductRef.manifest()`, `ProductRef.schema()` を持ち、実データを
-collect せずに database product の概要、manifest、schema を確認できる。
+collect せずに database product の概要、description、manifest、schema を確認できる。
 `db.adopt_dataset(dataset, description=...)` は既存の `features` / `normalized` /
 `databases` dataset を database metadata に参照として加え、`db.products()` から同じ
 `ProductRef.scan()` 経路で読めるようにする。

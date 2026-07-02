@@ -16,6 +16,7 @@ class ProductRef:
     layer: str
     store: Any | None = field(default=None, repr=False, compare=False)
     database_name: str | None = field(default=None, repr=False, compare=False)
+    description: str = ""
 
     @property
     def name(self) -> str:
@@ -43,6 +44,8 @@ class ProductRef:
         ]
         if self.database_name is not None:
             lines.insert(1, f"database: {self.database_name}")
+        if self.description:
+            lines.append(f"description: {self.description}")
         if isinstance(time_coverage, dict):
             lines.append(
                 f"time: {time_coverage.get('start')} to {time_coverage.get('stop')}"
@@ -117,6 +120,7 @@ class Database:
                 layer=str(item.get("layer", "databases")),
                 store=self.store,
                 database_name=self.name,
+                description=str(item.get("description") or ""),
             )
             for item in self.metadata().get("products", [])
         )
@@ -153,6 +157,7 @@ class Database:
             layer=str(manifest["layer"]),
             store=self.store,
             database_name=self.name,
+            description=description,
         )
         self.root.mkdir(parents=True, exist_ok=True)
         self._write_metadata(product, description=description)

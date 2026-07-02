@@ -539,6 +539,8 @@ def test_database_lists_registered_products_from_metadata(tmp_path) -> None:
     assert [product.name for product in products] == ["event_table", "esa1_context"]
     assert products[0].dataset_id == "my_project.event_table"
     assert products[0].layer == "databases"
+    assert products[0].description == "hand-curated lunar wake events"
+    assert "hand-curated lunar wake events" in str(products[0].info())
     assert database.metadata()["products"][1]["description"] == "context around each event"
 
 
