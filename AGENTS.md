@@ -60,7 +60,7 @@ tests/
 - 配列処理は `numpy`、表形式は必要に応じて `pandas` または `polars`、CDF は `cdflib`、
   SPICE は `spiceypy` など、標準的なライブラリを優先する。
 - Rust は決定的で重い処理、バイナリ decode、binning、fit、shard 出力などに使う。
-- public API は小さく保ち、mission 固有 API は `sopran.projects.<mission>` に置く。
+- public API は小さく保ち、mission 固有 API は `sopran.missions.<mission>` に置く。
 - ドキュメントと利用者向け説明は日本語でよい。API 名、ファイル名、外部仕様名は英語のままにする。
 - ファイル検索は `rg`、手作業の編集は `apply_patch` を優先する。
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sopran import Store
-from sopran.projects.kaguya import Kaguya, normalize_sensors
+from sopran.missions.kaguya import Kaguya, normalize_sensors
 
 
 def test_normalize_sensors_accepts_spedas_ids_and_names() -> None:

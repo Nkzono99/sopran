@@ -28,9 +28,16 @@ ARTEMIS など、月周辺の衛星データ解析を主対象にします。
 
 ## 依存関係
 
-SOPRAN は研究・解析環境での使いやすさを優先し、runtime dependency は標準で厚めに入れる方針です。
-Polars/Parquet、宇宙科学基盤、データ取得、可視化、地図・投影変換、対話的探索に必要な
-主要ライブラリは通常インストールに含め、開発用ツールだけ `sopran[dev]` に分けます。
+SOPRAN は標準インストールを KAGUYA ESA1 の quickstart が動く core dependency に抑え、
+研究環境では `sopran[full]` を推奨します。
+
+```text
+pip install sopran
+pip install "sopran[full]"
+pip install "sopran[dev]"
+```
+
+optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `dev` に分けます。
 
 ## 想定 API
 
@@ -88,7 +95,7 @@ shadow.plot(projection="polar_stereographic")
 ```text
 src/sopran/
   core/
-  projects/
+  missions/
     kaguya/
     artemis/
   bodies/
@@ -102,6 +109,9 @@ crates/
 docs/
 tests/
 ```
+
+ユーザーの解析 workspace は repository 内部の package とは分けて、`projects/lunar_wake/` のように
+管理します。
 
 ## 旧リポジトリ
 
@@ -122,4 +132,6 @@ not be copied into the Apache-2.0 core without a separate license review.
 
 現在は初期設計と最小スキャフォールドの段階です。`SPEC.md` に API、保存レイヤ、
 可視化、MAP/DEM/SVM、ドキュメント方針を集約しつつ、最初の実装は KAGUYA ESA1 の
-file discovery、schema、typed data object、parquet store から進めます。
+file discovery、schema、typed data object、plot までの縦切りから進めます。保存、
+pipeline、surface、plotting の詳細は `STORE.md`, `PIPELINE.md`, `SURFACE.md`, `PLOTTING.md`
+に分けます。

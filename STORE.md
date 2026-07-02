@@ -1,0 +1,34 @@
+# SOPRAN Store Spec
+
+Status: draft
+
+`Store` is the physical data repository layer. It manages raw, normalized,
+features, databases, cache, manifests, catalogs, and registries. It does not
+own notebooks, figures, scripts, or case definitions; those belong to
+`Project`.
+
+## Responsibilities
+
+- Resolve dataset IDs to physical paths.
+- Store official raw files with provider paths and checksums.
+- Store normalized parquet/arrow/zarr datasets for scan-friendly analysis.
+- Store derived analysis features separately from normalized instrument data.
+- Maintain `dataset.json`, `catalog.parquet`, `schema.json`, and logs.
+- Register user-defined database namespaces and products.
+
+## Layers
+
+```text
+raw          official source files, provider naming preserved
+normalized   decoded and standardized instrument quantities
+features     SOPRAN-derived analysis quantities
+databases    user/project-defined logical products
+registry     dataset and manifest indexes
+```
+
+`energy_flux`, `counts`, `quality`, `magnetic_field`, and spacecraft position
+belong in `normalized` when they are standard instrument quantities. PAD,
+moments, loss-cone fits, wake context, and residual context belong in
+`features`.
+
+See `SPEC.md` for the public API contract.

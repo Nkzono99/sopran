@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Literal
 
 from sopran import Store
-from sopran.projects.kaguya.files import (
+from sopran.missions.kaguya.files import (
     KaguyaFileSource,
     iter_public_paths,
     lmag_public_templates,
     pace_pbf_public_template,
 )
-from sopran.projects.kaguya.sensors import normalize_sensor
+from sopran.missions.kaguya.sensors import normalize_sensor
 
 DownloadMode = Literal["never", "missing", "always"]
 
