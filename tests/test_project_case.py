@@ -40,6 +40,35 @@ lon_domain = "0_360"
     assert plan.body == "moon"
     assert plan.product == "dem"
     assert plan.parameters["source"] == "kaguya.tc.dem"
+    assert plan.parameters["region"] == case.region
+
+
+def test_project_case_supplies_region_and_time_to_moon_surface_plans(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.wake]
+start = "2008-02-01T12:00:00"
+stop = "2008-02-01T13:00:00"
+
+[cases.wake.region]
+body = "moon"
+lon = [120, 160]
+lat = [-45, -10]
+lon_domain = "0_360"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    case = spn.Project(project_root, store=Store(tmp_path / "store")).case("wake")
+
+    dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
+    shadow_plan = case.moon.shadow.plan(dem=dem_plan)
+
+    assert dem_plan.parameters["region"] == case.region
+    assert shadow_plan.parameters["region"] == case.region
+    assert shadow_plan.parameters["time"] == "2008-02-01T12:00:00Z"
 
 
 def test_project_case_exports_json_ready_context_metadata(tmp_path) -> None:

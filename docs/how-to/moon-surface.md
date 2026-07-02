@@ -20,6 +20,15 @@ shadow_plan = moon.shadow.plan(
 metadata = shadow_plan.to_metadata()
 ```
 
+With a project case, configured region and case start time can be used as
+defaults:
+
+```python
+case = spn.Project("projects/lunar_wake").case("wake_20080201")
+dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
+shadow_plan = case.moon.shadow.plan(dem=dem_plan)
+```
+
 `projection` and `area_or_point` are written to every surface plan. Use
 `projection="polar_stereo"` as a short alias when you want
 `polar_stereographic` metadata.

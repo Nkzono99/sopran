@@ -43,3 +43,16 @@ Mission modules may discover provider files, but body-fixed semantics belong to
 
 Terrain-aware shadow and illumination products must eventually record DEM,
 solar position, body shape, projection, and longitude-domain metadata.
+
+When a surface endpoint is reached through a `Project` case, case context is
+applied as a default:
+
+```python
+case = spn.Project("projects/lunar_wake").case("wake_20080201")
+dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
+shadow_plan = case.moon.shadow.plan(dem=dem_plan)
+```
+
+The DEM plan receives `case.region` when configured. Shadow and illumination
+plans receive `case.time.start_iso` as their default instant unless `time` is
+passed explicitly.

@@ -433,7 +433,8 @@ case = prj.case("wake_20080201")
 esa1 = case.kaguya.esa1.load()
 flux = case.kaguya.esa1.energy_flux.load()
 b = case.artemis.p1.fgm.magnetic_field.load()
-dem = case.moon.dem.load(source="kaguya.tc.dem", region=case.region)
+dem = case.moon.dem.load(source="kaguya.tc.dem")
+shadow = case.moon.shadow.plan(dem=dem)
 ```
 
 `projects/lunar_wake/sopran.toml` の例:
@@ -461,6 +462,9 @@ lon_domain = "0_360"
 `case.<mission>.<instrument>.<variable>` は時間範囲が確定していても endpoint を返す。
 `.load()` は case の start/stop/default frame/cache policy を既定値として使う。
 `[cases.<name>.region]` または `[defaults.region]` は `case.region` として `spn.Region` に変換する。
+`case.moon.<surface>.plan()` / `load()` / `compute()` は明示されていない場合に
+`case.region` を既定の `region` として使う。`shadow` / `illumination` のような instant
+surface product は、`time` が明示されていない場合に `case.time.start_iso` を既定時刻にする。
 `case.metadata()` は case 名、project root、store root、time range、default frame/cache、
 defaults、region metadata を JSON-ready dict として返し、plot、artifact、pipeline provenance に
 同じ context を残すための共通入口にする。

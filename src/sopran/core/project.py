@@ -135,7 +135,7 @@ class Case:
         self.region = region
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
         self.artemis = CaseMission(Artemis(store=project.store), self)
-        self.moon = Moon()
+        self.moon = CaseMoon(Moon(), self)
 
     def metadata(self) -> dict[str, Any]:
         metadata: dict[str, Any] = {
@@ -180,6 +180,45 @@ class CaseMission:
     def __getattr__(self, name: str):
         value = getattr(self._mission, name)
         return CaseNode(value, self._case)
+
+
+class CaseMoon:
+    def __init__(self, moon: Moon, case: Case) -> None:
+        self._moon = moon
+        self._case = case
+
+    def map(self, product: str):
+        return CaseSurfaceEndpoint(self._moon.map(product), self._case)
+
+    def __getattr__(self, name: str):
+        value = getattr(self._moon, name)
+        if hasattr(value, "plan") and hasattr(value, "load"):
+            return CaseSurfaceEndpoint(value, self._case)
+        return value
+
+
+class CaseSurfaceEndpoint:
+    def __init__(self, endpoint, case: Case) -> None:
+        self._endpoint = endpoint
+        self._case = case
+
+    def plan(self, **parameters):
+        return self._endpoint.plan(
+            **_surface_parameters_with_case(self._endpoint, self._case, parameters)
+        )
+
+    def load(self, **parameters):
+        return self._endpoint.load(
+            **_surface_parameters_with_case(self._endpoint, self._case, parameters)
+        )
+
+    def compute(self, **parameters):
+        return self._endpoint.compute(
+            **_surface_parameters_with_case(self._endpoint, self._case, parameters)
+        )
+
+    def __getattr__(self, name: str):
+        return getattr(self._endpoint, name)
 
 
 class CaseNode:
@@ -275,6 +314,22 @@ def _case_region(
         lon_direction=region.get("lon_direction", "east_positive"),
         lat_type=region.get("lat_type", "planetocentric"),
     )
+
+
+def _surface_parameters_with_case(
+    endpoint,
+    case: Case,
+    parameters: dict[str, Any],
+) -> dict[str, Any]:
+    normalized = dict(parameters)
+    if "region" not in normalized and case.region is not None:
+        normalized["region"] = case.region
+    if (
+        getattr(endpoint, "product", None) in {"shadow", "illumination"}
+        and "time" not in normalized
+    ):
+        normalized["time"] = case.time.start_iso
+    return normalized
 
 
 def _project_child_path(root: Path, name: str | Path, *, suffix: str) -> Path:
