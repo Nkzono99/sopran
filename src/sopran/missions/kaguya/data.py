@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from sopran.core.data import SopranArray
+from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange
 from sopran.missions.kaguya.pace import PaceData, read_pace_pbf
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
@@ -101,6 +102,28 @@ class KaguyaESA1Data:
             raise ValueError("reduce_look must be None or 'sum'")
 
         return _data_array_to_polars(array, variable, np, pl)
+
+    def write_parquet(
+        self,
+        store: Store,
+        *,
+        variable: str = "counts",
+        reduce_look: Literal["sum"] | None = None,
+        dataset_id: str | None = None,
+        layer: str = "normalized",
+    ) -> DatasetRecord:
+        product = variable
+        return store.write_parquet_dataset(
+            dataset_id=dataset_id or f"kaguya.esa1.{product}",
+            layer=layer,
+            mission="kaguya",
+            instrument="esa1",
+            product=product,
+            schema=KAGUYA_ESA1_SCHEMA,
+            time_coverage=self.time,
+            frame=self.to_polars(variable, reduce_look=reduce_look),
+            source_files=tuple(str(path) for path in self.files),
+        )
 
     def _empty_xarray(self, np: Any, xr: Any):
         energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
