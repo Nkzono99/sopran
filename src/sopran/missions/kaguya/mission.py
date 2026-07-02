@@ -347,6 +347,25 @@ class PaceInstrument(KaguyaInstrument):
         lazy = self.mission.store.scan_dataset(dataset_id, layer=layer)
         return _filter_lazy_by_time(lazy, pipeline.time)
 
+    def _stream_pipeline(self, pipeline: Pipeline, *, partition: str):
+        if self.sensor != "ESA1":
+            raise NotImplementedError(f"pipeline stream is not implemented for {self.sensor}")
+        if partition == "all":
+            yield self._scan_pipeline(pipeline).collect()
+            return
+        if partition == "day":
+            from sopran.core.pipeline import _stream_frame_by_day
+
+            yield from _stream_frame_by_day(self._scan_pipeline(pipeline).collect())
+            return
+        if partition == "shard":
+            yield from _stream_pipeline_shards(self, pipeline)
+            return
+        raise NotImplementedError(
+            "KAGUYA ESA1 pipeline stream currently supports partition='all', "
+            "partition='day', and partition='shard'"
+        )
+
     def _run_pipeline(
         self,
         pipeline: Pipeline,
@@ -654,6 +673,19 @@ def _filter_lazy_by_time(lazy, time: TimeRange):
     )
 
 
+def _filter_frame_by_time(frame, time: TimeRange):
+    import polars as pl
+
+    dtype = frame.schema.get("time")
+    if dtype == pl.Datetime or dtype == pl.Date:
+        start = time.start.replace(tzinfo=None)
+        stop = time.stop.replace(tzinfo=None)
+    else:
+        start = time.start_iso
+        stop = time.stop_iso
+    return frame.filter((pl.col("time") >= start) & (pl.col("time") < stop))
+
+
 def _validate_download_mode(download: str) -> None:
     if download not in ("never", "missing", "always"):
         raise ValueError("download must be 'never', 'missing', or 'always'")
@@ -883,6 +915,23 @@ def _pipeline_partition(pipeline: Pipeline) -> str | None:
             partition = stage.parameters.get("partition")
             return str(partition) if partition is not None else None
     return None
+
+
+def _stream_pipeline_shards(instrument: PaceInstrument, pipeline: Pipeline):
+    import polars as pl
+
+    variable = _pipeline_variable(pipeline)
+    dataset_id = pipeline.output_dataset or f"kaguya.esa1.{variable}"
+    layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
+    output = instrument.mission.store.dataset(dataset_id, layer=layer)
+    for shard in output.shards(status="complete"):
+        shard_time = _shard_time_range(shard)
+        if shard_time.stop <= pipeline.time.start or shard_time.start >= pipeline.time.stop:
+            continue
+        yield _filter_frame_by_time(
+            pl.read_parquet(output.root / str(shard["path"])),
+            pipeline.time,
+        )
 
 
 def _complete_pipeline_output(store: Store, pipeline: Pipeline):

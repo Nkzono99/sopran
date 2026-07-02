@@ -27,8 +27,9 @@
 - `collect()` is a thin materialization helper over `scan().collect()`.
 - `stream(partition="all")` yields one collected frame in the generic fallback.
 - `stream(partition="day")` groups collected scan rows by the `time` column.
-- `stream(partition="shard")` and `stream(partition="orbit")` require a mission
-  backend implementation.
+- `stream(partition="shard")` requires a mission backend; KAGUYA ESA1 yields
+  complete catalog shards directly.
+- `stream(partition="orbit")` requires a mission backend implementation.
 - `run()` returns a `PipelineResult.run_id` that identifies the execution.
 - Dataset-writing pipeline backends should write manifest provenance with the
   pipeline run ID, source, stage names, run mode, time range, output target, and

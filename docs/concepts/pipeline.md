@@ -49,16 +49,21 @@ Stream scanned data in chunks when downstream code should work incrementally:
 ```python
 for day_frame in pipe.stream(partition="day"):
     process(day_frame)
+
+for shard_frame in pipe.stream(partition="shard"):
+    process(shard_frame)
 ```
 
 The generic fallback supports `partition="all"` and `partition="day"` via
 `scan().collect()`. Mission backends can provide `_stream_pipeline(...)` for
-true shard, orbit, or provider-native streaming.
+true shard, orbit, or provider-native streaming. KAGUYA ESA1 streams catalog
+shards directly for `partition="shard"`.
 
 The current implementation is intentionally small. It records stage order,
 prevents accidental overwrite by default, supports explicit append/replace,
 uses parquet catalog shards as the storage boundary, streams collected scan
-results by day, issues a `PipelineResult.run_id` for each `run()` call, skips
+results by day, streams KAGUYA ESA1 catalog shards, issues a
+`PipelineResult.run_id` for each `run()` call, skips
 already complete KAGUYA ESA1 outputs with `run(resume=True)`, records failed
 KAGUYA ESA1 shards with `run(on_error="continue")`, writes daily KAGUYA ESA1
 parquet shards with `write(..., partition="day")`, and can write a Matplotlib

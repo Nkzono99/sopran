@@ -482,6 +482,41 @@ def test_kaguya_esa1_pipeline_run_writes_daily_partitioned_shards(
     assert [stage["shard_count"] for stage in log["stage_logs"]] == [2, 2, 2]
 
 
+def test_kaguya_esa1_pipeline_streams_catalog_shards(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    files = (
+        "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz",
+        "sln-l-pace-3-pbf1-v3.0/20080102/data/IPACE_PBF1_080102_ESA1_V003.dat.gz",
+    )
+    for index, remote_file in enumerate(files):
+        cached = store.raw_path("kaguya", "pds3") / remote_file
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        _write_type01_pbf_gzip(
+            cached,
+            tmp_path / f"stream-scratch-{index}.dat",
+            yyyymmdd=20080101 + index,
+        )
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.period("2008-01-01", "2008-01-03"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized", partition="day")
+    )
+    pipe.run()
+
+    chunks = list(pipe.stream(partition="shard"))
+
+    assert [chunk.height for chunk in chunks] == [2048, 2048]
+    assert [
+        chunk.select("time").head(1).to_series().to_list()[0]
+        for chunk in chunks
+    ] == [
+        datetime(2008, 1, 1, 0, 0, 8),
+        datetime(2008, 1, 2, 0, 0, 8),
+    ]
+
+
 def test_kaguya_esa1_pipeline_run_resume_skips_complete_dataset(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"

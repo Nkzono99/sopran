@@ -606,7 +606,8 @@ pipe = (
 - `scan()` は Polars `LazyFrame` や Arrow scanner のような遅延 table を返す。
 - `stream()` は shard / day / orbit 単位の iterator として返す。
   v0.1 の generic fallback は `scan().collect()` した結果から `partition="all"` と
-  `partition="day"` を提供し、`shard` / `orbit` は mission backend に委譲する。
+  `partition="day"` を提供する。KAGUYA ESA1 backend は catalog に基づく
+  `partition="shard"` streaming も提供する。`orbit` は後続 backend に委譲する。
 - `write(..., partition="day")` は保存時に日別 shard を作る指示とし、v0.1 では
   KAGUYA ESA1 が Hive-style path の daily parquet shard を生成する。
 
@@ -2074,6 +2075,7 @@ M4: Pipeline minimum
   - select_variables(...)
   - scan() with Polars
   - stream(partition="all" / "day") fallback
+  - stream(partition="shard") for KAGUYA ESA1 catalog shards
   - write(partition="day") for KAGUYA ESA1 daily parquet shards
 
 M5: PlotStack minimum
