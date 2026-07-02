@@ -81,6 +81,7 @@ class PipelineResult:
             "message": self.message,
             "run_id": self.run_id,
             "log_path": str(self.log_path) if self.log_path is not None else None,
+            "outputs": [_output_summary(output) for output in self.outputs],
             "plan": self.plan.to_dict(),
         }
 
@@ -288,6 +289,26 @@ def _jsonable(value: object) -> object:
     if isinstance(value, Path):
         return value.as_posix()
     return value
+
+
+def _output_summary(output: Any) -> dict[str, Any]:
+    summary: dict[str, Any] = {"type": type(output).__name__}
+    root = getattr(output, "root", None)
+    if root is not None:
+        summary["root"] = str(root)
+    manifest_path = getattr(output, "manifest_path", None)
+    if manifest_path is not None:
+        summary["manifest_path"] = str(manifest_path)
+    metadata_path = getattr(output, "metadata_path", None)
+    if metadata_path is not None:
+        summary["metadata_path"] = str(metadata_path)
+    manifest = getattr(output, "manifest", None)
+    if callable(manifest):
+        summary["manifest"] = _jsonable(manifest())
+    metadata = getattr(output, "metadata", None)
+    if metadata is not None:
+        summary["metadata"] = _jsonable(metadata)
+    return summary
 
 
 def _format_output(dataset: str | None, layer: str | None) -> str:

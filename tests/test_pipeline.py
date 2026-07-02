@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
+
 import polars as pl
 import pytest
 
 import sopran as spn
-from sopran.core.pipeline import Pipeline
+from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
 
 
 def test_pipeline_stream_partitions_scanned_rows_by_day() -> None:
@@ -87,3 +90,80 @@ def test_pipeline_write_records_partition_policy() -> None:
         "layer": "normalized",
         "partition": "day",
     }
+
+
+@dataclass(frozen=True)
+class _OutputWithManifest:
+    root: Path
+    manifest_path: Path
+
+    def manifest(self) -> dict[str, object]:
+        return {
+            "dataset_id": "kaguya.esa1.counts",
+            "layer": "normalized",
+            "status": "complete",
+        }
+
+
+@dataclass(frozen=True)
+class _OutputWithMetadata:
+    metadata_path: Path
+    metadata: dict[str, object]
+
+
+def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
+    plan = PipelinePlan(
+        source="kaguya.esa1",
+        time=spn.day("2008-01-01"),
+        stages=(
+            PipelineStage("decode", {}),
+            PipelineStage("write", {"dataset": "kaguya.esa1.counts"}),
+        ),
+        output_dataset="kaguya.esa1.counts",
+        output_layer="normalized",
+    )
+    result = PipelineResult(
+        plan=plan,
+        status="complete",
+        message="Wrote kaguya.esa1.counts",
+        run_id="run_20080101T000000000000Z_deadbeef",
+        log_path=tmp_path / "logs" / "run.json",
+        outputs=(
+            _OutputWithManifest(
+                root=tmp_path / "normalized" / "kaguya.esa1.counts",
+                manifest_path=tmp_path
+                / "normalized"
+                / "kaguya.esa1.counts"
+                / "dataset.json",
+            ),
+            _OutputWithMetadata(
+                metadata_path=tmp_path / "preview" / "counts.json",
+                metadata={"dataset_id": "kaguya.esa1.counts", "items": ["counts"]},
+            ),
+        ),
+    )
+
+    payload = result.to_dict()
+
+    assert payload["outputs"] == [
+        {
+            "type": "_OutputWithManifest",
+            "root": str(tmp_path / "normalized" / "kaguya.esa1.counts"),
+            "manifest_path": str(
+                tmp_path / "normalized" / "kaguya.esa1.counts" / "dataset.json"
+            ),
+            "manifest": {
+                "dataset_id": "kaguya.esa1.counts",
+                "layer": "normalized",
+                "status": "complete",
+            },
+        },
+        {
+            "type": "_OutputWithMetadata",
+            "metadata_path": str(tmp_path / "preview" / "counts.json"),
+            "metadata": {
+                "dataset_id": "kaguya.esa1.counts",
+                "items": ["counts"],
+            },
+        },
+    ]

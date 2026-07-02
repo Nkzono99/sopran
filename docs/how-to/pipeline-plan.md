@@ -25,11 +25,13 @@ Inspect the plan in structured or readable form:
 
 ```python
 plan.to_dict()
+result.to_dict()
 print(result)
 ```
 
 The dry-run result does not execute pipeline stages. It reports the source,
-time range, stage list, and output target.
+time range, stage list, output target, and an empty output list. Executed
+pipeline results include JSON-ready output summaries in `result.to_dict()`.
 
 For KAGUYA ESA1, `run()` writes quicklooks under
 `<dataset>/preview/<name>.png` with a matching JSON metadata file. Use
