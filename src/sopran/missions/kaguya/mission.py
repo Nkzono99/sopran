@@ -72,6 +72,24 @@ class Kaguya:
             return _read_guide("ESA1.md", title="PACE ESA1")
         raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
+    def example(self) -> GuidePage:
+        return _example_page(
+            "KAGUYA Example",
+            """# KAGUYA Example
+
+```python
+import sopran as spn
+
+store = spn.Store("F:/sopran_data")
+kg = spn.Kaguya(store=store)
+time = spn.day("2008-01-01")
+
+counts = kg.esa1.counts.load(time)
+fig = counts.plot()
+```
+""",
+        )
+
 
 @dataclass(frozen=True)
 class KaguyaQuery:
@@ -149,6 +167,28 @@ class VariableEndpoint:
 
     def guide(self) -> GuidePage:
         return self.instrument.guide()
+
+    def example(self) -> GuidePage:
+        return _example_page(
+            f"KAGUYA {self.instrument.name} {self.name} Example",
+            f"""# KAGUYA {self.instrument.name} {self.name} Example
+
+```python
+import sopran as spn
+
+kg = spn.Kaguya()
+time = spn.day("2008-01-01")
+
+{self.name} = kg.esa1.{self.name}.load(time)
+
+stack = spn.stack(
+    kg.esa1.counts.load(time).spectrogram(y="energy"),
+    kg.esa1.quality.load(time).line(),
+)
+fig = stack.plot()
+```
+""",
+        )
 
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
         if time is None:
@@ -334,6 +374,37 @@ class PaceInstrument(KaguyaInstrument):
             return _read_guide("ESA1.md", title="PACE ESA1")
         return _read_guide("README.md", title=f"KAGUYA {self.sensor}")
 
+    def example(self) -> GuidePage:
+        if self.sensor != "ESA1":
+            return _example_page(
+                f"KAGUYA {self.sensor} Example",
+                f"""# KAGUYA {self.sensor} Example
+
+`load()` is not implemented for KAGUYA {self.sensor} yet.
+""",
+            )
+        return _example_page(
+            "KAGUYA ESA1 Example",
+            """# KAGUYA ESA1 Example
+
+```python
+import sopran as spn
+
+kg = spn.Kaguya()
+time = spn.day("2008-01-01")
+
+esa1 = kg.esa1.load(time)
+counts = kg.esa1.counts.load(time)
+
+stack = spn.stack(
+    counts.spectrogram(y="energy"),
+    kg.esa1.quality.load(time).line(),
+)
+fig = stack.plot()
+```
+""",
+        )
+
     def schema(self):
         if self.sensor != "ESA1":
             raise NotImplementedError(f"Schema is not implemented for {self.sensor}")
@@ -483,6 +554,14 @@ def _read_guide(name: str, *, title: str) -> GuidePage:
         title=title,
         markdown=markdown,
         source=f"sopran.missions.kaguya/{name}",
+    )
+
+
+def _example_page(title: str, markdown: str) -> GuidePage:
+    return GuidePage(
+        title=title,
+        markdown=markdown,
+        source="sopran.missions.kaguya.examples",
     )
 
 

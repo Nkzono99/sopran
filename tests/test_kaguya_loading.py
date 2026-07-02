@@ -126,6 +126,19 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     assert "# KAGUYA/SELENE" in mission_guide._repr_markdown_()
 
 
+def test_kaguya_examples_return_markdown_pages(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    mission_example = kg.example().to_markdown()
+    instrument_example = kg.esa1.example().to_markdown()
+    variable_example = kg.esa1.counts.example().to_markdown()
+
+    assert "kg = spn.Kaguya" in mission_example
+    assert "kg.esa1.counts.load(time)" in instrument_example
+    assert "kg.esa1.counts.load(time)" in variable_example
+    assert "spn.stack" in variable_example
+
+
 def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.period("2008-02-01", "2008-02-02")

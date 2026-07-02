@@ -28,6 +28,13 @@ frame = esa1.to_polars("counts", reduce_look="sum")
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 ```
 
+The same example text is available from Python:
+
+```python
+kg.esa1.example()
+kg.esa1.counts.example()
+```
+
 ## Current Limits
 
 Calibration tables, energy-angle metadata, and full SPEDAS parity tests are

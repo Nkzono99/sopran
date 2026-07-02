@@ -18,6 +18,7 @@ scan, collect, or compute data. Execution happens at explicit methods:
 - `plan(time)`: inspect files, dataset IDs, or execution intent.
 - `schema()`: inspect variables, dimensions, units, and aliases.
 - `guide()`: return a Markdown guide object for notebooks and docs.
+- `example()`: return a short runnable Markdown example when implemented.
 
 `Project` and `Case` provide analysis context:
 
