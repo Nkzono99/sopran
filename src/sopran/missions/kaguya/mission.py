@@ -350,6 +350,11 @@ class PaceInstrument(KaguyaInstrument):
             layer=pipeline.output_layer,
             overwrite=mode == "replace",
             append=mode == "append",
+            provenance=_pipeline_dataset_provenance(
+                pipeline,
+                variable=variable,
+                mode=mode,
+            ),
         )
         quicklooks = _write_pipeline_quicklooks(
             data,
@@ -531,6 +536,26 @@ def _pipeline_quicklook_metadata(pipeline: Pipeline, variable: str) -> dict[str,
             "start": pipeline.time.start_iso,
             "stop": pipeline.time.stop_iso,
             "stages": [stage.name for stage in pipeline.stages],
+        },
+        "variable": variable,
+    }
+
+
+def _pipeline_dataset_provenance(
+    pipeline: Pipeline,
+    *,
+    variable: str,
+    mode: str,
+) -> dict[str, object]:
+    return {
+        "pipeline": {
+            "mode": mode,
+            "output_dataset": pipeline.output_dataset,
+            "output_layer": pipeline.output_layer,
+            "source": pipeline.source,
+            "stages": [stage.name for stage in pipeline.stages],
+            "start": pipeline.time.start_iso,
+            "stop": pipeline.time.stop_iso,
         },
         "variable": variable,
     }

@@ -85,21 +85,25 @@ class Store:
         source_files: tuple[str, ...] = (),
         shards: tuple[dict[str, Any], ...] = (),
         producer: str = "sopran",
+        provenance: dict[str, Any] | None = None,
     ) -> DatasetRecord:
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         record.root.mkdir(parents=True, exist_ok=True)
+        manifest = {
+            "dataset_id": dataset_id,
+            "layer": layer,
+            "mission": mission,
+            "instrument": instrument,
+            "product": product,
+            "time_coverage": _time_coverage_to_json(time_coverage),
+            "source_files": list(source_files),
+            "producer": producer,
+        }
+        if provenance is not None:
+            manifest["provenance"] = provenance
         _write_json(
             record.manifest_path,
-            {
-                "dataset_id": dataset_id,
-                "layer": layer,
-                "mission": mission,
-                "instrument": instrument,
-                "product": product,
-                "time_coverage": _time_coverage_to_json(time_coverage),
-                "source_files": list(source_files),
-                "producer": producer,
-            },
+            manifest,
         )
         _write_json(record.schema_path, _schema_to_json(schema))
         _write_catalog(record.catalog_path, shards)
@@ -122,6 +126,7 @@ class Store:
         overwrite: bool = False,
         append: bool = False,
         producer: str = "sopran",
+        provenance: dict[str, Any] | None = None,
     ) -> DatasetRecord:
         if append and overwrite:
             raise ValueError("append and overwrite cannot both be true")
@@ -163,6 +168,7 @@ class Store:
                 },
             ),
             producer=producer,
+            provenance=provenance,
         )
 
     def scan_dataset(self, dataset_id: str, *, layer: str):

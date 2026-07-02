@@ -91,6 +91,35 @@ def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:
     assert catalog.select("checksum").to_series().to_list()[0].startswith("sha256:")
 
 
+def test_store_writes_dataset_provenance_into_manifest(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+        provenance={
+            "pipeline": {
+                "source": "kaguya.esa1",
+                "stages": ["decode", "select_variables", "write"],
+            }
+        },
+    )
+
+    assert dataset.manifest()["provenance"] == {
+        "pipeline": {
+            "source": "kaguya.esa1",
+            "stages": ["decode", "select_variables", "write"],
+        }
+    }
+
+
 def test_store_parquet_writer_refuses_to_overwrite_existing_shard(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

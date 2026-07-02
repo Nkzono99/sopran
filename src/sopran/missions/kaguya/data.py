@@ -125,6 +125,7 @@ class KaguyaESA1Data:
         layer: str = "normalized",
         overwrite: bool = False,
         append: bool = False,
+        provenance: dict[str, Any] | None = None,
     ) -> DatasetRecord:
         product = variable
         return store.write_parquet_dataset(
@@ -139,6 +140,7 @@ class KaguyaESA1Data:
             source_files=tuple(str(path) for path in self.files),
             overwrite=overwrite,
             append=append,
+            provenance=provenance,
         )
 
     def _empty_xarray(self, np: Any, xr: Any):

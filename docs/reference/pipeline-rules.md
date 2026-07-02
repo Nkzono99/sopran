@@ -12,6 +12,9 @@
 - `stream(partition="day")` groups collected scan rows by the `time` column.
 - `stream(partition="shard")` and `stream(partition="orbit")` require a mission
   backend implementation.
+- Dataset-writing pipeline backends should write manifest provenance with the
+  pipeline source, stage names, run mode, time range, output target, and selected
+  variable/product.
 
 Variable selection should use `select_variables(...)`; variable names should not
 become pipeline stage methods.

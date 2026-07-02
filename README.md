@@ -88,6 +88,8 @@ pipe = (
 pipe.run()                 # existing shard があれば失敗
 pipe.run(mode="replace")   # 明示置換
 pipe.run(mode="append")    # catalog に shard を追加
+manifest = store.dataset("kaguya.esa1.counts", layer="normalized").manifest()
+manifest["provenance"]["pipeline"]["stages"]
 
 lazy = kg.esa1.pipeline(time).from_normalized().select_variables("counts").scan()
 counts_frame = lazy.collect()

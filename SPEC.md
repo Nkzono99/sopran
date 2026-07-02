@@ -855,6 +855,8 @@ logs/              # 必要に応じて生成ログ
 - `time_coverage`
 - `source_datasets`
 - `source_files`
+- `provenance`: pipeline source、stage list、run mode、time range、input/output target、
+  selected variable/product、parameters。
 - `schema`
 - `partitioning`
 - `producer`

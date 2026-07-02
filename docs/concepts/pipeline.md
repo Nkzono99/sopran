@@ -55,3 +55,7 @@ prevents accidental overwrite by default, supports explicit append/replace,
 uses parquet catalog shards as the storage boundary, streams collected scan
 results by day, and can write a Matplotlib PNG quicklook plus JSON metadata for
 KAGUYA ESA1 pipeline runs.
+
+KAGUYA ESA1 pipeline writes also add manifest provenance under
+`dataset.json["provenance"]`, including source, stages, run mode, time range,
+output dataset/layer, and selected variable.

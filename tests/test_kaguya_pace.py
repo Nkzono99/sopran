@@ -295,7 +295,18 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     )
 
     assert result.status == "complete"
-    assert result.outputs[0].manifest()["dataset_id"] == "kaguya.esa1.counts"
+    manifest = result.outputs[0].manifest()
+    assert manifest["dataset_id"] == "kaguya.esa1.counts"
+    assert manifest["provenance"]["pipeline"] == {
+        "mode": "create",
+        "output_dataset": "kaguya.esa1.counts",
+        "output_layer": "normalized",
+        "source": "kaguya.esa1",
+        "stages": ["decode", "select_variables", "write"],
+        "start": "2008-01-01T00:00:00Z",
+        "stop": "2008-01-02T00:00:00Z",
+    }
+    assert manifest["provenance"]["variable"] == "counts"
     assert result.outputs[0].scan().collect().height == 2048
 
 
