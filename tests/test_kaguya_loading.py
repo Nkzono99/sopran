@@ -121,6 +121,12 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     assert "KAGUYA/SELENE" in str(mission_guide)
     assert "PACE ESA1" in str(esa1_guide)
     assert "energy_flux" in energy_flux_guide.to_markdown()
+    assert "| name | dims | units | dtype | frame | aliases | description |" in (
+        esa1_guide.to_markdown()
+    )
+    assert "| energy_flux | time, energy, look |" in esa1_guide.to_markdown()
+    assert "eflux, differential_energy_flux" in esa1_guide.to_markdown()
+    assert "q, quality_flag" in esa1_guide.to_markdown()
     assert kg.guide("esa1") == esa1_guide
     assert kg.help() == mission_guide
     assert kg.help("esa1") == esa1_guide
@@ -147,6 +153,9 @@ def test_kaguya_guides_can_switch_language(tmp_path) -> None:
     assert "KAGUYA/SELENE は SOPRAN" in mission_ja.to_markdown()
     assert "vertical slice" in mission_en.to_markdown()
     assert "PACE ESA1 は" in esa1_ja.to_markdown()
+    assert "| name | dims | units | dtype | frame | aliases | description |" in (
+        esa1_ja.to_markdown()
+    )
     assert "energy_flux" in energy_flux_ja.to_markdown()
     assert "vertical slice" in mission_ja.to_markdown(language="en")
     assert kg.help(language="ja") == mission_ja
