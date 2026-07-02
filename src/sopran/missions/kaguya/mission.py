@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
 from time import perf_counter
@@ -360,6 +361,7 @@ class PaceInstrument(KaguyaInstrument):
             raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
 
         started = perf_counter()
+        started_at = _utc_now_iso()
         if resume:
             existing = _complete_pipeline_output(self.mission.store, pipeline)
             if existing is not None:
@@ -367,7 +369,9 @@ class PaceInstrument(KaguyaInstrument):
                     existing,
                     pipeline=pipeline,
                     run_id=run_id,
+                    mode=mode,
                     status="skipped",
+                    started_at=started_at,
                     elapsed_seconds=perf_counter() - started,
                     resume=True,
                 )
@@ -407,7 +411,9 @@ class PaceInstrument(KaguyaInstrument):
             output,
             pipeline=pipeline,
             run_id=run_id,
+            mode=mode,
             status="complete",
+            started_at=started_at,
             elapsed_seconds=perf_counter() - started,
             resume=resume,
         )
@@ -673,7 +679,9 @@ def _write_pipeline_log(
     *,
     pipeline: Pipeline,
     run_id: str,
+    mode: str,
     status: str,
+    started_at: str,
     elapsed_seconds: float,
     resume: bool = False,
 ) -> Path:
@@ -681,8 +689,11 @@ def _write_pipeline_log(
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
     payload = {
         "run_id": run_id,
+        "mode": mode,
         "status": status,
         "resume": resume,
+        "started_at": started_at,
+        "finished_at": _utc_now_iso(),
         "elapsed_seconds": elapsed_seconds,
         "plan": {
             "source": pipeline.source,
@@ -708,6 +719,10 @@ def _write_pipeline_log(
         encoding="utf-8",
     )
     return path
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _jsonable(value: object) -> object:

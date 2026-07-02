@@ -1897,7 +1897,8 @@ v0.1 では `Pipeline.run()` が `PipelineResult.run_id` を返す。dataset を
 backend は同じ run ID を `dataset.json["provenance"]["pipeline"]["run_id"]` に残し、
 quicklook を生成する場合は quicklook metadata にも同じ run ID を入れる。KAGUYA ESA1 の
 dataset-writing pipeline は `dataset_root/logs/<run_id>.json` に structured log を保存し、
-stage list、output target、shard row count、合計 row count、elapsed seconds を記録する。
+run mode、started_at、finished_at、stage list、output target、shard row count、
+合計 row count、elapsed seconds を記録する。
 `resume=True` はまず complete catalog が既に要求 time range を覆う場合に再実行を skip し、
 `PipelineResult.status == "skipped"` と skip log を返す。failed / partial shard の再実行は
 後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と

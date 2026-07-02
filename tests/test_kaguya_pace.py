@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -316,6 +317,12 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     log = json.loads(result.log_path.read_text(encoding="utf-8"))
     assert log["run_id"] == result.run_id
     assert log["status"] == "complete"
+    assert log["mode"] == "create"
+    assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["started_at"])
+    assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["finished_at"])
+    started_at = datetime.fromisoformat(log["started_at"].replace("Z", "+00:00"))
+    finished_at = datetime.fromisoformat(log["finished_at"].replace("Z", "+00:00"))
+    assert started_at <= finished_at
     assert log["plan"]["source"] == "kaguya.esa1"
     assert log["plan"]["output_dataset"] == "kaguya.esa1.counts"
     assert log["plan"]["output_layer"] == "normalized"
@@ -437,6 +444,9 @@ def test_kaguya_esa1_pipeline_run_resume_skips_complete_dataset(tmp_path: Path) 
     assert result.log_path == result.outputs[0].root / "logs" / f"{result.run_id}.json"
     log = json.loads(result.log_path.read_text(encoding="utf-8"))
     assert log["status"] == "skipped"
+    assert log["mode"] == "create"
+    assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["started_at"])
+    assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["finished_at"])
     assert log["resume"] is True
     assert log["row_count"] == 2048
     assert log["shards"][0]["status"] == "complete"
