@@ -92,5 +92,8 @@ class CaseVariableEndpoint:
     def plan(self, time: TimeRange | None = None):
         return self._endpoint.plan(time or self._case.time)
 
+    def plot(self, time: TimeRange | None = None, **kwargs):
+        return self._endpoint.plot(time or self._case.time, **kwargs)
+
     def __getattr__(self, name: str):
         return getattr(self._endpoint, name)

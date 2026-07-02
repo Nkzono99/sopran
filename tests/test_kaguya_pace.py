@@ -95,6 +95,32 @@ def test_kaguya_esa1_variable_endpoint_can_plot_with_time(tmp_path: Path) -> Non
     assert axes is not None
 
 
+def test_project_case_variable_endpoint_can_plot_with_case_time(tmp_path: Path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.wake]
+start = "2008-01-01T00:00:00"
+stop = "2008-01-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    case = spn.Project(project_root, store=store).case("wake")
+
+    axes = case.kaguya.esa1.counts.plot()
+
+    assert axes is not None
+
+
 def test_kaguya_esa1_to_polars_sums_counts_by_energy(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
