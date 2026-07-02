@@ -35,6 +35,14 @@ Line panels can also plot 2D `time x component` arrays as multiple lines in
 one panel, which is the intended route for vector products such as magnetic
 field components.
 
+Plotting keeps native cadence. For machine-learning tables or statistical
+joins, create explicit time bins and align products separately:
+
+```python
+bins = spn.time_bins(case.time, cadence="10s")
+features = spn.align(sza, wave_power, grid=bins, method="mean").to_polars()
+```
+
 The v0.1 implementation uses Matplotlib. HoloViz, Datashader, Panel dashboards,
 and HTML quicklooks are planned for larger interactive products. Current
 `quicklook()` output is a Matplotlib PNG plus a small JSON metadata file.

@@ -98,6 +98,14 @@ stack = spn.stack(
 )
 fig = stack.plot()
 quicklook = stack.quicklook("esa1_counts", root="reports")
+
+bins = spn.time_bins(time, cadence="10s")
+features = spn.align(
+    kg.esa1.quality.load(time),
+    grid=bins,
+    method="nearest",
+    tolerance="5s",
+).to_polars()
 ```
 
 raw file は `Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。

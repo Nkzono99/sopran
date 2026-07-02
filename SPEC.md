@@ -1453,10 +1453,32 @@ stack = spn.stack(
 
 - 描画では原則として各 product の native cadence を保ち、共有するのは UTC time axis にする。
 - 解析用の resampling / interpolation / cadence 統一は `spn.align(...)` で明示する。
-- `spn.align(...)` は `method`, `cadence`, `tolerance`, `join`, `fill` を必須級の引数として扱う。
+- 時間ビン化は `spn.time_bins(...)` が返す `TimeBins` を第一級 object として扱う。
+- `spn.align(...)` は `grid`, `method`, `tolerance`, `join`, `fill` を必須級の引数として扱う。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
+
+観測中に「ESA1 のスペクトルが変化した時に SZA、波動、LRS、磁場、軌道量はどうだったか」を
+見る用途では `PlotStack` を使い、各 product の native cadence を保持して並べる。
+一方で ML、統計、event table 作成では、時間方向のビンを明示的に作り、各 product ごとに
+nearest、mean、max、center sample などの reducer を選ぶ。
+
+```python
+grid = spn.time_bins(case.time, cadence="10s")
+
+features = spn.align(
+    case.moon.sza.load(),
+    case.artemis.p1.fgm.magnetic_field.load(),
+    grid=grid,
+    method="nearest",
+    tolerance="5s",
+).to_polars()
+```
+
+v0.1 の `spn.align` はまず 1D time series を `nearest` または `mean` で `TimeBins` の
+center time に対応づける。スペクトル、distribution、vector component の列展開、複数 reducer、
+欠損処理、wide/long table policy は後続 milestone とする。
 
 v0.1 の PlotStack は最小でよい。まずは KAGUYA ESA1 spectrogram と orbit altitude line を
 同じ UTC axis で縦に並べることを目標にする。`panel`, `datashader`, `html report`,

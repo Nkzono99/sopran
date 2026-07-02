@@ -1,3 +1,4 @@
+from sopran.core.alignment import AlignmentResult, TimeBins, align, time_bins
 from sopran.core.errors import DatasetNotFoundError, SopranError
 from sopran.core.database import Database, ProductRef
 from sopran.core.loaders import load
@@ -19,6 +20,7 @@ from sopran.core.time import TimeRange, day, month, period, year
 __all__ = [
     "GuidePage",
     "InfoPage",
+    "AlignmentResult",
     "Database",
     "DatasetNotFoundError",
     "Pipeline",
@@ -34,6 +36,8 @@ __all__ = [
     "ProductRef",
     "SopranError",
     "TimeRange",
+    "TimeBins",
+    "align",
     "day",
     "load",
     "line",
@@ -41,5 +45,6 @@ __all__ = [
     "period",
     "spectrogram",
     "stack",
+    "time_bins",
     "year",
 ]

@@ -2,6 +2,10 @@
 
 This page is generated from Python docstrings where available.
 
+::: sopran.core.alignment.TimeBins
+
+::: sopran.core.alignment.AlignmentResult
+
 ::: sopran.core.store.Store
 
 ::: sopran.core.project.Project
