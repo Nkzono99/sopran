@@ -33,3 +33,12 @@ result = pipe.run(resume=True)
 
 For KAGUYA ESA1, the current resume behavior skips execution only when the
 existing catalog is complete for the requested time range.
+
+Use `only_failed=True` when a later backend should replay only failed shards:
+
+```python
+result = pipe.run(only_failed=True)
+```
+
+The current KAGUYA ESA1 implementation records a skip log when the catalog
+contains no failed shards; failed-shard replay itself is not implemented yet.

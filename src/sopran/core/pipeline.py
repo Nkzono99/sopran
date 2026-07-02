@@ -198,11 +198,16 @@ class Pipeline:
         dry_run: bool = False,
         mode: PipelineRunMode = "create",
         resume: bool = False,
+        only_failed: bool = False,
     ) -> PipelineResult:
         if mode not in ("create", "append", "replace"):
             raise ValueError("mode must be 'create', 'append', or 'replace'")
         if resume and mode != "create":
             raise ValueError("resume=True requires mode='create'")
+        if only_failed and mode != "create":
+            raise ValueError("only_failed=True requires mode='create'")
+        if resume and only_failed:
+            raise ValueError("resume=True and only_failed=True cannot be combined")
         plan = self.plan()
         run_id = _new_pipeline_run_id()
         if dry_run:
@@ -214,7 +219,13 @@ class Pipeline:
             )
         runner = getattr(self.context, "_run_pipeline", None)
         if runner is not None:
-            return runner(self, mode=mode, run_id=run_id, resume=resume)
+            return runner(
+                self,
+                mode=mode,
+                run_id=run_id,
+                resume=resume,
+                only_failed=only_failed,
+            )
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
     def _with_stage(self, name: str, **parameters: Any) -> Pipeline:

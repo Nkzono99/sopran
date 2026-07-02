@@ -1902,8 +1902,9 @@ run mode、started_at、finished_at、stage list、output target、shard row cou
 `stage_logs` は stage ごとの status、started_at、finished_at、elapsed_seconds、
 row_count、shard_count を持つ。
 `resume=True` はまず complete catalog が既に要求 time range を覆う場合に再実行を skip し、
-`PipelineResult.status == "skipped"` と skip log を返す。failed / partial shard の再実行は
-後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
+`PipelineResult.status == "skipped"` と skip log を返す。`only_failed=True` はまず既存
+catalog が要求 time range を覆い、failed shard がない場合に skip log を返す。failed /
+partial shard の再実行は後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
 `PipelineResult.to_text()` / `str(result)` で source、time range、stage list、
 output target を確認できる。
 

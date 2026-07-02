@@ -12,6 +12,10 @@
   complete for the requested range.
 - `resume=True` is mutually exclusive with `mode="append"` and
   `mode="replace"`.
+- `run(only_failed=True)` may skip execution when the existing output catalog
+  contains no failed shards; replaying failed shards is a later backend feature.
+- `only_failed=True` is mutually exclusive with `resume=True`, `mode="append"`,
+  and `mode="replace"`.
 - `scan()` returns a Polars `LazyFrame` when possible.
 - `collect()` is a thin materialization helper over `scan().collect()`.
 - `stream(partition="all")` yields one collected frame in the generic fallback.

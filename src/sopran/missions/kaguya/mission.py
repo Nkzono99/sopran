@@ -354,6 +354,7 @@ class PaceInstrument(KaguyaInstrument):
         mode: str = "create",
         run_id: str,
         resume: bool = False,
+        only_failed: bool = False,
     ) -> PipelineResult:
         if self.sensor != "ESA1":
             raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
@@ -374,6 +375,7 @@ class PaceInstrument(KaguyaInstrument):
                     started_at=started_at,
                     elapsed_seconds=perf_counter() - started,
                     resume=True,
+                    only_failed=False,
                 )
                 return PipelineResult(
                     plan=pipeline.plan(),
@@ -383,6 +385,37 @@ class PaceInstrument(KaguyaInstrument):
                     run_id=run_id,
                     log_path=log_path,
                 )
+
+        if only_failed:
+            existing = _failed_pipeline_output(self.mission.store, pipeline)
+            if existing is None:
+                raise DatasetNotFoundError(
+                    f"Dataset not found for only_failed replay: {pipeline.output_dataset}"
+                )
+            failed_count = _failed_shard_count(existing)
+            if failed_count == 0:
+                log_path = _write_pipeline_log(
+                    existing,
+                    pipeline=pipeline,
+                    run_id=run_id,
+                    mode=mode,
+                    status="skipped",
+                    started_at=started_at,
+                    elapsed_seconds=perf_counter() - started,
+                    resume=False,
+                    only_failed=True,
+                )
+                return PipelineResult(
+                    plan=pipeline.plan(),
+                    status="skipped",
+                    message=f"Skipped {pipeline.output_dataset}; no failed shards found.",
+                    outputs=(existing,),
+                    run_id=run_id,
+                    log_path=log_path,
+                )
+            raise NotImplementedError(
+                "KAGUYA ESA1 only_failed replay is not implemented for failed shards yet"
+            )
 
         variable = _pipeline_variable(pipeline)
         data = self.load(pipeline.time, download="never")
@@ -416,6 +449,7 @@ class PaceInstrument(KaguyaInstrument):
             started_at=started_at,
             elapsed_seconds=perf_counter() - started,
             resume=resume,
+            only_failed=only_failed,
         )
         return PipelineResult(
             plan=pipeline.plan(),
@@ -660,11 +694,29 @@ def _complete_pipeline_output(store: Store, pipeline: Pipeline):
     return output
 
 
+def _failed_pipeline_output(store: Store, pipeline: Pipeline):
+    try:
+        output = store.dataset(str(pipeline.output_dataset), layer=str(pipeline.output_layer))
+    except DatasetNotFoundError:
+        return None
+    if not _record_covers_time(output, pipeline):
+        return None
+    return output
+
+
 def _catalog_is_complete(output) -> bool:
     rows = list(output.catalog().iter_rows(named=True))
     if not rows:
         return False
     return all(str(row.get("status") or "") == "complete" for row in rows)
+
+
+def _failed_shard_count(output) -> int:
+    return sum(
+        1
+        for row in output.catalog().iter_rows(named=True)
+        if str(row.get("status") or "") == "failed"
+    )
 
 
 def _record_covers_time(output, pipeline: Pipeline) -> bool:
@@ -684,15 +736,21 @@ def _write_pipeline_log(
     started_at: str,
     elapsed_seconds: float,
     resume: bool = False,
+    only_failed: bool = False,
 ) -> Path:
     shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
+    failed_shard_count = sum(
+        1 for row in shards if str(row.get("status") or "") == "failed"
+    )
     finished_at = _utc_now_iso()
     payload = {
         "run_id": run_id,
         "mode": mode,
         "status": status,
         "resume": resume,
+        "only_failed": only_failed,
+        "failed_shard_count": failed_shard_count,
         "started_at": started_at,
         "finished_at": finished_at,
         "elapsed_seconds": elapsed_seconds,

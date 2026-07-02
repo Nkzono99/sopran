@@ -476,6 +476,55 @@ def test_kaguya_esa1_pipeline_run_resume_skips_complete_dataset(tmp_path: Path) 
     assert log["shards"][0]["status"] == "complete"
 
 
+def test_kaguya_esa1_pipeline_run_only_failed_skips_when_no_failed_shards(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store)
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+    first = pipe.run()
+
+    result = pipe.run(only_failed=True)
+
+    assert result.status == "skipped"
+    assert result.outputs[0].root == first.outputs[0].root
+    log = json.loads(result.log_path.read_text(encoding="utf-8"))
+    assert log["status"] == "skipped"
+    assert log["only_failed"] is True
+    assert log["failed_shard_count"] == 0
+    assert [stage["status"] for stage in log["stage_logs"]] == [
+        "skipped",
+        "skipped",
+        "skipped",
+    ]
+    assert [stage["row_count"] for stage in log["stage_logs"]] == [2048, 2048, 2048]
+    assert [stage["shard_count"] for stage in log["stage_logs"]] == [1, 1, 1]
+
+
+def test_kaguya_esa1_pipeline_run_only_failed_requires_existing_catalog(
+    tmp_path: Path,
+) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    pipe = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .select_variables("counts")
+        .write("kaguya.esa1.counts", layer="normalized")
+    )
+
+    with pytest.raises(spn.DatasetNotFoundError):
+        pipe.run(only_failed=True)
+
+
 def _write_type01_pbf(path: Path) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE

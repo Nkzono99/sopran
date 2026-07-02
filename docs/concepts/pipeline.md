@@ -79,4 +79,6 @@ count for each declared stage.
 The first resume behavior is conservative: when the existing catalog is
 `complete` and the manifest time coverage contains the requested range, KAGUYA
 ESA1 returns `PipelineResult.status == "skipped"` and writes a skip log. Failed
-or partial shard replay is a later backend feature.
+or partial shard replay is a later backend feature. `run(only_failed=True)` has
+the same conservative first step: when there are no failed shards, it returns a
+skipped result and records `failed_shard_count == 0` in the log.
