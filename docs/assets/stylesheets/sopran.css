@@ -1,0 +1,23 @@
+.sopran-language-switcher {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.1rem;
+  margin-left: 0.4rem;
+  white-space: nowrap;
+}
+
+.sopran-language-switcher__prefix,
+.sopran-language-switcher__link,
+.sopran-language-switcher__separator {
+  color: var(--md-primary-bg-color);
+  font-size: 0.64rem;
+  line-height: 1;
+}
+
+.sopran-language-switcher__link {
+  text-decoration: none;
+}
+
+.sopran-language-switcher__link:hover {
+  text-decoration: underline;
+}

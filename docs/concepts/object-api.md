@@ -102,6 +102,9 @@ keyword through to their package guide resources. The default language is
 Japanese (`language="ja"`); English is selected explicitly with `language="en"`.
 KAGUYA, ARTEMIS, and Moon surface guides currently expose Japanese and English
 guide pages.
+The MkDocs site header uses the same public label, `Lang: 日本語/English`, so
+notebook guides, package guides, and published docs share one language-switching
+surface.
 
 `Project` and `Case` provide analysis context:
 

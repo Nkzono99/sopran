@@ -1,0 +1,16 @@
+<div
+  class="md-header__option sopran-language-switcher"
+  aria-label="{{ config.extra.sopran_language_switcher.label | d('Lang: 日本語/English') }}"
+  data-label="{{ config.extra.sopran_language_switcher.label | d('Lang: 日本語/English') }}"
+  data-fallback-language="{{ config.extra.sopran_language_switcher.fallback_language | d('ja') }}"
+>
+  <span class="sopran-language-switcher__prefix">Lang:</span>
+  {% for alt in config.extra.alternate %}
+    <a
+      href="{{ alt.link | url }}"
+      hreflang="{{ alt.lang }}"
+      lang="{{ alt.lang }}"
+      class="sopran-language-switcher__link"
+    >{{ alt.name }}</a>{% if not loop.last %}<span class="sopran-language-switcher__separator">/</span>{% endif %}
+  {% endfor %}
+</div>
