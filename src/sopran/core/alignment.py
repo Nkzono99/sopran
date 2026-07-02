@@ -7,12 +7,22 @@ from typing import Any, Literal
 
 from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 
-AlignMethod = Literal["nearest", "mean", "max", "median"]
-AlignmentMethod = Literal["nearest", "mean", "max", "median", "mixed"]
+AlignMethod = Literal["nearest", "center", "mean", "max", "median", "first", "last"]
+AlignmentMethod = Literal[
+    "nearest",
+    "center",
+    "mean",
+    "max",
+    "median",
+    "first",
+    "last",
+    "mixed",
+]
 JoinMode = Literal["outer", "inner"]
 TableLayout = Literal["wide", "long"]
 PartialPolicy = Literal["error", "keep", "drop"]
-_ALIGN_METHODS = ("nearest", "mean", "max", "median")
+_ALIGN_METHODS = ("nearest", "center", "mean", "max", "median", "first", "last")
+_ALIGN_METHODS_TEXT = "'nearest', 'center', 'mean', 'max', 'median', 'first', or 'last'"
 _JOIN_MODES = ("outer", "inner")
 _PARTIAL_POLICIES = ("error", "keep", "drop")
 
@@ -165,7 +175,7 @@ class SampleTable:
         tolerance: str | timedelta | None = None,
     ) -> SampleTable:
         if method not in _ALIGN_METHODS:
-            raise ValueError("method must be 'nearest', 'mean', 'max', or 'median'")
+            raise ValueError(f"method must be {_ALIGN_METHODS_TEXT}")
         return SampleTable(
             grid=self.grid,
             specs=(
@@ -233,15 +243,16 @@ def _collect_features(
                     center,
                     feature.tolerance,
                 )
-            elif feature.method in ("mean", "max", "median"):
+            elif feature.method in ("center", "mean", "max", "median", "first", "last"):
                 row[feature.name] = _bin_value(
                     feature.samples,
+                    center,
                     grid.edges[bin_index],
                     grid.edges[bin_index + 1],
                     feature.method,
                 )
             else:
-                raise ValueError("method must be 'nearest', 'mean', 'max', or 'median'")
+                raise ValueError(f"method must be {_ALIGN_METHODS_TEXT}")
         if join == "inner" and any(row[column] is None for column in columns):
             continue
         if fill is not None:
@@ -319,17 +330,25 @@ def _nearest_value(
 
 def _bin_value(
     samples: tuple[tuple[datetime, float], ...],
+    center: datetime,
     start: datetime,
     stop: datetime,
-    method: Literal["mean", "max", "median"],
+    method: Literal["center", "mean", "max", "median", "first", "last"],
 ) -> float | None:
-    values = [value for timestamp, value in samples if start <= timestamp < stop]
-    if not values:
+    items = [(timestamp, value) for timestamp, value in samples if start <= timestamp < stop]
+    if not items:
         return None
+    values = [value for _, value in items]
+    if method == "center":
+        return min(items, key=lambda item: abs(item[0] - center))[1]
     if method == "mean":
         return float(sum(values) / len(values))
     if method == "max":
         return float(max(values))
+    if method == "first":
+        return min(items, key=lambda item: item[0])[1]
+    if method == "last":
+        return max(items, key=lambda item: item[0])[1]
     midpoint = len(values) // 2
     sorted_values = sorted(values)
     if len(sorted_values) % 2:

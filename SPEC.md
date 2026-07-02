@@ -1501,7 +1501,7 @@ stack = spn.stack(
 観測中に「ESA1 のスペクトルが変化した時に SZA、波動、LRS、磁場、軌道量はどうだったか」を
 見る用途では `PlotStack` を使い、各 product の native cadence を保持して並べる。
 一方で ML、統計、event table 作成では、時間方向のビンを明示的に作り、各 product ごとに
-nearest、mean、max、median、center sample などの reducer を選ぶ。
+nearest、center、mean、max、median、first、last などの reducer を選ぶ。
 
 ```python
 grid = spn.time_bins(case.time, cadence="10s", partial="keep")
@@ -1525,23 +1525,23 @@ features = (
     .add(case.moon.sza.load(), method="nearest", tolerance="5s")
     .add(case.kaguya.lrs.wave_power.load(), method="max")
     .add(case.kaguya.lrs.density.load(), method="median")
-    .add(case.artemis.p1.fgm.magnetic_field.load(), method="nearest", tolerance="2s")
+    .add(case.artemis.p1.fgm.magnetic_field.load(), method="center")
     .collect(join="inner")
     .to_polars(layout="long")
 )
 ```
 
-v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `mean`, `max`,
-`median` で `TimeBins` に対応づける。`nearest` は center time の最近傍を取り、
-`mean`, `max`, `median` は半開区間 `[start, stop)` の bin 内 sample を集約する。
+v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `center`, `mean`,
+`max`, `median`, `first`, `last` で `TimeBins` に対応づける。`nearest` は center time の
+最近傍を全 sample から取り、`center` は bin 内で center time に最も近い sample を取る。
+`mean`, `max`, `median`, `first`, `last` は半開区間 `[start, stop)` の bin 内 sample を集約する。
 `TimeBins.partial` は末尾の不完全 bin の扱いを記録する。
 `join="outer"` は全 bin を保持し、`join="inner"` はいずれかの feature が欠けた bin を落とす。
 `fill` が指定された場合は、`outer` で残った欠損 feature 値をその値で置き換える。
 `time x component` の vector product は
 `magnetic_field_x`, `magnetic_field_y`, `magnetic_field_z` のような wide columns へ展開する。
 `layout="long"` は wide column を `feature` 値へ畳む。
-スペクトル、distribution、`center sample` / `first` / `last` などの reducer、欠損処理、
-quality mask は後続 milestone とする。
+スペクトル、distribution、欠損処理、quality mask は後続 milestone とする。
 
 v0.1 の PlotStack は最小でよい。まずは KAGUYA ESA1 spectrogram と orbit altitude line を
 同じ UTC axis で縦に並べることを目標にする。`panel`, `datashader`, `html report`,

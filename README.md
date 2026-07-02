@@ -120,7 +120,7 @@ ml_features = (
 
 `time x component` の vector product は `magnetic_field_x` のような wide columns に展開します。
 観測量ごとに対応づけ方法を変える場合は `SampleTable` を使います。現在の reducer は
-`nearest`, `mean`, `max`, `median` です。
+`nearest`, `center`, `mean`, `max`, `median`, `first`, `last` です。
 `join="outer"` は全binを残し、`join="inner"` は欠損featureを含むbinを落とします。
 `fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
 `partial="keep"` はcadenceで割り切れない末尾binを残し、`partial="drop"` は捨てます。

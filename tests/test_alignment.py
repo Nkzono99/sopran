@@ -145,6 +145,86 @@ def test_align_max_aggregates_arrays_inside_time_bins() -> None:
     ]
 
 
+def test_align_center_samples_nearest_value_inside_each_bin() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 75.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:02",
+                    "2008-01-01T00:00:07",
+                    "2008-01-01T00:00:16",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+
+    aligned = spn.align(sza, grid=bins, method="center")
+
+    assert aligned.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "sza": 75.0},
+        {"time": "2008-01-01T00:00:15Z", "sza": 80.0},
+    ]
+
+
+def test_sample_table_supports_first_and_last_bin_reducers() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 5.0, 2.0, 10.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:03",
+                    "2008-01-01T00:00:08",
+                    "2008-01-01T00:00:12",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+    density = xr.DataArray(
+        np.array([1.0, 3.0, 10.0, 20.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:08",
+                    "2008-01-01T00:00:12",
+                    "2008-01-01T00:00:14",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="density",
+    )
+
+    result = (
+        spn.SampleTable(bins)
+        .add(wave_power, method="first")
+        .add(density, method="last")
+        .collect()
+    )
+
+    assert result.to_polars().to_dicts() == [
+        {"time": "2008-01-01T00:00:05Z", "wave_power": 1.0, "density": 3.0},
+        {"time": "2008-01-01T00:00:15Z", "wave_power": 10.0, "density": 20.0},
+    ]
+
+
 def test_align_inner_join_drops_bins_with_missing_features() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),

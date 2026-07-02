@@ -51,6 +51,7 @@ features = (
     .add(sza, method="nearest", tolerance="5s")
     .add(wave_power, method="max")
     .add(density, method="median")
+    .add(event_flag, method="last")
     .collect(join="inner")
     .to_polars()
 )
