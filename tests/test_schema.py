@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 
 import sopran as spn
+from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
@@ -39,3 +40,21 @@ def test_validate_schema_rejects_xarray_variable_dim_mismatch() -> None:
             KAGUYA_ESA1_SCHEMA,
             variables=("counts",),
         )
+
+
+def test_validate_schema_rejects_polars_dtype_mismatch() -> None:
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument="esa1",
+        variables=(
+            VariableSchema(
+                name="counts",
+                dims=("time",),
+                dtype="uint64",
+            ),
+        ),
+    )
+    frame = pl.DataFrame({"counts": [64]})
+
+    with pytest.raises(spn.SchemaError, match="counts.*dtype"):
+        spn.validate_schema(frame, schema)

@@ -160,6 +160,34 @@ def test_store_validates_product_schema_before_writing_parquet(tmp_path) -> None
     assert not store.dataset_path("kaguya.esa1.counts", layer="normalized").exists()
 
 
+def test_store_validates_product_dtype_before_writing_parquet(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument="esa1",
+        variables=(
+            VariableSchema(
+                name="counts",
+                dims=("time",),
+                dtype="uint64",
+            ),
+        ),
+    )
+
+    with pytest.raises(spn.SchemaError, match="counts.*dtype"):
+        store.write_parquet_dataset(
+            dataset_id="kaguya.esa1.counts",
+            layer="normalized",
+            mission="kaguya",
+            instrument="esa1",
+            product="counts",
+            schema=schema,
+            time_coverage=time,
+            frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+        )
+
+
 def test_store_writes_dataset_provenance_into_manifest(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

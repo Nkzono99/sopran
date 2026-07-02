@@ -51,6 +51,7 @@ def validate_schema(
             + ", ".join(missing)
             + f". Available variables: {', '.join(sorted(names)) or '(none)'}"
         )
+    _validate_dtypes(data, selected)
     _validate_xarray_dims(data, selected)
     return data
 
@@ -104,6 +105,68 @@ def _validate_xarray_dims(data: Any, variables: tuple[VariableSchema, ...]) -> N
                 f"Schema validation failed; {variable.name} dims are {dims}, "
                 f"expected {variable.dims}"
             )
+
+
+def _validate_dtypes(data: Any, variables: tuple[VariableSchema, ...]) -> None:
+    for variable in variables:
+        if variable.dtype is None:
+            continue
+        name = _matching_name(data, variable)
+        if name is None:
+            continue
+        actual = _dtype_for_name(data, name)
+        if actual is None:
+            continue
+        expected = _normalize_dtype(variable.dtype)
+        if _normalize_dtype(actual) != expected:
+            raise SchemaError(
+                f"Schema validation failed; {variable.name} dtype is {actual}, "
+                f"expected {variable.dtype}"
+            )
+
+
+def _dtype_for_name(data: Any, name: str) -> str | None:
+    if hasattr(data, "collect_schema"):
+        return str(data.collect_schema().get(name))
+    if hasattr(data, "schema") and isinstance(getattr(data, "schema"), dict):
+        dtype = data.schema.get(name)
+        return str(dtype) if dtype is not None else None
+    if hasattr(data, "__getitem__"):
+        try:
+            item = data[name]
+        except (KeyError, TypeError):
+            return None
+        dtype = getattr(item, "dtype", None)
+        return str(dtype) if dtype is not None else None
+    return None
+
+
+def _normalize_dtype(dtype: str) -> str:
+    normalized = str(dtype).lower().replace("_", "").replace(" ", "")
+    aliases = {
+        "float": "float64",
+        "double": "float64",
+        "float64": "float64",
+        "f64": "float64",
+        "float32": "float32",
+        "f32": "float32",
+        "int": "int64",
+        "int64": "int64",
+        "i64": "int64",
+        "int32": "int32",
+        "i32": "int32",
+        "uint64": "uint64",
+        "u64": "uint64",
+        "uint32": "uint32",
+        "u32": "uint32",
+        "str": "string",
+        "string": "string",
+        "utf8": "string",
+        "object": "object",
+        "bool": "bool",
+        "boolean": "bool",
+    }
+    return aliases.get(normalized, normalized)
 
 
 def _matching_name(data: Any, variable: VariableSchema) -> str | None:
