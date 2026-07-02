@@ -92,10 +92,13 @@ class Store:
         source_files: tuple[str, ...] = (),
         shard_path: str = "shards/part-000.parquet",
         compression: str = "zstd",
+        overwrite: bool = False,
         producer: str = "sopran",
     ) -> DatasetRecord:
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         target = _resolve_child(record.root, shard_path)
+        if target.exists() and not overwrite:
+            raise FileExistsError(f"Parquet shard already exists: {target}")
         target.parent.mkdir(parents=True, exist_ok=True)
         frame.write_parquet(target, compression=compression)
 

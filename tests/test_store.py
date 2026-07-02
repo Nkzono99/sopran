@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import polars as pl
+import pytest
 
 import sopran as spn
 from sopran import Store
@@ -86,6 +87,26 @@ def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:
     assert catalog.select("path").to_series().to_list() == ["shards/part-000.parquet"]
     assert catalog.select("row_count").to_series().to_list() == [1]
     assert catalog.select("checksum").to_series().to_list()[0].startswith("sha256:")
+
+
+def test_store_parquet_writer_refuses_to_overwrite_existing_shard(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    frame = pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]})
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+        "time_coverage": time,
+        "frame": frame,
+    }
+    store.write_parquet_dataset(**kwargs)
+
+    with pytest.raises(FileExistsError):
+        store.write_parquet_dataset(**kwargs)
 
 
 def test_store_scans_registered_parquet_dataset(tmp_path) -> None:
