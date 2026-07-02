@@ -32,6 +32,15 @@ moon.guide(language="ja")
 moon.dem.guide(language="en")
 ```
 
+They also expose short runnable examples as `GuidePage` snippets:
+
+```python
+moon.example()
+moon.dem.example()
+moon.shadow.example()
+moon.sza.example()
+```
+
 The current implementation records plans only. Full terrain-aware shadow and
 illumination calculation will require DEM data, solar geometry, body shape,
 projection metadata, and explicit longitude-domain handling.

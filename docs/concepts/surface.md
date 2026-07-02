@@ -22,6 +22,10 @@ sza_plan = moon.sza.plan(
 metadata = dem_plan.to_metadata()
 ```
 
+Use `moon.example()` or endpoint-level examples such as `moon.dem.example()`,
+`moon.shadow.example()`, and `moon.sza.example()` when you want a short
+copyable `GuidePage` snippet before building a plan.
+
 `SurfacePlan` metadata always records `shape`, `lon_domain`, `lon_direction`,
 `lat_type`, `projection`, and `area_or_point`. Region-backed plans inherit the
 longitude and latitude conventions from `region`; shadow and illumination plans

@@ -59,6 +59,34 @@ class Moon:
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
+    def example(self) -> GuidePage:
+        return _example_page(
+            "Moon Surface Example",
+            """# Moon Surface Example
+
+```python
+import sopran as spn
+
+moon = spn.Moon()
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+dem_plan = moon.dem.plan(
+    source="kaguya.tc.dem",
+    region=region,
+    resolution="512ppd",
+    projection="native",
+)
+shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00Z", dem=dem_plan)
+sza_plan = moon.sza.plan(
+    time="2008-02-01T12:00:00Z",
+    region=region,
+    geometry_source="spice",
+)
+metadata = shadow_plan.to_metadata()
+```
+""",
+        )
+
     def map(self, product: str) -> SurfaceEndpoint:
         try:
             return {
@@ -101,6 +129,105 @@ class SurfaceEndpoint:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def example(self) -> GuidePage:
+        examples = {
+            "dem": (
+                "Moon DEM Example",
+                """# Moon DEM Example
+
+```python
+import sopran as spn
+
+moon = spn.Moon()
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+dem_plan = moon.dem.plan(
+    source="kaguya.tc.dem",
+    region=region,
+    resolution="512ppd",
+    projection="native",
+)
+metadata = dem_plan.to_metadata()
+```
+""",
+            ),
+            "shadow": (
+                "Moon Shadow Example",
+                """# Moon Shadow Example
+
+```python
+import sopran as spn
+
+moon = spn.Moon()
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=region)
+
+shadow_plan = moon.shadow.plan(
+    time="2008-02-01T12:00:00Z",
+    dem=dem_plan,
+    model="terrain_ray",
+)
+metadata = shadow_plan.to_metadata()
+```
+""",
+            ),
+            "illumination": (
+                "Moon Illumination Example",
+                """# Moon Illumination Example
+
+```python
+import sopran as spn
+
+moon = spn.Moon()
+dem_plan = moon.dem.plan(source="kaguya.tc.dem")
+
+illumination_plan = moon.illumination.plan(
+    time="2008-02-01T12:00:00Z",
+    dem=dem_plan,
+    geometry_source="spice",
+)
+metadata = illumination_plan.to_metadata()
+```
+""",
+            ),
+            "sza": (
+                "Moon Solar Zenith Angle Example",
+                """# Moon Solar Zenith Angle Example
+
+```python
+import sopran as spn
+
+moon = spn.Moon()
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+sza_plan = moon.sza.plan(
+    time="2008-02-01T12:00:00Z",
+    region=region,
+    geometry_source="spice",
+)
+metadata = sza_plan.to_metadata()
+```
+""",
+            ),
+            "svm": (
+                "Moon SVM Example",
+                """# Moon SVM Example
+
+```python
+import sopran as spn
+
+moon = spn.Moon()
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+svm_plan = moon.svm.plan(source="kaguya.lism.svm", region=region)
+metadata = svm_plan.to_metadata()
+```
+""",
+            ),
+        }
+        title, markdown = examples.get(self.product, examples["dem"])
+        return _example_page(title, markdown)
 
     def sources(self) -> tuple[str, ...]:
         return _SURFACE_SOURCES.get(self.product, ())
@@ -376,4 +503,12 @@ def _guide_page(
             for available_language in _GUIDE_LANGUAGES
             if available_language != language
         },
+    )
+
+
+def _example_page(title: str, markdown: str) -> GuidePage:
+    return GuidePage(
+        title=title,
+        markdown=markdown,
+        source="sopran.bodies.moon.examples",
     )

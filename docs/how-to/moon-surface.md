@@ -24,6 +24,10 @@ sza_plan = moon.sza.plan(
 metadata = shadow_plan.to_metadata()
 ```
 
+For notebook exploration, `moon.example()`, `moon.dem.example()`,
+`moon.shadow.example()`, and `moon.sza.example()` return short Markdown
+`GuidePage` snippets with the same planning pattern.
+
 With a project case, configured region and case start time can be used as
 defaults:
 

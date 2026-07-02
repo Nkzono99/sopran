@@ -164,6 +164,25 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     assert moon.dem.help() == moon.dem.guide()
 
 
+def test_moon_surface_examples_return_markdown_pages() -> None:
+    moon = spn.Moon()
+
+    mission_example = moon.example().to_markdown()
+    dem_example = moon.dem.example().to_markdown()
+    shadow_example = moon.shadow.example().to_markdown()
+    sza_example = moon.sza.example().to_markdown()
+
+    assert "Moon Surface Example" in mission_example
+    assert "spn.Moon" in mission_example
+    assert "spn.Region" in mission_example
+    assert "Moon DEM Example" in dem_example
+    assert "kaguya.tc.dem" in dem_example
+    assert "Moon Shadow Example" in shadow_example
+    assert "moon.shadow.plan" in shadow_example
+    assert "Moon Solar Zenith Angle Example" in sza_example
+    assert "geometry_source" in sza_example
+
+
 def test_moon_surface_guides_can_switch_language() -> None:
     moon = spn.Moon()
 
