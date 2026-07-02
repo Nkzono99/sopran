@@ -244,6 +244,14 @@ class CaseNode:
 
         return line(lambda: self.load(time).to_xarray(), **kwargs)
 
+    def lines(self, time: TimeRange | None = None, **kwargs):
+        lines_method = getattr(self._value, "lines", None)
+        if lines_method is not None:
+            return lines_method(time or self._case.time, **kwargs)
+        from sopran.core.plotting import lines
+
+        return lines(lambda: self.load(time).to_xarray(), **kwargs)
+
     def spectrogram(self, time: TimeRange | None = None, **kwargs):
         spectrogram_method = getattr(self._value, "spectrogram", None)
         if spectrogram_method is not None:
@@ -296,6 +304,9 @@ class CaseVariableEndpoint:
 
     def line(self, time: TimeRange | None = None, **kwargs):
         return self._endpoint.line(time or self._case.time, **kwargs)
+
+    def lines(self, time: TimeRange | None = None, **kwargs):
+        return self._endpoint.lines(time or self._case.time, **kwargs)
 
     def spectrogram(self, time: TimeRange | None = None, **kwargs):
         return self._endpoint.spectrogram(time or self._case.time, **kwargs)

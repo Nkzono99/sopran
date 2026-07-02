@@ -33,7 +33,7 @@ stack = case.stack(
     case.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
     case.kaguya.esa1.quality.line(),
     case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy", log_color=True),
-    case.artemis.p1.fgm.magnetic_field.line(),
+    case.artemis.p1.fgm.magnetic_field.lines(components="xyz"),
 )
 
 plot_result = stack.plot(backend="matplotlib", context=case)
@@ -51,6 +51,8 @@ from different instruments or missions. The current backend is Matplotlib and
 is selected with `backend="matplotlib"`.
 Use `log_color=True` on spectrogram items for positive-valued spectra that need
 a logarithmic color scale.
+Use `.lines(components="xz")` for vector products when a component subset should
+stay in one panel.
 `explore(backend="panel")` returns a Panel view containing the same Matplotlib
 figure and metadata for notebook or browser inspection.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.

@@ -1713,6 +1713,9 @@ stack = spn.stack(
   feature columns、feature rules、grid、row count、time column 名を返す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
+- `line()` は 1D series または 2D `time x component` array を描ける。vector product では
+  `lines(components="xyz")` を使い、`components="xz"` や `components=("x", "z")` で
+  同じ panel 内の component subset を指定できる。
 - `quicklook()` は PNG/HTML とともに `dataset_id`、`time_range`、`frame`、`backend`、
   `aggregation` を標準 metadata key として保存する。
 - 読み込み済み spectral `SopranArray.quicklook(..., y="energy", log_color=True)` は

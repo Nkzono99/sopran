@@ -653,6 +653,54 @@ def test_plot_stack_line_accepts_vector_time_series() -> None:
     assert len(fig.axes[0].lines) == 3
 
 
+def test_plot_stack_lines_selects_vector_components() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    magnetic_field = xr.DataArray(
+        np.array([[1.0, 2.0, 3.0], [1.5, 2.5, 3.5]]),
+        dims=("time", "component"),
+        coords={"time": times, "component": ["x", "y", "z"]},
+        name="magnetic_field",
+    )
+
+    stack = spn.stack(spn.lines(magnetic_field, components="xz"))
+    result = stack.plot()
+
+    assert result.metadata["items"] == ["magnetic_field"]
+    assert len(result.axes[0].lines) == 2
+
+
+def test_loaded_array_lines_selects_vector_components() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    magnetic_field = xr.DataArray(
+        np.array([[1.0, 2.0, 3.0], [1.5, 2.5, 3.5]]),
+        dims=("time", "component"),
+        coords={"time": times, "component": ["x", "y", "z"]},
+        name="magnetic_field",
+    )
+    loaded = SopranArray(
+        name="magnetic_field",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="magnetic_field", dims=("time", "component")),
+        xr=magnetic_field,
+    )
+
+    result = spn.stack(loaded.lines(components="yz")).plot()
+
+    assert len(result.axes[0].lines) == 2
+
+
 def test_plot_stack_accepts_matplotlib_backend_argument() -> None:
     import matplotlib
 

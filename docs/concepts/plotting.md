@@ -39,13 +39,14 @@ stack = case.stack(
     case.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
     case.kaguya.esa1.quality.line(),
     case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy", log_color=True),
-    case.artemis.p1.fgm.magnetic_field.line(),
+    case.artemis.p1.fgm.magnetic_field.lines(components="xyz"),
 )
 ```
 
 Line panels can also plot 2D `time x component` arrays as multiple lines in
 one panel, which is the intended route for vector products such as magnetic
-field components.
+field components. Use `.lines(components="xz")` to keep a named component
+subset in the same panel.
 Pass `log_color=True` to spectrogram items when positive-valued spectra should
 use a logarithmic color scale in the Matplotlib backend.
 Use `stack.explore(backend="panel")` when a notebook or browser workflow should

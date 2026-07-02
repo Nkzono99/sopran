@@ -30,6 +30,7 @@ from sopran.core.plotting import (
     PlotStack,
     QuicklookResult,
     line,
+    lines,
     spectrogram,
     stack,
 )
@@ -74,6 +75,7 @@ __all__ = [
     "day",
     "load",
     "line",
+    "lines",
     "month",
     "period",
     "spectrogram",

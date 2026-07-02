@@ -162,6 +162,24 @@ class SopranArray:
 
         return line(self.to_xarray(), x=x, name=name or self.name)
 
+    def lines(
+        self,
+        *,
+        x: str = "time",
+        components: str | tuple[str, ...] | list[str] | None = None,
+        component_dim: str = "component",
+        name: str | None = None,
+    ):
+        from sopran.core.plotting import lines
+
+        return lines(
+            self.to_xarray(),
+            x=x,
+            components=components,
+            component_dim=component_dim,
+            name=name or self.name,
+        )
+
     def quicklook(
         self,
         name: str | None = None,

@@ -10,7 +10,7 @@ from sopran.core import InstrumentSchema, VariableSchema
 from sopran.core import PlotArtifact, PlotItem, PlotPlan, PlotResult, ProductRef
 from sopran.core import PlotStack, SampleSpec, SampleTable, SopranError, Store, TimeRange
 from sopran.core import QuicklookResult
-from sopran.core import TimeBins, align, day, line, load, month, period
+from sopran.core import TimeBins, align, day, line, lines, load, month, period
 from sopran.core import spectrogram, stack, year
 from sopran.core import time_bins
 from sopran.core import validate_schema
@@ -68,6 +68,7 @@ __all__ = [
     "builtin_schemas",
     "day",
     "line",
+    "lines",
     "load",
     "month",
     "period",

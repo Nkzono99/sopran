@@ -268,6 +268,24 @@ def line(data: Any, *, x: str = "time", name: str | None = None) -> PlotItem:
     )
 
 
+def lines(
+    data: Any,
+    *,
+    x: str = "time",
+    components: str | tuple[str, ...] | list[str] | None = None,
+    component_dim: str = "component",
+    name: str | None = None,
+) -> PlotItem:
+    if components is None:
+        return line(data, x=x, name=name)
+    return PlotItem(
+        kind="line",
+        data=lambda: _select_components(data, component_dim, components),
+        name=name or _data_name(data),
+        x=x,
+    )
+
+
 def spectrogram(
     data: Any,
     *,
@@ -331,6 +349,38 @@ def _materialize(data: Any) -> Any:
     if hasattr(data, "to_xarray"):
         return data.to_xarray()
     return data
+
+
+def _select_components(
+    data: Any,
+    component_dim: str,
+    components: str | tuple[str, ...] | list[str],
+) -> Any:
+    materialized = _materialize(data)
+    if not hasattr(materialized, "sel"):
+        raise ValueError("component selection requires xarray-like data with sel()")
+    selection = _component_selection(materialized, component_dim, components)
+    return materialized.sel({component_dim: selection})
+
+
+def _component_selection(
+    data: Any,
+    component_dim: str,
+    components: str | tuple[str, ...] | list[str],
+) -> list[str] | str:
+    if not isinstance(components, str):
+        return [str(component) for component in components]
+    requested = components.strip()
+    if not requested:
+        return []
+    coord_values = set()
+    if hasattr(data, "coords") and component_dim in data.coords:
+        coord_values = {str(value) for value in data.coords[component_dim].values}
+    if requested in coord_values:
+        return requested
+    if "," in requested:
+        return [part.strip() for part in requested.split(",") if part.strip()]
+    return list(requested)
 
 
 def _coord(data: Any, name: str, *, axis: int) -> np.ndarray:

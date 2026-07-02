@@ -20,8 +20,8 @@ ion_plan = art.p1.esa.ion_energy_flux.plan(time)
   `artemis.<probe>.esa.ion_energy_flux` datasets.
 - Project case context through `case.artemis.p1.fgm.magnetic_field` and
   `case.artemis.p1.esa.ion_energy_flux`.
-- `line()` PlotItem generation for FGM vector panels and `spectrogram()`
-  PlotItem generation for ESA energy spectra.
+- `line()` / `lines(components=...)` PlotItem generation for FGM vector panels
+  and `spectrogram()` PlotItem generation for ESA energy spectra.
 - Bilingual package guides via `art.guide(language="ja")`,
   `art.guide(language="en")`, `art.p1.fgm.guide(language=...)`, and
   `art.p1.esa.guide(language=...)`.
@@ -29,7 +29,7 @@ ion_plan = art.p1.esa.ion_energy_flux.plan(time)
 ```python
 stack = case.stack(
     case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy", log_color=True),
-    case.artemis.p1.fgm.magnetic_field.line(),
+    case.artemis.p1.fgm.magnetic_field.lines(components="xyz"),
 )
 plot_result = stack.plot()
 fig = plot_result.fig
