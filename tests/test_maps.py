@@ -73,3 +73,26 @@ def test_region_records_longitude_direction_metadata() -> None:
             body="moon",
             lon_direction="north_positive",
         )
+
+
+def test_region_records_latitude_type_metadata() -> None:
+    default_region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+    planetographic = spn.Region(
+        lon=(120, 160),
+        lat=(-45, -10),
+        body="moon",
+        lat_type="planetographic",
+    )
+
+    assert default_region.lat_type == "planetocentric"
+    assert default_region.to_metadata()["lat_type"] == "planetocentric"
+    assert planetographic.lat_type == "planetographic"
+    assert planetographic.to_metadata()["lat_type"] == "planetographic"
+
+    with pytest.raises(ValueError, match="lat_type"):
+        spn.Region(
+            lon=(120, 160),
+            lat=(-45, -10),
+            body="moon",
+            lat_type="geodetic",
+        )

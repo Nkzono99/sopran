@@ -1258,7 +1258,8 @@ v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の
   正規化し、metadata も canonical longitude だけを出す。
 - `lon_direction`: `east_positive` または `west_positive`。`Region` の既定は
   `east_positive` とし、metadata に常に出力する。
-- `lat_type`: `planetocentric` または `planetographic`。
+- `lat_type`: `planetocentric` または `planetographic`。`Region` の既定は
+  `planetocentric` とし、metadata に常に出力する。
 - `projection`: `equirectangular`, `polar_stereographic`, `orthographic`,
   `azimuthal_equidistant`, `lambert`, `native` など。
 - `crs`: 可能なら `pyproj.CRS` / PROJ string / WKT として表現できるもの。

@@ -6,6 +6,7 @@ from typing import Literal
 
 LonDomain = Literal["0_360", "-180_180", "minus180_180"]
 LonDirection = Literal["east_positive", "west_positive"]
+LatType = Literal["planetocentric", "planetographic"]
 
 
 @dataclass(frozen=True)
@@ -15,6 +16,7 @@ class Region:
     body: str = "moon"
     lon_domain: LonDomain = "0_360"
     lon_direction: LonDirection = "east_positive"
+    lat_type: LatType = "planetocentric"
 
     def __post_init__(self) -> None:
         lon_domain = _canonical_lon_domain(self.lon_domain)
@@ -24,6 +26,7 @@ class Region:
             "lon_direction",
             _canonical_lon_direction(self.lon_direction),
         )
+        object.__setattr__(self, "lat_type", _canonical_lat_type(self.lat_type))
         object.__setattr__(
             self,
             "lon",
@@ -70,6 +73,7 @@ class Region:
             "lat": [float(self.lat[0]), float(self.lat[1])],
             "lon_domain": self.lon_domain,
             "lon_direction": self.lon_direction,
+            "lat_type": self.lat_type,
         }
 
 
@@ -97,4 +101,10 @@ def _canonical_lon_direction(lon_direction: str) -> LonDirection:
     raise ValueError("lon_direction must be 'east_positive' or 'west_positive'")
 
 
-__all__ = ["LonDirection", "LonDomain", "Region"]
+def _canonical_lat_type(lat_type: str) -> LatType:
+    if lat_type in ("planetocentric", "planetographic"):
+        return lat_type  # type: ignore[return-value]
+    raise ValueError("lat_type must be 'planetocentric' or 'planetographic'")
+
+
+__all__ = ["LatType", "LonDirection", "LonDomain", "Region"]
