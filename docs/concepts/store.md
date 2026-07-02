@@ -62,7 +62,9 @@ recorded checksum.
 
 `Store.raw_files(refresh=True)` scans those sidecars and writes
 `registry/raw_files.parquet`. It can be filtered by `mission`, `provider`,
-`filename`, `provider_path`, or `data_version`.
+`filename`, `provider_path`, `data_version`, `acquired_after`, or
+`acquired_before`. The acquired-at filters use `[acquired_after,
+acquired_before)`.
 Use `Store.raw_file(...)` to reopen a `RawFileRecord` from a raw path and its
 sidecar manifest.
 

@@ -527,7 +527,9 @@ F:/sopran_cache/
   `<filename>.sopran.json` sidecar manifest を置き、`registry/raw_files.parquet` に
   mission / provider / provider path / filename / version / checksum / acquired_at の
   index を作り、mission / provider / provider path / filename / version で探索できるように
-  する。解析前に manifest checksum と現在のファイル checksum を比較できる API を持つ。
+  する。取得日時は `acquired_after` / `acquired_before` の半開区間
+  `[acquired_after, acquired_before)` で探索できるようにする。解析前に manifest checksum と
+  現在のファイル checksum を比較できる API を持つ。
   raw path から sidecar manifest を読み、`RawFileRecord` を復元できる。
 - parquet shard の schema、partition、期間、生成 pipeline、checksum を記録し、
   catalog checksum と現在の shard checksum を比較できる API を持つ。

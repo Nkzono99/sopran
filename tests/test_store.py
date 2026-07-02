@@ -320,14 +320,25 @@ def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
         provider="darts",
         provider_path="/pub/kaguya/first.dat",
         data_version="v1",
+        acquired_at="2026-07-02T12:00:00Z",
     )
-    store.register_raw_file("artemis/cdf/second.cdf", mission="artemis", provider="spdf")
+    store.register_raw_file(
+        "artemis/cdf/second.cdf",
+        mission="artemis",
+        provider="spdf",
+        acquired_at="2026-07-01T00:00:00Z",
+    )
 
     index = store.raw_files(refresh=True)
     spdf = store.raw_files(provider="spdf")
     first_dat = store.raw_files(filename="first.dat")
     darts_v1 = store.raw_files(provider="darts", data_version="v1")
     provider_path = store.raw_files(provider_path="/pub/kaguya/first.dat")
+    acquired_on_second = store.raw_files(
+        acquired_after="2026-07-02T00:00:00Z",
+        acquired_before="2026-07-03T00:00:00Z",
+    )
+    before_second = store.raw_files(acquired_before="2026-07-02T00:00:00Z")
 
     assert store.registry_path("raw_files.parquet").exists()
     assert index.select("path").to_series().to_list() == [
@@ -343,6 +354,12 @@ def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
     assert first_dat.select("path").to_series().to_list() == ["raw/kaguya/l2/first.dat"]
     assert darts_v1.select("path").to_series().to_list() == ["raw/kaguya/l2/first.dat"]
     assert provider_path.select("path").to_series().to_list() == ["raw/kaguya/l2/first.dat"]
+    assert acquired_on_second.select("path").to_series().to_list() == [
+        "raw/kaguya/l2/first.dat"
+    ]
+    assert before_second.select("path").to_series().to_list() == [
+        "raw/artemis/cdf/second.cdf"
+    ]
 
 
 def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) -> None:

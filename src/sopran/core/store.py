@@ -103,6 +103,8 @@ class Store:
         filename: str | None = None,
         provider_path: str | None = None,
         data_version: str | None = None,
+        acquired_after: str | None = None,
+        acquired_before: str | None = None,
         refresh: bool = False,
     ):
         import polars as pl
@@ -123,6 +125,12 @@ class Store:
         for column, value in filters.items():
             if value is not None:
                 frame = frame.filter(pl.col(column) == value)
+        if acquired_after is not None or acquired_before is not None:
+            frame = frame.filter(pl.col("acquired_at") != "")
+        if acquired_after is not None:
+            frame = frame.filter(pl.col("acquired_at") >= acquired_after)
+        if acquired_before is not None:
+            frame = frame.filter(pl.col("acquired_at") < acquired_before)
         return frame.sort("path")
 
     def database(self, name: str):

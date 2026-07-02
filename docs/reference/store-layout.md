@@ -80,5 +80,7 @@ manifest.
 
 `raw_files.parquet` is rebuilt by `Store.raw_files(refresh=True)` from raw
 sidecar manifests and can be filtered with `mission`, `provider`, `filename`,
-`provider_path`, or `data_version`. Rows include provider path, filename,
-version, checksum, and acquisition time.
+`provider_path`, `data_version`, `acquired_after`, or `acquired_before`.
+Acquired-at filters use the half-open interval `[acquired_after,
+acquired_before)`. Rows include provider path, filename, version, checksum, and
+acquisition time.
