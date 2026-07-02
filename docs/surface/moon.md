@@ -25,6 +25,14 @@ Implemented endpoints:
 - `moon.illumination`
 - `moon.sza`
 
+Use `info()` for a short console summary. Endpoint-level info includes stable
+source IDs, dimensions, units, frame, and aliases:
+
+```python
+moon.info()
+moon.dem.info()
+```
+
 The body and surface endpoints expose bilingual package guides:
 
 ```python

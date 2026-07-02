@@ -45,6 +45,8 @@ class Moon:
                 "shadow: terrain-aware shadow map endpoint skeleton",
                 "illumination: terrain-aware illumination endpoint skeleton",
                 "sza: solar zenith angle planning endpoint skeleton",
+                "schema: "
+                + _format_list(variable.name for variable in self.schema().variables),
             ),
         )
 
@@ -114,11 +116,17 @@ class SurfaceEndpoint:
         self.label = label
 
     def info(self) -> InfoPage:
+        schema = self.schema()
         return InfoPage(
             title=f"Moon.{self.product}",
             lines=(
                 f"{self.label} surface product.",
                 "v0.1 implements planning only; load/compute backends are later milestones.",
+                "sources: " + _format_list(self.sources()),
+                "dims: " + _format_list(schema.dims),
+                f"units: {schema.units or 'none'}",
+                f"frame: {schema.frame or 'none'}",
+                "aliases: " + _format_list(schema.aliases),
             ),
         )
 
@@ -412,6 +420,11 @@ def _metadata_value(value: Any) -> Any:
     if isinstance(value, (tuple, list)):
         return [_metadata_value(item) for item in value]
     return value
+
+
+def _format_list(values) -> str:
+    items = tuple(str(value) for value in values)
+    return ", ".join(items) if items else "none"
 
 
 def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, Any]:

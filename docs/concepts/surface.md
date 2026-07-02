@@ -25,6 +25,8 @@ metadata = dem_plan.to_metadata()
 Use `moon.example()` or endpoint-level examples such as `moon.dem.example()`,
 `moon.shadow.example()`, and `moon.sza.example()` when you want a short
 copyable `GuidePage` snippet before building a plan.
+Use `moon.info()` and endpoint-level `info()` calls for a short console summary
+of product names, source IDs, dimensions, units, frames, and aliases.
 Use `moon.schema()` for the body-level surface schema and endpoint-level calls
 such as `moon.dem.schema()` or `moon.sza.schema()` for individual map product
 definitions. The same schema tables are appended to `moon.guide()` and

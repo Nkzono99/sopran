@@ -41,6 +41,26 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert "DEM" in str(moon.dem.info())
 
 
+def test_moon_surface_info_includes_schema_and_sources() -> None:
+    moon = spn.Moon()
+
+    mission_info = str(moon.info())
+    dem_info = str(moon.dem.info())
+    shadow_info = str(moon.shadow.info())
+    sza_info = str(moon.sza.info())
+
+    assert "schema: dem, svm, shadow, illumination, sza" in mission_info
+    assert "sources: kaguya.tc.dem, lro.lola.dem" in dem_info
+    assert "dims: lat, lon" in dem_info
+    assert "units: m" in dem_info
+    assert "frame: Moon body-fixed" in dem_info
+    assert "aliases: elevation, height" in dem_info
+    assert "sources: legacy.shadowmap_sza" in shadow_info
+    assert "aliases: shadow_map, shadow_fraction" in shadow_info
+    assert "sources: computed.spice.sza" in sza_info
+    assert "units: deg" in sza_info
+
+
 def test_moon_surface_endpoints_list_stable_source_ids() -> None:
     moon = spn.Moon()
 
