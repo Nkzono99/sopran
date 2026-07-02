@@ -116,9 +116,10 @@ spectra once a normalized parquet dataset exists in the store.
 The v0.1 implementation accepts `backend="matplotlib"`. `plot()` returns a
 `PlotResult` with `fig`, `axes`, `backend`, and metadata so quicklook and
 notebook workflows can share the same plot description. Plot metadata includes
-`time_axis` so saved quicklooks can state that panels shared the UTC time axis
-while preserving each product's native cadence. Pass `context=case` to `plot()`
-when the notebook result should carry `case.metadata()`.
+`items`, `panel_kinds`, and `time_axis` so saved quicklooks can state which
+panels were line or spectrogram panels, that they shared the UTC time axis, and
+that each product kept its native cadence. Pass `context=case` to `plot()` when
+the notebook result should carry `case.metadata()`.
 Objects with a JSON-ready `metadata` property, such as loaded `SopranArray`
 values, can also be passed directly as `context=loaded`.
 Current `quicklook()` output can include a Matplotlib PNG, a static HTML report

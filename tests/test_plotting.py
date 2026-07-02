@@ -48,6 +48,7 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     assert len(result.axes) == 2
     assert result.metadata["panel_count"] == 2
     assert result.metadata["items"] == ["counts", "quality"]
+    assert result.metadata["panel_kinds"] == ["spectrogram", "line"]
 
 
 def test_plot_stack_records_shared_native_time_axis_metadata() -> None:
@@ -730,6 +731,7 @@ def test_plot_stack_quicklook_writes_png_and_metadata(tmp_path) -> None:
     assert (tmp_path / "wake_overview.png").exists()
     assert metadata["backend"] == "matplotlib"
     assert metadata["items"] == ["quality"]
+    assert metadata["panel_kinds"] == ["line"]
     assert metadata["artifacts"] == ["wake_overview.png"]
     assert metadata["time_axis"] == {
         "shared": True,

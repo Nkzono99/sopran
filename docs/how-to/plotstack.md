@@ -46,8 +46,9 @@ a logarithmic color scale.
 `explore(backend="panel")` returns a Panel view containing the same Matplotlib
 figure and metadata for notebook or browser inspection.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
-The metadata includes `time_axis`, recording the shared UTC axis and native
-cadence policy used by the stack.
+The metadata includes `items`, `panel_kinds`, and `time_axis`, recording the
+panel names, panel kinds, shared UTC axis, and native cadence policy used by
+the stack.
 Pass `context=case` when the `PlotResult.metadata` should carry the case
 context.
 `quicklook()` writes `<name>.png`, optional `<name>.html`, and `<name>.json`.
