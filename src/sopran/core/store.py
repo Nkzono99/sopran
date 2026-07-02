@@ -286,6 +286,24 @@ class Store:
         manifest = self.dataset(dataset_id, layer=layer).manifest()
         return tuple(self.raw_file(path) for path in manifest.get("source_files", []))
 
+    def verify_dataset(
+        self,
+        dataset_id: str,
+        *,
+        layer: str | None = None,
+        source_files: bool = True,
+    ) -> bool:
+        record = self.dataset(dataset_id, layer=layer)
+        if not record.verify_checksums():
+            return False
+        if source_files:
+            try:
+                source_records = self.dataset_source_files(dataset_id, layer=layer)
+            except FileNotFoundError:
+                return False
+            return all(raw_file.verify_checksum() for raw_file in source_records)
+        return True
+
     def rebuild_registry(self):
         path = self.registry_path("datasets.parquet")
         path.parent.mkdir(parents=True, exist_ok=True)

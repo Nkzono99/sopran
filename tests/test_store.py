@@ -421,6 +421,37 @@ def test_store_resolves_dataset_source_file_records(tmp_path) -> None:
     assert records[0].verify_checksum()
 
 
+def test_store_verifies_dataset_integrity_with_source_files(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    raw_file = store.raw_path("kaguya", "l2", "source.dat")
+    raw_file.parent.mkdir(parents=True)
+    raw_file.write_bytes(b"raw payload")
+    store.register_raw_file("kaguya/l2/source.dat", mission="kaguya", provider="darts")
+    time = spn.period("2008-02-01", "2008-02-02")
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+        source_files=("raw/kaguya/l2/source.dat",),
+    )
+
+    assert store.verify_dataset("kaguya.esa1.counts", layer="normalized")
+
+    raw_file.write_bytes(b"changed raw payload")
+
+    assert not store.verify_dataset("kaguya.esa1.counts", layer="normalized")
+    assert store.verify_dataset("kaguya.esa1.counts", layer="normalized", source_files=False)
+
+    (dataset.root / "shards" / "part-000.parquet").write_bytes(b"changed shard")
+
+    assert not store.verify_dataset("kaguya.esa1.counts", layer="normalized", source_files=False)
+
+
 def test_dataset_record_verifies_catalog_shard_checksums(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

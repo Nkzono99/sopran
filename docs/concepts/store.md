@@ -50,6 +50,8 @@ pipeline source, stage list, mode, time range, and selected product or variable.
 files.
 `Store.dataset_source_files(...)` resolves `dataset.json["source_files"]` into
 `RawFileRecord` objects so raw input checksums can be verified.
+`Store.verify_dataset(...)` checks both dataset shard checksums and raw input
+checksums for a dataset.
 
 Raw files are not renamed by SOPRAN. `Store.register_raw_file(...)` writes a
 sidecar manifest next to the raw file, named `<filename>.sopran.json`, with the

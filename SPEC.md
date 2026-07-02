@@ -529,6 +529,8 @@ F:/sopran_cache/
   catalog checksum と現在の shard checksum を比較できる API を持つ。
 - dataset manifest の `source_files` から raw sidecar manifest へ辿り、入力 raw file の
   checksum を検証できる API を持つ。
+- dataset 単位で Parquet shard checksum と入力 raw file checksum をまとめて検証できる
+  integrity API を持つ。
 - ユーザーが拡張した database を登録する。
 
 責務分担:
