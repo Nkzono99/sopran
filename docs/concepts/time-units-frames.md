@@ -70,7 +70,9 @@ metadata = features.metadata()
 `TimeBins.to_polars()` returns one row per bin with `start`, `stop`, `center`,
 `duration_seconds`, and `is_partial`. `metadata()` returns the columns, bin
 grid, alignment method, join mode, fill policy, and detailed bin edges/centers
-so the same information can be written into a dataset manifest.
+so the same information can be written into a dataset manifest. It also stores
+`features`, a per-output-column list of the selected reducer and tolerance, so
+mixed `SampleTable` rules are reproducible.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`

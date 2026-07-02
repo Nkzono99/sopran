@@ -549,6 +549,9 @@ def test_alignment_result_exposes_feature_table_metadata() -> None:
 
     assert aligned.metadata() == {
         "columns": ["sza"],
+        "features": [
+            {"column": "sza", "method": "nearest", "tolerance_seconds": 3.0}
+        ],
         "fill": -1.0,
         "grid": {
             "closed": "left",
@@ -575,6 +578,51 @@ def test_alignment_result_exposes_feature_table_metadata() -> None:
         "method": "nearest",
         "quality_mask": False,
     }
+
+
+def test_sample_table_metadata_records_feature_specific_rules() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 3.0, 10.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:03",
+                    "2008-01-01T00:00:12",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+
+    result = (
+        spn.SampleTable(bins)
+        .add(sza, method="nearest", tolerance="3s")
+        .add(wave_power, method="max")
+        .collect()
+    )
+
+    assert result.metadata()["features"] == [
+        {"column": "sza", "method": "nearest", "tolerance_seconds": 3.0},
+        {"column": "wave_power", "method": "max", "tolerance_seconds": None},
+    ]
 
 
 def test_sample_table_uses_product_specific_alignment_methods() -> None:

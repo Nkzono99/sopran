@@ -1580,8 +1580,8 @@ stack = spn.stack(
 - `to_polars(layout="long")` は `time`, `feature`, `value` の tidy table を返す。
 - `quality_mask=<1D time series>` は各 bin 内で center に最も近い mask sample を評価し、
   0、False、欠損の bin を feature table から落とす。
-- `AlignmentResult.metadata()` は columns、grid、method、join、fill、quality_mask を返し、
-  manifest/provenance に使う。
+- `AlignmentResult.metadata()` は columns、feature ごとの method/tolerance、grid、method、
+  join、fill、quality_mask を返し、manifest/provenance に使う。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
@@ -1629,6 +1629,8 @@ v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `ce
 `TimeBins.partial` は末尾の不完全 bin の扱いを記録する。`TimeBins.to_polars()` で
 bin grid を表形式として確認でき、`TimeBins.metadata()` / `AlignmentResult.metadata()["grid"]` には
 `edges`, `centers`, `durations_seconds`, `is_partial` を保存する。
+`AlignmentResult.metadata()["features"]` は各 output column の `method` と `tolerance_seconds` を
+保存し、`SampleTable` で product ごとに違う reducer/tolerance を選んだ場合も再現可能にする。
 `join="outer"` は全 bin を保持し、`join="inner"` はいずれかの feature が欠けた bin を落とす。
 `fill` が指定された場合は、`outer` で残った欠損 feature 値をその値で置き換える。
 `quality_mask` が指定された場合は、1D の mask series を bin 内 center sampling し、

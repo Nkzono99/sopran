@@ -127,6 +127,7 @@ class AlignmentResult:
     join: JoinMode = "outer"
     fill: Any | None = None
     quality_mask: bool = False
+    feature_rules: tuple[dict[str, Any], ...] = ()
 
     def to_polars(self, *, layout: TableLayout = "wide"):
         import polars as pl
@@ -152,6 +153,7 @@ class AlignmentResult:
     def metadata(self) -> dict[str, Any]:
         return {
             "columns": list(self.columns),
+            "features": list(self.feature_rules),
             "fill": self.fill,
             "grid": self.grid.metadata(),
             "join": self.join,
@@ -362,6 +364,7 @@ def _collect_features(
         join=join,
         fill=fill,
         quality_mask=quality_mask_samples is not None,
+        feature_rules=tuple(_feature_rule(feature) for feature in features),
     )
 
 
@@ -369,6 +372,18 @@ def _collect_features(
 class _FeatureSeries:
     name: str
     samples: tuple[tuple[datetime, float], ...]
+
+
+def _feature_rule(feature: _RequestedFeature) -> dict[str, Any]:
+    return {
+        "column": feature.name,
+        "method": feature.method,
+        "tolerance_seconds": (
+            feature.tolerance.total_seconds()
+            if feature.tolerance is not None
+            else None
+        ),
+    }
 
 
 def _features(array: Any, index: int) -> tuple[_FeatureSeries, ...]:
