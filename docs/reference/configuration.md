@@ -3,6 +3,9 @@
 Project configuration lives in `sopran.toml` in an analysis workspace:
 
 ```toml
+[project]
+artifact_root = "artifacts"
+
 [defaults]
 frame = "SSE"
 cache = true
@@ -29,6 +32,7 @@ Environment variables:
 
 - `SOPRAN_DATA_ROOT`: default store root.
 - `SOPRAN_CACHE_ROOT`: optional cache root override.
+- `SOPRAN_ARTIFACT_ROOT`: project artifact root for `Project.save(...)`.
 - `SOPRAN_DOWNLOAD_MODE`: default mission download policy when not passed explicitly.
 - `SOPRAN_OFFLINE`: when truthy, default mission download policy becomes `never`.
 
@@ -36,5 +40,8 @@ When `Project(root)` creates its own `Store`, `[store].data_root` and
 `[store].cache_root` are resolved relative to the project root unless they are
 absolute paths. Explicit `Store(...)` arguments and environment variables take
 priority over project configuration.
+`Project.save(...)` resolves artifact roots in this order: explicit
+`artifact_root`, `SOPRAN_ARTIFACT_ROOT`, `[project].artifact_root`, then the
+project root. Relative paths are resolved against the project root.
 
 Invalid project configuration raises `ConfigError`.

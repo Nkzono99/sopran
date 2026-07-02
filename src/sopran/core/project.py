@@ -28,9 +28,16 @@ class ProjectArtifact:
 class Project:
     """Analysis workspace that supplies case context to mission objects."""
 
-    def __init__(self, root: Path | str, *, store: Store | None = None) -> None:
+    def __init__(
+        self,
+        root: Path | str,
+        *,
+        store: Store | None = None,
+        artifact_root: Path | str | None = None,
+    ) -> None:
         self.root = Path(root)
         self.store = store or self._configured_store()
+        self.artifact_root = self._configured_artifact_root(artifact_root)
 
     def save(
         self,
@@ -43,7 +50,7 @@ class Project:
     ) -> ProjectArtifact:
         if format != "netcdf":
             raise ValueError("Project.save() currently supports format='netcdf' only")
-        target = _project_child_path(self.root, name, suffix=".nc")
+        target = _project_child_path(self.artifact_root, name, suffix=".nc")
         if target.exists() and not overwrite:
             raise FileExistsError(f"Project artifact already exists: {target}")
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -57,7 +64,7 @@ class Project:
             value,
             array,
             target,
-            root=self.root,
+            root=self.artifact_root,
             format=format,
             context=context,
         )
@@ -114,6 +121,17 @@ class Project:
             default=None,
         )
         return Store(root=root, cache_root=cache_root)
+
+    def _configured_artifact_root(self, artifact_root: Path | str | None) -> Path:
+        config = self._read_config() if (self.root / "sopran.toml").exists() else {}
+        project_config = config.get("project", {})
+        return _configured_path(
+            self.root,
+            artifact_root
+            or os.environ.get("SOPRAN_ARTIFACT_ROOT")
+            or project_config.get("artifact_root"),
+            default=self.root,
+        )
 
 
 class Case:

@@ -60,6 +60,11 @@ be passed directly when their `to_metadata()` output is the desired context.
 When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
 relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain
 higher priority.
+`Project.save(...)` writes under `Project.artifact_root`. The root defaults to
+the project root and can be overridden with `Project(..., artifact_root=...)`,
+`SOPRAN_ARTIFACT_ROOT`, or `[project].artifact_root`. Relative artifact roots
+are resolved against the project root, and metadata sidecar `path` values remain
+relative to the artifact root.
 
 Use `Project.save(...)` for ad-hoc or interim artifacts that belong to the
 analysis workspace rather than the shared data `Store`:

@@ -485,6 +485,9 @@ artifact = prj.save(
 `Project.save(...)` は共有 `Store` に登録する dataset ではなく、解析 workspace 内の
 ad-hoc / interim artifact を保存する補助 API とする。v0.1 では xarray 互換 object を
 NetCDF (`.nc`) と JSON metadata sidecar として保存し、time coverage、source files、相対 path を残す。
+保存 root は明示 `Project(..., artifact_root=...)`、`SOPRAN_ARTIFACT_ROOT`、
+`[project].artifact_root`、project root の順で解決する。相対 path は project root 基準で解決し、
+metadata sidecar の `path` は artifact root からの相対 path とする。
 保存対象が JSON-ready な `metadata` property / method を持つ場合は、その snapshot を
 `source_metadata` として sidecar に保存する。`context` は解析 case などの外側文脈、
 `source_metadata` は保存対象自身の provenance として分ける。
@@ -2107,6 +2110,8 @@ Or use a Project case:
 `[store].data_root` と `[store].cache_root` を読む。相対 path は project root 基準で
 解決する。環境変数 `SOPRAN_DATA_ROOT` / `SOPRAN_CACHE_ROOT` がある場合は project config より
 優先する。
+`Project.save(...)` の artifact root は明示 `artifact_root`、`SOPRAN_ARTIFACT_ROOT`、
+`[project].artifact_root`、project root の順で解決する。
 
 ### Download policy
 

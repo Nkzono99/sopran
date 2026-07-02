@@ -169,6 +169,52 @@ cache_root = "configured_cache"
     assert project.store.cache_root == project_root / "configured_cache"
 
 
+def test_project_reads_artifact_root_from_project_config(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[project]
+artifact_root = "configured_artifacts"
+""".strip(),
+        encoding="utf-8",
+    )
+    project = spn.Project(project_root, store=Store(tmp_path / "store"))
+    data = KaguyaESA1Data(time=spn.day("2008-02-01")).quality
+
+    artifact = project.save(data, "interim/kaguya_esa1_quality")
+
+    assert project.artifact_root == project_root / "configured_artifacts"
+    assert artifact.path == (
+        project_root
+        / "configured_artifacts"
+        / "interim"
+        / "kaguya_esa1_quality.nc"
+    )
+    assert artifact.metadata["path"] == "interim/kaguya_esa1_quality.nc"
+
+
+def test_project_artifact_root_environment_overrides_project_config(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    env_artifacts = tmp_path / "env_artifacts"
+    monkeypatch.setenv("SOPRAN_ARTIFACT_ROOT", str(env_artifacts))
+    (project_root / "sopran.toml").write_text(
+        """
+[project]
+artifact_root = "configured_artifacts"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    project = spn.Project(project_root, store=Store(tmp_path / "store"))
+
+    assert project.artifact_root == env_artifacts
+
+
 def test_project_invalid_region_config_raises_config_error(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()
