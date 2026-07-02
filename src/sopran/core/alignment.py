@@ -220,6 +220,66 @@ class FeatureMatrix:
                 metadata=json.loads(metadata_json),
             )
 
+    def write_parquet(
+        self,
+        path: str | Path,
+        *,
+        include_time: bool = True,
+    ) -> Path:
+        output = Path(path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        self.to_polars(include_time=include_time).write_parquet(output)
+        sidecar = output.with_suffix(".metadata.json")
+        sidecar.write_text(
+            json.dumps(
+                {
+                    "columns": list(self.columns),
+                    "format": "parquet",
+                    "include_time": include_time,
+                    "metadata": self.metadata,
+                    "path": output.name,
+                    "rows": int(self.values.shape[0]),
+                    "time": list(self.time),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return output
+
+    @classmethod
+    def read_parquet(cls, path: str | Path) -> FeatureMatrix:
+        import polars as pl
+
+        input_path = Path(path)
+        frame = pl.read_parquet(input_path)
+        sidecar = input_path.with_suffix(".metadata.json")
+        if sidecar.exists():
+            payload: dict[str, Any] = json.loads(sidecar.read_text(encoding="utf-8"))
+            columns = tuple(str(column) for column in payload.get("columns", ()))
+            time = tuple(str(value) for value in payload.get("time", ()))
+            metadata = dict(payload.get("metadata") or {})
+        else:
+            columns = tuple(column for column in frame.columns if column != "time")
+            time = (
+                tuple(str(value) for value in frame["time"].to_list())
+                if "time" in frame.columns
+                else ()
+            )
+            metadata = {"columns": list(columns), "rows": frame.height}
+        if not columns:
+            columns = tuple(column for column in frame.columns if column != "time")
+        if not time and "time" in frame.columns:
+            time = tuple(str(value) for value in frame["time"].to_list())
+        return cls(
+            values=frame.select(list(columns)).to_numpy(),
+            columns=columns,
+            time=time,
+            metadata=metadata,
+        )
+
 
 @dataclass(frozen=True)
 class AlignmentResult:

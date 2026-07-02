@@ -1709,6 +1709,9 @@ stack = spn.stack(
   `columns`, `time`, `metadata` を持つ `FeatureMatrix` を返す。
 - `FeatureMatrix.to_polars(include_time=False)` / `to_pandas(include_time=False)` は
   feature table を Polars / pandas DataFrame として返す。
+  `FeatureMatrix.write_parquet(path, include_time=True)` は feature table と time column を
+  Parquet と sibling `.metadata.json` に保存し、Polars / ML 前処理で再利用しやすくする。
+  `FeatureMatrix.read_parquet(path)` は同じ artifact を読み戻す。
   `FeatureMatrix.write_npz(path)` は values、columns、time、metadata JSON を保存する。
   `FeatureMatrix.read_npz(path)` は同じ artifact を読み戻す。
 - `FeatureMatrix.select(*columns)` は ML 入力列を明示的に絞り、metadata の columns/features も
@@ -1765,6 +1768,8 @@ frame = features.to_feature_frame()
 metadata = features.feature_metadata()
 matrix = features.to_feature_matrix()
 matrix = matrix.select("sza", "magnetic_field_x", "magnetic_field_y")
+matrix.write_parquet("wake_context_features.parquet")
+matrix = spn.FeatureMatrix.read_parquet("wake_context_features.parquet")
 matrix.write_npz("wake_context_features.npz")
 matrix = spn.FeatureMatrix.read_npz("wake_context_features.npz")
 
