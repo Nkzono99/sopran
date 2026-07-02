@@ -168,7 +168,8 @@ case = prj.case("wake_20080201")
 
 counts = case.kaguya.esa1.counts.load()
 artemis_b_plan = case.artemis.p1.fgm.magnetic_field.plan()
-moon_dem_plan = case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
+moon_dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
+moon_sza_plan = case.moon.sza.plan()
 
 stack = case.stack(
     counts.spectrogram(y="energy"),
@@ -179,13 +180,14 @@ stack.plot()
 artifact = prj.save(case.kaguya.esa1.quality.load(), "interim/kaguya_esa1_quality_wake")
 ```
 
-月面 DEM/SVM/shadow/illumination は mission ではなく body-first API を主導線にします。
+月面 DEM/SVM/SZA/shadow/illumination は mission ではなく body-first API を主導線にします。
 
 ```python
 moon = spn.Moon()
 region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
 dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=region, resolution="512ppd")
+sza_plan = moon.sza.plan(time="2008-02-01T12:00:00", region=region)
 shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00", dem=dem_plan)
 ```
 
