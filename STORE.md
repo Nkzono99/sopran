@@ -15,6 +15,7 @@ own notebooks, figures, scripts, or case definitions; those belong to
 - Store derived analysis features separately from normalized instrument data.
 - Maintain `dataset.json`, `catalog.parquet`, `schema.json`, and logs.
 - Register user-defined database namespaces and products.
+- List registered database products from `database.json`.
 
 ## Layers
 
@@ -32,3 +33,20 @@ moments, loss-cone fits, wake context, and residual context belong in
 `features`.
 
 See `SPEC.md` for the public API contract.
+
+## Database Metadata
+
+User-defined database namespaces keep a `database.json` file alongside their
+registered products. The API can read that file back for discovery:
+
+```python
+db = store.database("lunar_wake")
+db.register_product(
+    name="event_table",
+    schema=kg.esa1.schema(),
+    description="hand-curated lunar wake events",
+)
+
+products = db.products()
+assert products[0].name == "event_table"
+```

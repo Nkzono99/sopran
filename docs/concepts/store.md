@@ -44,3 +44,11 @@ product = db.register_product(
 
 pipe.write(db.product("event_table"))
 ```
+
+Registered products can be listed later from `database.json`:
+
+```python
+products = db.products()
+products[0].name
+products[0].dataset_id
+```

@@ -138,6 +138,29 @@ def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) 
     assert dataset.catalog().select("status").to_series().to_list() == ["empty"]
 
 
+def test_database_lists_registered_products_from_metadata(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    database = store.database("my_project")
+
+    database.register_product(
+        name="event_table",
+        schema=KAGUYA_ESA1_SCHEMA,
+        description="hand-curated lunar wake events",
+    )
+    database.register_product(
+        name="esa1_context",
+        schema=KAGUYA_ESA1_SCHEMA,
+        description="context around each event",
+    )
+
+    products = database.products()
+
+    assert [product.name for product in products] == ["event_table", "esa1_context"]
+    assert products[0].dataset_id == "my_project.event_table"
+    assert products[0].layer == "databases"
+    assert database.metadata()["products"][1]["description"] == "context around each event"
+
+
 def test_store_scans_registered_parquet_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

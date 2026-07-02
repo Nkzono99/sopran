@@ -14,6 +14,10 @@ class ProductRef:
     dataset_id: str
     layer: str
 
+    @property
+    def name(self) -> str:
+        return self.dataset_id.split(".")[-1]
+
 
 @dataclass(frozen=True)
 class Database:
@@ -25,6 +29,21 @@ class Database:
         if not name:
             raise ValueError("database product name must not be empty")
         return ProductRef(dataset_id=f"{self.name}.{name}", layer="databases")
+
+    def metadata(self) -> dict[str, Any]:
+        path = self.root / "database.json"
+        if not path.exists():
+            return {"name": self.name, "products": []}
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def products(self) -> tuple[ProductRef, ...]:
+        return tuple(
+            ProductRef(
+                dataset_id=str(item["dataset_id"]),
+                layer=str(item.get("layer", "databases")),
+            )
+            for item in self.metadata().get("products", [])
+        )
 
     def register_product(
         self,
@@ -48,13 +67,9 @@ class Database:
 
     def _write_metadata(self, product: ProductRef, *, description: str) -> None:
         path = self.root / "database.json"
-        if path.exists():
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        else:
-            payload = {"name": self.name, "products": []}
-
+        payload = self.metadata()
         entry = {
-            "name": product.dataset_id.split(".")[-1],
+            "name": product.name,
             "dataset_id": product.dataset_id,
             "layer": product.layer,
             "description": description,
