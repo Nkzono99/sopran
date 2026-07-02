@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import polars as pl
 import pytest
@@ -996,6 +998,60 @@ def test_feature_matrix_exports_pandas_and_npz(tmp_path) -> None:
             "2008-01-01T00:00:15Z",
         ]
         assert "metadata_json" in data.files
+
+
+def test_feature_matrix_write_npz_writes_metadata_sidecar(tmp_path) -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 3.0, 10.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:03",
+                    "2008-01-01T00:00:12",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+    matrix = spn.align(
+        sza,
+        wave_power,
+        grid=bins,
+        method="mean",
+        join="inner",
+    ).to_feature_matrix()
+
+    path = matrix.write_npz(tmp_path / "features.npz")
+    sidecar = tmp_path / "features.metadata.json"
+
+    assert path == tmp_path / "features.npz"
+    assert sidecar.exists()
+    assert json.loads(sidecar.read_text(encoding="utf-8")) == {
+        "columns": ["sza", "wave_power"],
+        "format": "npz",
+        "metadata": matrix.metadata,
+        "path": "features.npz",
+        "rows": 2,
+        "time": ["2008-01-01T00:00:05Z", "2008-01-01T00:00:15Z"],
+    }
 
 
 def test_feature_matrix_reads_npz_round_trip(tmp_path) -> None:

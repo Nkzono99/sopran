@@ -188,6 +188,23 @@ class FeatureMatrix:
             time=np.array(self.time, dtype=str),
             metadata_json=json.dumps(self.metadata, sort_keys=True),
         )
+        sidecar = output.with_suffix(".metadata.json")
+        sidecar.write_text(
+            json.dumps(
+                {
+                    "columns": list(self.columns),
+                    "format": "npz",
+                    "metadata": self.metadata,
+                    "path": output.name,
+                    "rows": int(self.values.shape[0]),
+                    "time": list(self.time),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         return output
 
     @classmethod

@@ -123,7 +123,9 @@ feature rules, grid metadata, row count, and time column name.
 `values`, feature `columns`, bin-center `time`, and the same feature metadata.
 `FeatureMatrix.to_polars()` and `FeatureMatrix.to_pandas()` return feature
 tables, and `write_npz()` stores values, columns, time labels, and metadata JSON
-for lightweight ML handoff.
+for lightweight ML handoff. It also writes a sibling `.metadata.json` sidecar so
+non-Python tools can inspect columns, bin-center times, row count, and alignment
+metadata without opening the binary array file.
 Use `FeatureMatrix.read_npz()` to reload the same artifact.
 Use `FeatureMatrix.select(*columns)` before training when a model should receive
 only a chosen subset of aligned features.

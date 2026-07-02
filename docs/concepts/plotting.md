@@ -109,7 +109,9 @@ time labels, and metadata in a small object for ML libraries.
 Use `FeatureMatrix.to_polars()` or `FeatureMatrix.to_pandas()` when a downstream
 tool expects a table again.
 Use `FeatureMatrix.write_npz()` when a compact local artifact is more convenient
-than a Parquet feature table, and `FeatureMatrix.read_npz()` to load it again.
+than a Parquet feature table. The same call writes a sibling `.metadata.json`
+sidecar with columns, bin-center times, row count, and alignment metadata, and
+`FeatureMatrix.read_npz()` loads the binary artifact again.
 Use `FeatureMatrix.select()` to keep only the columns a downstream model should
 see.
 
