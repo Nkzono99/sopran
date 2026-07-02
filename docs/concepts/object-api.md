@@ -35,6 +35,22 @@ APIs that accept `context=` can use either `context=loaded` or
 For table workflows, `SopranArray.to_polars()` flattens the loaded xarray
 coordinates and values into a Polars DataFrame, and `to_pandas()` returns the
 same table as a pandas DataFrame.
+Common xarray operations such as `sel()`, `where()`, and `mean()` are delegated
+thinly and return another `SopranArray`, so schema dimensions and provenance stay
+available after simple filtering or reduction:
+
+```python
+subset = counts.sel(energy=slice(100, 1000)).mean("energy")
+subset.to_polars()
+subset.quicklook("counts_energy_band")
+```
+
+`resample()` delegates to xarray's resampler for time-grid operations:
+
+```python
+hourly = quality.resample(time="1h").mean()
+```
+
 Use `SopranArray.write_parquet(store, ...)` when a single loaded variable should
 be persisted as a SOPRAN dataset with `dataset.json`, `schema.json`,
 `catalog.parquet`, and one or more Parquet shards:

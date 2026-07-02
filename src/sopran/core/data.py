@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +79,18 @@ class SopranArray:
 
     def to_pandas(self):
         return self.to_polars().to_pandas()
+
+    def sel(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._with_xarray(self.to_xarray().sel(*args, **kwargs))
+
+    def where(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._with_xarray(self.to_xarray().where(*args, **kwargs))
+
+    def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._with_xarray(self.to_xarray().mean(*args, **kwargs))
+
+    def resample(self, *args: Any, **kwargs: Any) -> Any:
+        return self.to_xarray().resample(*args, **kwargs)
 
     def write_parquet(
         self,
@@ -191,3 +203,15 @@ class SopranArray:
         if reduce_dims:
             array = getattr(array, reduction)(reduce_dims)
         return spectrogram(array, x=x, y=y, name=name or self.name, log_color=log_color)
+
+    def _with_xarray(self, array: Any) -> SopranArray:
+        name = str(getattr(array, "name", None) or self.name)
+        dims = tuple(str(dim) for dim in getattr(array, "dims", self.schema.dims))
+        schema = replace(self.schema, name=name, dims=dims)
+        return SopranArray(
+            name=name,
+            time=self.time,
+            schema=schema,
+            files=self.files,
+            xr=array,
+        )

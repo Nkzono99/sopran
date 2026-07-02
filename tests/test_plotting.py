@@ -172,6 +172,70 @@ def test_loaded_array_exposes_trange_and_json_ready_metadata(tmp_path) -> None:
     }
 
 
+def test_loaded_array_delegates_sel_where_and_mean_to_xarray() -> None:
+    array = xr.DataArray(
+        np.array([[1.0, 2.0], [3.0, 4.0]]),
+        dims=("time", "energy"),
+        coords={"time": ["t0", "t1"], "energy": [10.0, 20.0]},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="counts",
+            dims=("time", "energy"),
+            units="count",
+            description="Raw counts.",
+        ),
+        xr=array,
+    )
+
+    selected = loaded.sel(energy=20.0)
+    masked = loaded.where(loaded.to_xarray() >= 2.0)
+    averaged = loaded.mean("energy")
+
+    assert isinstance(selected, SopranArray)
+    assert selected.schema.dims == ("time",)
+    assert selected.to_xarray().dims == ("time",)
+    assert selected.to_xarray().values.tolist() == [2.0, 4.0]
+    assert masked.schema.dims == ("time", "energy")
+    assert np.isnan(masked.to_xarray().values[0, 0])
+    assert averaged.schema.dims == ("time",)
+    assert averaged.to_xarray().values.tolist() == [1.5, 3.5]
+    assert averaged.schema.units == "count"
+    assert averaged.metadata["schema"]["dims"] == ["time"]
+
+
+def test_loaded_array_resample_delegates_to_xarray_resampler() -> None:
+    times = np.array(
+        [
+            "2008-01-01T00:00:00",
+            "2008-01-01T00:01:00",
+            "2008-01-01T00:02:00",
+            "2008-01-01T00:03:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.array([1.0, 2.0, 3.0, 4.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=array,
+    )
+
+    resampled = loaded.resample(time="2min").mean()
+
+    assert resampled.dims == ("time",)
+    assert resampled.values.tolist() == [1.5, 3.5]
+
+
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
     import matplotlib
 
