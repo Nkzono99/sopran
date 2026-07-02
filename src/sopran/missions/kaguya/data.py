@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from sopran.core.data import SopranArray
+from sopran.core.pages import InfoPage
 from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange
 from sopran.missions.kaguya.pace import PaceData, read_pace_pbf
@@ -18,6 +19,16 @@ class KaguyaESA1Data:
     time: TimeRange
     files: tuple[Path, ...] = ()
     instrument: str = "ESA1"
+
+    def info(self) -> InfoPage:
+        return InfoPage(
+            title=f"KAGUYA.{self.instrument}",
+            lines=(
+                f"time: {self.time.start_iso} to {self.time.stop_iso}",
+                "variables: energy_flux, counts, energy, quality",
+                f"files: {len(self.files)}",
+            ),
+        )
 
     @cached_property
     def energy_flux(self) -> SopranArray:

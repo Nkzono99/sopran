@@ -215,6 +215,19 @@ def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path
     assert flux.time == time
 
 
+def test_kaguya_esa1_loaded_data_info_returns_info_page(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    info = kg.esa1.load(time).info()
+
+    assert isinstance(info, spn.InfoPage)
+    assert info.title == "KAGUYA.ESA1"
+    assert "time: 2008-02-01T00:00:00Z to 2008-02-02T00:00:00Z" in str(info)
+    assert "variables: energy_flux, counts, energy, quality" in str(info)
+    assert "files: 0" in str(info)
+
+
 def test_kaguya_uses_mission_default_download_policy(tmp_path) -> None:
     class FakeSource:
         def __init__(self, root):

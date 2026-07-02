@@ -23,6 +23,7 @@ Load local raw data and convert it:
 
 ```python
 esa1 = kg.esa1.load(time)
+esa1.info()
 ds = esa1.to_xarray()
 counts = esa1.to_polars("counts", reduce_look="sum")
 ```

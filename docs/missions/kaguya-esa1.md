@@ -23,6 +23,7 @@ kg = spn.Kaguya(store=store)
 time = spn.day("2008-01-01")
 
 esa1 = kg.esa1.load(time)
+esa1.info()
 ds = esa1.to_xarray()
 frame = esa1.to_polars("counts", reduce_look="sum")
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
