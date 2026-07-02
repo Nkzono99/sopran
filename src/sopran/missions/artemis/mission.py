@@ -7,7 +7,7 @@ from typing import Any
 from sopran.core.data import SopranArray
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
-from sopran.core.schema import VariableSchema
+from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange
 
@@ -19,6 +19,11 @@ ARTEMIS_MAGNETIC_FIELD = VariableSchema(
     dims=("time", "component"),
     units="nT",
     description="ARTEMIS fluxgate magnetic field vector.",
+)
+ARTEMIS_FGM_SCHEMA = InstrumentSchema(
+    mission="artemis",
+    instrument="fgm",
+    variables=(ARTEMIS_MAGNETIC_FIELD,),
 )
 
 
@@ -84,8 +89,11 @@ class ArtemisFgmInstrument:
             lines=(f"{ARTEMIS_MAGNETIC_FIELD.name}: {ARTEMIS_MAGNETIC_FIELD.description}",),
         )
 
+    def schema(self) -> InstrumentSchema:
+        return ARTEMIS_FGM_SCHEMA
+
     def guide(self, *, language: str = "en") -> GuidePage:
-        return self.probe.guide(language=language)
+        return self.probe.guide(language=language).with_schema(ARTEMIS_FGM_SCHEMA)
 
     def help(self, *, language: str = "en") -> GuidePage:
         return self.guide(language=language)

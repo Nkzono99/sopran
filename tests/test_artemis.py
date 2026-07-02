@@ -18,6 +18,7 @@ def test_artemis_probe_fgm_endpoint_exposes_schema_and_plan() -> None:
     assert "ARTEMIS" in str(art.info())
     assert "p1" in str(art.info())
     assert "magnetic_field" in str(art.p1.fgm.info())
+    assert art.p1.fgm.schema().instrument == "fgm"
     assert endpoint.schema().dims == ("time", "component")
     assert plan.dataset_id == "artemis.p1.fgm.magnetic_field"
     assert plan.time == time
@@ -32,6 +33,11 @@ def test_artemis_guides_return_markdown_pages() -> None:
 
     assert "# ARTEMIS" in mission_guide.to_markdown()
     assert "FGM" in fgm_guide.to_markdown()
+    assert "| name | dims | units | dtype | frame | aliases | description |" in (
+        fgm_guide.to_markdown()
+    )
+    assert "| magnetic_field | time, component | nT |" in fgm_guide.to_markdown()
+    assert "b, fgm" in fgm_guide.to_markdown()
     assert art.help() == mission_guide
     assert art.p1.help() == mission_guide
     assert art.p1.fgm.help() == fgm_guide
@@ -54,6 +60,9 @@ def test_artemis_guides_can_switch_language() -> None:
     assert "ARTEMIS は" in mission_ja.to_markdown()
     assert "lunar-orbiting THEMIS probes" in mission_en.to_markdown()
     assert "FGM" in fgm_ja.to_markdown()
+    assert "| name | dims | units | dtype | frame | aliases | description |" in (
+        fgm_ja.to_markdown()
+    )
     assert variable_ja == fgm_ja
     assert art.help(language="ja") == mission_ja
     assert art.p1.help(language="ja") == mission_ja
@@ -151,6 +160,34 @@ def test_guide_page_can_switch_language_content() -> None:
     )
     with pytest.raises(ValueError, match="language"):
         page.with_language("fr")
+
+
+def test_guide_page_can_append_schema_table_to_all_languages() -> None:
+    schema = InstrumentSchema(
+        mission="artemis",
+        instrument="fgm",
+        variables=(ARTEMIS_MAGNETIC_FIELD,),
+    )
+    page = spn.GuidePage(
+        title="ARTEMIS FGM",
+        markdown="# ARTEMIS FGM\n\n日本語の説明。",
+        source="docs/ja/artemis-fgm.md",
+        sources={"en": "docs/en/artemis-fgm.md"},
+        language="ja",
+        available_languages=("ja", "en"),
+        translations={"en": "# ARTEMIS FGM\n\nEnglish description."},
+    )
+
+    page_with_schema = page.with_schema(schema)
+
+    assert "| name | dims | units | dtype | frame | aliases | description |" in (
+        page_with_schema.to_markdown(language="ja")
+    )
+    assert "| magnetic_field | time, component | nT |" in (
+        page_with_schema.to_markdown(language="en")
+    )
+    assert page_with_schema.source == "docs/ja/artemis-fgm.md"
+    assert page_with_schema.with_language("en").source == "docs/en/artemis-fgm.md"
 
 
 def test_guide_page_show_includes_language_switcher(capsys) -> None:

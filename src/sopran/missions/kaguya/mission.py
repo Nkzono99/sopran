@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
@@ -13,7 +13,7 @@ from sopran.core import Store
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
-from sopran.core.schema import InstrumentSchema, VariableSchema
+from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange, day, period
 from sopran.missions.kaguya.data import KaguyaESA1Data
 from sopran.missions.kaguya.files import (
@@ -591,10 +591,11 @@ class PaceInstrument(KaguyaInstrument):
 
     def guide(self, *, language: str = "en") -> GuidePage:
         if self.sensor == "ESA1":
-            return _append_schema_section(
-                _read_guide("ESA1.md", title="PACE ESA1", language=language),
-                KAGUYA_ESA1_SCHEMA,
-            )
+            return _read_guide(
+                "ESA1.md",
+                title="PACE ESA1",
+                language=language,
+            ).with_schema(KAGUYA_ESA1_SCHEMA)
         return _read_guide("README.md", title=f"KAGUYA {self.sensor}", language=language)
 
     def help(self, *, language: str = "en") -> GuidePage:
@@ -1208,27 +1209,6 @@ def _read_guide(name: str, *, title: str, language: str = "en") -> GuidePage:
         translations=translations,
         sources=sources,
     )
-
-
-def _append_schema_section(page: GuidePage, schema: InstrumentSchema) -> GuidePage:
-    translations = None
-    if page.translations is not None:
-        translations = {
-            language: _markdown_with_schema_table(markdown, schema)
-            for language, markdown in page.translations.items()
-        }
-    return replace(
-        page,
-        markdown=_markdown_with_schema_table(page.markdown, schema),
-        translations=translations,
-    )
-
-
-def _markdown_with_schema_table(markdown: str, schema: InstrumentSchema) -> str:
-    schema_markdown = schema.to_markdown()
-    table_start = schema_markdown.find("| name |")
-    schema_table = schema_markdown[table_start:] if table_start >= 0 else schema_markdown
-    return f"{markdown.rstrip()}\n\n## Schema\n\n{schema_table}\n"
 
 
 def _guide_resource_name(name: str, language: str) -> str:

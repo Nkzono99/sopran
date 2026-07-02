@@ -58,6 +58,19 @@ class GuidePage:
             url=self._url_for(language),
         )
 
+    def with_schema(self, schema: object, *, heading: str = "Schema") -> GuidePage:
+        translations = None
+        if self.translations is not None:
+            translations = {
+                language: _markdown_with_schema_table(markdown, schema, heading=heading)
+                for language, markdown in self.translations.items()
+            }
+        return replace(
+            self,
+            markdown=_markdown_with_schema_table(self.markdown, schema, heading=heading),
+            translations=translations,
+        )
+
     def language_switcher(self) -> str:
         languages = self.available_languages or (self.language,)
         labels = (_LANGUAGE_LABELS.get(language, language) for language in languages)
@@ -106,3 +119,15 @@ class GuidePage:
         if self.urls and language in self.urls:
             return self.urls[language]
         return self.url
+
+
+def _markdown_with_schema_table(
+    markdown: str,
+    schema: object,
+    *,
+    heading: str,
+) -> str:
+    schema_markdown = schema.to_markdown()  # type: ignore[attr-defined]
+    table_start = schema_markdown.find("| name |")
+    schema_table = schema_markdown[table_start:] if table_start >= 0 else schema_markdown
+    return f"{markdown.rstrip()}\n\n## {heading}\n\n{schema_table}\n"
