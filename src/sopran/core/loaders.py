@@ -26,6 +26,6 @@ def load(dataset_id: str, time: TimeRange, *, store: Store | None = None, **kwar
     if len(parts) == 4 and parts[0] == "artemis" and parts[2] == "fgm":
         from sopran.missions.artemis import Artemis
 
-        probe = getattr(Artemis(), parts[1])
+        probe = getattr(Artemis(store=store), parts[1])
         return getattr(probe.fgm, parts[3]).load(time, **kwargs)
     raise DatasetNotFoundError(f"Unknown SOPRAN dataset ID: {dataset_id}")

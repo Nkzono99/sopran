@@ -156,6 +156,8 @@ class Store:
 
     def scan_dataset(self, dataset_id: str, *, layer: str):
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+        if not record.catalog_path.exists():
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
         return record.scan(dataset_id=dataset_id)
 
     def _layer_path(self, layer: str, *parts: str) -> Path:

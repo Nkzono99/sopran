@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib.resources import files
+from typing import Any
 
+from sopran.core.data import SopranArray
+from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import VariableSchema
+from sopran.core.store import Store
 from sopran.core.time import TimeRange
 
 
@@ -20,7 +24,8 @@ ARTEMIS_MAGNETIC_FIELD = VariableSchema(
 class Artemis:
     """Object-oriented entry point for ARTEMIS probes."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, store: Store | None = None) -> None:
+        self.store = store or Store()
         self.p1 = ArtemisProbe(self, "p1")
         self.p2 = ArtemisProbe(self, "p2")
 
@@ -111,8 +116,23 @@ class ArtemisVariableEndpoint:
         )
 
     def load(self, time: TimeRange):
-        probe = self.instrument.probe.probe.upper()
-        raise NotImplementedError(f"ARTEMIS {probe} FGM load is not implemented yet")
+        dataset_id = f"{self.instrument.dataset_prefix}.{self.name}"
+        try:
+            frame = self.instrument.probe.mission.store.scan_dataset(
+                dataset_id,
+                layer="normalized",
+            ).collect()
+        except DatasetNotFoundError as exc:
+            probe = self.instrument.probe.probe.upper()
+            raise NotImplementedError(
+                f"ARTEMIS {probe} FGM load is not implemented yet"
+            ) from exc
+        return SopranArray(
+            name=self.name,
+            time=time,
+            schema=self._schema,
+            xr=_frame_to_data_array(frame, self._schema, time),
+        )
 
 
 def _read_guide(*, title: str) -> GuidePage:
@@ -124,3 +144,56 @@ def _read_guide(*, title: str) -> GuidePage:
         markdown=markdown,
         source="sopran.missions.artemis/README.md",
     )
+
+
+def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
+    try:
+        import numpy as np
+        import xarray as xr
+    except ImportError as exc:
+        raise RuntimeError("xarray is required for ARTEMIS FGM load()") from exc
+
+    if frame.is_empty():
+        return xr.DataArray(
+            np.empty((0, 0)),
+            dims=schema.dims,
+            coords={"time": [], "component": []},
+            name=schema.name,
+            attrs={"units": schema.units, "description": schema.description},
+        )
+
+    if "time" in frame.columns:
+        import polars as pl
+
+        frame = frame.filter(
+            (pl.col("time") >= time.start_iso) & (pl.col("time") < time.stop_iso)
+        )
+
+    rows = frame.sort(["time", "component"]).to_dicts()
+    times = _unique(row["time"] for row in rows)
+    components = _unique(row["component"] for row in rows)
+    values = np.full((len(times), len(components)), np.nan)
+    time_index = {value: index for index, value in enumerate(times)}
+    component_index = {value: index for index, value in enumerate(components)}
+    for row in rows:
+        values[time_index[row["time"]], component_index[row["component"]]] = row[
+            schema.name
+        ]
+
+    return xr.DataArray(
+        values,
+        dims=schema.dims,
+        coords={"time": times, "component": components},
+        name=schema.name,
+        attrs={"units": schema.units, "description": schema.description},
+    )
+
+
+def _unique(values) -> list[Any]:
+    seen = set()
+    output = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            output.append(value)
+    return output

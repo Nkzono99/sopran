@@ -66,7 +66,7 @@ class Case:
         self.frame = defaults.get("frame")
         self.cache = bool(defaults.get("cache", False))
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
-        self.artemis = CaseMission(Artemis(), self)
+        self.artemis = CaseMission(Artemis(store=project.store), self)
         self.moon = Moon()
 
     def stack(self, *items: PlotItem) -> PlotStack:
