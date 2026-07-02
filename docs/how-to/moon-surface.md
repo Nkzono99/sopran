@@ -9,6 +9,8 @@ dem_plan = moon.dem.plan(
     source="kaguya.tc.dem",
     region=region,
     resolution="512ppd",
+    projection="native",
+    area_or_point="area",
 )
 
 shadow_plan = moon.shadow.plan(
@@ -17,6 +19,10 @@ shadow_plan = moon.shadow.plan(
 )
 metadata = shadow_plan.to_metadata()
 ```
+
+`projection` and `area_or_point` are written to every surface plan. Use
+`projection="polar_stereo"` as a short alias when you want
+`polar_stereographic` metadata.
 
 For regions that cross the 0/360 degree boundary:
 

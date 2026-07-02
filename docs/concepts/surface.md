@@ -9,9 +9,18 @@ region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
 moon.dem.sources()
 moon.map("svm")
 normalized = region.to_lon_domain("-180_180")
-dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=normalized)
+dem_plan = moon.dem.plan(
+    source="kaguya.tc.dem",
+    region=normalized,
+    projection="polar_stereo",
+    area_or_point="point",
+)
 metadata = dem_plan.to_metadata()
 ```
+
+`SurfacePlan` metadata always records `projection` and `area_or_point`.
+Defaults are `projection="native"` and `area_or_point="area"`; the
+`polar_stereo` alias is canonicalized to `polar_stereographic`.
 
 Regions understand longitude-domain wrapping:
 

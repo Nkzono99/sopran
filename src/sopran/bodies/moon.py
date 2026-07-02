@@ -105,7 +105,7 @@ class SurfaceEndpoint:
         return SurfacePlan(
             body=self.body.name,
             product=self.product,
-            parameters=dict(parameters),
+            parameters=_surface_parameters(parameters),
         )
 
     def load(self, **parameters: Any) -> None:
@@ -208,6 +208,44 @@ def _metadata_value(value: Any) -> Any:
     if isinstance(value, (tuple, list)):
         return [_metadata_value(item) for item in value]
     return value
+
+
+def _surface_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(parameters)
+    normalized["projection"] = _canonical_projection(
+        str(normalized.get("projection", "native"))
+    )
+    normalized["area_or_point"] = _canonical_area_or_point(
+        str(normalized.get("area_or_point", "area"))
+    )
+    return normalized
+
+
+def _canonical_projection(projection: str) -> str:
+    aliases = {
+        "polar_stereo": "polar_stereographic",
+    }
+    canonical = aliases.get(projection, projection)
+    allowed = {
+        "equirectangular",
+        "polar_stereographic",
+        "orthographic",
+        "azimuthal_equidistant",
+        "lambert",
+        "native",
+    }
+    if canonical in allowed:
+        return canonical
+    raise ValueError(
+        "projection must be one of equirectangular, polar_stereographic, "
+        "orthographic, azimuthal_equidistant, lambert, native, or polar_stereo"
+    )
+
+
+def _canonical_area_or_point(area_or_point: str) -> str:
+    if area_or_point in {"area", "point"}:
+        return area_or_point
+    raise ValueError("area_or_point must be 'area' or 'point'")
 
 
 def _guide_page(

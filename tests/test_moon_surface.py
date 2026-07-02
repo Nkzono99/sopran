@@ -25,6 +25,8 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert dem_plan.product == "dem"
     assert dem_plan.parameters["source"] == "kaguya.tc.dem"
     assert dem_plan.parameters["resolution"] == "512ppd"
+    assert dem_plan.parameters["projection"] == "native"
+    assert dem_plan.parameters["area_or_point"] == "area"
     assert shadow_plan.product == "shadow"
     assert "Moon" in str(moon.info())
     assert "DEM" in str(moon.dem.info())
@@ -83,9 +85,13 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
                         "lat_type": "planetocentric",
                     },
                     "resolution": "512ppd",
+                    "projection": "native",
+                    "area_or_point": "area",
                 },
             },
             "model": "sphere",
+            "projection": "native",
+            "area_or_point": "area",
         },
     }
 
@@ -125,3 +131,21 @@ def test_moon_surface_guides_can_switch_language() -> None:
     assert moon.dem.help(language="ja") == dem_ja
     with pytest.raises(ValueError, match="language"):
         moon.guide(language="fr")
+
+
+def test_moon_surface_plan_normalizes_projection_metadata() -> None:
+    moon = spn.Moon()
+
+    plan = moon.dem.plan(
+        source="kaguya.tc.dem",
+        projection="polar_stereo",
+        area_or_point="point",
+    )
+
+    assert plan.parameters["projection"] == "polar_stereographic"
+    assert plan.parameters["area_or_point"] == "point"
+    assert plan.to_metadata()["parameters"]["projection"] == "polar_stereographic"
+    with pytest.raises(ValueError, match="projection"):
+        moon.dem.plan(source="kaguya.tc.dem", projection="unknown")
+    with pytest.raises(ValueError, match="area_or_point"):
+        moon.dem.plan(source="kaguya.tc.dem", area_or_point="cell")

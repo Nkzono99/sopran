@@ -1261,10 +1261,12 @@ v0.1 の planning skeleton では `SurfacePlan.to_metadata()` が同じ構造の
 - `lat_type`: `planetocentric` または `planetographic`。`Region` の既定は
   `planetocentric` とし、metadata に常に出力する。
 - `projection`: `equirectangular`, `polar_stereographic`, `orthographic`,
-  `azimuthal_equidistant`, `lambert`, `native` など。
+  `azimuthal_equidistant`, `lambert`, `native` など。planning skeleton の既定は
+  `native` とし、config alias の `polar_stereo` は `polar_stereographic` へ正規化する。
 - `crs`: 可能なら `pyproj.CRS` / PROJ string / WKT として表現できるもの。
 - `resolution`: degree/pixel、meter/pixel、pixels per degree など。
-- `area_or_point`: pixel が area を表すか point を表すか。
+- `area_or_point`: pixel が area を表すか point を表すか。planning skeleton の既定は
+  `area` とし、metadata に常に出力する。
 
 経度表現、方位図法、極域投影は API で明示的に変換できるようにする。
 
