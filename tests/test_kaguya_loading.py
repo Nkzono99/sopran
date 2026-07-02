@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 import polars as pl
 import pytest
@@ -8,6 +9,7 @@ import pytest
 import sopran as spn
 from sopran import Store
 from sopran.missions.kaguya import Kaguya, normalize_sensors
+import sopran.missions.kaguya.files as kaguya_files
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
@@ -251,6 +253,31 @@ def test_kaguya_uses_mission_default_download_policy(tmp_path) -> None:
 
     assert data.files == (source.local_path(source.downloaded[0][0]),)
     assert source.downloaded[0][1] is False
+
+
+def test_kaguya_download_registers_raw_file_manifest(tmp_path, monkeypatch) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+
+    def fake_urlretrieve(url, target):
+        Path(target).write_bytes(b"downloaded")
+        return target, None
+
+    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+    kg = spn.Kaguya(store=store, download="missing")
+
+    data = kg.esa1.load(spn.day("2008-01-01"))
+
+    assert data.files == (store.raw_path("kaguya", "pds3") / remote_file,)
+    record = store.raw_file(Path("kaguya") / "pds3" / remote_file)
+    manifest = record.manifest()
+    assert manifest["mission"] == "kaguya"
+    assert manifest["provider"] == "darts-pds3"
+    assert manifest["provider_path"] == remote_file
+    assert manifest["version"] == "v3.0"
+    assert manifest["download_url"] == kg.source.remote_url(remote_file)
+    assert manifest["size_bytes"] == len(b"downloaded")
+    assert record.verify_checksum()
 
 
 def test_kaguya_reads_default_download_policy_from_environment(tmp_path, monkeypatch) -> None:

@@ -10,6 +10,9 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
 - Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
 - Mission default download policy via `Kaguya(download=...)`,
   `SOPRAN_DOWNLOAD_MODE`, and `SOPRAN_OFFLINE`.
+- Raw downloads into the default Store cache write `<filename>.sopran.json`
+  manifests with DARTS/PDS3 provider path, URL, version, checksum, byte size,
+  and acquisition time.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, `to_pandas()`,
   and `write_parquet()`.
 - Variable endpoint plotting and `PlotStack` integration.

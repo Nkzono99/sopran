@@ -138,6 +138,12 @@ class KaguyaQuery:
                 path = self.instrument.mission.source.download(remote_file, overwrite=False)
             elif download == "always":
                 path = self.instrument.mission.source.download(remote_file, overwrite=True)
+            _register_downloaded_raw_file(
+                self.instrument.mission.store,
+                self.instrument.mission.source,
+                path,
+                remote_file=remote_file,
+            )
             if overwrite or path.exists():
                 paths.append(path)
         return paths
@@ -723,6 +729,36 @@ def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
             download = os.environ.get("SOPRAN_DOWNLOAD_MODE", "never")
     _validate_download_mode(download)
     return download
+
+
+def _register_downloaded_raw_file(
+    store: Store,
+    source,
+    path: Path,
+    *,
+    remote_file: str,
+) -> None:
+    remote_url = getattr(source, "remote_url", None)
+    try:
+        store.register_raw_file(
+            path,
+            mission="kaguya",
+            provider="darts-pds3",
+            provider_path=remote_file,
+            data_version=_kaguya_data_version(remote_file),
+            download_url=remote_url(remote_file) if callable(remote_url) else None,
+        )
+    except ValueError:
+        return
+
+
+def _kaguya_data_version(remote_file: str) -> str | None:
+    for part in Path(remote_file).parts:
+        if "-v" in part:
+            version = part.rsplit("-v", 1)[-1]
+            if version:
+                return f"v{version}"
+    return None
 
 
 def _truthy_env(name: str) -> bool:
