@@ -120,6 +120,18 @@ class TimeBins:
 
 
 @dataclass(frozen=True)
+class FeatureMatrix:
+    values: Any
+    columns: tuple[str, ...]
+    time: tuple[str, ...]
+    metadata: dict[str, Any]
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return tuple(self.values.shape)
+
+
+@dataclass(frozen=True)
 class AlignmentResult:
     grid: TimeBins
     columns: tuple[str, ...]
@@ -148,6 +160,14 @@ class AlignmentResult:
     def to_feature_frame(self, *, include_time: bool = False):
         columns = ("time", *self.columns) if include_time else self.columns
         return self.to_polars(layout="wide").select(list(columns))
+
+    def to_feature_matrix(self) -> FeatureMatrix:
+        return FeatureMatrix(
+            values=self.to_feature_frame().to_numpy(),
+            columns=self.columns,
+            time=tuple(row["time"] for row in self.rows),
+            metadata=self.feature_metadata(),
+        )
 
     def write_parquet(self, path: str | Path, *, layout: TableLayout = "wide") -> Path:
         output = Path(path)

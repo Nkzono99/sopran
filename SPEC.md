@@ -1618,6 +1618,8 @@ stack = spn.stack(
 - `to_polars(layout="long")` は `time`, `feature`, `value` の tidy table を返す。
 - `to_feature_frame(include_time=False)` は ML / 統計入力向けに feature 列だけを返す。
   `include_time=True` の場合は bin center の `time` 列も残す。
+- `to_feature_matrix()` は scikit-learn などに渡しやすい numpy 互換の `values` と、
+  `columns`, `time`, `metadata` を持つ `FeatureMatrix` を返す。
 - `quality_mask=<1D time series>` は各 bin 内で center に最も近い mask sample を評価し、
   0、False、欠損の bin を feature table から落とす。
 - `AlignmentResult.metadata()` は columns、feature ごとの method/tolerance、grid、method、
@@ -1647,6 +1649,7 @@ features = spn.align(
 )
 frame = features.to_feature_frame()
 metadata = features.feature_metadata()
+matrix = features.to_feature_matrix()
 
 dataset = features.write_dataset(
     store,

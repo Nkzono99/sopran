@@ -1,5 +1,6 @@
 from sopran.core.alignment import (
     AlignmentResult,
+    FeatureMatrix,
     SampleSpec,
     SampleTable,
     TimeBins,
@@ -46,6 +47,7 @@ __all__ = [
     "DecodeError",
     "DownloadError",
     "FrameTransformError",
+    "FeatureMatrix",
     "InstrumentSchema",
     "Pipeline",
     "PipelineError",

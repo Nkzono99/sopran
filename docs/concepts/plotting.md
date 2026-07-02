@@ -42,6 +42,7 @@ joins, create explicit time bins and align products separately:
 bins = spn.time_bins(case.time, cadence="10s")
 aligned = spn.align(sza, wave_power, grid=bins, method="mean", join="inner")
 features = aligned.to_feature_frame()
+matrix = aligned.to_feature_matrix()
 feature_metadata = aligned.feature_metadata()
 ```
 
@@ -70,6 +71,8 @@ in exploratory plotting tools.
 `to_feature_frame()` returns the ML/statistics input table without the time
 column by default; use `include_time=True` when the bin center should travel
 with the features.
+`to_feature_matrix()` returns numpy-compatible values plus feature columns,
+time labels, and metadata in a small object for ML libraries.
 
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and

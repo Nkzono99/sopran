@@ -741,6 +741,49 @@ def test_alignment_result_exports_ml_feature_frame_and_metadata() -> None:
     }
 
 
+def test_alignment_result_exports_feature_matrix_for_ml() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 3.0, 10.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:03",
+                    "2008-01-01T00:00:12",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+
+    aligned = spn.align(sza, wave_power, grid=bins, method="mean", join="inner")
+    matrix = aligned.to_feature_matrix()
+
+    assert isinstance(matrix, spn.FeatureMatrix)
+    assert matrix.columns == ("sza", "wave_power")
+    assert matrix.time == ("2008-01-01T00:00:05Z", "2008-01-01T00:00:15Z")
+    assert matrix.shape == (2, 2)
+    assert matrix.values.tolist() == [[70.0, 2.0], [80.0, 10.0]]
+    assert matrix.metadata == aligned.feature_metadata()
+
+
 def test_sample_table_metadata_records_feature_specific_rules() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),

@@ -4,6 +4,7 @@ from sopran.bodies import Moon
 from sopran.core import AlignmentResult
 from sopran.core import BackendError, ConfigError, DecodeError, DownloadError
 from sopran.core import Database, DatasetNotFoundError, GuidePage, InfoPage
+from sopran.core import FeatureMatrix
 from sopran.core import FrameTransformError, PipelineError, SchemaError
 from sopran.core import InstrumentSchema, VariableSchema
 from sopran.core import PlotArtifact, PlotItem, PlotPlan, ProductRef
@@ -40,6 +41,7 @@ __all__ = [
     "DecodeError",
     "DownloadError",
     "FrameTransformError",
+    "FeatureMatrix",
     "InstrumentSchema",
     "Kaguya",
     "Moon",

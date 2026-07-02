@@ -41,6 +41,7 @@ features = spn.align(
 )
 frame = features.to_feature_frame()
 metadata = features.feature_metadata()
+matrix = features.to_feature_matrix()
 features.write_parquet("features.parquet")
 ```
 
@@ -93,6 +94,8 @@ For ML and statistical tables, `to_feature_frame()` returns only feature
 columns by default, while `to_feature_frame(include_time=True)` keeps the bin
 center in the `time` column. `feature_metadata()` returns the feature columns,
 feature rules, grid metadata, row count, and time column name.
+`to_feature_matrix()` returns a `FeatureMatrix` object with numpy-compatible
+`values`, feature `columns`, bin-center `time`, and the same feature metadata.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`

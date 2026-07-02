@@ -10,6 +10,8 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.alignment.AlignmentResult
 
+::: sopran.core.alignment.FeatureMatrix
+
 ::: sopran.core.schema.InstrumentSchema
 
 ::: sopran.core.schema.VariableSchema
