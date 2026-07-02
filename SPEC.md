@@ -1715,7 +1715,8 @@ stack = spn.stack(
 - `quicklook()` は PNG/HTML とともに `dataset_id`、`time_range`、`frame`、`backend`、
   `aggregation` を標準 metadata key として保存する。
 - `PlotResult.metadata` と quicklook metadata は `items` に panel 名、`panel_kinds` に
-  `line` / `spectrogram` などの panel 種別を保存する。
+  `line` / `spectrogram` などの panel 種別を保存する。さらに `panels` に各 panel の
+  `name`, `kind`, `x`, `y`, `log_color` を保存する。
 - `plot(..., context=case)` と `quicklook(..., context=case)` は `case.metadata()` を
   metadata の `context` に保存する。
 
@@ -1815,8 +1816,9 @@ metadata JSON を保存する。`panel`, `datashader`, interactive HTML、long-t
 後続 milestone とする。
 `quicklook(..., context=case)` は `case.metadata()` を quicklook metadata の `context` に保存し、
 JSON と HTML report の両方から解析 context を辿れるようにする。
-`items` と `panel_kinds` は同じ順序で保存し、保存済み quicklook metadata だけから
-どの panel が line / spectrogram だったかを復元できるようにする。
+`items`, `panel_kinds`, `panels` は同じ順序で保存し、保存済み quicklook metadata だけから
+どの panel が line / spectrogram だったか、どの座標軸・色スケール指定だったかを
+復元できるようにする。
 
 ```python
 stack = case.stack(

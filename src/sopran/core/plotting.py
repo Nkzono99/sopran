@@ -114,6 +114,7 @@ class PlotStack:
             "panel_count": plan.panel_count,
             "items": list(plan.items),
             "panel_kinds": _panel_kinds(self.items),
+            "panels": _panel_metadata(self.items),
             "time_axis": _time_axis_metadata(self.items),
         }
         if context is not None:
@@ -185,6 +186,7 @@ class PlotStack:
             "panel_count": plan.panel_count,
             "items": list(plan.items),
             "panel_kinds": _panel_kinds(self.items),
+            "panels": _panel_metadata(self.items),
             "time_axis": _time_axis_metadata(self.items),
             "artifacts": [artifact.path.name for artifact in artifacts],
             "artifact_formats": [artifact.format for artifact in artifacts],
@@ -242,6 +244,19 @@ def _time_axis_metadata(items: tuple[PlotItem, ...]) -> dict[str, Any]:
 
 def _panel_kinds(items: tuple[PlotItem, ...]) -> list[str]:
     return [item.kind for item in items]
+
+
+def _panel_metadata(items: tuple[PlotItem, ...]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": item.name,
+            "kind": item.kind,
+            "x": item.x,
+            "y": item.y,
+            "log_color": item.log_color,
+        }
+        for item in items
+    ]
 
 
 def line(data: Any, *, x: str = "time", name: str | None = None) -> PlotItem:
