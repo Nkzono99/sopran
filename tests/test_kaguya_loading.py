@@ -206,6 +206,21 @@ def test_kaguya_esa1_pipeline_records_lazy_stage_plan(tmp_path) -> None:
     assert plan.output_layer == "normalized"
 
 
+def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    time = spn.month("2008-02")
+    pipe = kg.esa1.pipeline(time).download().decode().write(
+        "kaguya.esa1.counts",
+        layer="normalized",
+    )
+
+    result = pipe.run(dry_run=True)
+
+    assert result.status == "planned"
+    assert result.plan.stage_names == ("download", "decode", "write")
+    assert result.plan.output_dataset == "kaguya.esa1.counts"
+
+
 def test_project_case_supplies_time_to_kaguya_endpoints(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()

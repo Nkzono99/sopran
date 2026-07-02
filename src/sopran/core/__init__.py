@@ -1,4 +1,4 @@
-from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineStage
+from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.plotting import PlotItem, PlotPlan, PlotStack, line, spectrogram, stack
 from sopran.core.store import Store
@@ -9,6 +9,7 @@ __all__ = [
     "InfoPage",
     "Pipeline",
     "PipelinePlan",
+    "PipelineResult",
     "PipelineStage",
     "PlotItem",
     "PlotPlan",

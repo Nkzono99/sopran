@@ -26,6 +26,13 @@ class PipelinePlan:
 
 
 @dataclass(frozen=True)
+class PipelineResult:
+    plan: PipelinePlan
+    status: str
+    message: str
+
+
+@dataclass(frozen=True)
 class Pipeline:
     source: str
     time: TimeRange
@@ -68,6 +75,16 @@ class Pipeline:
             output_dataset=self.output_dataset,
             output_layer=self.output_layer,
         )
+
+    def run(self, *, dry_run: bool = False) -> PipelineResult:
+        plan = self.plan()
+        if dry_run:
+            return PipelineResult(
+                plan=plan,
+                status="planned",
+                message="Dry run only; no pipeline stages were executed.",
+            )
+        raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
     def _with_stage(self, name: str, **parameters: Any) -> Pipeline:
         return Pipeline(
