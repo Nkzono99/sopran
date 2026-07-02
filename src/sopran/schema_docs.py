@@ -9,6 +9,7 @@ from sopran.core.schema import InstrumentSchema
 
 
 def builtin_schemas() -> tuple[InstrumentSchema, ...]:
+    from sopran.bodies.moon import MOON_SURFACE_SCHEMA
     from sopran.missions.artemis.mission import ARTEMIS_ESA_SCHEMA, ARTEMIS_FGM_SCHEMA
     from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
@@ -16,6 +17,7 @@ def builtin_schemas() -> tuple[InstrumentSchema, ...]:
         KAGUYA_ESA1_SCHEMA,
         ARTEMIS_FGM_SCHEMA,
         ARTEMIS_ESA_SCHEMA,
+        MOON_SURFACE_SCHEMA,
     )
 
 

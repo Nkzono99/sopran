@@ -25,6 +25,9 @@ metadata = dem_plan.to_metadata()
 Use `moon.example()` or endpoint-level examples such as `moon.dem.example()`,
 `moon.shadow.example()`, and `moon.sza.example()` when you want a short
 copyable `GuidePage` snippet before building a plan.
+Use `moon.schema()` for the body-level surface schema and endpoint-level calls
+such as `moon.dem.schema()` or `moon.sza.schema()` for individual map product
+definitions.
 
 `SurfacePlan` metadata always records `shape`, `lon_domain`, `lon_direction`,
 `lat_type`, `projection`, and `area_or_point`. Region-backed plans inherit the

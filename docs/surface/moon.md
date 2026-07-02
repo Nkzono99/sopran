@@ -41,6 +41,15 @@ moon.shadow.example()
 moon.sza.example()
 ```
 
+Machine-readable schema objects use the same core `InstrumentSchema` and
+`VariableSchema` classes as mission products:
+
+```python
+moon.schema()
+moon.dem.schema()
+moon.shadow.schema()
+```
+
 The current implementation records plans only. Full terrain-aware shadow and
 illumination calculation will require DEM data, solar geometry, body shape,
 projection metadata, and explicit longitude-domain handling.

@@ -164,6 +164,26 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     assert moon.dem.help() == moon.dem.guide()
 
 
+def test_moon_surface_endpoints_expose_schema_objects() -> None:
+    moon = spn.Moon()
+
+    schema = moon.schema()
+    dem_schema = moon.dem.schema()
+    shadow_schema = moon.shadow.schema()
+    sza_schema = moon.sza.schema()
+
+    assert schema.mission == "moon"
+    assert schema.instrument == "surface"
+    assert schema.variable("dem") == dem_schema
+    assert schema.variable("shadow_map") == shadow_schema
+    assert schema.variable("solar_zenith_angle") == sza_schema
+    assert dem_schema.dims == ("lat", "lon")
+    assert dem_schema.units == "m"
+    assert dem_schema.frame == "Moon body-fixed"
+    assert "terrain-aware" in shadow_schema.description
+    assert sza_schema.units == "deg"
+
+
 def test_moon_surface_examples_return_markdown_pages() -> None:
     moon = spn.Moon()
 

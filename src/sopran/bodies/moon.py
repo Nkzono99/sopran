@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from sopran.core.pages import GuidePage, InfoPage
+from sopran.core.schema import InstrumentSchema, VariableSchema
 
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/surface/moon/"
@@ -58,6 +59,9 @@ class Moon:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def schema(self) -> InstrumentSchema:
+        return MOON_SURFACE_SCHEMA
 
     def example(self) -> GuidePage:
         return _example_page(
@@ -129,6 +133,9 @@ class SurfaceEndpoint:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def schema(self) -> VariableSchema:
+        return MOON_SURFACE_SCHEMA.variable(self.product)
 
     def example(self) -> GuidePage:
         examples = {
@@ -344,6 +351,57 @@ _SURFACE_SOURCES = {
     "illumination": (),
     "sza": ("computed.spice.sza",),
 }
+
+MOON_SURFACE_SCHEMA = InstrumentSchema(
+    mission="moon",
+    instrument="surface",
+    variables=(
+        VariableSchema(
+            name="dem",
+            dims=("lat", "lon"),
+            units="m",
+            dtype="float64",
+            frame="Moon body-fixed",
+            description="Digital elevation model on a body-fixed lunar grid.",
+            aliases=("elevation", "height"),
+        ),
+        VariableSchema(
+            name="svm",
+            dims=("lat", "lon"),
+            dtype="string",
+            frame="Moon body-fixed",
+            description="Surface vector map or classified lunar map layer.",
+            aliases=("surface_vector_map",),
+        ),
+        VariableSchema(
+            name="shadow",
+            dims=("lat", "lon"),
+            units="fraction",
+            dtype="float64",
+            frame="Moon body-fixed",
+            description="terrain-aware shadow or shadow-fraction map.",
+            aliases=("shadow_map", "shadow_fraction"),
+        ),
+        VariableSchema(
+            name="illumination",
+            dims=("lat", "lon"),
+            units="fraction",
+            dtype="float64",
+            frame="Moon body-fixed",
+            description="Illumination or visibility fraction derived from solar geometry.",
+            aliases=("illumination_map", "visibility"),
+        ),
+        VariableSchema(
+            name="sza",
+            dims=("lat", "lon"),
+            units="deg",
+            dtype="float64",
+            frame="Moon body-fixed",
+            description="Solar zenith angle on the lunar surface.",
+            aliases=("solar_zenith_angle",),
+        ),
+    ),
+)
 
 
 def _metadata_value(value: Any) -> Any:

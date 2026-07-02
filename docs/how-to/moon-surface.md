@@ -27,6 +27,8 @@ metadata = shadow_plan.to_metadata()
 For notebook exploration, `moon.example()`, `moon.dem.example()`,
 `moon.shadow.example()`, and `moon.sza.example()` return short Markdown
 `GuidePage` snippets with the same planning pattern.
+Use `moon.schema()` and endpoint-level `schema()` calls when a workflow needs
+machine-readable variable names, dimensions, units, frames, and aliases.
 
 With a project case, configured region and case start time can be used as
 defaults:
