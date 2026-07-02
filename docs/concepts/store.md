@@ -28,9 +28,10 @@ shards/
 
 `catalog.parquet` records shard path, start/stop coverage, row count, checksum,
 status, and schema version. `dataset.json` records dataset ID, layer, mission,
-instrument, product, schema version, dataset status, creation time, time
-coverage, source dataset IDs, source files, producer, software versions, and
-optional provenance. `schema.json` also records the same schema version.
+instrument, product, dataset content version, schema version, dataset status,
+creation time, time coverage, source dataset IDs, source files, producer,
+software versions, partitioning, and optional provenance. `schema.json` also
+records the same schema version.
 
 `source_datasets` tracks dataset IDs that were used to build derived products.
 When a dataset is appended, source dataset IDs are merged without duplicates.
@@ -38,6 +39,9 @@ When a dataset is appended, source dataset IDs are merged without duplicates.
 `parameters` in `dataset.json` stores JSON-serializable generation settings such
 as binning choices, quality masks, coordinate transform options, and feature
 extraction arguments.
+
+`partitioning` records Parquet partition columns such as `year`, `month`, and
+`day`. `version` is the dataset content version and defaults to `"1"`.
 
 `Store.write_parquet_dataset(..., provenance={...})` writes a structured
 provenance object into `dataset.json`. Pipeline backends should use this for the

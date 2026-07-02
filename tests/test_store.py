@@ -43,6 +43,7 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     manifest = json.loads(dataset.manifest_path.read_text(encoding="utf-8"))
     assert manifest["dataset_id"] == "kaguya.esa1.energy_flux"
     assert manifest["layer"] == "normalized"
+    assert manifest["version"] == "1"
     assert manifest["schema_version"] == "0.1"
     assert manifest["status"] == "candidate"
     assert manifest["created_at"].endswith("Z")
@@ -53,6 +54,7 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
         "sopran": spn.__version__,
     }
     assert manifest["parameters"] == {}
+    assert manifest["partitioning"] == []
     assert manifest["source_datasets"] == []
     assert manifest["time_coverage"] == {
         "start": "2008-02-01T00:00:00Z",
@@ -180,6 +182,28 @@ def test_store_writes_source_datasets_into_manifest(tmp_path) -> None:
         "kaguya.esa1.counts",
         "kaguya.orbit.position",
     ]
+
+
+def test_store_writes_dataset_version_and_partitioning_into_manifest(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    day = spn.day("2008-02-01")
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=day,
+        frame=pl.DataFrame({"time": [day.start_iso], "counts": [64]}),
+        shard_path="shards/year=2008/month=02/day=01/part-000.parquet",
+        dataset_version="2026.07",
+        partitioning=("year", "month", "day"),
+    )
+
+    assert dataset.manifest()["version"] == "2026.07"
+    assert dataset.manifest()["partitioning"] == ["year", "month", "day"]
 
 
 def test_store_rejects_unknown_dataset_status(tmp_path) -> None:

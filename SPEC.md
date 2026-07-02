@@ -852,7 +852,7 @@ logs/              # 必要に応じて生成ログ
 - `product`
 - `schema_version`: v0.1 の初期値は `"0.1"` とし、`dataset.json`、`schema.json`、
   `catalog.parquet`、`registry/datasets.parquet` に同じ値を保存する。
-- `version`
+- `version`: dataset content version。初期値は `"1"` とし、再生成方針や採用版の識別に使う。
 - `status`: `scratch`, `candidate`, `adopted`, `deprecated` のいずれか。
   初期保存は `candidate` を default とする。
 - `time_coverage`
@@ -861,7 +861,7 @@ logs/              # 必要に応じて生成ログ
 - `provenance`: pipeline source、stage list、run mode、time range、input/output target、
   selected variable/product、parameters。
 - `schema`
-- `partitioning`
+- `partitioning`: Parquet shard の partition columns。例: `["year", "month", "day"]`。
 - `producer`
 - `created_at`: manifest 作成時刻。UTC ISO-8601 (`Z`) で保存する。
 - `software`: SOPRAN package version、Python version、将来の Rust backend version /
