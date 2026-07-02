@@ -43,6 +43,29 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     assert len(fig.axes) == 2
 
 
+def test_plot_stack_line_accepts_vector_time_series() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    magnetic_field = xr.DataArray(
+        np.array([[1.0, 2.0, 3.0], [1.5, 2.5, 3.5]]),
+        dims=("time", "component"),
+        coords={"time": times, "component": ["x", "y", "z"]},
+        name="magnetic_field",
+    )
+
+    stack = spn.stack(spn.line(magnetic_field))
+    fig = stack.plot()
+
+    assert stack.plan().items == ("magnetic_field",)
+    assert len(fig.axes) == 1
+    assert len(fig.axes[0].lines) == 3
+
+
 def test_project_case_builds_plot_stack(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()

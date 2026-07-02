@@ -31,6 +31,10 @@ stack = case.stack(
 )
 ```
 
+Line panels can also plot 2D `time x component` arrays as multiple lines in
+one panel, which is the intended route for vector products such as magnetic
+field components.
+
 The v0.1 implementation uses Matplotlib. HoloViz, Datashader, Panel dashboards,
 and HTML quicklooks are planned for larger interactive products. Current
 `quicklook()` output is a Matplotlib PNG plus a small JSON metadata file.
