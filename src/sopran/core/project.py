@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from sopran.bodies import Moon
+from sopran.core.errors import ConfigError
 from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
@@ -237,7 +238,7 @@ def _case_region(
     lon = tuple(float(value) for value in region["lon"])
     lat = tuple(float(value) for value in region["lat"])
     if len(lon) != 2 or len(lat) != 2:
-        raise ValueError("case region lon and lat must each contain two values")
+        raise ConfigError("case region lon and lat must each contain two values")
     return Region(
         lon=lon,
         lat=lat,

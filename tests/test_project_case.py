@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import numpy as np
+import pytest
 import sopran as spn
 from sopran import Store
 from sopran.missions.kaguya.data import KaguyaESA1Data
@@ -73,6 +74,26 @@ cache_root = "configured_cache"
 
     assert project.store.root == project_root / "configured_data"
     assert project.store.cache_root == project_root / "configured_cache"
+
+
+def test_project_invalid_region_config_raises_config_error(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.bad_region]
+start = "2008-02-01T00:00:00"
+stop = "2008-02-02T00:00:00"
+
+[cases.bad_region.region]
+lon = [120]
+lat = [-45, -10]
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(spn.ConfigError, match="case region lon and lat"):
+        spn.Project(project_root).case("bad_region")
 
 
 def test_project_save_writes_loaded_xarray_artifact_with_metadata(tmp_path) -> None:

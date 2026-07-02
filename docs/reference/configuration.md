@@ -36,3 +36,5 @@ When `Project(root)` creates its own `Store`, `[store].data_root` and
 `[store].cache_root` are resolved relative to the project root unless they are
 absolute paths. Explicit `Store(...)` arguments and environment variables take
 priority over project configuration.
+
+Invalid project configuration raises `ConfigError`.
