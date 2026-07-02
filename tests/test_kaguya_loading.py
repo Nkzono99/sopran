@@ -111,10 +111,13 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
 
     mission_guide = kg.guide()
     esa1_guide = kg.esa1.guide()
+    energy_flux_guide = kg.esa1.energy_flux.guide()
 
     assert "KAGUYA/SELENE" in str(mission_guide)
     assert "PACE ESA1" in str(esa1_guide)
+    assert "energy_flux" in energy_flux_guide.to_markdown()
     assert kg.guide("esa1") == esa1_guide
+    assert energy_flux_guide.source == "sopran.missions.kaguya/ESA1.md"
     assert "# KAGUYA/SELENE" in mission_guide._repr_markdown_()
 
 

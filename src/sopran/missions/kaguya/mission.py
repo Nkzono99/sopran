@@ -147,6 +147,9 @@ class VariableEndpoint:
     def schema(self) -> VariableSchema:
         return self._schema
 
+    def guide(self) -> GuidePage:
+        return self.instrument.guide()
+
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
