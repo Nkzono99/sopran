@@ -234,6 +234,15 @@ class SopranArrayResampler:
     def median(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._reduce("median", *args, **kwargs)
 
+    def max(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._reduce("max", *args, **kwargs)
+
+    def first(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._reduce("first", *args, **kwargs)
+
+    def last(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._reduce("last", *args, **kwargs)
+
     def _reduce(self, method: str, *args: Any, **kwargs: Any) -> SopranArray:
         reduction = getattr(self.resampler, method)
         return self.parent._with_xarray(reduction(*args, **kwargs))

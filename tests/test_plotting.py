@@ -273,6 +273,40 @@ def test_loaded_array_resampler_wraps_sum_and_median_reductions() -> None:
     assert median.schema.dims == ("time",)
 
 
+def test_loaded_array_resampler_wraps_max_first_and_last_reductions() -> None:
+    times = np.array(
+        [
+            "2008-01-01T00:00:00",
+            "2008-01-01T00:01:00",
+            "2008-01-01T00:02:00",
+            "2008-01-01T00:03:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.array([1.0, 2.0, 10.0, 20.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time",), units="count"),
+        xr=array,
+    )
+
+    maximum = loaded.resample(time="2min").max()
+    first = loaded.resample(time="2min").first()
+    last = loaded.resample(time="2min").last()
+
+    assert isinstance(maximum, SopranArray)
+    assert maximum.to_xarray().values.tolist() == [2.0, 20.0]
+    assert first.to_xarray().values.tolist() == [1.0, 10.0]
+    assert last.to_xarray().values.tolist() == [2.0, 20.0]
+    assert last.schema.units == "count"
+
+
 def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> None:
     import matplotlib
 

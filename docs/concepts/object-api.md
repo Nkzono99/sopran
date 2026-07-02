@@ -46,8 +46,8 @@ subset.quicklook("counts_energy_band")
 ```
 
 `resample()` uses a thin SOPRAN wrapper around xarray's resampler. Basic
-aggregations such as `mean()`, `sum()`, and `median()` return another
-`SopranArray`:
+aggregations such as `mean()`, `sum()`, `median()`, `max()`, `first()`, and
+`last()` return another `SopranArray`:
 
 ```python
 hourly = quality.resample(time="1h").mean()

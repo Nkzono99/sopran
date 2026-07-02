@@ -719,7 +719,7 @@ class KaguyaESA1Data:
 よく使う `sel`, `mean`, `where`, `resample` などだけを薄く委譲し、複雑な操作は `.xr` に降りる。
 `sel` / `where` / `mean` のように `xarray.DataArray` を返す操作は、結果を再び
 `SopranArray` に包み直し、schema の dims を結果の dims に追従させる。
-`resample` は薄い wrapper object を返し、`resample(...).mean()` / `.sum()` / `.median()`
+`resample` は薄い wrapper object を返し、`mean`, `sum`, `median`, `max`, `first`, `last`
 のような基本集約結果は再び `SopranArray` に包み直す。
 
 ```python
