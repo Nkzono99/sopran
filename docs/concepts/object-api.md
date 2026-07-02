@@ -90,6 +90,7 @@ page.source               # current package resource path
 page.sources              # language-specific package resource paths
 page.url                  # current public docs URL, if configured
 page.urls                 # language-specific public docs URLs, if configured
+page.to_metadata()        # JSON-ready language/source/URL state
 page.to_markdown(language="en")
 page.with_language("en")  # switches body, source, and URL together
 page.open(language="en")  # opens the matching public docs URL when configured

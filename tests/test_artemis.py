@@ -132,6 +132,42 @@ def test_guide_page_tracks_language_switch_metadata() -> None:
     assert page.to_markdown().startswith("Lang: 日本語/English\n\n# SOPRAN docs")
 
 
+def test_guide_page_exports_language_metadata() -> None:
+    page = spn.GuidePage(
+        title="SOPRAN docs",
+        markdown="# SOPRAN docs\n\n日本語の説明。",
+        source="docs/ja/index.md",
+        sources={"en": "docs/en/index.md"},
+        language="ja",
+        available_languages=("ja", "en"),
+        url="https://example.com/ja/",
+        urls={"en": "https://example.com/en/"},
+        translations={"en": "# SOPRAN docs\n\nEnglish guide."},
+    )
+
+    assert page.to_metadata() == {
+        "title": "SOPRAN docs",
+        "language": "ja",
+        "available_languages": ["ja", "en"],
+        "fallback_language": "ja",
+        "language_switcher": "Lang: 日本語/English",
+        "source": "docs/ja/index.md",
+        "sources": {
+            "ja": "docs/ja/index.md",
+            "en": "docs/en/index.md",
+        },
+        "url": "https://example.com/ja/",
+        "urls": {
+            "ja": "https://example.com/ja/",
+            "en": "https://example.com/en/",
+        },
+    }
+    assert page.to_metadata(language="en")["source"] == "docs/en/index.md"
+    assert page.to_metadata(language="en")["url"] == "https://example.com/en/"
+    with pytest.raises(ValueError, match="language"):
+        page.to_metadata(language="fr")
+
+
 def test_guide_page_can_switch_language_content() -> None:
     page = spn.GuidePage(
         title="SOPRAN docs",

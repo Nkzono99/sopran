@@ -1536,6 +1536,7 @@ page.urls        # 言語別 docs URL。未設定なら url に fallback
 page.language    # "ja", "en" など
 page.available_languages
 page.language_switcher()  # "Lang: 日本語/English"
+page.to_metadata()         # 現在言語、利用可能言語、fallback、source、URL を JSON-ready に出す
 page.to_markdown(language="en")  # 指定言語の Markdown。未整備なら既定言語へ fallback 可
 page.with_language("en")         # language, 本文, source, url を切り替えた GuidePage を返す
 ```

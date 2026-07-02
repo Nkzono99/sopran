@@ -39,6 +39,7 @@ class GuidePage:
     translations: Mapping[str, str] | None = None
     sources: Mapping[str, str] | None = None
     urls: Mapping[str, str | None] | None = None
+    fallback_language: str | None = None
 
     def __str__(self) -> str:
         return self.to_markdown()
@@ -71,8 +72,30 @@ class GuidePage:
             translations=translations,
         )
 
+    def to_metadata(self, *, language: str | None = None) -> dict[str, object]:
+        selected_language = language or self.language
+        self._ensure_language(selected_language)
+        languages = self._languages()
+        return {
+            "title": self.title,
+            "language": selected_language,
+            "available_languages": list(languages),
+            "fallback_language": self._fallback_language(),
+            "language_switcher": self.language_switcher(),
+            "source": self._source_for(selected_language),
+            "sources": {
+                available_language: self._source_for(available_language)
+                for available_language in languages
+            },
+            "url": self._url_for(selected_language),
+            "urls": {
+                available_language: self._url_for(available_language)
+                for available_language in languages
+            },
+        }
+
     def language_switcher(self) -> str:
-        languages = self.available_languages or (self.language,)
+        languages = self._languages()
         labels = (_LANGUAGE_LABELS.get(language, language) for language in languages)
         return f"Lang: {'/'.join(labels)}"
 
@@ -94,8 +117,7 @@ class GuidePage:
         webbrowser.open(url)
 
     def _markdown_for(self, language: str) -> str:
-        if language not in (self.available_languages or (self.language,)):
-            raise ValueError(f"GuidePage language is not available: {language}")
+        self._ensure_language(language)
         if language == self.language:
             return self.markdown
         if self.translations and language in self.translations:
@@ -103,8 +125,7 @@ class GuidePage:
         return self.markdown
 
     def _source_for(self, language: str) -> str:
-        if language not in (self.available_languages or (self.language,)):
-            raise ValueError(f"GuidePage language is not available: {language}")
+        self._ensure_language(language)
         if language == self.language:
             return self.source
         if self.sources and language in self.sources:
@@ -112,13 +133,24 @@ class GuidePage:
         return self.source
 
     def _url_for(self, language: str) -> str | None:
-        if language not in (self.available_languages or (self.language,)):
-            raise ValueError(f"GuidePage language is not available: {language}")
+        self._ensure_language(language)
         if language == self.language:
             return self.url
         if self.urls and language in self.urls:
             return self.urls[language]
         return self.url
+
+    def _languages(self) -> tuple[str, ...]:
+        return self.available_languages or (self.language,)
+
+    def _fallback_language(self) -> str:
+        fallback_language = self.fallback_language or self._languages()[0]
+        self._ensure_language(fallback_language)
+        return fallback_language
+
+    def _ensure_language(self, language: str) -> None:
+        if language not in self._languages():
+            raise ValueError(f"GuidePage language is not available: {language}")
 
 
 def _markdown_with_schema_table(
