@@ -34,3 +34,5 @@ from different instruments or missions. The current backend is Matplotlib and
 is selected with `backend="matplotlib"`.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
 `quicklook()` writes `<name>.png`, optional `<name>.html`, and `<name>.json`.
+Pass `dataset_id`, `time_range`, `frame`, and `aggregation` when the quicklook
+should carry provenance into the JSON and HTML report.

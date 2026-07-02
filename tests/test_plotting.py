@@ -187,3 +187,40 @@ def test_plot_stack_quicklook_writes_html_report(tmp_path) -> None:
     assert "&quot;artifact_formats&quot;: [" in html
     assert "wake_overview.html" in html
     assert "&quot;case&quot;: &quot;wake&quot;" in html
+
+
+def test_plot_stack_quicklook_records_standard_provenance_metadata(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    stack = spn.stack(spn.line(quality))
+
+    result = stack.quicklook(
+        "wake_overview",
+        root=tmp_path,
+        dataset_id="kaguya.esa1.quality",
+        time_range=spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:02:00Z"),
+        frame="SELENE_SC",
+        aggregation={"cadence": "native"},
+        metadata={"case": "wake"},
+    )
+
+    metadata = json.loads((tmp_path / "wake_overview.json").read_text(encoding="utf-8"))
+    assert result.metadata["dataset_id"] == "kaguya.esa1.quality"
+    assert metadata["time_range"] == {
+        "start": "2008-01-01T00:00:00Z",
+        "stop": "2008-01-01T00:02:00Z",
+    }
+    assert metadata["frame"] == "SELENE_SC"
+    assert metadata["aggregation"] == {"cadence": "native"}
+    assert metadata["metadata"] == {"case": "wake"}

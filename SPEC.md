@@ -1635,7 +1635,8 @@ stack = spn.stack(
   feature columns、feature rules、grid、row count、time column 名を返す。
 - 大量データでは panel ごとに downsample / datashade してよいが、その条件を metadata に残す。
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
-- `quicklook()` は PNG/HTML とともに dataset ID、time range、frame、backend、集約条件を保存する。
+- `quicklook()` は PNG/HTML とともに `dataset_id`、`time_range`、`frame`、`backend`、
+  `aggregation` を標準 metadata key として保存する。
 
 観測中に「ESA1 のスペクトルが変化した時に SZA、波動、LRS、磁場、軌道量はどうだったか」を
 見る用途では `PlotStack` を使い、各 product の native cadence を保持して並べる。

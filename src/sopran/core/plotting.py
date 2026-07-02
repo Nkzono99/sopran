@@ -118,6 +118,10 @@ class PlotStack:
         root: str | Path = ".",
         formats: tuple[str, ...] = ("png",),
         backend: Literal["matplotlib"] = "matplotlib",
+        dataset_id: str | None = None,
+        time_range: Any | None = None,
+        frame: str | None = None,
+        aggregation: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
         figsize: tuple[float, float] | None = None,
     ) -> QuicklookResult:
@@ -140,8 +144,16 @@ class PlotStack:
             "artifacts": [artifact.path.name for artifact in artifacts],
             "artifact_formats": [artifact.format for artifact in artifacts],
         }
+        if dataset_id is not None:
+            payload["dataset_id"] = dataset_id
+        if time_range is not None:
+            payload["time_range"] = _time_range_metadata(time_range)
+        if frame is not None:
+            payload["frame"] = frame
+        if aggregation is not None:
+            payload["aggregation"] = _metadata_value(aggregation)
         if metadata:
-            payload["metadata"] = metadata
+            payload["metadata"] = _metadata_value(metadata)
         for artifact in artifacts:
             if artifact.format == "png":
                 fig.savefig(artifact.path)
@@ -260,6 +272,25 @@ def _html_quicklook(*, name: str, fig: Any, metadata: dict[str, Any]) -> str:
         "</body>\n"
         "</html>\n"
     )
+
+
+def _time_range_metadata(time_range: Any) -> dict[str, str] | Any:
+    if hasattr(time_range, "start_iso") and hasattr(time_range, "stop_iso"):
+        return {
+            "start": str(time_range.start_iso),
+            "stop": str(time_range.stop_iso),
+        }
+    return _metadata_value(time_range)
+
+
+def _metadata_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _metadata_value(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_metadata_value(item) for item in value]
+    if hasattr(value, "start_iso") and hasattr(value, "stop_iso"):
+        return _time_range_metadata(value)
+    return value
 
 
 def _data_name(data: Any) -> str:

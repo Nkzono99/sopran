@@ -385,6 +385,12 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
     )
     assert result.outputs[1].metadata["metadata"]["pipeline"]["output_layer"] == "normalized"
     assert result.outputs[1].metadata["metadata"]["pipeline"]["run_id"] == result.run_id
+    assert result.outputs[1].metadata["dataset_id"] == "kaguya.esa1.counts"
+    assert result.outputs[1].metadata["time_range"] == {
+        "start": "2008-01-01T00:00:00Z",
+        "stop": "2008-01-02T00:00:00Z",
+    }
+    assert result.outputs[1].metadata["aggregation"] == {"mode": "native"}
 
 
 def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:

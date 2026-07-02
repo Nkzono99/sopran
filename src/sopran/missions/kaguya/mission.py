@@ -766,6 +766,9 @@ def _write_pipeline_quicklooks(
                 name,
                 root=root,
                 formats=formats,
+                dataset_id=pipeline.output_dataset,
+                time_range=pipeline.time,
+                aggregation={"mode": "native"},
                 metadata=_pipeline_quicklook_metadata(pipeline, variable, run_id=run_id),
             )
         )
