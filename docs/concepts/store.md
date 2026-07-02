@@ -52,6 +52,7 @@ requested again:
 ```python
 index = store.datasets(refresh=True)
 kaguya_features = store.datasets(layer="features", mission="kaguya")
+adopted = store.datasets(status="adopted")
 ```
 
 The registry records dataset ID, layer, mission, instrument, product, schema

@@ -365,6 +365,7 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
         schema=KAGUYA_ESA1_SCHEMA,
         time_coverage=day,
         frame=pl.DataFrame({"time": [day.start_iso], "counts": [64]}),
+        status="adopted",
     )
     store.write_parquet_dataset(
         dataset_id="kaguya.esa1.pitch_angle_distribution",
@@ -379,10 +380,12 @@ def test_store_filters_dataset_registry_index(tmp_path) -> None:
     store.datasets(refresh=True)
 
     features = store.datasets(layer="features")
+    adopted = store.datasets(status="adopted")
 
     assert features.select("dataset_id").to_series().to_list() == [
         "kaguya.esa1.pitch_angle_distribution"
     ]
+    assert adopted.select("dataset_id").to_series().to_list() == ["kaguya.esa1.counts"]
 
 
 def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:

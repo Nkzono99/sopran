@@ -144,9 +144,11 @@ class Store:
         producer: str = "sopran",
         provenance: dict[str, Any] | None = None,
         parameters: dict[str, Any] | None = None,
+        status: str = "candidate",
     ) -> DatasetRecord:
         if append and overwrite:
             raise ValueError("append and overwrite cannot both be true")
+        _validate_dataset_status(status)
 
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         existing_shards = _read_catalog_shards(record.catalog_path) if append else ()
@@ -193,6 +195,7 @@ class Store:
             producer=producer,
             provenance=provenance,
             parameters=parameters,
+            status=status,
         )
 
     def scan_dataset(self, dataset_id: str, *, layer: str):
@@ -215,6 +218,7 @@ class Store:
         mission: str | None = None,
         instrument: str | None = None,
         product: str | None = None,
+        status: str | None = None,
         refresh: bool = False,
     ):
         import polars as pl
@@ -230,6 +234,7 @@ class Store:
             "mission": mission,
             "instrument": instrument,
             "product": product,
+            "status": status,
         }
         for column, value in filters.items():
             if value is not None:
