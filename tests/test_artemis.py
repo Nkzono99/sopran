@@ -162,6 +162,24 @@ def test_artemis_guides_return_markdown_pages() -> None:
     assert variable_guide.url == mission_guide.url
 
 
+def test_artemis_examples_return_markdown_pages() -> None:
+    art = spn.Artemis()
+
+    mission_example = art.example().to_markdown()
+    fgm_example = art.p1.fgm.example().to_markdown()
+    esa_example = art.p1.esa.example().to_markdown()
+    variable_example = art.p1.esa.ion_energy_flux.example().to_markdown()
+
+    assert "ARTEMIS Example" in mission_example
+    assert "spn.Artemis" in mission_example
+    assert "ARTEMIS P1 FGM Example" in fgm_example
+    assert "magnetic_field" in fgm_example
+    assert "ARTEMIS P1 ESA Example" in esa_example
+    assert "ion_energy_flux" in esa_example
+    assert "ARTEMIS P1 ESA ion_energy_flux Example" in variable_example
+    assert "spectrogram" in variable_example
+
+
 def test_artemis_guides_can_switch_language() -> None:
     art = spn.Artemis()
 

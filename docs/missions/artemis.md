@@ -26,6 +26,9 @@ ion_plan = art.p1.esa.ion_energy_flux.plan(time)
   required time range pattern, plus the next `info()` / `load()` calls to try.
 - Variable endpoint `info()` includes schema aliases such as `b`, `fgm`, and
   `ion_eflux`.
+- Mission, instrument, and variable endpoint `example()` methods return
+  copyable `GuidePage` snippets for stacked ESA spectrogram and FGM vector
+  quicklooks.
 - Bilingual package guides via `art.guide(language="ja")`,
   `art.guide(language="en")`, `art.p1.fgm.guide(language=...)`, and
   `art.p1.esa.guide(language=...)`.

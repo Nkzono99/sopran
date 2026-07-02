@@ -23,11 +23,14 @@ plan = art.p1.fgm.magnetic_field.plan(time)
 ion_plan = art.p1.esa.ion_energy_flux.plan(time)
 stack = spn.stack(
     art.p1.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True),
-    art.p1.fgm.magnetic_field.line(time),
+    art.p1.fgm.magnetic_field.lines(time, components="xyz"),
 )
 plot_result = stack.plot()
 fig = plot_result.fig
 ```
+
+`art.example()`、`art.p1.fgm.example()`、`art.p1.esa.example()`、variable endpoint
+の `example()` は、notebook や terminal でそのまま参照できる短い `GuidePage` を返します。
 
 ## 次の作業
 

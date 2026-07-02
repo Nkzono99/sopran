@@ -64,6 +64,28 @@ class Artemis:
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
+    def example(self) -> GuidePage:
+        return _example_page(
+            "ARTEMIS Example",
+            """# ARTEMIS Example
+
+```python
+import sopran as spn
+
+store = spn.Store("F:/sopran_data")
+art = spn.Artemis(store=store)
+time = spn.day("2011-07-01")
+
+stack = spn.stack(
+    art.p1.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True),
+    art.p1.fgm.magnetic_field.lines(time, components="xyz"),
+)
+plot_result = stack.plot()
+fig = plot_result.fig
+```
+""",
+        )
+
 
 class ArtemisProbe:
     def __init__(self, mission: Artemis, probe: str) -> None:
@@ -86,6 +108,9 @@ class ArtemisProbe:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def example(self) -> GuidePage:
+        return self.mission.example()
 
 
 class ArtemisFgmInstrument:
@@ -119,6 +144,25 @@ class ArtemisFgmInstrument:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def example(self) -> GuidePage:
+        probe = self.probe.probe
+        return _example_page(
+            f"ARTEMIS {probe.upper()} FGM Example",
+            f"""# ARTEMIS {probe.upper()} FGM Example
+
+```python
+import sopran as spn
+
+art = spn.Artemis()
+time = spn.day("2011-07-01")
+
+magnetic_field = art.{probe}.fgm.magnetic_field.load(time)
+item = art.{probe}.fgm.magnetic_field.lines(time, components="xyz")
+plot_result = spn.stack(item).plot()
+```
+""",
+        )
 
     def __getattr__(self, name: str):
         if name.startswith("__"):
@@ -166,6 +210,25 @@ class ArtemisEsaInstrument:
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
+    def example(self) -> GuidePage:
+        probe = self.probe.probe
+        return _example_page(
+            f"ARTEMIS {probe.upper()} ESA Example",
+            f"""# ARTEMIS {probe.upper()} ESA Example
+
+```python
+import sopran as spn
+
+art = spn.Artemis()
+time = spn.day("2011-07-01")
+
+ion_energy_flux = art.{probe}.esa.ion_energy_flux.load(time)
+item = art.{probe}.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True)
+plot_result = spn.stack(item).plot()
+```
+""",
+        )
+
     def __getattr__(self, name: str):
         if name.startswith("__"):
             raise AttributeError(name)
@@ -208,6 +271,35 @@ class ArtemisVariableEndpoint:
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
+
+    def example(self) -> GuidePage:
+        probe = self.instrument.probe.probe
+        instrument = str(self.instrument.instrument_id)
+        if instrument == "fgm":
+            plot_line = (
+                f"item = art.{probe}.fgm.{self.name}.lines(time, components=\"xyz\")"
+            )
+        else:
+            plot_line = (
+                f"item = art.{probe}.esa.{self.name}.spectrogram("
+                'time, y="energy", log_color=True)'
+            )
+        return _example_page(
+            f"ARTEMIS {probe.upper()} {instrument.upper()} {self.name} Example",
+            f"""# ARTEMIS {probe.upper()} {instrument.upper()} {self.name} Example
+
+```python
+import sopran as spn
+
+art = spn.Artemis()
+time = spn.day("2011-07-01")
+
+{self.name} = art.{probe}.{instrument}.{self.name}.load(time)
+{plot_line}
+plot_result = spn.stack(item).plot()
+```
+""",
+        )
 
     def plan(self, time: TimeRange | None = None) -> ArtemisLoadPlan:
         if time is None:
@@ -327,6 +419,14 @@ def _read_guide(*, title: str, language: str = "ja") -> GuidePage:
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,
         sources=sources,
+    )
+
+
+def _example_page(title: str, markdown: str) -> GuidePage:
+    return GuidePage(
+        title=title,
+        markdown=markdown,
+        source="sopran.missions.artemis.examples",
     )
 
 
