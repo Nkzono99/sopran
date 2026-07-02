@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+from sopran.core.schema import InstrumentSchema
+from sopran.core.time import TimeRange
 
 
 @dataclass(frozen=True)
@@ -30,3 +35,115 @@ class Store:
 
     def database_path(self, *parts: str) -> Path:
         return self.root.joinpath("databases", *parts)
+
+    def dataset_path(self, dataset_id: str, *, layer: str) -> Path:
+        return self._layer_path(layer, *_dataset_parts(dataset_id))
+
+    def register_dataset(
+        self,
+        *,
+        dataset_id: str,
+        layer: str,
+        mission: str,
+        instrument: str,
+        product: str,
+        schema: InstrumentSchema,
+        time_coverage: TimeRange,
+        source_files: tuple[str, ...] = (),
+        shards: tuple[dict[str, Any], ...] = (),
+        producer: str = "sopran",
+    ) -> DatasetRecord:
+        record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+        record.root.mkdir(parents=True, exist_ok=True)
+        _write_json(
+            record.manifest_path,
+            {
+                "dataset_id": dataset_id,
+                "layer": layer,
+                "mission": mission,
+                "instrument": instrument,
+                "product": product,
+                "time_coverage": {
+                    "start": time_coverage.start_iso,
+                    "stop": time_coverage.stop_iso,
+                },
+                "source_files": list(source_files),
+                "producer": producer,
+            },
+        )
+        _write_json(record.schema_path, _schema_to_json(schema))
+        _write_catalog(record.catalog_path, shards)
+        return record
+
+    def _layer_path(self, layer: str, *parts: str) -> Path:
+        if layer == "raw":
+            return self.raw_path(*parts)
+        if layer == "normalized":
+            return self.normalized_path(*parts)
+        if layer == "features":
+            return self.features_path(*parts)
+        if layer == "databases":
+            return self.database_path(*parts)
+        raise ValueError("layer must be raw, normalized, features, or databases")
+
+
+@dataclass(frozen=True)
+class DatasetRecord:
+    root: Path
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.root / "dataset.json"
+
+    @property
+    def schema_path(self) -> Path:
+        return self.root / "schema.json"
+
+    @property
+    def catalog_path(self) -> Path:
+        return self.root / "catalog.parquet"
+
+
+def _dataset_parts(dataset_id: str) -> tuple[str, ...]:
+    return tuple(part for part in dataset_id.split(".") if part)
+
+
+def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
+    return {
+        "mission": schema.mission,
+        "instrument": schema.instrument,
+        "variables": [
+            {
+                "name": variable.name,
+                "dims": list(variable.dims),
+                "units": variable.units,
+                "description": variable.description,
+                "aliases": list(variable.aliases),
+            }
+            for variable in schema.variables
+        ],
+    }
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
+    import polars as pl
+
+    rows = [
+        {
+            "path": shard.get("path", ""),
+            "row_count": int(shard.get("row_count", 0)),
+            "checksum": shard.get("checksum", ""),
+            "status": shard.get("status", "pending"),
+        }
+        for shard in shards
+    ]
+    if not rows:
+        rows = [{"path": "", "row_count": 0, "checksum": "", "status": "empty"}]
+    pl.DataFrame(rows).write_parquet(path)
