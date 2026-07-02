@@ -208,13 +208,17 @@ class ArtemisVariableEndpoint:
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
-    def plan(self, time: TimeRange) -> ArtemisLoadPlan:
+    def plan(self, time: TimeRange | None = None) -> ArtemisLoadPlan:
+        if time is None:
+            raise _missing_time_error(self)
         return ArtemisLoadPlan(
             dataset_id=f"{self.instrument.dataset_prefix}.{self.name}",
             time=time,
         )
 
-    def load(self, time: TimeRange):
+    def load(self, time: TimeRange | None = None):
+        if time is None:
+            raise _missing_time_error(self)
         dataset_id = f"{self.instrument.dataset_prefix}.{self.name}"
         try:
             frame = self.instrument.probe.mission.store.scan_dataset(
@@ -234,7 +238,15 @@ class ArtemisVariableEndpoint:
             xr=_frame_to_data_array(frame, self._schema, time),
         )
 
-    def line(self, time: TimeRange, *, x: str = "time", name: str | None = None):
+    def line(
+        self,
+        time: TimeRange | None = None,
+        *,
+        x: str = "time",
+        name: str | None = None,
+    ):
+        if time is None:
+            raise _missing_time_error(self)
         from sopran.core.plotting import line
 
         return line(
@@ -245,13 +257,15 @@ class ArtemisVariableEndpoint:
 
     def lines(
         self,
-        time: TimeRange,
+        time: TimeRange | None = None,
         *,
         x: str = "time",
         components: str | tuple[str, ...] | list[str] | None = None,
         component_dim: str = "component",
         name: str | None = None,
     ):
+        if time is None:
+            raise _missing_time_error(self)
         from sopran.core.plotting import lines
 
         return lines(
@@ -264,13 +278,15 @@ class ArtemisVariableEndpoint:
 
     def spectrogram(
         self,
-        time: TimeRange,
+        time: TimeRange | None = None,
         *,
         y: str,
         x: str = "time",
         name: str | None = None,
         log_color: bool = False,
     ):
+        if time is None:
+            raise _missing_time_error(self)
         from sopran.core.plotting import spectrogram
 
         return spectrogram(
@@ -339,6 +355,21 @@ def _unknown_variable_error(
         f"Try:\n"
         f"  art.{probe_path}.{instrument_path}.info()\n"
         f"  art.{probe_path}.{instrument_path}.{suggestion}.load(time)"
+    )
+
+
+def _missing_time_error(endpoint: ArtemisVariableEndpoint) -> ValueError:
+    probe = endpoint.instrument.probe.probe.upper()
+    instrument = str(endpoint.instrument.instrument_id).upper()
+    probe_path = endpoint.instrument.probe.probe.lower()
+    instrument_path = str(endpoint.instrument.instrument_id).lower()
+    variable = endpoint.name
+    return ValueError(
+        f"Time range is required for ARTEMIS.{probe}.{instrument}.{variable}.\n\n"
+        'Examples:\n  time = spn.period("2011-07-01", "2011-07-02")\n'
+        f"  art.{probe_path}.{instrument_path}.{variable}.load(time)\n\n"
+        "Or use a Project case:\n"
+        f"  case.artemis.{probe_path}.{instrument_path}.{variable}.load()"
     )
 
 

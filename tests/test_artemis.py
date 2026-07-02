@@ -73,6 +73,55 @@ def test_artemis_esa_unknown_variable_error_lists_available_variables() -> None:
     assert "art.p1.esa.ion_energy_flux.load(time)" in message
 
 
+def test_artemis_endpoint_load_requires_time_with_actionable_message() -> None:
+    art = spn.Artemis()
+
+    with pytest.raises(ValueError) as exc:
+        art.p1.fgm.magnetic_field.load()
+
+    message = str(exc.value)
+    assert "Time range is required for ARTEMIS.P1.FGM.magnetic_field" in message
+    assert 'time = spn.period("2011-07-01", "2011-07-02")' in message
+    assert "art.p1.fgm.magnetic_field.load(time)" in message
+    assert "case.artemis.p1.fgm.magnetic_field.load()" in message
+
+
+def test_artemis_endpoint_plan_requires_time_with_actionable_message() -> None:
+    art = spn.Artemis()
+
+    with pytest.raises(ValueError) as exc:
+        art.p1.esa.ion_energy_flux.plan()
+
+    message = str(exc.value)
+    assert "Time range is required for ARTEMIS.P1.ESA.ion_energy_flux" in message
+    assert "art.p1.esa.ion_energy_flux.load(time)" in message
+    assert "case.artemis.p1.esa.ion_energy_flux.load()" in message
+
+
+def test_artemis_endpoint_line_requires_time_with_actionable_message() -> None:
+    art = spn.Artemis()
+
+    with pytest.raises(ValueError) as exc:
+        art.p1.fgm.magnetic_field.line()
+
+    message = str(exc.value)
+    assert "Time range is required for ARTEMIS.P1.FGM.magnetic_field" in message
+    assert "art.p1.fgm.magnetic_field.load(time)" in message
+    assert "case.artemis.p1.fgm.magnetic_field.load()" in message
+
+
+def test_artemis_endpoint_spectrogram_requires_time_with_actionable_message() -> None:
+    art = spn.Artemis()
+
+    with pytest.raises(ValueError) as exc:
+        art.p1.esa.ion_energy_flux.spectrogram(y="energy")
+
+    message = str(exc.value)
+    assert "Time range is required for ARTEMIS.P1.ESA.ion_energy_flux" in message
+    assert "art.p1.esa.ion_energy_flux.load(time)" in message
+    assert "case.artemis.p1.esa.ion_energy_flux.load()" in message
+
+
 def test_artemis_guides_return_markdown_pages() -> None:
     art = spn.Artemis()
 

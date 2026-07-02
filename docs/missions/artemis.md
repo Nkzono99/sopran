@@ -22,8 +22,8 @@ ion_plan = art.p1.esa.ion_energy_flux.plan(time)
   `case.artemis.p1.esa.ion_energy_flux`.
 - `line()` / `lines(components=...)` PlotItem generation for FGM vector panels
   and `spectrogram()` PlotItem generation for ESA energy spectra.
-- Unknown variable errors list available variables, a likely canonical
-  variable, and the next `info()` / `load()` calls to try.
+- Unknown variable and missing-time errors list available variables or the
+  required time range pattern, plus the next `info()` / `load()` calls to try.
 - Bilingual package guides via `art.guide(language="ja")`,
   `art.guide(language="en")`, `art.p1.fgm.guide(language=...)`, and
   `art.p1.esa.guide(language=...)`.
