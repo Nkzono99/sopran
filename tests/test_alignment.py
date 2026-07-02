@@ -839,6 +839,48 @@ def test_feature_matrix_exports_pandas_and_npz(tmp_path) -> None:
         assert "metadata_json" in data.files
 
 
+def test_feature_matrix_reads_npz_round_trip(tmp_path) -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),
+        cadence="10s",
+    )
+    sza = xr.DataArray(
+        np.array([70.0, 80.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                ["2008-01-01T00:00:04", "2008-01-01T00:00:16"],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="sza",
+    )
+    wave_power = xr.DataArray(
+        np.array([1.0, 3.0, 10.0]),
+        dims=("time",),
+        coords={
+            "time": np.array(
+                [
+                    "2008-01-01T00:00:01",
+                    "2008-01-01T00:00:03",
+                    "2008-01-01T00:00:12",
+                ],
+                dtype="datetime64[ns]",
+            )
+        },
+        name="wave_power",
+    )
+    matrix = spn.align(sza, wave_power, grid=bins, method="mean", join="inner").to_feature_matrix()
+
+    loaded = spn.FeatureMatrix.read_npz(matrix.write_npz(tmp_path / "features.npz"))
+
+    assert loaded.columns == matrix.columns
+    assert loaded.time == matrix.time
+    assert loaded.shape == matrix.shape
+    assert loaded.values.tolist() == matrix.values.tolist()
+    assert loaded.metadata == matrix.metadata
+
+
 def test_sample_table_metadata_records_feature_specific_rules() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:20Z"),

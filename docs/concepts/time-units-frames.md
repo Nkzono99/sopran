@@ -44,6 +44,7 @@ metadata = features.feature_metadata()
 matrix = features.to_feature_matrix()
 matrix_frame = matrix.to_pandas(include_time=True)
 matrix.write_npz("features.npz")
+matrix = spn.FeatureMatrix.read_npz("features.npz")
 features.write_parquet("features.parquet")
 ```
 
@@ -100,6 +101,7 @@ feature rules, grid metadata, row count, and time column name.
 `values`, feature `columns`, bin-center `time`, and the same feature metadata.
 `FeatureMatrix.to_pandas()` returns a pandas DataFrame, and `write_npz()` stores
 values, columns, time labels, and metadata JSON for lightweight ML handoff.
+Use `FeatureMatrix.read_npz()` to reload the same artifact.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`

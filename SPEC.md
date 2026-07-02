@@ -1622,6 +1622,7 @@ stack = spn.stack(
   `columns`, `time`, `metadata` を持つ `FeatureMatrix` を返す。
 - `FeatureMatrix.to_pandas(include_time=False)` は pandas DataFrame を返し、
   `FeatureMatrix.write_npz(path)` は values、columns、time、metadata JSON を保存する。
+  `FeatureMatrix.read_npz(path)` は同じ artifact を読み戻す。
 - `quality_mask=<1D time series>` は各 bin 内で center に最も近い mask sample を評価し、
   0、False、欠損の bin を feature table から落とす。
 - `AlignmentResult.metadata()` は columns、feature ごとの method/tolerance、grid、method、
@@ -1653,6 +1654,7 @@ frame = features.to_feature_frame()
 metadata = features.feature_metadata()
 matrix = features.to_feature_matrix()
 matrix.write_npz("wake_context_features.npz")
+matrix = spn.FeatureMatrix.read_npz("wake_context_features.npz")
 
 dataset = features.write_dataset(
     store,

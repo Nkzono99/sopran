@@ -75,7 +75,7 @@ with the features.
 `to_feature_matrix()` returns numpy-compatible values plus feature columns,
 time labels, and metadata in a small object for ML libraries.
 Use `FeatureMatrix.write_npz()` when a compact local artifact is more convenient
-than a Parquet feature table.
+than a Parquet feature table, and `FeatureMatrix.read_npz()` to load it again.
 
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and

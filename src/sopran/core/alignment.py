@@ -153,6 +153,19 @@ class FeatureMatrix:
         )
         return output
 
+    @classmethod
+    def read_npz(cls, path: str | Path) -> FeatureMatrix:
+        import numpy as np
+
+        with np.load(Path(path), allow_pickle=False) as data:
+            metadata_json = str(data["metadata_json"].item())
+            return cls(
+                values=data["values"],
+                columns=tuple(str(column) for column in data["columns"].tolist()),
+                time=tuple(str(time) for time in data["time"].tolist()),
+                metadata=json.loads(metadata_json),
+            )
+
 
 @dataclass(frozen=True)
 class AlignmentResult:
