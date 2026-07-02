@@ -109,6 +109,7 @@ class _OutputWithManifest:
 class _OutputWithMetadata:
     metadata_path: Path
     metadata: dict[str, object]
+    artifacts: tuple[spn.PlotArtifact, ...] = ()
 
 
 def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
@@ -139,6 +140,16 @@ def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
             _OutputWithMetadata(
                 metadata_path=tmp_path / "preview" / "counts.json",
                 metadata={"dataset_id": "kaguya.esa1.counts", "items": ["counts"]},
+                artifacts=(
+                    spn.PlotArtifact(
+                        path=tmp_path / "preview" / "counts.png",
+                        format="png",
+                    ),
+                    spn.PlotArtifact(
+                        path=tmp_path / "preview" / "counts.html",
+                        format="html",
+                    ),
+                ),
             ),
         ),
     )
@@ -161,6 +172,16 @@ def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
         {
             "type": "_OutputWithMetadata",
             "metadata_path": str(tmp_path / "preview" / "counts.json"),
+            "artifacts": [
+                {
+                    "path": str(tmp_path / "preview" / "counts.png"),
+                    "format": "png",
+                },
+                {
+                    "path": str(tmp_path / "preview" / "counts.html"),
+                    "format": "html",
+                },
+            ],
             "metadata": {
                 "dataset_id": "kaguya.esa1.counts",
                 "items": ["counts"],

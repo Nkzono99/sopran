@@ -305,12 +305,26 @@ def _output_summary(output: Any) -> dict[str, Any]:
     metadata_path = getattr(output, "metadata_path", None)
     if metadata_path is not None:
         summary["metadata_path"] = str(metadata_path)
+    artifacts = getattr(output, "artifacts", None)
+    if artifacts is not None:
+        summary["artifacts"] = [_artifact_summary(artifact) for artifact in artifacts]
     manifest = getattr(output, "manifest", None)
     if callable(manifest):
         summary["manifest"] = _jsonable(manifest())
     metadata = getattr(output, "metadata", None)
     if metadata is not None:
         summary["metadata"] = _jsonable(metadata)
+    return summary
+
+
+def _artifact_summary(artifact: Any) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    path = getattr(artifact, "path", None)
+    if path is not None:
+        summary["path"] = str(path)
+    format_name = getattr(artifact, "format", None)
+    if format_name is not None:
+        summary["format"] = str(format_name)
     return summary
 
 
