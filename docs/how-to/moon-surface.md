@@ -3,6 +3,7 @@
 ```python
 moon = spn.Moon()
 region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+sources = moon.dem.sources()
 
 dem_plan = moon.dem.plan(
     source="kaguya.tc.dem",

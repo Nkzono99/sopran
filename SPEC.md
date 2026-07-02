@@ -1167,6 +1167,8 @@ dem = moon.dem.load(source=kg.maps.dem, region=region)
 
 `source` は `"kaguya"` のような粗い mission 名ではなく、`kaguya.tc.dem`,
 `kaguya.lism.svm`, `lro.lola.dem`, `legacy.shadowmap_sza` のような stable source ID にする。
+v0.1 の `sources()` は実データ探索ではなく、利用可能にする予定の stable source ID を返す
+軽い discovery API とする。
 SPICE など幾何計算に使う入力は `source` ではなく `geometry_source` または `ephemeris` として
 区別する。
 

@@ -71,6 +71,9 @@ class SurfaceEndpoint:
     def help(self) -> GuidePage:
         return self.guide()
 
+    def sources(self) -> tuple[str, ...]:
+        return _SURFACE_SOURCES.get(self.product, ())
+
     def plan(self, **parameters: Any) -> SurfacePlan:
         return SurfacePlan(
             body=self.body.name,
@@ -120,4 +123,11 @@ and projection metadata. The current endpoint only records plans.
 Illumination products will represent solar incidence and visibility derived
 from DEM terrain and SPICE-backed solar geometry.
 """,
+}
+
+_SURFACE_SOURCES = {
+    "dem": ("kaguya.tc.dem", "lro.lola.dem"),
+    "svm": ("kaguya.lism.svm",),
+    "shadow": ("legacy.shadowmap_sza",),
+    "illumination": (),
 }

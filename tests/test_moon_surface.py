@@ -28,6 +28,15 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert "DEM" in str(moon.dem.info())
 
 
+def test_moon_surface_endpoints_list_stable_source_ids() -> None:
+    moon = spn.Moon()
+
+    assert "kaguya.tc.dem" in moon.dem.sources()
+    assert "lro.lola.dem" in moon.dem.sources()
+    assert moon.svm.sources() == ("kaguya.lism.svm",)
+    assert "legacy.shadowmap_sza" in moon.shadow.sources()
+
+
 def test_moon_surface_guides_return_markdown_pages() -> None:
     moon = spn.Moon()
 
