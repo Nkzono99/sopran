@@ -21,6 +21,7 @@ region.crosses_lon_boundary  # True
 region.lon_span              # 20.0
 region.contains(355, 0)      # True
 region.contains(-5, 0)       # True
+spn.Region(lon=(-10, 10), lat=(-5, 5), lon_domain="0_360").lon  # (350.0, 10.0)
 region.to_lon_domain("minus180_180").lon_domain  # "-180_180"
 ```
 

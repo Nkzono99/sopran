@@ -15,7 +15,14 @@ class Region:
     lon_domain: LonDomain = "0_360"
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "lon_domain", _canonical_lon_domain(self.lon_domain))
+        lon_domain = _canonical_lon_domain(self.lon_domain)
+        object.__setattr__(self, "lon_domain", lon_domain)
+        object.__setattr__(
+            self,
+            "lon",
+            tuple(_convert_lon(value, lon_domain) for value in self.lon),
+        )
+        object.__setattr__(self, "lat", tuple(float(value) for value in self.lat))
 
     @property
     def crosses_lon_boundary(self) -> bool:

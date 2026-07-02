@@ -37,3 +37,14 @@ def test_region_accepts_minus180_180_domain_alias() -> None:
     assert region.lon == (-10.0, 10.0)
     assert region.contains_lon(355)
     assert region.to_metadata()["lon_domain"] == "-180_180"
+
+
+def test_region_constructor_normalizes_longitudes_to_domain() -> None:
+    region = spn.Region(lon=(-10, 10), lat=(-5, 5), body="moon", lon_domain="0_360")
+
+    assert region.lon == (350.0, 10.0)
+    assert region.crosses_lon_boundary is True
+    assert region.lon_span == 20.0
+    assert region.contains_lon(355)
+    assert region.contains_lon(-5)
+    assert region.to_metadata()["lon"] == [350.0, 10.0]
