@@ -99,6 +99,15 @@ def test_kaguya_esa1_energy_flux_endpoint_exposes_schema_info_and_plan(tmp_path)
     ]
 
 
+def test_kaguya_spectrogram_endpoint_preserves_log_color_option(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    item = kg.esa1.counts.spectrogram(time, y="energy", log_color=True)
+
+    assert item.log_color is True
+
+
 def test_kaguya_mission_and_esa1_instrument_are_discoverable(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
     time = spn.period("2008-02-01", "2008-02-02")

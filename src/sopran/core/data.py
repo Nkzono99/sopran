@@ -44,6 +44,7 @@ class SopranArray:
         name: str | None = None,
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
+        log_color: bool = False,
     ):
         from sopran.core.plotting import spectrogram
 
@@ -52,4 +53,4 @@ class SopranArray:
             reduce_dims = tuple(dim for dim in array.dims if dim not in {x, y})
         if reduce_dims:
             array = getattr(array, reduction)(reduce_dims)
-        return spectrogram(array, x=x, y=y, name=name or self.name)
+        return spectrogram(array, x=x, y=y, name=name or self.name, log_color=log_color)

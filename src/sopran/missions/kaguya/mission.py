@@ -266,6 +266,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
+        log_color: bool = False,
     ):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -284,6 +285,7 @@ fig = plot_result.fig
             x=x,
             y=y,
             name=name or self.name,
+            log_color=log_color,
         )
 
 

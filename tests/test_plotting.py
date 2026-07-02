@@ -7,6 +7,7 @@ import pytest
 import xarray as xr
 
 import sopran as spn
+from sopran.core.data import SopranArray
 
 
 def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
@@ -70,6 +71,30 @@ def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     result = spn.stack(spn.spectrogram(counts, y="energy", log_color=True)).plot()
 
     assert isinstance(result.axes[0].collections[0].norm, LogNorm)
+
+
+def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    energy = np.array([10.0, 20.0, 30.0])
+    array = xr.DataArray(
+        np.ones((2, 3)),
+        dims=("time", "energy"),
+        coords={"time": times, "energy": energy},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy")),
+        xr=array,
+    )
+
+    item = loaded.spectrogram(y="energy", log_color=True)
+
+    assert item.log_color is True
 
 
 def test_plot_stack_line_accepts_vector_time_series() -> None:
