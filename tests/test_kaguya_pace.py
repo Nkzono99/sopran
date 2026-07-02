@@ -638,6 +638,8 @@ def test_kaguya_esa1_pipeline_run_on_error_continue_records_failed_shard(
     assert log["failed_shard_count"] == 1
     assert log["errors"][0]["stage"] == "load"
     assert "IPACE_PBF1_080101_ESA1_V003.dat.gz" in log["errors"][0]["message"]
+    with pytest.raises(spn.DatasetNotFoundError, match="complete parquet shards"):
+        dataset.scan().collect()
 
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
     cached = store.raw_path("kaguya", "pds3") / remote_file

@@ -53,6 +53,8 @@ to `pending`, `running`, `complete`, `failed`, or `skipped`.
 `DatasetRecord.shards(status=...)` lists catalog shards, and
 `DatasetRecord.failed_shards()` returns the failed subset for resume and audit
 workflows.
+`DatasetRecord.scan()` reads only `complete` catalog shards so failed or skipped
+shards remain visible for audit without breaking normal analysis scans.
 `DatasetRecord.replace_shard(path, frame=..., time_coverage=...)` overwrites one
 cataloged shard and refreshes its checksum, row count, time coverage, and status.
 `Store.dataset_source_files(...)` resolves `dataset.json["source_files"]` into

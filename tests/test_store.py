@@ -659,6 +659,56 @@ def test_dataset_record_replaces_shard_and_updates_catalog(tmp_path) -> None:
     ]
 
 
+def test_dataset_record_scan_skips_failed_shards(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    first = spn.day("2008-02-01")
+    second = spn.day("2008-02-02")
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+    }
+    store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=first,
+        frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
+    )
+    dataset = store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=second,
+        frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
+        append=True,
+    )
+    dataset.update_shard_status("shards/part-001.parquet", "failed")
+    (dataset.root / "shards" / "part-001.parquet").write_bytes(b"broken shard")
+
+    assert dataset.scan().collect().to_dicts() == [
+        {"time": first.start_iso, "counts": 1}
+    ]
+
+
+def test_dataset_record_scan_requires_complete_shards(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-02-01")
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "counts": [1]}),
+    )
+    dataset.update_shard_status("shards/part-000.parquet", "failed")
+
+    with pytest.raises(spn.DatasetNotFoundError, match="complete parquet shards"):
+        dataset.scan().collect()
+
+
 def test_store_dataset_finds_registered_dataset_without_layer(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

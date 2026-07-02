@@ -100,3 +100,5 @@ repartitioning are later backend features.
 failures, such as missing local raw files in offline mode, as a failed catalog
 shard. The structured log uses `status == "partial"`, includes `on_error`, and
 records each error with its stage, exception type, and message.
+Normal `scan()` calls read only complete shards, so partial results can be
+inspected and later replayed without corrupting downstream analysis.

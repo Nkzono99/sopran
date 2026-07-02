@@ -928,6 +928,8 @@ v0.1 では `DatasetRecord.update_shard_status(path, status)` で catalog の sh
 `pending`, `running`, `complete`, `failed`, `skipped` のいずれかに更新できるようにする。
 また `DatasetRecord.shards(status=...)` と `DatasetRecord.failed_shards()` で対象 shard を
 列挙できるようにし、`only_failed=True` の再実行や監査 UI はこの API を使う。
+`DatasetRecord.scan()` は通常解析用の入口なので、`status="complete"` の shard だけを読む。
+complete shard がない dataset は `DatasetNotFoundError` として扱う。
 shard の再生成は `DatasetRecord.replace_shard(path, frame=..., time_coverage=...)` で
 同じ path を上書きし、catalog の `checksum`, `row_count`, `status` を更新する。
 

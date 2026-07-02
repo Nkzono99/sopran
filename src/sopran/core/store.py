@@ -482,15 +482,14 @@ class DatasetRecord:
     def scan(self, *, dataset_id: str | None = None):
         import polars as pl
 
-        catalog = self.catalog()
         paths = [
-            _resolve_child(self.root, path)
-            for path in catalog.select("path").to_series().to_list()
-            if path
+            _resolve_child(self.root, str(shard["path"]))
+            for shard in self.shards(status="complete")
+            if shard.get("path")
         ]
         if not paths:
             name = dataset_id or str(self.root)
-            raise DatasetNotFoundError(f"Dataset has no parquet shards: {name}")
+            raise DatasetNotFoundError(f"Dataset has no complete parquet shards: {name}")
         return pl.scan_parquet([str(path) for path in paths])
 
     def verify_checksums(self) -> bool:
