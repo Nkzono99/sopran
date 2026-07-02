@@ -549,6 +549,8 @@ def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
                 "name": variable.name,
                 "dims": list(variable.dims),
                 "units": variable.units,
+                "dtype": variable.dtype,
+                "frame": variable.frame,
                 "description": variable.description,
                 "aliases": list(variable.aliases),
             }

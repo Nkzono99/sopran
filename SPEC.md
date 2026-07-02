@@ -1006,22 +1006,26 @@ KAGUYA_ESA1_SCHEMA = InstrumentSchema(
             aliases=("eflux", "differential_energy_flux"),
             dims=("time", "energy", "look"),
             units="eV/(cm^2 s sr eV)",
+            dtype="float64",
         ),
         VariableSchema(
             name="counts",
             dims=("time", "energy", "look"),
             units="count",
+            dtype="uint64",
         ),
         VariableSchema(
             name="energy",
             dims=("energy",),
             units="eV",
+            dtype="float64",
         ),
         VariableSchema(
             name="quality",
             aliases=("q", "quality_flag"),
             dims=("time",),
             units=None,
+            dtype="uint32",
         ),
     ],
 )
@@ -1054,6 +1058,8 @@ Schema から生成または検証するもの:
 - `VariableEndpoint` の metadata。
 - `KaguyaESA1Data` など typed data object の property validation。
 - loaded object から xarray / polars へ降りる際の dims、units、frame。
+- `schema.json` の `dtype` / `frame` metadata。vector、position、frame 変換済み product は
+  ここから coordinate frame と component dtype を辿れるようにする。
 
 ## Package and workspace layout
 

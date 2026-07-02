@@ -5,6 +5,8 @@ SOPRAN keeps variable metadata in code. A variable schema records:
 - stable variable name
 - dimensions
 - units
+- dtype
+- coordinate frame
 - description
 - aliases
 
@@ -28,6 +30,10 @@ failures raise `SchemaError`.
 `product` resolves to a variable in the supplied schema. Derived features whose
 product names are outside the instrument schema can still be written with their
 own schema.
+
+`schema.json` preserves `dtype` and `frame` when they are present on
+`VariableSchema`. Vector and position products should use these fields to keep
+component dtype and coordinate frame metadata discoverable.
 
 Example variables:
 

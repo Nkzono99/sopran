@@ -9,6 +9,7 @@ import pytest
 
 import sopran as spn
 from sopran import Store
+from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
@@ -71,6 +72,38 @@ def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     assert catalog.select("path").to_series().to_list() == [
         "shards/year=2008/month=02/day=01/part-000.parquet"
     ]
+
+
+def test_store_schema_json_preserves_dtype_and_frame_metadata(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    schema = InstrumentSchema(
+        mission="artemis",
+        instrument="fgm",
+        variables=(
+            VariableSchema(
+                name="magnetic_field",
+                dims=("time", "component"),
+                units="nT",
+                dtype="float64",
+                frame="SSE",
+                description="Vector magnetic field.",
+            ),
+        ),
+    )
+
+    dataset = store.register_dataset(
+        dataset_id="artemis.p1.fgm.magnetic_field",
+        layer="normalized",
+        mission="artemis",
+        instrument="fgm",
+        product="magnetic_field",
+        schema=schema,
+        time_coverage=time,
+    )
+
+    assert dataset.schema()["variables"][0]["dtype"] == "float64"
+    assert dataset.schema()["variables"][0]["frame"] == "SSE"
 
 
 def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:

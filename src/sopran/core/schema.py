@@ -11,6 +11,8 @@ class VariableSchema:
     name: str
     dims: tuple[str, ...]
     units: str | None = None
+    dtype: str | None = None
+    frame: str | None = None
     description: str = ""
     aliases: tuple[str, ...] = ()
 
