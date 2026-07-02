@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -129,6 +130,28 @@ class FeatureMatrix:
     @property
     def shape(self) -> tuple[int, ...]:
         return tuple(self.values.shape)
+
+    def to_pandas(self, *, include_time: bool = False):
+        import pandas as pd
+
+        frame = pd.DataFrame(self.values, columns=list(self.columns))
+        if include_time:
+            frame.insert(0, "time", list(self.time))
+        return frame
+
+    def write_npz(self, path: str | Path) -> Path:
+        import numpy as np
+
+        output = Path(path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(
+            output,
+            values=self.values,
+            columns=np.array(self.columns, dtype=str),
+            time=np.array(self.time, dtype=str),
+            metadata_json=json.dumps(self.metadata, sort_keys=True),
+        )
+        return output
 
 
 @dataclass(frozen=True)

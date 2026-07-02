@@ -42,6 +42,8 @@ features = spn.align(
 frame = features.to_feature_frame()
 metadata = features.feature_metadata()
 matrix = features.to_feature_matrix()
+matrix_frame = matrix.to_pandas(include_time=True)
+matrix.write_npz("features.npz")
 features.write_parquet("features.parquet")
 ```
 
@@ -96,6 +98,8 @@ center in the `time` column. `feature_metadata()` returns the feature columns,
 feature rules, grid metadata, row count, and time column name.
 `to_feature_matrix()` returns a `FeatureMatrix` object with numpy-compatible
 `values`, feature `columns`, bin-center `time`, and the same feature metadata.
+`FeatureMatrix.to_pandas()` returns a pandas DataFrame, and `write_npz()` stores
+values, columns, time labels, and metadata JSON for lightweight ML handoff.
 
 The first implementation supports 1D time series and `time x component` vector
 series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`
