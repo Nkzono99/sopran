@@ -16,6 +16,14 @@ plan = art.p1.fgm.magnetic_field.plan(time)
 - Store-backed normalized parquet loading for existing
   `artemis.<probe>.fgm.magnetic_field` datasets.
 - Project case context through `case.artemis.p1.fgm.magnetic_field`.
+- `line()` PlotItem generation for FGM vector panels.
+
+```python
+stack = case.stack(
+    case.artemis.p1.fgm.magnetic_field.line(),
+)
+fig = stack.plot()
+```
 
 ## Next Work
 

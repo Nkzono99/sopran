@@ -73,6 +73,21 @@ def test_artemis_load_reads_normalized_magnetic_field_from_store(tmp_path) -> No
     assert array.values.tolist() == [[1.0, 2.0, 3.0]]
 
 
+def test_artemis_variable_endpoint_builds_line_plot_item(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2011-07-01")
+    _write_artemis_fgm_dataset(store, time)
+
+    item = spn.Artemis(store=store).p1.fgm.magnetic_field.line(time)
+    fig = spn.stack(item).plot()
+
+    assert item.name == "magnetic_field"
+    assert len(fig.axes[0].lines) == 3
+
+
 def test_top_level_load_reads_artemis_dataset_from_store(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
     time = spn.day("2011-07-01")
@@ -103,6 +118,31 @@ stop = "2011-07-02T00:00:00"
     ).artemis.p1.fgm.magnetic_field.load()
 
     assert magnetic_field.to_xarray().values.tolist() == [[1.0, 2.0, 3.0]]
+
+
+def test_project_case_artemis_endpoint_builds_line_plot_item(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2011-07-01")
+    _write_artemis_fgm_dataset(store, time)
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[cases.wake]
+start = "2011-07-01T00:00:00"
+stop = "2011-07-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    case = spn.Project(project_root, store=store).case("wake")
+
+    stack = case.stack(case.artemis.p1.fgm.magnetic_field.line())
+
+    assert stack.plan().items == ("magnetic_field",)
+    assert len(stack.plot().axes[0].lines) == 3
 
 
 def _write_artemis_fgm_dataset(store: spn.Store, time: spn.TimeRange) -> None:

@@ -17,10 +17,13 @@ import sopran as spn
 art = spn.Artemis()
 time = spn.day("2011-07-01")
 plan = art.p1.fgm.magnetic_field.plan(time)
+
+item = art.p1.fgm.magnetic_field.line(time)
+fig = spn.stack(item).plot()
 ```
 
 ## Next Work
 
 - Connect CDAWeb/HAPI discovery and raw download policy.
-- Add store-backed normalized parquet loading.
+- Expand store-backed normalized parquet loading.
 - Preserve coordinate frame and vector component metadata.

@@ -109,6 +109,14 @@ class CaseNode:
     def plot(self, time: TimeRange | None = None, **kwargs):
         return self._value.plot(time or self._case.time, **kwargs)
 
+    def line(self, time: TimeRange | None = None, **kwargs):
+        line_method = getattr(self._value, "line", None)
+        if line_method is not None:
+            return line_method(time or self._case.time, **kwargs)
+        from sopran.core.plotting import line
+
+        return line(lambda: self.load(time).to_xarray(), **kwargs)
+
     def __getattr__(self, name: str):
         value = getattr(self._value, name)
         if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):

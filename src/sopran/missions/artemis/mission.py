@@ -134,6 +134,15 @@ class ArtemisVariableEndpoint:
             xr=_frame_to_data_array(frame, self._schema, time),
         )
 
+    def line(self, time: TimeRange, *, x: str = "time", name: str | None = None):
+        from sopran.core.plotting import line
+
+        return line(
+            lambda: self.load(time).to_xarray(),
+            x=x,
+            name=name or self.name,
+        )
+
 
 def _read_guide(*, title: str) -> GuidePage:
     markdown = files("sopran.missions.artemis").joinpath("README.md").read_text(
