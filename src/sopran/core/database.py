@@ -90,6 +90,22 @@ class Database:
             time_coverage=None,
         )
 
+    def adopt_dataset(
+        self,
+        dataset: DatasetRecord,
+        *,
+        description: str = "",
+    ) -> ProductRef:
+        manifest = dataset.manifest()
+        product = ProductRef(
+            dataset_id=str(manifest["dataset_id"]),
+            layer=str(manifest["layer"]),
+            store=self.store,
+        )
+        self.root.mkdir(parents=True, exist_ok=True)
+        self._write_metadata(product, description=description)
+        return product
+
     def _write_metadata(self, product: ProductRef, *, description: str) -> None:
         path = self.root / "database.json"
         payload = self.metadata()

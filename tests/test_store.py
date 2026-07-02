@@ -441,6 +441,41 @@ def test_database_product_reference_scans_dataset(tmp_path) -> None:
     assert scanned.select("counts").to_series().to_list() == [64]
 
 
+def test_database_adopts_existing_feature_dataset_reference(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-02-01")
+    dataset = store.write_parquet_dataset(
+        dataset_id="analysis.wake_context",
+        layer="features",
+        mission="analysis",
+        instrument="alignment",
+        product="wake_context",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "sza": [70.0]}),
+    )
+    database = store.database("lunar_wake", create=True)
+
+    product = database.adopt_dataset(
+        dataset,
+        description="aligned SZA and wave context for event review",
+    )
+
+    assert product.dataset_id == "analysis.wake_context"
+    assert product.layer == "features"
+    assert database.metadata()["products"] == [
+        {
+            "name": "wake_context",
+            "dataset_id": "analysis.wake_context",
+            "layer": "features",
+            "description": "aligned SZA and wave context for event review",
+        }
+    ]
+    assert database.products()[0].scan().collect().to_dicts() == [
+        {"time": "2008-02-01T00:00:00Z", "sza": 70.0}
+    ]
+
+
 def test_store_scans_registered_parquet_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

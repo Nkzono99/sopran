@@ -129,3 +129,12 @@ products[0].name
 products[0].dataset_id
 lazy = products[0].scan()
 ```
+
+When a reusable feature table is already stored in the `features` layer, keep
+the physical dataset there and adopt it into a project database as a reference:
+
+```python
+features = aligned.write_dataset(store, "analysis.wake_context")
+db.adopt_dataset(features, description="aligned wake context features")
+lazy = db.products()[0].scan()
+```

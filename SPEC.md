@@ -841,6 +841,10 @@ databases/
 ユーザー拡張は `Database.register_product()` または pipeline の `write()` から行う。
 `store.database(name, create=True)` は `databases/<name>/database.json` を作成し、
 空の product list で database namespace を初期化する。既存 metadata は上書きしない。
+`features` layer に保存した再利用可能な解析 dataset を、研究テーマの database から
+参照したい場合は `Database.adopt_dataset(dataset, description=...)` で `database.json` の
+product list に採用する。この場合、物理 dataset は `features` に残し、database は
+採用済み product の logical list として振る舞う。
 
 ```python
 db = store.database("my_project", create=True)
@@ -851,6 +855,9 @@ db.register_product(
     schema=event_schema,
     description="hand-curated lunar wake events",
 )
+
+features = aligned.write_dataset(store, "analysis.wake_context")
+db.adopt_dataset(features, description="aligned wake context features")
 ```
 
 ## Manifest / Catalog
@@ -2058,6 +2065,9 @@ events = db.product("events")
 
 `db.product(name)` は `ProductRef` を返す。`ProductRef.scan()` は Store に登録済みの
 `databases/<db>/<product>` dataset を Polars LazyFrame として読む。
+`db.adopt_dataset(dataset, description=...)` は既存の `features` / `normalized` /
+`databases` dataset を database metadata に参照として加え、`db.products()` から同じ
+`ProductRef.scan()` 経路で読めるようにする。
 
 ### 独自 mission
 

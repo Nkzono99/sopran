@@ -50,3 +50,11 @@ db.register_product(
 products = db.products()
 assert products[0].name == "event_table"
 ```
+
+Existing Store-managed datasets can also be adopted into a database metadata
+list without moving their physical shards:
+
+```python
+features = aligned.write_dataset(store, "analysis.wake_context")
+db.adopt_dataset(features, description="aligned context features")
+```
