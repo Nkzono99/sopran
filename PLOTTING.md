@@ -41,7 +41,9 @@ stack = case.stack(
 
 stack.plan()
 stack.plot()
+stack.quicklook("wake_overview", root="reports")
 ```
 
-v0.1 should support a minimal Matplotlib stack with shared UTC x-axis. HoloViz,
-Datashader, Panel dashboards, and HTML quicklooks are later milestones.
+v0.1 supports a minimal Matplotlib stack with shared UTC x-axis and PNG
+quicklook export with JSON metadata. HoloViz, Datashader, Panel dashboards,
+and HTML quicklooks are later milestones.

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
@@ -22,6 +24,20 @@ class PlotItem:
 class PlotPlan:
     panel_count: int
     items: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PlotArtifact:
+    path: Path
+    format: str
+
+
+@dataclass(frozen=True)
+class QuicklookResult:
+    name: str
+    artifacts: tuple[PlotArtifact, ...]
+    metadata_path: Path
+    metadata: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -65,6 +81,48 @@ class PlotStack:
         fig.autofmt_xdate()
         fig.tight_layout()
         return fig
+
+    def quicklook(
+        self,
+        name: str,
+        *,
+        root: str | Path = ".",
+        formats: tuple[str, ...] = ("png",),
+        metadata: dict[str, Any] | None = None,
+        figsize: tuple[float, float] | None = None,
+    ) -> QuicklookResult:
+        target_root = Path(root)
+        target_root.mkdir(parents=True, exist_ok=True)
+        fig = self.plot(figsize=figsize)
+        plan = self.plan()
+        artifacts = []
+        for format_name in formats:
+            if format_name != "png":
+                raise ValueError("PlotStack.quicklook() currently supports only png")
+            path = target_root / f"{name}.{format_name}"
+            fig.savefig(path)
+            artifacts.append(PlotArtifact(path=path, format=format_name))
+
+        payload = {
+            "name": name,
+            "backend": "matplotlib",
+            "panel_count": plan.panel_count,
+            "items": list(plan.items),
+            "artifacts": [artifact.path.name for artifact in artifacts],
+        }
+        if metadata:
+            payload["metadata"] = metadata
+        metadata_path = target_root / f"{name}.json"
+        metadata_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return QuicklookResult(
+            name=name,
+            artifacts=tuple(artifacts),
+            metadata_path=metadata_path,
+            metadata=payload,
+        )
 
 
 def stack(*items: PlotItem) -> PlotStack:

@@ -18,6 +18,7 @@ stack = spn.stack(
 
 stack.plan()
 stack.plot()
+stack.quicklook("wake_overview", root="reports")
 ```
 
 When a `Project` case supplies the time range, variable endpoints can create
@@ -31,4 +32,5 @@ stack = case.stack(
 ```
 
 The v0.1 implementation uses Matplotlib. HoloViz, Datashader, Panel dashboards,
-and HTML quicklooks are planned for larger interactive products.
+and HTML quicklooks are planned for larger interactive products. Current
+`quicklook()` output is a Matplotlib PNG plus a small JSON metadata file.

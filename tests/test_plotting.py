@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import xarray as xr
 
@@ -69,3 +71,30 @@ stop = "2008-01-02T00:00:00"
     stack = case.stack(spn.line(quality))
 
     assert stack.plan().items == ("quality",)
+
+
+def test_plot_stack_quicklook_writes_png_and_metadata(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    stack = spn.stack(spn.line(quality))
+
+    result = stack.quicklook("wake_overview", root=tmp_path)
+
+    metadata = json.loads((tmp_path / "wake_overview.json").read_text(encoding="utf-8"))
+    assert result.artifacts[0].path == tmp_path / "wake_overview.png"
+    assert result.metadata_path == tmp_path / "wake_overview.json"
+    assert (tmp_path / "wake_overview.png").exists()
+    assert metadata["backend"] == "matplotlib"
+    assert metadata["items"] == ["quality"]
+    assert metadata["artifacts"] == ["wake_overview.png"]

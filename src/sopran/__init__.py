@@ -2,8 +2,9 @@
 
 from sopran.bodies import Moon
 from sopran.core import Database, DatasetNotFoundError, GuidePage, InfoPage
-from sopran.core import PlotItem, PlotPlan, ProductRef
+from sopran.core import PlotArtifact, PlotItem, PlotPlan, ProductRef
 from sopran.core import PlotStack, SopranError, Store, TimeRange
+from sopran.core import QuicklookResult
 from sopran.core import day, line, load, month, period
 from sopran.core import spectrogram, stack, year
 from sopran.core.project import Project
@@ -21,11 +22,13 @@ __all__ = [
     "DatasetNotFoundError",
     "Kaguya",
     "Moon",
+    "PlotArtifact",
     "PlotItem",
     "PlotPlan",
     "PlotStack",
     "Project",
     "ProductRef",
+    "QuicklookResult",
     "Region",
     "SopranError",
     "Store",
