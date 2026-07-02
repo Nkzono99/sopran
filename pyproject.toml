@@ -109,6 +109,12 @@ geospace = [
   "spacepy>=0.7",
   "sunpy>=5.0",
 ]
+docs = [
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "mkdocstrings[python]>=0.25",
+  "pymdown-extensions>=10.8",
+]
 full = [
   "aacgmv2>=2.7",
   "apexpy>=2.1",
@@ -162,6 +168,8 @@ include = [
   "/STORE.md",
   "/SURFACE.md",
   "/THIRD_PARTY_NOTICES.md",
+  "/docs",
+  "/mkdocs.yml",
   "/pyproject.toml",
   "/src",
 ]

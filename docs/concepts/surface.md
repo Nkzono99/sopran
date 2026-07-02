@@ -1,0 +1,17 @@
+# Surface Products
+
+Surface products are body-first:
+
+```python
+moon = spn.Moon()
+region = spn.Region(lon=(350, 10), lat=(-5, 5), body="moon")
+
+normalized = region.to_lon_domain("-180_180")
+dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=normalized)
+```
+
+Mission modules may discover provider files, but body-fixed semantics belong to
+`sopran.bodies` and map utilities belong to `sopran.maps`.
+
+Terrain-aware shadow and illumination products must eventually record DEM,
+solar position, body shape, projection, and longitude-domain metadata.

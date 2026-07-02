@@ -41,6 +41,21 @@ pip install "sopran[dev]"
 optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `dev` に分けますが、
 runtime 系は標準 dependencies にも含めます。
 
+## Documentation
+
+公開ドキュメントは MkDocs Material で `docs/` からビルドします。GitHub Pages は
+`.github/workflows/docs.yml` で `main` への push 時に build/deploy する構成です。
+
+```text
+pip install mkdocs mkdocs-material "mkdocstrings[python]" pymdown-extensions numpy
+set PYTHONPATH=src
+mkdocs serve
+```
+
+`pip install -e ".[docs]"` も定義していますが、通常の runtime dependencies も解決対象になるため、
+Windows で MSVC がない環境では `aacgmv2` などの build に失敗することがあります。docs だけを
+編集する場合は上の軽量 install を使います。
+
 ## 現在動く最小 API
 
 KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF decode、
