@@ -362,6 +362,17 @@ class DatasetRecord:
             raise DatasetNotFoundError(f"Dataset has no parquet shards: {name}")
         return pl.scan_parquet([str(path) for path in paths])
 
+    def verify_checksums(self) -> bool:
+        for row in self.catalog().iter_rows(named=True):
+            shard_path = str(row.get("path") or "")
+            expected = str(row.get("checksum") or "")
+            if not shard_path:
+                continue
+            target = _resolve_child(self.root, shard_path)
+            if not target.exists() or expected != _sha256_file(target):
+                return False
+        return True
+
 
 @dataclass(frozen=True)
 class RawFileRecord:

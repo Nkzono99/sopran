@@ -377,6 +377,27 @@ def test_store_scans_registered_parquet_dataset(tmp_path) -> None:
     assert scanned.to_dicts() == frame.to_dicts()
 
 
+def test_dataset_record_verifies_catalog_shard_checksums(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+    )
+
+    assert dataset.verify_checksums()
+
+    (dataset.root / "shards" / "part-000.parquet").write_bytes(b"changed")
+
+    assert not dataset.verify_checksums()
+
+
 def test_store_dataset_finds_registered_dataset_without_layer(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")

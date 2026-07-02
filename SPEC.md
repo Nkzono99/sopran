@@ -524,7 +524,8 @@ F:/sopran_cache/
   `<filename>.sopran.json` sidecar manifest を置き、`registry/raw_files.parquet` に
   mission / provider / checksum / acquired_at の index を作る。解析前に manifest checksum と
   現在のファイル checksum を比較できる API を持つ。
-- parquet shard の schema、partition、期間、生成 pipeline を記録する。
+- parquet shard の schema、partition、期間、生成 pipeline、checksum を記録し、
+  catalog checksum と現在の shard checksum を比較できる API を持つ。
 - ユーザーが拡張した database を登録する。
 
 責務分担:
