@@ -72,7 +72,10 @@ def iter_public_paths(template: str, start: object, stop: object | None = None) 
 def pace_pbf_public_template(sensor: str, version: str = "003") -> str:
     sensor = sensor.upper()
     version2 = f"{version[2]}.0"
-    return f"sln-l-pace-3-pbf1-v{version2}/YYYYMMDD/data/IPACE_PBF1_yyMMDD_{sensor}_V{version}.dat.gz"
+    return (
+        f"sln-l-pace-3-pbf1-v{version2}/YYYYMMDD/data/"
+        f"IPACE_PBF1_yyMMDD_{sensor}_V{version}.dat.gz"
+    )
 
 
 def lmag_public_templates(version: str = "1.0") -> tuple[str, str]:

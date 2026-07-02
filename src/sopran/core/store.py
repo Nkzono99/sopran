@@ -16,7 +16,8 @@ class Store:
         root = self.root or os.environ.get("SOPRAN_DATA_ROOT") or "sopran_data"
         cache_root = self.cache_root or os.environ.get("SOPRAN_CACHE_ROOT")
         object.__setattr__(self, "root", Path(root))
-        object.__setattr__(self, "cache_root", Path(cache_root) if cache_root else Path(root) / "cache")
+        cache_path = Path(cache_root) if cache_root else Path(root) / "cache"
+        object.__setattr__(self, "cache_root", cache_path)
 
     def raw_path(self, *parts: str) -> Path:
         return self.root.joinpath("raw", *parts)

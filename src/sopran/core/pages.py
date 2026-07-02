@@ -1,0 +1,22 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class InfoPage:
+    title: str
+    lines: tuple[str, ...]
+
+    def __str__(self) -> str:
+        return "\n".join((self.title, *self.lines))
+
+    def to_markdown(self) -> str:
+        body = "\n".join(f"- {line}" for line in self.lines)
+        return f"## {self.title}\n\n{body}"
+
+    def _repr_markdown_(self) -> str:
+        return self.to_markdown()
+
+    def show(self) -> None:
+        print(str(self))
