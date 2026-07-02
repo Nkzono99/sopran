@@ -4,6 +4,7 @@ import base64
 import html
 from io import BytesIO
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -346,12 +347,14 @@ def _metadata_value(value: Any) -> Any:
 
 
 def _context_metadata(context: Any) -> dict[str, Any]:
-    if isinstance(context, dict):
+    if isinstance(context, Mapping):
         return _metadata_value(context)
     metadata = getattr(context, "metadata", None)
     if callable(metadata):
-        return _metadata_value(metadata())
-    raise TypeError("context must be a metadata dict or expose metadata()")
+        metadata = metadata()
+    if isinstance(metadata, Mapping):
+        return _metadata_value(metadata)
+    raise TypeError("context must be a metadata mapping or expose metadata")
 
 
 def _data_name(data: Any) -> str:

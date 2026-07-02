@@ -244,3 +244,19 @@ stop = "2008-02-02T00:00:00"
 
     metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
     assert metadata["context"] == case.metadata()
+
+
+def test_project_save_accepts_loaded_array_as_context(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    project = spn.Project(project_root, store=Store(tmp_path / "store"))
+    data = KaguyaESA1Data(time=spn.day("2008-02-01")).quality
+
+    artifact = project.save(
+        data,
+        "interim/kaguya_esa1_quality_self_context",
+        context=data,
+    )
+
+    metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
+    assert metadata["context"] == data.metadata

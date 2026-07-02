@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -387,9 +388,11 @@ def _artifact_metadata(
 
 
 def _context_metadata(context: Any) -> dict[str, Any]:
-    if isinstance(context, dict):
+    if isinstance(context, Mapping):
         return dict(context)
     metadata = getattr(context, "metadata", None)
     if callable(metadata):
-        return metadata()
-    raise TypeError("context must be a metadata dict or expose metadata()")
+        metadata = metadata()
+    if isinstance(metadata, Mapping):
+        return dict(metadata)
+    raise TypeError("context must be a metadata mapping or expose metadata")

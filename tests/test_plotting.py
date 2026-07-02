@@ -206,6 +206,30 @@ def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> Non
     assert result.metadata["items"] == ["quality"]
 
 
+def test_loaded_array_quicklook_accepts_loaded_array_as_context(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": ["t0", "t1"]},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=quality,
+    )
+
+    result = loaded.quicklook("quality_context", root=tmp_path, context=loaded)
+    metadata = json.loads((tmp_path / "quality_context.json").read_text(encoding="utf-8"))
+
+    assert result.metadata["context"] == loaded.metadata
+    assert metadata["context"] == loaded.metadata
+
+
 def test_loaded_array_exports_polars_and_pandas_tables() -> None:
     array = xr.DataArray(
         np.array([[1.0, 2.0], [3.0, 4.0]]),
@@ -273,6 +297,31 @@ def test_loaded_array_writes_parquet_dataset_to_store(tmp_path) -> None:
         {"time": "t0", "quality": 0},
         {"time": "t1", "quality": 1},
     ]
+
+
+def test_loaded_array_write_parquet_accepts_loaded_array_as_context(tmp_path) -> None:
+    array = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": ["t0", "t1"]},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=array,
+    )
+
+    record = loaded.write_parquet(
+        spn.Store(tmp_path / "store"),
+        dataset_id="kaguya.esa1.quality",
+        mission="kaguya",
+        instrument="esa1",
+        context=loaded,
+    )
+
+    assert record.manifest()["context"] == loaded.metadata
 
 
 def test_plot_stack_line_accepts_vector_time_series() -> None:

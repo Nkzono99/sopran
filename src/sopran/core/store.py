@@ -573,8 +573,10 @@ def _context_metadata(context: Any) -> dict[str, Any]:
         return dict(context)
     metadata = getattr(context, "metadata", None)
     if callable(metadata):
-        return metadata()
-    raise TypeError("context must be a metadata dict or expose metadata()")
+        metadata = metadata()
+    if isinstance(metadata, Mapping):
+        return dict(metadata)
+    raise TypeError("context must be a metadata mapping or expose metadata")
 
 
 def _utc_now_iso() -> str:

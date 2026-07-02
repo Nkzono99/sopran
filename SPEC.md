@@ -468,6 +468,8 @@ surface product は、`time` が明示されていない場合に `case.time.sta
 `case.metadata()` は case 名、project root、store root、time range、default frame/cache、
 defaults、region metadata を JSON-ready dict として返し、plot、artifact、pipeline provenance に
 同じ context を残すための共通入口にする。
+`context=` を受ける API は JSON-ready mapping、`metadata()` method を持つ object、
+または `metadata` property が JSON-ready mapping の object を同じ provenance context として扱う。
 保存も project に紐づける。
 
 ```python
@@ -670,6 +672,7 @@ loaded.trange
 `loaded.metadata` は JSON-ready な dict とし、少なくとも `type`, `name`, `time_range`,
 `schema`, `source_files` を含める。plot、quicklook、Project artifact、Store manifest に
 渡しても意味が変わらない軽量 provenance snapshot として扱う。
+`context=loaded` のように object を直接渡した場合も、この `metadata` property を使う。
 
 Lazy product の共通操作:
 

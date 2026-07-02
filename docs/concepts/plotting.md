@@ -113,10 +113,13 @@ The v0.1 implementation accepts `backend="matplotlib"`. `plot()` returns a
 `PlotResult` with `fig`, `axes`, `backend`, and metadata so quicklook and
 notebook workflows can share the same plot description. Pass `context=case` to
 `plot()` when the notebook result should carry `case.metadata()`.
+Objects with a JSON-ready `metadata` property, such as loaded `SopranArray`
+values, can also be passed directly as `context=loaded`.
 Current `quicklook()` output can include a Matplotlib PNG, a static HTML report
 with the PNG embedded, and a small JSON metadata file. Quicklook metadata uses
 standard keys such as `dataset_id`, `time_range`, `frame`, `backend`,
-`aggregation`, and `context` when those are available. Pass `context=case` to
-record `case.metadata()` in both the JSON and HTML quicklook reports. HoloViz,
+`aggregation`, and `context` when those are available. Pass `context=case` or
+`context=loaded` to record the matching provenance metadata in both the JSON and
+HTML quicklook reports. HoloViz,
 Datashader, Panel dashboards, and interactive HTML quicklooks are planned for
 larger interactive products.

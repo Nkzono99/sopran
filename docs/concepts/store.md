@@ -50,6 +50,8 @@ pipeline source, stage list, mode, time range, and selected product or variable.
 For a single loaded variable, prefer `SopranArray.write_parquet(store, ...)`.
 It delegates to `Store.write_parquet_dataset(...)` while carrying the loaded
 array's `VariableSchema`, time coverage, source files, and table conversion.
+Pass `context=case`, `context=loaded`, or a plain metadata mapping when the
+dataset manifest should record the analysis case or loaded-object provenance.
 `DatasetRecord.verify_checksums()` compares catalog checksums with current shard
 files. By default it audits every catalog shard; use
 `DatasetRecord.verify_checksums(status="complete")` to verify the same shard set

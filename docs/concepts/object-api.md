@@ -30,6 +30,8 @@ same lightweight page model as mission and endpoint objects.
 `SopranArray.trange` aliases the loaded `TimeRange`, and
 `SopranArray.metadata` returns a JSON-ready provenance snapshot with the object
 type, name, time range, variable schema, and source files.
+APIs that accept `context=` can use either `context=loaded` or
+`context=loaded.metadata`; both record the same loaded-object provenance.
 For table workflows, `SopranArray.to_polars()` flattens the loaded xarray
 coordinates and values into a Polars DataFrame, and `to_pandas()` returns the
 same table as a pandas DataFrame.

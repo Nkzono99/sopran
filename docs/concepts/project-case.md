@@ -51,6 +51,10 @@ metadata. Use it when a plot, interim artifact, or pipeline run needs to carry
 the same analysis context into provenance. Feature tables created with
 `AlignmentResult.write_dataset(..., context=case)` store the same metadata in
 the dataset manifest.
+Context-aware APIs accept a metadata mapping, an object with `metadata()`, or an
+object with a JSON-ready `metadata` property. Loaded `SopranArray` values can
+therefore be passed as `context=quality` when the artifact should record the
+loaded variable itself.
 
 When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
 relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain
@@ -73,4 +77,5 @@ artifact.metadata_path
 The current implementation writes xarray-compatible values as NetCDF (`.nc`)
 and records a JSON metadata sidecar with name, relative path, time coverage, and
 source files when available. Pass `context=case` when the sidecar should also
-record `case.metadata()` for provenance.
+record `case.metadata()` for provenance, or `context=quality` to record the
+loaded object's `metadata` property.
