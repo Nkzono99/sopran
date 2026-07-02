@@ -107,18 +107,20 @@ features = spn.align(
     tolerance="5s",
 ).to_polars()
 
-# sza and wave_power are loaded xarray-like products.
+# sza, wave_power, and density are loaded xarray-like products.
 ml_features = (
     spn.SampleTable(bins)
     .add(sza, method="nearest", tolerance="5s")
-    .add(wave_power, method="mean")
+    .add(wave_power, method="max")
+    .add(density, method="median")
     .collect()
     .to_polars()
 )
 ```
 
 `time x component` の vector product は `magnetic_field_x` のような wide columns に展開します。
-観測量ごとに対応づけ方法を変える場合は `SampleTable` を使います。
+観測量ごとに対応づけ方法を変える場合は `SampleTable` を使います。現在の reducer は
+`nearest`, `mean`, `max`, `median` です。
 `spn.align(...).write_parquet("features.parquet")` または
 `spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 

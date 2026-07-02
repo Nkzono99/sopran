@@ -7,8 +7,9 @@ from typing import Any, Literal
 
 from sopran.core.time import TimeRange, _format_utc, _parse_datetime
 
-AlignMethod = Literal["nearest", "mean"]
-AlignmentMethod = Literal["nearest", "mean", "mixed"]
+AlignMethod = Literal["nearest", "mean", "max", "median"]
+AlignmentMethod = Literal["nearest", "mean", "max", "median", "mixed"]
+_ALIGN_METHODS = ("nearest", "mean", "max", "median")
 
 
 @dataclass(frozen=True)
@@ -128,8 +129,8 @@ class SampleTable:
         method: AlignMethod,
         tolerance: str | timedelta | None = None,
     ) -> SampleTable:
-        if method not in ("nearest", "mean"):
-            raise ValueError("method must be 'nearest' or 'mean'")
+        if method not in _ALIGN_METHODS:
+            raise ValueError("method must be 'nearest', 'mean', 'max', or 'median'")
         return SampleTable(
             grid=self.grid,
             specs=(
@@ -183,14 +184,15 @@ def _collect_features(
                     center,
                     feature.tolerance,
                 )
-            elif feature.method == "mean":
-                row[feature.name] = _mean_value(
+            elif feature.method in ("mean", "max", "median"):
+                row[feature.name] = _bin_value(
                     feature.samples,
                     grid.edges[bin_index],
                     grid.edges[bin_index + 1],
+                    feature.method,
                 )
             else:
-                raise ValueError("method must be 'nearest' or 'mean'")
+                raise ValueError("method must be 'nearest', 'mean', 'max', or 'median'")
         rows.append(row)
     return AlignmentResult(grid=grid, columns=columns, rows=tuple(rows), method=method)
 
@@ -249,15 +251,24 @@ def _nearest_value(
     return nearest
 
 
-def _mean_value(
+def _bin_value(
     samples: tuple[tuple[datetime, float], ...],
     start: datetime,
     stop: datetime,
+    method: Literal["mean", "max", "median"],
 ) -> float | None:
     values = [value for timestamp, value in samples if start <= timestamp < stop]
     if not values:
         return None
-    return float(sum(values) / len(values))
+    if method == "mean":
+        return float(sum(values) / len(values))
+    if method == "max":
+        return float(max(values))
+    midpoint = len(values) // 2
+    sorted_values = sorted(values)
+    if len(sorted_values) % 2:
+        return float(sorted_values[midpoint])
+    return float((sorted_values[midpoint - 1] + sorted_values[midpoint]) / 2)
 
 
 def _array_name(array: Any, index: int) -> str:

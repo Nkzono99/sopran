@@ -26,22 +26,25 @@ frame = features.to_polars()
 features.write_parquet("features.parquet")
 ```
 
-Use `SampleTable` when each product needs its own rule, such as nearest SZA and
-bin-mean wave power:
+Use `SampleTable` when each product needs its own rule, such as nearest SZA,
+bin-maximum wave power, and bin-median density:
 
 ```python
 features = (
     spn.SampleTable(bins)
     .add(sza, method="nearest", tolerance="5s")
-    .add(wave_power, method="mean")
+    .add(wave_power, method="max")
+    .add(density, method="median")
     .collect()
 )
 frame = features.to_polars()
 ```
 
 The first implementation supports 1D time series and `time x component` vector
-series with `nearest` or `mean` alignment onto regular half-open bins. Vector
-series are expanded to wide columns such as `magnetic_field_x`.
+series with `nearest`, `mean`, `max`, or `median` alignment onto regular
+half-open bins. `nearest` samples the bin center; the other reducers aggregate
+samples inside `[start, stop)`. Vector series are expanded to wide columns such
+as `magnetic_field_x`.
 
 Coordinate frames and units are still early-stage. The design goal is to avoid
 reimplementing established space-physics and planetary geometry libraries. SPICE

@@ -43,6 +43,19 @@ bins = spn.time_bins(case.time, cadence="10s")
 features = spn.align(sza, wave_power, grid=bins, method="mean").to_polars()
 ```
 
+When each product needs a different sampling rule, use `SampleTable`:
+
+```python
+features = (
+    spn.SampleTable(bins)
+    .add(sza, method="nearest", tolerance="5s")
+    .add(wave_power, method="max")
+    .add(density, method="median")
+    .collect()
+    .to_polars()
+)
+```
+
 Vector products such as ARTEMIS FGM are expanded to wide feature columns when
 aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
 `magnetic_field_z`.
