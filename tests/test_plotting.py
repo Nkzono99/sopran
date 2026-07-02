@@ -224,3 +224,49 @@ def test_plot_stack_quicklook_records_standard_provenance_metadata(tmp_path) -> 
     assert metadata["frame"] == "SELENE_SC"
     assert metadata["aggregation"] == {"cadence": "native"}
     assert metadata["metadata"] == {"case": "wake"}
+
+
+def test_plot_stack_quicklook_records_case_context_metadata(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+frame = "SSE"
+cache = true
+
+[cases.wake]
+start = "2008-01-01T00:00:00"
+stop = "2008-01-01T00:02:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    case = spn.Project(project_root).case("wake")
+    stack = spn.stack(spn.line(quality))
+
+    result = stack.quicklook(
+        "wake_overview",
+        root=tmp_path,
+        formats=("png", "html"),
+        context=case,
+    )
+
+    metadata = json.loads((tmp_path / "wake_overview.json").read_text(encoding="utf-8"))
+    html = (tmp_path / "wake_overview.html").read_text(encoding="utf-8")
+    assert result.metadata["context"] == case.metadata()
+    assert metadata["context"] == case.metadata()
+    assert "&quot;context&quot;: {" in html
+    assert "&quot;frame&quot;: &quot;SSE&quot;" in html

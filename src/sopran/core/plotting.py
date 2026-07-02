@@ -123,6 +123,7 @@ class PlotStack:
         frame: str | None = None,
         aggregation: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
+        context: Any | None = None,
         figsize: tuple[float, float] | None = None,
     ) -> QuicklookResult:
         target_root = Path(root)
@@ -154,6 +155,8 @@ class PlotStack:
             payload["aggregation"] = _metadata_value(aggregation)
         if metadata:
             payload["metadata"] = _metadata_value(metadata)
+        if context is not None:
+            payload["context"] = _context_metadata(context)
         for artifact in artifacts:
             if artifact.format == "png":
                 fig.savefig(artifact.path)
@@ -291,6 +294,15 @@ def _metadata_value(value: Any) -> Any:
     if hasattr(value, "start_iso") and hasattr(value, "stop_iso"):
         return _time_range_metadata(value)
     return value
+
+
+def _context_metadata(context: Any) -> dict[str, Any]:
+    if isinstance(context, dict):
+        return _metadata_value(context)
+    metadata = getattr(context, "metadata", None)
+    if callable(metadata):
+        return _metadata_value(metadata())
+    raise TypeError("context must be a metadata dict or expose metadata()")
 
 
 def _data_name(data: Any) -> str:

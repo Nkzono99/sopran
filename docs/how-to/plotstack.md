@@ -27,6 +27,12 @@ stack = case.stack(
 
 plot_result = stack.plot(backend="matplotlib")
 figure = plot_result.fig
+quicklook = stack.quicklook(
+    "wake_overview",
+    root="reports",
+    formats=("png", "html"),
+    context=case,
+)
 ```
 
 `PlotStack` is the SPEDAS/tplot-like route for comparing time-series products
@@ -35,4 +41,5 @@ is selected with `backend="matplotlib"`.
 `plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
 `quicklook()` writes `<name>.png`, optional `<name>.html`, and `<name>.json`.
 Pass `dataset_id`, `time_range`, `frame`, and `aggregation` when the quicklook
-should carry provenance into the JSON and HTML report.
+should carry provenance into the JSON and HTML report. Pass `context=case` to
+include `case.metadata()` as the quicklook context.
