@@ -65,10 +65,13 @@ lon_domain = "0_360"
 
     dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
     shadow_plan = case.moon.shadow.plan(dem=dem_plan)
+    sza_plan = case.moon.sza.plan()
 
     assert dem_plan.parameters["region"] == case.region
     assert shadow_plan.parameters["region"] == case.region
     assert shadow_plan.parameters["time"] == "2008-02-01T12:00:00Z"
+    assert sza_plan.parameters["region"] == case.region
+    assert sza_plan.parameters["time"] == "2008-02-01T12:00:00Z"
 
 
 def test_project_case_exports_json_ready_context_metadata(tmp_path) -> None:

@@ -17,6 +17,11 @@ shadow_plan = moon.shadow.plan(
     time="2008-02-01T12:00:00Z",
     dem=dem_plan,
 )
+sza_plan = moon.sza.plan(
+    time="2008-02-01T12:00:00Z",
+    region=region,
+    geometry="spice",
+)
 metadata = shadow_plan.to_metadata()
 ```
 
@@ -27,6 +32,7 @@ defaults:
 case = spn.Project("projects/lunar_wake").case("wake_20080201")
 dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
 shadow_plan = case.moon.shadow.plan(dem=dem_plan)
+sza_plan = case.moon.sza.plan()
 ```
 
 `projection` and `area_or_point` are written to every surface plan. Use

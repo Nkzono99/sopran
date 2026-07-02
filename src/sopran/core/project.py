@@ -325,7 +325,7 @@ def _surface_parameters_with_case(
     if "region" not in normalized and case.region is not None:
         normalized["region"] = case.region
     if (
-        getattr(endpoint, "product", None) in {"shadow", "illumination"}
+        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
         and "time" not in normalized
     ):
         normalized["time"] = case.time.start_iso

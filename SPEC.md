@@ -1194,7 +1194,7 @@ mission reader だけに閉じ込めない。取得元・file format・provider 
 投影、region query、複数 mission source の比較は `sopran.bodies.<body>` と
 `sopran.maps` が担当する。
 
-この節は public API の境界を示す。DEM/SVM/shadow/illumination の詳細仕様は `SURFACE.md` に
+この節は public API の境界を示す。DEM/SVM/SZA/shadow/illumination の詳細仕様は `SURFACE.md` に
 切り出す。v0.1 では `spn.Moon()` の API skeleton と source discovery 程度に留め、
 物理的な shadow / illumination 計算は v0.2 以降の対象とする。
 
@@ -1216,6 +1216,7 @@ moon.dem.sources()
 
 dem = moon.dem.load(source="kaguya.tc.dem", region=region, resolution="512ppd")
 svm = moon.svm.load(source="kaguya.lism.svm", region=region)
+sza = moon.sza.plan(time="2008-02-01T12:00:00Z", region=region, geometry="spice")
 
 dem.plot(projection="polar_stereo", lon_domain="0_360")
 dem.sample(lon=135.2, lat=-12.4, lon_domain="0_360")
@@ -1236,7 +1237,8 @@ dem = moon.dem.load(source=kg.maps.dem, region=region)
 ```
 
 `source` は `"kaguya"` のような粗い mission 名ではなく、`kaguya.tc.dem`,
-`kaguya.lism.svm`, `lro.lola.dem`, `legacy.shadowmap_sza` のような stable source ID にする。
+`kaguya.lism.svm`, `lro.lola.dem`, `legacy.shadowmap_sza`,
+`computed.spice.sza` のような stable source ID にする。
 v0.1 の `sources()` は実データ探索ではなく、利用可能にする予定の stable source ID を返す
 軽い discovery API とする。
 SPICE など幾何計算に使う入力は `source` ではなく `geometry_source` または `ephemeris` として

@@ -14,6 +14,7 @@ dem_plan = moon.dem.plan(
     area_or_point="area",
 )
 shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00Z", dem=dem_plan)
+sza_plan = moon.sza.plan(time="2008-02-01T12:00:00Z", region=region, geometry="spice")
 ```
 
 Implemented endpoints:
@@ -22,6 +23,7 @@ Implemented endpoints:
 - `moon.svm`
 - `moon.shadow`
 - `moon.illumination`
+- `moon.sza`
 
 The body and surface endpoints expose bilingual package guides:
 

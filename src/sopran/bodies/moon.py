@@ -33,6 +33,7 @@ class Moon:
         self.svm = SurfaceEndpoint(self, "svm", "SVM")
         self.shadow = SurfaceEndpoint(self, "shadow", "Shadow map")
         self.illumination = SurfaceEndpoint(self, "illumination", "Illumination map")
+        self.sza = SurfaceEndpoint(self, "sza", "Solar zenith angle")
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -42,6 +43,7 @@ class Moon:
                 "svm: surface vector map endpoint",
                 "shadow: terrain-aware shadow map endpoint skeleton",
                 "illumination: terrain-aware illumination endpoint skeleton",
+                "sza: solar zenith angle planning endpoint skeleton",
             ),
         )
 
@@ -64,10 +66,12 @@ class Moon:
                 "svm": self.svm,
                 "shadow": self.shadow,
                 "illumination": self.illumination,
+                "sza": self.sza,
             }[product]
         except KeyError as exc:
             raise ValueError(
-                "Unknown Moon surface product. Available products: dem, svm, shadow, illumination"
+                "Unknown Moon surface product. Available products: "
+                "dem, svm, shadow, illumination, sza"
             ) from exc
 
 
@@ -121,7 +125,7 @@ _MOON_GUIDES = {
     "en": """# Moon Surface Products
 
 SOPRAN uses a body-first API for Moon surface products. Mission modules provide
-provider-specific discovery, while `spn.Moon()` owns body-fixed DEM, SVM,
+provider-specific discovery, while `spn.Moon()` owns body-fixed DEM, SVM, SZA,
 shadow, illumination, projection, and region semantics.
 
 The v0.1 implementation is a planning skeleton. Terrain-aware shadow and
@@ -131,7 +135,7 @@ explicit longitude/projection metadata.
     "ja": """# Moon Surface Products
 
 SOPRAN は月面プロダクトを body-first API として扱います。mission module は
-provider-specific discovery を担当し、`spn.Moon()` は月固定 DEM、SVM、shadow、
+provider-specific discovery を担当し、`spn.Moon()` は月固定 DEM、SVM、SZA、shadow、
 illumination、projection、region semantics を受け持ちます。
 
 v0.1 実装は planning skeleton です。terrain-aware shadow と illumination backend では
@@ -190,6 +194,20 @@ Illumination product は DEM terrain と SPICE-backed solar geometry から導�
 solar incidence と visibility を表す予定です。
 """,
     },
+    "sza": {
+        "en": """# Moon Solar Zenith Angle
+
+SZA products represent solar zenith angle on the lunar surface. The planning
+endpoint records time, region, geometry backend, and projection metadata before
+SPICE-backed computation is implemented.
+""",
+        "ja": """# Moon Solar Zenith Angle
+
+SZA product は月面上の solar zenith angle を表します。planning endpoint は
+SPICE-backed computation の実装前に、time、region、geometry backend、projection metadata
+を記録します。
+""",
+    },
 }
 
 _SURFACE_SOURCES = {
@@ -197,6 +215,7 @@ _SURFACE_SOURCES = {
     "svm": ("kaguya.lism.svm",),
     "shadow": ("legacy.shadowmap_sza",),
     "illumination": (),
+    "sza": ("computed.spice.sza",),
 }
 
 

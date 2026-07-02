@@ -19,6 +19,11 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
         time="2008-02-01T12:00:00Z",
         dem=dem_plan,
     )
+    sza_plan = moon.sza.plan(
+        time="2008-02-01T12:00:00Z",
+        region=normalized,
+        geometry="spice",
+    )
 
     assert normalized.lon == (-10.0, 10.0)
     assert dem_plan.body == "moon"
@@ -28,6 +33,8 @@ def test_moon_surface_endpoints_plan_body_first_products() -> None:
     assert dem_plan.parameters["projection"] == "native"
     assert dem_plan.parameters["area_or_point"] == "area"
     assert shadow_plan.product == "shadow"
+    assert sza_plan.product == "sza"
+    assert sza_plan.parameters["geometry"] == "spice"
     assert "Moon" in str(moon.info())
     assert "DEM" in str(moon.dem.info())
 
@@ -39,6 +46,7 @@ def test_moon_surface_endpoints_list_stable_source_ids() -> None:
     assert "lro.lola.dem" in moon.dem.sources()
     assert moon.svm.sources() == ("kaguya.lism.svm",)
     assert "legacy.shadowmap_sza" in moon.shadow.sources()
+    assert moon.sza.sources() == ("computed.spice.sza",)
 
 
 def test_moon_map_returns_surface_endpoint_by_name() -> None:
@@ -46,6 +54,7 @@ def test_moon_map_returns_surface_endpoint_by_name() -> None:
 
     assert moon.map("svm") is moon.svm
     assert moon.map("dem") is moon.dem
+    assert moon.map("sza") is moon.sza
     with pytest.raises(ValueError, match="Unknown Moon surface product"):
         moon.map("unknown")
 

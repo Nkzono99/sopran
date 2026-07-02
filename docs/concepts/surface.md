@@ -15,6 +15,11 @@ dem_plan = moon.dem.plan(
     projection="polar_stereo",
     area_or_point="point",
 )
+sza_plan = moon.sza.plan(
+    time="2008-02-01T12:00:00Z",
+    region=normalized,
+    geometry="spice",
+)
 metadata = dem_plan.to_metadata()
 ```
 
@@ -43,6 +48,8 @@ Mission modules may discover provider files, but body-fixed semantics belong to
 
 Terrain-aware shadow and illumination products must eventually record DEM,
 solar position, body shape, projection, and longitude-domain metadata.
+`moon.sza` is a planning endpoint for solar zenith angle products; the current
+source ID is `computed.spice.sza`.
 
 When a surface endpoint is reached through a `Project` case, case context is
 applied as a default:
@@ -51,8 +58,9 @@ applied as a default:
 case = spn.Project("projects/lunar_wake").case("wake_20080201")
 dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
 shadow_plan = case.moon.shadow.plan(dem=dem_plan)
+sza_plan = case.moon.sza.plan()
 ```
 
-The DEM plan receives `case.region` when configured. Shadow and illumination
+The DEM plan receives `case.region` when configured. SZA, shadow, and illumination
 plans receive `case.time.start_iso` as their default instant unless `time` is
 passed explicitly.
