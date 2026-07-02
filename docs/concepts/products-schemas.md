@@ -57,6 +57,8 @@ datasets and arrays are also checked against `VariableSchema.dims`. When
 well. When `VariableSchema.units` or `VariableSchema.frame` is set and the
 xarray variable or DataArray has matching metadata attributes, those values are
 checked too. Validation failures raise `SchemaError`.
+Loaded `SopranArray` objects can export the same variable to table form with
+`to_polars()` or `to_pandas()`, preserving dimension coordinates as columns.
 
 `Store.write_parquet_dataset()` runs this check automatically when the dataset
 `product` resolves to a variable in the supplied schema. Derived features whose

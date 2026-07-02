@@ -37,6 +37,32 @@ class SopranArray:
             raise ValueError(f"{self.name} is not loaded as an xarray DataArray")
         return self.xr
 
+    def to_polars(self):
+        try:
+            import numpy as np
+            import polars as pl
+        except ImportError as exc:
+            raise RuntimeError("polars is required for SopranArray.to_polars()") from exc
+
+        array = self.to_xarray()
+        dims = tuple(array.dims)
+        values = np.asarray(array.values)
+        columns: dict[str, Any] = {}
+        for axis, dim in enumerate(dims):
+            coord_values = (
+                np.asarray(array.coords[dim].values)
+                if hasattr(array, "coords") and dim in array.coords
+                else np.arange(values.shape[axis])
+            )
+            repeat = int(np.prod(values.shape[axis + 1 :], dtype=int))
+            tile = int(np.prod(values.shape[:axis], dtype=int))
+            columns[dim] = np.tile(np.repeat(coord_values, repeat), tile)
+        columns[self.name] = values.reshape(-1)
+        return pl.DataFrame(columns)
+
+    def to_pandas(self):
+        return self.to_polars().to_pandas()
+
     def plot(self, *args: Any, **kwargs: Any) -> Any:
         if self.xr is not None and hasattr(self.xr, "plot"):
             return self.xr.plot(*args, **kwargs)

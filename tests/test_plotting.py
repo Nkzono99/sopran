@@ -152,6 +152,32 @@ def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> Non
     assert result.metadata["items"] == ["quality"]
 
 
+def test_loaded_array_exports_polars_and_pandas_tables() -> None:
+    array = xr.DataArray(
+        np.array([[1.0, 2.0], [3.0, 4.0]]),
+        dims=("time", "energy"),
+        coords={"time": ["t0", "t1"], "energy": [10.0, 20.0]},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy")),
+        xr=array,
+    )
+
+    polars_frame = loaded.to_polars()
+    pandas_frame = loaded.to_pandas()
+
+    assert polars_frame.to_dicts() == [
+        {"time": "t0", "energy": 10.0, "counts": 1.0},
+        {"time": "t0", "energy": 20.0, "counts": 2.0},
+        {"time": "t1", "energy": 10.0, "counts": 3.0},
+        {"time": "t1", "energy": 20.0, "counts": 4.0},
+    ]
+    assert pandas_frame.to_dict(orient="records") == polars_frame.to_dicts()
+
+
 def test_plot_stack_line_accepts_vector_time_series() -> None:
     import matplotlib
 
