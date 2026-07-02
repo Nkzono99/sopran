@@ -121,12 +121,32 @@ class Case:
         self.name = name
         self.time = time
         defaults = defaults or {}
+        self.defaults = dict(defaults)
         self.frame = defaults.get("frame")
         self.cache = bool(defaults.get("cache", False))
         self.region = region
         self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
         self.artemis = CaseMission(Artemis(store=project.store), self)
         self.moon = Moon()
+
+    def metadata(self) -> dict[str, Any]:
+        metadata: dict[str, Any] = {
+            "name": self.name,
+            "project_root": str(self.project.root),
+            "store": {
+                "root": str(self.project.store.root),
+                "cache_root": str(self.project.store.cache_root),
+            },
+            "time": {
+                "start": self.time.start_iso,
+                "stop": self.time.stop_iso,
+            },
+            "frame": self.frame,
+            "cache": self.cache,
+            "defaults": dict(self.defaults),
+            "region": self.region.to_metadata() if self.region is not None else None,
+        }
+        return metadata
 
     def stack(self, *items: PlotItem) -> PlotStack:
         return stack(*items)
@@ -244,6 +264,8 @@ def _case_region(
         lat=lat,
         body=str(region.get("body", "moon")),
         lon_domain=region.get("lon_domain", "0_360"),
+        lon_direction=region.get("lon_direction", "east_positive"),
+        lat_type=region.get("lat_type", "planetocentric"),
     )
 
 

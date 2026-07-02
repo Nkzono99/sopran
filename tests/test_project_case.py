@@ -42,6 +42,63 @@ lon_domain = "0_360"
     assert plan.parameters["source"] == "kaguya.tc.dem"
 
 
+def test_project_case_exports_json_ready_context_metadata(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+frame = "SSE"
+cache = true
+level = "l2"
+
+[cases.wake]
+start = "2008-02-01T00:00:00"
+stop = "2008-02-01T12:00:00"
+
+[cases.wake.region]
+body = "moon"
+lon = [350, 10]
+lat = [-5, 5]
+lon_domain = "-180_180"
+lon_direction = "east_positive"
+lat_type = "planetocentric"
+""".strip(),
+        encoding="utf-8",
+    )
+    store = Store(tmp_path / "store")
+
+    metadata = spn.Project(project_root, store=store).case("wake").metadata()
+
+    assert metadata == {
+        "name": "wake",
+        "project_root": str(project_root),
+        "store": {
+            "root": str(store.root),
+            "cache_root": str(store.cache_root),
+        },
+        "time": {
+            "start": "2008-02-01T00:00:00Z",
+            "stop": "2008-02-01T12:00:00Z",
+        },
+        "frame": "SSE",
+        "cache": True,
+        "defaults": {
+            "cache": True,
+            "frame": "SSE",
+            "level": "l2",
+        },
+        "region": {
+            "body": "moon",
+            "lon": [-10.0, 10.0],
+            "lat": [-5.0, 5.0],
+            "lon_domain": "-180_180",
+            "lon_direction": "east_positive",
+            "lat_type": "planetocentric",
+        },
+    }
+
+
 def test_project_case_allows_explicit_time_without_config_file(tmp_path) -> None:
     project_root = tmp_path / "ad_hoc_project"
     project_root.mkdir()

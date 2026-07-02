@@ -461,6 +461,9 @@ lon_domain = "0_360"
 `case.<mission>.<instrument>.<variable>` は時間範囲が確定していても endpoint を返す。
 `.load()` は case の start/stop/default frame/cache policy を既定値として使う。
 `[cases.<name>.region]` または `[defaults.region]` は `case.region` として `spn.Region` に変換する。
+`case.metadata()` は case 名、project root、store root、time range、default frame/cache、
+defaults、region metadata を JSON-ready dict として返し、plot、artifact、pipeline provenance に
+同じ context を残すための共通入口にする。
 保存も project に紐づける。
 
 ```python

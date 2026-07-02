@@ -36,10 +36,15 @@ Case objects provide mission and body context:
 case.kaguya.esa1.counts.load()
 case.artemis.p1.fgm.magnetic_field.plan()
 case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
+case.metadata()
 ```
 
 `case.region` is `None` when no region is configured. Case-specific region
 settings override `[defaults.region]`.
+`case.metadata()` returns a JSON-ready snapshot of the case name, project root,
+store roots, time range, default frame/cache values, defaults, and region
+metadata. Use it when a plot, interim artifact, or pipeline run needs to carry
+the same analysis context into provenance.
 
 When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
 relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain
