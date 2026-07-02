@@ -62,8 +62,8 @@ counts = esa1.to_polars("counts", reduce_look="sum")
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 
 stack = spn.stack(
-    spn.spectrogram(ds["counts"].sum("look"), y="energy"),
-    spn.line(ds["quality"]),
+    kg.esa1.counts.load(time).spectrogram(y="energy"),
+    kg.esa1.quality.load(time).line(),
 )
 fig = stack.plot()
 ```
@@ -85,13 +85,12 @@ F:/sopran_data/raw/kaguya/pds3/
 prj = spn.Project("projects/lunar_wake")
 case = prj.case("wake_20080201")
 
-flux = case.kaguya.esa1.energy_flux.load()
-b = case.artemis.p1.fgm.magnetic_field.load()
+counts = case.kaguya.esa1.counts.load()
+artemis_b_plan = case.artemis.p1.fgm.magnetic_field.plan()
 
 stack = case.stack(
-    case.kaguya.esa1.energy_flux.spectrogram(y="energy"),
-    case.kaguya.orbit.altitude.line(),
-    case.artemis.p1.fgm.magnetic_field.lines(components="xyz", frame="SSE"),
+    counts.spectrogram(y="energy"),
+    case.kaguya.esa1.quality.load().line(),
 )
 stack.plot()
 ```
@@ -99,12 +98,11 @@ stack.plot()
 月面 DEM/SVM/shadow/illumination は mission ではなく body-first API を主導線にします。
 
 ```python
-moon = spn.Moon(project="projects/lunar_wake")
-region = spn.maps.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+moon = spn.Moon()
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
-dem = moon.dem.load(source="kaguya.tc.dem", region=region, resolution="512ppd")
-shadow = moon.shadow.compute(time="2008-02-01T12:00:00", dem=dem, method="terrain_ray")
-shadow.plot(projection="polar_stereographic")
+dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=region, resolution="512ppd")
+shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00", dem=dem_plan)
 ```
 
 ## 予定ディレクトリ
@@ -147,8 +145,6 @@ not be copied into the Apache-2.0 core without a separate license review.
 
 ## 開発状況
 
-現在は初期設計と最小スキャフォールドの段階です。`SPEC.md` に API、保存レイヤ、
-可視化、MAP/DEM/SVM、ドキュメント方針を集約しつつ、最初の実装は KAGUYA ESA1 の
-file discovery、schema、typed data object、plot までの縦切りから進めます。保存、
-pipeline、surface、plotting の詳細は `STORE.md`, `PIPELINE.md`, `SURFACE.md`, `PLOTTING.md`
-に分けます。
+現在は KAGUYA ESA1 の local PBF decode、xarray/polars 変換、parquet 保存、
+PlotStack、Project/Case、Moon surface skeleton、ARTEMIS FGM skeleton を実装し始めています。
+詳細設計は `SPEC.md`, `STORE.md`, `PIPELINE.md`, `SURFACE.md`, `PLOTTING.md` に分けます。
