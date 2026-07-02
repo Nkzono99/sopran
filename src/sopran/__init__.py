@@ -17,9 +17,16 @@ from sopran.core.project import Project
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
-from sopran.schema_docs import builtin_schemas, schema_reference_markdown
 
 __version__ = "0.0.0"
+
+
+def __getattr__(name: str):
+    if name in {"builtin_schemas", "schema_reference_markdown"}:
+        from importlib import import_module
+
+        return getattr(import_module("sopran.schema_docs"), name)
+    raise AttributeError(f"module 'sopran' has no attribute {name!r}")
 
 __all__ = [
     "GuidePage",

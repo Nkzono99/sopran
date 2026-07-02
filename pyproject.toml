@@ -71,6 +71,9 @@ dependencies = [
   "zarr>=2.18",
 ]
 
+[project.scripts]
+sopran-schema-docs = "sopran.schema_docs:main"
+
 [project.optional-dependencies]
 kaguya = [
   "pdr>=0.7.1",

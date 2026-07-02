@@ -35,6 +35,13 @@ The built-in schema reference at [Schema Reference](../reference/schemas.md)
 is generated from the same runtime schema objects exposed by
 `spn.schema_reference_markdown()`.
 
+Regenerate it after schema changes:
+
+```powershell
+python -m sopran.schema_docs docs/reference/schemas.md
+python -m sopran.schema_docs --check docs/reference/schemas.md
+```
+
 Use `validate_schema()` before returning loaded data or before trusting a
 derived table. Pass `variables=...` when only one product has been loaded from a
 larger instrument schema:
