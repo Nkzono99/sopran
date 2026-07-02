@@ -1629,6 +1629,7 @@ flux.to_matplotlib(ax=None)
 flux.hvplot(...)
 flux.explore()          # Panel / HoloViews based interactive view
 flux.quicklook(...)
+flux.quicklook("flux_spectrum", y="energy", log_color=True)
 ```
 
 `VariableEndpoint.plot(time)` と `case.<...>.plot()` も許容する。この場合は `.plot()` が
@@ -1714,6 +1715,9 @@ stack = spn.stack(
 - 返り値は `PlotResult(fig=..., axes=..., backend=..., artifacts=..., metadata=...)` とする。
 - `quicklook()` は PNG/HTML とともに `dataset_id`、`time_range`、`frame`、`backend`、
   `aggregation` を標準 metadata key として保存する。
+- 読み込み済み spectral `SopranArray.quicklook(..., y="energy", log_color=True)` は
+  1 panel の spectrogram quicklook として保存し、PlotStack と同じ `panel_kinds` /
+  `panels` metadata を残す。
 - `PlotResult.metadata` と quicklook metadata は `items` に panel 名、`panel_kinds` に
   `line` / `spectrogram` などの panel 種別を保存する。さらに `panels` に各 panel の
   `name`, `kind`, `x`, `y`, `log_color` を保存する。

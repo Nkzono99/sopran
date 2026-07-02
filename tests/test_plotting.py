@@ -430,6 +430,49 @@ def test_loaded_array_quicklook_writes_single_product_artifacts(tmp_path) -> Non
     assert result.metadata["items"] == ["quality"]
 
 
+def test_loaded_array_quicklook_can_write_spectrogram_metadata(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    energy = np.array([10.0, 20.0, 30.0])
+    counts = xr.DataArray(
+        np.array([[1.0, 10.0, 100.0], [2.0, 20.0, 200.0]]),
+        dims=("time", "energy"),
+        coords={"time": times, "energy": energy},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy")),
+        xr=counts,
+    )
+
+    result = loaded.quicklook(
+        "counts_spectrum",
+        root=tmp_path,
+        y="energy",
+        log_color=True,
+    )
+    metadata = json.loads((tmp_path / "counts_spectrum.json").read_text(encoding="utf-8"))
+
+    assert isinstance(result, spn.QuicklookResult)
+    assert result.metadata["panel_kinds"] == ["spectrogram"]
+    assert metadata["panels"] == [
+        {
+            "name": "counts",
+            "kind": "spectrogram",
+            "x": "time",
+            "y": "energy",
+            "log_color": True,
+        }
+    ]
+
+
 def test_loaded_array_quicklook_accepts_loaded_array_as_context(tmp_path) -> None:
     import matplotlib
 

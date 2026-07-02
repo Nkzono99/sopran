@@ -11,6 +11,11 @@ counts.quicklook("counts_review", root="reports", formats=("png", "html"))
 
 `SopranArray.quicklook()` writes a one-panel PlotStack quicklook for the loaded
 variable and records standard metadata such as the variable name and time range.
+For spectral arrays, pass the non-time axis to write a spectrogram quicklook:
+
+```python
+counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
+```
 
 `PlotStack` provides a SPEDAS/tplot-like multi-panel time-series view:
 

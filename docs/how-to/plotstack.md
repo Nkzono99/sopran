@@ -18,6 +18,14 @@ result = stack.quicklook(
 )
 ```
 
+For a single loaded spectral variable, use the same spectrogram route through
+`SopranArray.quicklook()`:
+
+```python
+counts = kg.esa1.counts.load(time)
+counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
+```
+
 With a project case, omit the repeated time argument and let the case provide it:
 
 ```python

@@ -170,6 +170,10 @@ class SopranArray:
         formats: tuple[str, ...] = ("png",),
         backend: str = "matplotlib",
         x: str = "time",
+        y: str | None = None,
+        log_color: bool = False,
+        reduce_dims: tuple[str, ...] | None = None,
+        reduction: str = "sum",
         frame: str | None = None,
         aggregation: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
@@ -179,7 +183,18 @@ class SopranArray:
         from sopran.core.plotting import stack
 
         quicklook_name = name or self.name
-        return stack(self.line(x=x)).quicklook(
+        item = (
+            self.spectrogram(
+                x=x,
+                y=y,
+                log_color=log_color,
+                reduce_dims=reduce_dims,
+                reduction=reduction,
+            )
+            if y is not None
+            else self.line(x=x)
+        )
+        return stack(item).quicklook(
             quicklook_name,
             root=root,
             formats=formats,
