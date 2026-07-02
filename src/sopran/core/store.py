@@ -120,18 +120,8 @@ class Store:
         )
 
     def scan_dataset(self, dataset_id: str, *, layer: str):
-        import polars as pl
-
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
-        catalog = pl.read_parquet(record.catalog_path)
-        paths = [
-            _resolve_child(record.root, path)
-            for path in catalog.select("path").to_series().to_list()
-            if path
-        ]
-        if not paths:
-            raise DatasetNotFoundError(f"Dataset has no parquet shards: {dataset_id}")
-        return pl.scan_parquet([str(path) for path in paths])
+        return record.scan(dataset_id=dataset_id)
 
     def _layer_path(self, layer: str, *parts: str) -> Path:
         if layer == "raw":
@@ -160,6 +150,20 @@ class DatasetRecord:
     @property
     def catalog_path(self) -> Path:
         return self.root / "catalog.parquet"
+
+    def scan(self, *, dataset_id: str | None = None):
+        import polars as pl
+
+        catalog = pl.read_parquet(self.catalog_path)
+        paths = [
+            _resolve_child(self.root, path)
+            for path in catalog.select("path").to_series().to_list()
+            if path
+        ]
+        if not paths:
+            name = dataset_id or str(self.root)
+            raise DatasetNotFoundError(f"Dataset has no parquet shards: {name}")
+        return pl.scan_parquet([str(path) for path in paths])
 
 
 def _dataset_parts(dataset_id: str) -> tuple[str, ...]:
