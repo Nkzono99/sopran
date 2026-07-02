@@ -52,6 +52,7 @@ def validate_schema(
             + f". Available variables: {', '.join(sorted(names)) or '(none)'}"
         )
     _validate_dtypes(data, selected)
+    _validate_frames(data, selected)
     _validate_xarray_dims(data, selected)
     return data
 
@@ -167,6 +168,39 @@ def _normalize_dtype(dtype: str) -> str:
         "boolean": "bool",
     }
     return aliases.get(normalized, normalized)
+
+
+def _validate_frames(data: Any, variables: tuple[VariableSchema, ...]) -> None:
+    for variable in variables:
+        if variable.frame is None:
+            continue
+        name = _matching_name(data, variable)
+        if name is None:
+            continue
+        actual = _frame_for_name(data, name)
+        if actual is None:
+            continue
+        if _normalize_frame(actual) != _normalize_frame(variable.frame):
+            raise SchemaError(
+                f"Schema validation failed; {variable.name} frame is {actual}, "
+                f"expected {variable.frame}"
+            )
+
+
+def _frame_for_name(data: Any, name: str) -> str | None:
+    attrs = getattr(data, "attrs", {})
+    if hasattr(data, "data_vars") and hasattr(data, "__getitem__"):
+        variable_attrs = getattr(data[name], "attrs", {})
+        value = variable_attrs.get("frame") or attrs.get("frame")
+        return str(value) if value is not None else None
+    if getattr(data, "name", None) == name:
+        value = attrs.get("frame")
+        return str(value) if value is not None else None
+    return None
+
+
+def _normalize_frame(frame: str) -> str:
+    return str(frame).strip().upper()
 
 
 def _matching_name(data: Any, variable: VariableSchema) -> str | None:

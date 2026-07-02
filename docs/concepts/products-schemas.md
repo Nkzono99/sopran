@@ -25,7 +25,9 @@ dataset = spn.validate_schema(dataset, kg.esa1.schema())
 Table-like data is checked for selected variable names or aliases. xarray
 datasets and arrays are also checked against `VariableSchema.dims`. When
 `VariableSchema.dtype` is set, Polars, pandas, and xarray dtypes are checked as
-well. Validation failures raise `SchemaError`.
+well. When `VariableSchema.frame` is set and the xarray variable or DataArray
+has a `frame` attribute, the frame is checked too. Validation failures raise
+`SchemaError`.
 
 `Store.write_parquet_dataset()` runs this check automatically when the dataset
 `product` resolves to a variable in the supplied schema. Derived features whose
