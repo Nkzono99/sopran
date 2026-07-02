@@ -11,6 +11,7 @@ from sopran.core import QuicklookResult
 from sopran.core import TimeBins, align, day, line, load, month, period
 from sopran.core import spectrogram, stack, year
 from sopran.core import time_bins
+from sopran.core import validate_schema
 from sopran.core.project import Project
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
@@ -58,5 +59,6 @@ __all__ = [
     "spectrogram",
     "stack",
     "time_bins",
+    "validate_schema",
     "year",
 ]

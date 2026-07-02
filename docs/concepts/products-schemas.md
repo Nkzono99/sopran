@@ -11,6 +11,19 @@ SOPRAN keeps variable metadata in code. A variable schema records:
 Endpoint metadata, validation, documentation tables, and aliases should derive
 from schema objects where possible.
 
+Use `validate_schema()` before returning loaded data or before trusting a
+derived table. Pass `variables=...` when only one product has been loaded from a
+larger instrument schema:
+
+```python
+frame = spn.validate_schema(frame, kg.esa1.schema(), variables=("counts",))
+dataset = spn.validate_schema(dataset, kg.esa1.schema())
+```
+
+Table-like data is checked for selected variable names or aliases. xarray
+datasets and arrays are also checked against `VariableSchema.dims`. Validation
+failures raise `SchemaError`.
+
 Example variables:
 
 ```text

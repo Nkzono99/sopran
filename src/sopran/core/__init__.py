@@ -31,6 +31,7 @@ from sopran.core.plotting import (
     spectrogram,
     stack,
 )
+from sopran.core.schema import validate_schema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, day, month, period, year
 
@@ -72,5 +73,6 @@ __all__ = [
     "spectrogram",
     "stack",
     "time_bins",
+    "validate_schema",
     "year",
 ]

@@ -1035,6 +1035,11 @@ validate_schema(ds, KAGUYA_ESA1_SCHEMA)
 return KaguyaESA1Data(ds)
 ```
 
+`validate_schema(data, schema, variables=("counts", ...))` は product 単位の table や
+部分読み込みにも使える。Polars / pandas などの table では指定 variable 名または alias の
+存在を検証し、xarray Dataset / DataArray では variable の dims も `VariableSchema.dims` と
+照合する。欠損や dims mismatch は public exception の `SchemaError` として扱う。
+
 これにより、ファイル仕様変更、欠損、列名変更、単位ミス、座標系 metadata 不足を早期に検出する。
 
 Schema から生成または検証するもの:

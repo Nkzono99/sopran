@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+import numpy as np
+import polars as pl
+import pytest
+import xarray as xr
+
+import sopran as spn
+from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
+
+
+def test_validate_schema_accepts_selected_polars_variables() -> None:
+    frame = pl.DataFrame(
+        {
+            "time": ["2008-02-01T00:00:08Z"],
+            "energy": [0],
+            "counts": [64],
+        }
+    )
+
+    assert spn.validate_schema(
+        frame,
+        KAGUYA_ESA1_SCHEMA,
+        variables=("counts",),
+    ) is frame
+
+
+def test_validate_schema_rejects_xarray_variable_dim_mismatch() -> None:
+    dataset = xr.Dataset(
+        data_vars={
+            "counts": (("time",), np.array([64])),
+        },
+        coords={"time": ["2008-02-01T00:00:08Z"]},
+    )
+
+    with pytest.raises(spn.SchemaError, match="counts.*dims"):
+        spn.validate_schema(
+            dataset,
+            KAGUYA_ESA1_SCHEMA,
+            variables=("counts",),
+        )
