@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from sopran.core.pages import InfoPage
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange
 
@@ -18,8 +19,18 @@ class SopranArray:
     files: tuple[Path, ...] = ()
     xr: Any = None
 
-    def info(self) -> str:
-        return f"{self.name}: dims={self.schema.dims}, units={self.schema.units}"
+    def info(self) -> InfoPage:
+        lines = [
+            f"dims: {', '.join(self.schema.dims)}",
+            f"time: {self.time.start_iso} to {self.time.stop_iso}",
+        ]
+        if self.schema.units is not None:
+            lines.append(f"units: {self.schema.units}")
+        if self.schema.description:
+            lines.append(self.schema.description)
+        if self.files:
+            lines.append(f"files: {len(self.files)}")
+        return InfoPage(title=self.name, lines=tuple(lines))
 
     def to_xarray(self) -> Any:
         if self.xr is None:

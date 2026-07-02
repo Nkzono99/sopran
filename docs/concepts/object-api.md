@@ -21,6 +21,11 @@ scan, collect, or compute data. Execution happens at explicit methods:
 - `help()`: interactive alias for `guide()`.
 - `example()`: return a short runnable Markdown example when implemented.
 
+Loaded objects such as `SopranArray` also expose `info()`. It returns an
+`InfoPage` with variable dimensions, time coverage, units, description, and
+input file count when available, so notebook displays and console output use the
+same lightweight page model as mission and endpoint objects.
+
 `GuidePage` carries language metadata so package guides and public docs can
 share the same bilingual contract:
 

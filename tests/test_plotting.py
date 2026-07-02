@@ -97,6 +97,27 @@ def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
     assert item.log_color is True
 
 
+def test_loaded_array_info_returns_info_page() -> None:
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="counts",
+            dims=("time", "energy"),
+            units="count",
+            description="Raw counts.",
+        ),
+    )
+
+    info = loaded.info()
+
+    assert isinstance(info, spn.InfoPage)
+    assert info.title == "counts"
+    assert "dims: time, energy" in str(info)
+    assert "units: count" in str(info)
+    assert "Raw counts." in str(info)
+
+
 def test_plot_stack_line_accepts_vector_time_series() -> None:
     import matplotlib
 
