@@ -18,6 +18,8 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.project.Project
 
+::: sopran.core.project.ProjectArtifact
+
 ::: sopran.missions.kaguya.mission.Kaguya
 
 ::: sopran.missions.artemis.mission.Artemis

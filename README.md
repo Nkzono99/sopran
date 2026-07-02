@@ -173,6 +173,8 @@ stack = case.stack(
     case.kaguya.esa1.quality.load().line(),
 )
 stack.plot()
+
+artifact = prj.save(case.kaguya.esa1.quality.load(), "interim/kaguya_esa1_quality_wake")
 ```
 
 月面 DEM/SVM/shadow/illumination は mission ではなく body-first API を主導線にします。

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -13,12 +15,47 @@ from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
 
 
+@dataclass(frozen=True)
+class ProjectArtifact:
+    path: Path
+    metadata_path: Path
+    metadata: dict[str, Any]
+
+
 class Project:
     """Analysis workspace that supplies case context to mission objects."""
 
     def __init__(self, root: Path | str, *, store: Store | None = None) -> None:
         self.root = Path(root)
         self.store = store or Store(self.root / "data")
+
+    def save(
+        self,
+        value: Any,
+        name: str | Path,
+        *,
+        format: str = "netcdf",
+        overwrite: bool = False,
+    ) -> ProjectArtifact:
+        if format != "netcdf":
+            raise ValueError("Project.save() currently supports format='netcdf' only")
+        target = _project_child_path(self.root, name, suffix=".nc")
+        if target.exists() and not overwrite:
+            raise FileExistsError(f"Project artifact already exists: {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        array = value.to_xarray() if hasattr(value, "to_xarray") else value
+        if not hasattr(array, "to_netcdf"):
+            raise TypeError("Project.save() expects an xarray object or to_xarray() value")
+        array.to_netcdf(target)
+
+        metadata = _artifact_metadata(value, array, target, root=self.root, format=format)
+        metadata_path = target.with_suffix(".json")
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return ProjectArtifact(path=target, metadata_path=metadata_path, metadata=metadata)
 
     def case(
         self,
@@ -191,3 +228,40 @@ def _case_region(
         body=str(region.get("body", "moon")),
         lon_domain=region.get("lon_domain", "0_360"),
     )
+
+
+def _project_child_path(root: Path, name: str | Path, *, suffix: str) -> Path:
+    path = Path(name)
+    if path.suffix != suffix:
+        path = path.with_suffix(suffix)
+    target = (root / path).resolve()
+    resolved_root = root.resolve()
+    if not target.is_relative_to(resolved_root):
+        raise ValueError(f"Project artifact path escapes project root: {name}")
+    return target
+
+
+def _artifact_metadata(
+    value: Any,
+    array: Any,
+    path: Path,
+    *,
+    root: Path,
+    format: str,
+) -> dict[str, Any]:
+    time = getattr(value, "time", None)
+    metadata: dict[str, Any] = {
+        "format": format,
+        "name": str(getattr(value, "name", None) or getattr(array, "name", None) or ""),
+        "path": path.relative_to(root).as_posix(),
+        "type": type(value).__name__,
+    }
+    if time is not None:
+        metadata["time_coverage"] = {
+            "start": time.start_iso,
+            "stop": time.stop_iso,
+        }
+    files = getattr(value, "files", ())
+    if files:
+        metadata["source_files"] = [str(file) for file in files]
+    return metadata

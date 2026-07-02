@@ -36,3 +36,17 @@ case.moon.dem.plan(source="kaguya.tc.dem", region=case.region)
 
 `case.region` is `None` when no region is configured. Case-specific region
 settings override `[defaults.region]`.
+
+Use `Project.save(...)` for ad-hoc or interim artifacts that belong to the
+analysis workspace rather than the shared data `Store`:
+
+```python
+quality = case.kaguya.esa1.quality.load()
+artifact = project.save(quality, "interim/kaguya_esa1_quality_wake")
+artifact.path
+artifact.metadata_path
+```
+
+The current implementation writes xarray-compatible values as NetCDF (`.nc`)
+and records a JSON metadata sidecar with name, relative path, time coverage, and
+source files when available.
