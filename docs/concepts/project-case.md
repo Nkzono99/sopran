@@ -76,6 +76,8 @@ artifact.metadata_path
 
 The current implementation writes xarray-compatible values as NetCDF (`.nc`)
 and records a JSON metadata sidecar with name, relative path, time coverage, and
-source files when available. Pass `context=case` when the sidecar should also
-record `case.metadata()` for provenance, or `context=quality` to record the
-loaded object's `metadata` property.
+source files when available. When the saved value exposes a JSON-ready
+`metadata` property or method, the sidecar also records it as
+`source_metadata`; this keeps loaded-object schema and derived operations with
+the artifact. Pass `context=case` when the sidecar should also record
+`case.metadata()` as the analysis context.

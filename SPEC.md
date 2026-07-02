@@ -484,6 +484,9 @@ artifact = prj.save(
 `Project.save(...)` は共有 `Store` に登録する dataset ではなく、解析 workspace 内の
 ad-hoc / interim artifact を保存する補助 API とする。v0.1 では xarray 互換 object を
 NetCDF (`.nc`) と JSON metadata sidecar として保存し、time coverage、source files、相対 path を残す。
+保存対象が JSON-ready な `metadata` property / method を持つ場合は、その snapshot を
+`source_metadata` として sidecar に保存する。`context` は解析 case などの外側文脈、
+`source_metadata` は保存対象自身の provenance として分ける。
 `context=case` を渡すと `case.metadata()` を sidecar の `context` に保存する。
 
 `plot()` だけは case context で内部 load してよい。ただし実行ログ、入力 dataset、time range、

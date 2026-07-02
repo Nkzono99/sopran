@@ -382,17 +382,39 @@ def _artifact_metadata(
     files = getattr(value, "files", ())
     if files:
         metadata["source_files"] = [str(file) for file in files]
+    source_metadata = _optional_metadata(value)
+    if source_metadata is not None:
+        metadata["source_metadata"] = source_metadata
     if context is not None:
         metadata["context"] = _context_metadata(context)
     return metadata
 
 
 def _context_metadata(context: Any) -> dict[str, Any]:
-    if isinstance(context, Mapping):
-        return dict(context)
-    metadata = getattr(context, "metadata", None)
+    metadata = _optional_metadata(context)
+    if metadata is not None:
+        return metadata
+    raise TypeError("context must be a metadata mapping or expose metadata")
+
+
+def _optional_metadata(value: Any) -> dict[str, Any] | None:
+    if isinstance(value, Mapping):
+        return _metadata_value(value)
+    metadata = getattr(value, "metadata", None)
     if callable(metadata):
         metadata = metadata()
     if isinstance(metadata, Mapping):
-        return dict(metadata)
-    raise TypeError("context must be a metadata mapping or expose metadata")
+        return _metadata_value(metadata)
+    return None
+
+
+def _metadata_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {str(key): _metadata_value(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_metadata_value(item) for item in value]
+    if isinstance(value, Path):
+        return str(value)
+    if hasattr(value, "to_metadata"):
+        return _metadata_value(value.to_metadata())
+    return value

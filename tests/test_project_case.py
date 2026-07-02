@@ -4,8 +4,10 @@ import json
 
 import numpy as np
 import pytest
+import xarray as xr
 import sopran as spn
 from sopran import Store
+from sopran.core.data import SopranArray
 from sopran.missions.kaguya.data import KaguyaESA1Data
 
 
@@ -260,3 +262,38 @@ def test_project_save_accepts_loaded_array_as_context(tmp_path) -> None:
 
     metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
     assert metadata["context"] == data.metadata
+
+
+def test_project_save_records_loaded_object_source_metadata(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    project = spn.Project(project_root, store=Store(tmp_path / "store"))
+    times = np.array(
+        [
+            "2008-02-01T00:00:00",
+            "2008-02-01T00:01:00",
+            "2008-02-01T00:02:00",
+            "2008-02-01T00:03:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    quality = xr.DataArray(
+        np.array([1.0, 2.0, 3.0, 4.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-02-01", "2008-02-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",), units="flag"),
+        xr=quality,
+    )
+    resampled = loaded.resample(time="2min").mean()
+
+    artifact = project.save(resampled, "interim/quality_2min")
+
+    metadata = json.loads(artifact.metadata_path.read_text(encoding="utf-8"))
+    assert metadata["source_metadata"]["schema"] == resampled.metadata["schema"]
+    assert metadata["source_metadata"]["operations"] == resampled.metadata["operations"]
+    assert metadata["source_metadata"]["time_range"] == resampled.metadata["time_range"]
