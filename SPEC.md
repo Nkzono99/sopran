@@ -1420,6 +1420,7 @@ page = kg.guide("lrs")
 str(page)        # plain text / markdown source
 page.show()      # Jupyter では Markdown 表示、terminal では pager または print
 page.open()      # docs URL が設定されていればブラウザで開く
+page.open(language="en")  # 言語別 docs URL が設定されていればその URL を開く
 page.source      # package resource path
 page.url         # 公開 docs URL。未設定なら None
 page.sources     # 言語別 package resource path。未設定なら source に fallback

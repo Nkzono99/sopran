@@ -35,6 +35,7 @@ page.url                  # current public docs URL, if configured
 page.urls                 # language-specific public docs URLs, if configured
 page.to_markdown(language="en")
 page.with_language("en")  # switches body, source, and URL together
+page.open(language="en")  # opens the matching public docs URL when configured
 page.show()               # prints the same Markdown, including the switcher
 ```
 

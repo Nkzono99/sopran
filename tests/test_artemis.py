@@ -78,6 +78,28 @@ def test_guide_page_open_uses_public_url(monkeypatch) -> None:
     assert opened == ["https://example.com/sopran"]
 
 
+def test_guide_page_open_can_select_language_url(monkeypatch) -> None:
+    opened = []
+    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    page = spn.GuidePage(
+        title="SOPRAN docs",
+        markdown="# SOPRAN docs",
+        source="docs/ja/index.md",
+        language="ja",
+        available_languages=("ja", "en"),
+        url="https://example.com/ja/",
+        urls={
+            "en": "https://example.com/en/",
+        },
+    )
+
+    page.open(language="en")
+
+    assert opened == ["https://example.com/en/"]
+    with pytest.raises(ValueError, match="language"):
+        page.open(language="fr")
+
+
 def test_guide_page_tracks_language_switch_metadata() -> None:
     page = spn.GuidePage(
         title="SOPRAN docs",

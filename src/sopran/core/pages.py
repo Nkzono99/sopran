@@ -69,12 +69,16 @@ class GuidePage:
     def show(self) -> None:
         print(self.to_markdown())
 
-    def open(self) -> None:
-        if self.url is None:
-            raise ValueError(f"GuidePage has no public URL: {self.source}")
+    def open(self, *, language: str | None = None) -> None:
+        selected_language = language or self.language
+        url = self._url_for(selected_language)
+        if url is None:
+            raise ValueError(
+                f"GuidePage has no public URL: {self._source_for(selected_language)}"
+            )
         import webbrowser
 
-        webbrowser.open(self.url)
+        webbrowser.open(url)
 
     def _markdown_for(self, language: str) -> str:
         if language not in (self.available_languages or (self.language,)):
