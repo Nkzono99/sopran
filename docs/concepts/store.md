@@ -51,6 +51,8 @@ Raw files are not renamed by SOPRAN. `Store.register_raw_file(...)` writes a
 sidecar manifest next to the raw file, named `<filename>.sopran.json`, with the
 relative raw path, mission, provider, download URL, acquisition time, checksum,
 and byte size.
+The returned `RawFileRecord` can verify that the current file still matches the
+recorded checksum.
 
 `Store.raw_files(refresh=True)` scans those sidecars and writes
 `registry/raw_files.parquet`. It can be filtered by `mission` or `provider`.

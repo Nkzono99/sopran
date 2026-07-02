@@ -268,6 +268,20 @@ def test_store_registers_raw_file_manifest(tmp_path) -> None:
     assert manifest["acquired_at"].endswith("Z")
 
 
+def test_raw_file_record_verifies_checksum(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    raw_file = store.raw_path("kaguya", "l2", "example.dat")
+    raw_file.parent.mkdir(parents=True)
+    raw_file.write_bytes(b"raw payload")
+    record = store.register_raw_file("kaguya/l2/example.dat", mission="kaguya", provider="darts")
+
+    assert record.verify_checksum()
+
+    raw_file.write_bytes(b"changed payload")
+
+    assert not record.verify_checksum()
+
+
 def test_store_rebuilds_raw_file_registry(tmp_path) -> None:
     store = Store(tmp_path / "store")
     first = store.raw_path("kaguya", "l2", "first.dat")

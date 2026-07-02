@@ -522,7 +522,8 @@ F:/sopran_cache/
   dataset を一覧・探索する。
 - raw file の checksum、download URL、取得日時を記録する。初期実装では raw file の隣に
   `<filename>.sopran.json` sidecar manifest を置き、`registry/raw_files.parquet` に
-  mission / provider / checksum / acquired_at の index を作る。
+  mission / provider / checksum / acquired_at の index を作る。解析前に manifest checksum と
+  現在のファイル checksum を比較できる API を持つ。
 - parquet shard の schema、partition、期間、生成 pipeline を記録する。
 - ユーザーが拡張した database を登録する。
 

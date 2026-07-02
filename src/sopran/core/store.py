@@ -371,6 +371,9 @@ class RawFileRecord:
     def manifest(self) -> dict[str, Any]:
         return json.loads(self.manifest_path.read_text(encoding="utf-8"))
 
+    def verify_checksum(self) -> bool:
+        return self.manifest().get("checksum") == _sha256_file(self.path)
+
 
 def _dataset_parts(dataset_id: str) -> tuple[str, ...]:
     return tuple(part for part in dataset_id.split(".") if part)
