@@ -5,6 +5,7 @@ from sopran.core import AlignmentResult
 from sopran.core import BackendError, ConfigError, DecodeError, DownloadError
 from sopran.core import Database, DatasetNotFoundError, GuidePage, InfoPage
 from sopran.core import FrameTransformError, PipelineError, SchemaError
+from sopran.core import InstrumentSchema, VariableSchema
 from sopran.core import PlotArtifact, PlotItem, PlotPlan, ProductRef
 from sopran.core import PlotStack, SampleSpec, SampleTable, SopranError, Store, TimeRange
 from sopran.core import QuicklookResult
@@ -31,6 +32,7 @@ __all__ = [
     "DecodeError",
     "DownloadError",
     "FrameTransformError",
+    "InstrumentSchema",
     "Kaguya",
     "Moon",
     "PlotArtifact",
@@ -49,6 +51,7 @@ __all__ = [
     "Store",
     "TimeRange",
     "TimeBins",
+    "VariableSchema",
     "__version__",
     "align",
     "day",

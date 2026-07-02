@@ -13,6 +13,23 @@ SOPRAN keeps variable metadata in code. A variable schema records:
 Endpoint metadata, validation, documentation tables, and aliases should derive
 from schema objects where possible.
 
+Schema classes are public:
+
+```python
+schema = spn.InstrumentSchema(
+    mission="my_mission",
+    instrument="my_sensor",
+    variables=(
+        spn.VariableSchema(name="density", dims=("time",), units="cm^-3"),
+    ),
+)
+
+metadata = schema.to_metadata(schema_version="0.1")
+```
+
+`to_metadata()` is the shared machine-readable representation used by
+`schema.json` and documentation generation.
+
 Use `validate_schema()` before returning loaded data or before trusting a
 derived table. Pass `variables=...` when only one product has been loaded from a
 larger instrument schema:

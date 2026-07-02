@@ -16,6 +16,17 @@ class VariableSchema:
     description: str = ""
     aliases: tuple[str, ...] = ()
 
+    def to_metadata(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "dims": list(self.dims),
+            "units": self.units,
+            "dtype": self.dtype,
+            "frame": self.frame,
+            "description": self.description,
+            "aliases": list(self.aliases),
+        }
+
 
 @dataclass(frozen=True)
 class InstrumentSchema:
@@ -28,6 +39,16 @@ class InstrumentSchema:
             if name == variable.name or name in variable.aliases:
                 return variable
         raise KeyError(name)
+
+    def to_metadata(self, *, schema_version: str | None = None) -> dict[str, Any]:
+        metadata: dict[str, Any] = {
+            "mission": self.mission,
+            "instrument": self.instrument,
+            "variables": [variable.to_metadata() for variable in self.variables],
+        }
+        if schema_version is not None:
+            metadata["schema_version"] = schema_version
+        return metadata
 
 
 def validate_schema(

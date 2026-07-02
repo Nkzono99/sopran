@@ -10,6 +10,46 @@ from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
+def test_schema_classes_are_exported_from_top_level() -> None:
+    assert spn.InstrumentSchema is InstrumentSchema
+    assert spn.VariableSchema is VariableSchema
+
+
+def test_instrument_schema_exports_machine_readable_metadata() -> None:
+    schema = InstrumentSchema(
+        mission="artemis",
+        instrument="fgm",
+        variables=(
+            VariableSchema(
+                name="magnetic_field",
+                dims=("time", "component"),
+                units="nT",
+                dtype="float64",
+                frame="SSE",
+                description="Vector magnetic field.",
+                aliases=("b",),
+            ),
+        ),
+    )
+
+    assert schema.to_metadata(schema_version="0.1") == {
+        "mission": "artemis",
+        "instrument": "fgm",
+        "schema_version": "0.1",
+        "variables": [
+            {
+                "name": "magnetic_field",
+                "dims": ["time", "component"],
+                "units": "nT",
+                "dtype": "float64",
+                "frame": "SSE",
+                "description": "Vector magnetic field.",
+                "aliases": ["b"],
+            }
+        ],
+    }
+
+
 def test_validate_schema_accepts_selected_polars_variables() -> None:
     frame = pl.DataFrame(
         {

@@ -31,7 +31,7 @@ from sopran.core.plotting import (
     spectrogram,
     stack,
 )
-from sopran.core.schema import validate_schema
+from sopran.core.schema import InstrumentSchema, VariableSchema, validate_schema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, day, month, period, year
 
@@ -46,6 +46,7 @@ __all__ = [
     "DecodeError",
     "DownloadError",
     "FrameTransformError",
+    "InstrumentSchema",
     "Pipeline",
     "PipelineError",
     "PipelinePlan",
@@ -64,6 +65,7 @@ __all__ = [
     "SopranError",
     "TimeRange",
     "TimeBins",
+    "VariableSchema",
     "align",
     "day",
     "load",

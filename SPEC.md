@@ -1058,13 +1058,18 @@ units / frame metadata がまだ付いていない既存データは、移行期
 Schema から生成または検証するもの:
 
 - `.info()` の変数一覧と説明。
-- `.schema()` の machine-readable 出力。
+- `.schema()` の machine-readable 出力。`InstrumentSchema.to_metadata(schema_version=...)` と
+  `VariableSchema.to_metadata()` を共通出口にし、`schema.json` と docs 生成で同じ構造を使う。
 - README / docs の変数表、単位表、alias 表。
 - `VariableEndpoint` の metadata。
 - `KaguyaESA1Data` など typed data object の property validation。
 - loaded object から xarray / polars へ降りる際の dims、units、frame。
 - `schema.json` の `dtype` / `frame` metadata。vector、position、frame 変換済み product は
   ここから coordinate frame と component dtype を辿れるようにする。
+
+`InstrumentSchema` と `VariableSchema` は `spn.InstrumentSchema`,
+`spn.VariableSchema` として top-level から import できるようにし、ユーザー定義 database や
+独自 mission の schema 作成でも同じ型を使う。
 
 ## Package and workspace layout
 

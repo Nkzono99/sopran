@@ -540,23 +540,7 @@ def _dataset_parts(dataset_id: str) -> tuple[str, ...]:
 
 
 def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
-    return {
-        "mission": schema.mission,
-        "instrument": schema.instrument,
-        "schema_version": _DATASET_SCHEMA_VERSION,
-        "variables": [
-            {
-                "name": variable.name,
-                "dims": list(variable.dims),
-                "units": variable.units,
-                "dtype": variable.dtype,
-                "frame": variable.frame,
-                "description": variable.description,
-                "aliases": list(variable.aliases),
-            }
-            for variable in schema.variables
-        ],
-    }
+    return schema.to_metadata(schema_version=_DATASET_SCHEMA_VERSION)
 
 
 def _validate_product_frame(frame: Any, schema: InstrumentSchema, product: str) -> None:
