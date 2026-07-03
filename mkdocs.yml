@@ -92,5 +92,6 @@ nav:
       - Pipeline Rules: reference/pipeline-rules.md
       - Configuration: reference/configuration.md
       - Status: reference/status.md
+      - Release: reference/release.md
       - Design Notes: reference/design-notes.md
       - License: reference/license.md
