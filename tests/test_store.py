@@ -676,6 +676,32 @@ def test_store_resolves_dataset_source_file_records(tmp_path) -> None:
     assert records[0].verify_checksum()
 
 
+def test_store_records_source_files_relative_to_store_root(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    raw_file = store.raw_path("kaguya", "l2", "source.dat")
+    raw_file.parent.mkdir(parents=True)
+    raw_file.write_bytes(b"raw payload")
+    store.register_raw_file(raw_file, mission="kaguya", provider="darts")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+        source_files=(str(raw_file),),
+    )
+
+    assert dataset.manifest()["source_files"] == ["raw/kaguya/l2/source.dat"]
+    records = store.dataset_source_files("kaguya.esa1.counts", layer="normalized")
+    assert [record.path for record in records] == [raw_file]
+    assert store.verify_dataset("kaguya.esa1.counts", layer="normalized")
+
+
 def test_store_verifies_dataset_integrity_with_source_files(tmp_path) -> None:
     store = Store(tmp_path / "store")
     raw_file = store.raw_path("kaguya", "l2", "source.dat")

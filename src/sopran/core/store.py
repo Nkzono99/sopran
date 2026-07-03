@@ -190,6 +190,7 @@ class Store:
         partitioning: tuple[str, ...] = (),
     ) -> DatasetRecord:
         _validate_dataset_status(status)
+        source_files = _normalize_store_source_files(self.root, source_files)
         record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         record.root.mkdir(parents=True, exist_ok=True)
         manifest = {
@@ -673,6 +674,23 @@ def _merge_source_files(path: Path, new: tuple[str, ...]) -> tuple[str, ...]:
         if source not in merged:
             merged.append(str(source))
     return tuple(merged)
+
+
+def _normalize_store_source_files(root: Path, source_files: tuple[str, ...]) -> tuple[str, ...]:
+    if not source_files:
+        return ()
+    resolved_root = root.resolve()
+    return tuple(_normalize_store_source_file(resolved_root, source) for source in source_files)
+
+
+def _normalize_store_source_file(resolved_root: Path, source: str) -> str:
+    path = Path(source)
+    if path.is_absolute():
+        try:
+            return path.resolve().relative_to(resolved_root).as_posix()
+        except (OSError, ValueError):
+            return str(path)
+    return path.as_posix()
 
 
 def _merge_source_datasets(path: Path, new: tuple[str, ...]) -> tuple[str, ...]:

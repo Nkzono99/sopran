@@ -555,7 +555,8 @@ F:/sopran_cache/
 - parquet shard の schema、partition、期間、生成 pipeline、checksum を記録し、
   catalog checksum と現在の shard checksum を比較できる API を持つ。
 - dataset manifest の `source_files` から raw sidecar manifest へ辿り、入力 raw file の
-  checksum を検証できる API を持つ。
+  checksum を検証できる API を持つ。Store 管理下の入力ファイルは manifest では
+  Store root 相対の POSIX path (`raw/...`) に正規化し、外部ファイルだけ絶対 path を許す。
 - dataset 単位で Parquet shard checksum と入力 raw file checksum をまとめて検証できる
   integrity API を持つ。partial run の通常解析対象だけを確認する場合は
   `Store.verify_dataset(..., shard_status="complete")` のように shard status を指定できる。
@@ -933,7 +934,8 @@ logs/              # 必要に応じて生成ログ
   初期保存は `candidate` を default とする。
 - `time_coverage`
 - `source_datasets`: 派生 dataset の入力になった dataset ID。append 時は重複なく merge する。
-- `source_files`
+- `source_files`: 入力 raw file。Store 管理下の path は Store root 相対の POSIX path
+  (`raw/...`) として保存し、外部入力だけ絶対 path を残す。
 - `provenance`: pipeline source、stage list、run mode、time range、input/output target、
   selected variable/product、parameters。
 - `schema`

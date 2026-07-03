@@ -50,6 +50,8 @@ pipeline source, stage list, mode, time range, and selected product or variable.
 For a single loaded variable, prefer `SopranArray.write_parquet(store, ...)`.
 It delegates to `Store.write_parquet_dataset(...)` while carrying the loaded
 array's `VariableSchema`, time coverage, source files, and table conversion.
+Source files under `Store.root` are recorded in `dataset.json` as root-relative
+POSIX paths such as `raw/kaguya/...`; external files keep their absolute paths.
 Pass `context=case`, `context=loaded`, `context=region`, or a plain metadata
 mapping when the dataset manifest should record analysis case, loaded-object,
 or region provenance.
