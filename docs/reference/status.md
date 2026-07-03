@@ -13,7 +13,7 @@
 | Frames | `FrameContext` と identity transform | SPICE / SpacePy backend |
 | Moon maps | `Moon()`, `Region`, `SurfacePlan` skeleton | DEM/SVM load、projection、shadow 計算 |
 | Rust backend | 未接続 | decode、binning、fit、batch shard 処理 |
-| PlotStack | Matplotlib quicklook | interactive HTML、datashader、長期 quicklook |
+| PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
 
 ## KAGUYA ESA1
 
@@ -89,6 +89,7 @@
 - `PlotStack`
 - line panel
 - spectrogram panel
+- histogram panel
 - PNG/HTML/JSON quicklook
 
 残っているもの:
@@ -96,7 +97,6 @@
 - HoloViews/hvPlot/datashader
 - Panel dashboard
 - 長期間 quicklook
-- distribution plot
 
 ## 直近の優先度
 

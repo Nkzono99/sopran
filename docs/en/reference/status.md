@@ -14,7 +14,7 @@ pages can focus on their own task.
 | Frames | `FrameContext` and identity transform | SPICE / SpacePy backend |
 | Moon maps | `Moon()`, `Region`, `SurfacePlan` skeleton | DEM/SVM load, projection, shadow calculation |
 | Rust backend | Not connected | Decode, binning, fitting, batch shard work |
-| PlotStack | Matplotlib quicklook | Interactive HTML, datashader, long-span quicklooks |
+| PlotStack | Matplotlib line/spectrogram/histogram quicklook | Interactive HTML, datashader, long-span quicklooks |
 
 ## Near-Term Priorities
 

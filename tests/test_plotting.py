@@ -121,6 +121,39 @@ def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     assert isinstance(result.axes[0].collections[0].norm, LogNorm)
 
 
+def test_plot_stack_histogram_plots_distribution_and_metadata() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    values = xr.DataArray(
+        np.array([0.0, 1.0, 1.0, 2.0, np.nan]),
+        dims=("time",),
+        coords={"time": np.arange(5)},
+        name="wave_power",
+    )
+
+    result = spn.stack(spn.histogram(values, bins=3)).plot()
+
+    assert len(result.axes[0].patches) == 3
+    assert result.metadata["panel_kinds"] == ["histogram"]
+    assert result.metadata["panels"] == [
+        {
+            "name": "wave_power",
+            "kind": "histogram",
+            "x": "wave_power",
+            "y": None,
+            "log_color": False,
+            "bins": 3,
+        }
+    ]
+    assert result.metadata["time_axis"] == {
+        "shared": False,
+        "coordinates": [],
+        "cadence_policy": "native",
+        "non_time_panels": ["wave_power"],
+    }
+
+
 def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
     times = np.array(
         ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
@@ -143,6 +176,31 @@ def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
     item = loaded.spectrogram(y="energy", log_color=True)
 
     assert item.log_color is True
+
+
+def test_loaded_array_histogram_returns_distribution_plot_item(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    array = xr.DataArray(
+        np.array([1.0, 2.0, 2.0, 3.0]),
+        dims=("time",),
+        coords={"time": np.arange(4)},
+        name="sza",
+    )
+    loaded = SopranArray(
+        name="sza",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="sza", dims=("time",), units="deg"),
+        xr=array,
+    )
+
+    result = spn.stack(loaded.histogram(bins=4)).quicklook("sza_distribution", root=tmp_path)
+    metadata = json.loads((tmp_path / "sza_distribution.json").read_text(encoding="utf-8"))
+
+    assert (tmp_path / "sza_distribution.png").exists()
+    assert result.metadata["panel_kinds"] == ["histogram"]
+    assert metadata["panels"][0]["bins"] == 4
 
 
 def test_loaded_array_info_returns_info_page() -> None:

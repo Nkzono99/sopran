@@ -202,6 +202,11 @@ class SopranArray:
             name=name or self.name,
         )
 
+    def histogram(self, *, bins: int | str = 50, name: str | None = None):
+        from sopran.core.plotting import histogram
+
+        return histogram(self.to_xarray(), bins=bins, name=name or self.name)
+
     def quicklook(
         self,
         name: str | None = None,

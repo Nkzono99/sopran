@@ -5,6 +5,7 @@
 - 並べたい panel を決める
 - spectrum は `spectrogram(y=...)` を使う
 - vector は `lines(components=...)` を使う
+- 値の分布は `histogram(bins=...)` を使う
 - 保存する場合は `quicklook()` に `root` を渡す
 
 ## loaded object から作る
@@ -13,6 +14,7 @@
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),
     kg.esa1.quality.load(time).line(),
+    sza.load(time).histogram(bins=36),
 )
 
 plan = stack.plan()

@@ -17,6 +17,7 @@ stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),
     kg.esa1.quality.load(time).line(),
     art.p1.fgm.magnetic_field.load(time).lines(components="xyz"),
+    wave_power.load(time).histogram(bins=50),
 )
 
 plot_result = stack.plot(backend="matplotlib")
@@ -28,6 +29,7 @@ plot_result.fig
 | Goal | API |
 | --- | --- |
 | Compare native cadences | `PlotStack` |
+| Inspect value distributions | `histogram(bins=...)` |
 | Aggregate onto common bins | `time_bins()` / `SampleTable` |
 | Build ML matrices | `to_feature_matrix()` |
 | Save provenance | `quicklook(..., context=case)` |

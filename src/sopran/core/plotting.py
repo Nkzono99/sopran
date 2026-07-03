@@ -12,7 +12,7 @@ from typing import Any, Literal
 import numpy as np
 
 
-PlotKind = Literal["line", "spectrogram"]
+PlotKind = Literal["line", "spectrogram", "histogram"]
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,7 @@ class PlotItem:
     x: str = "time"
     y: str | None = None
     log_color: bool = False
+    bins: int | str | None = None
 
 
 @dataclass(frozen=True)
@@ -79,10 +80,11 @@ class PlotStack:
         import matplotlib.pyplot as plt
 
         size = figsize or (8.0, max(2.0, 2.2 * len(self.items)))
+        share_x_axis = all(item.kind != "histogram" for item in self.items)
         fig, axes_grid = plt.subplots(
             len(self.items),
             1,
-            sharex=True,
+            sharex=share_x_axis,
             figsize=size,
             squeeze=False,
         )
@@ -101,11 +103,18 @@ class PlotStack:
                     norm=_color_norm(item),
                     shading="auto",
                 )
+            elif item.kind == "histogram":
+                values = _histogram_values(item)
+                axis.hist(values, bins=item.bins or 50)
+                axis.set_xlabel(item.name)
+                axis.set_ylabel("count")
             else:
                 raise ValueError(f"Unsupported plot item kind: {item.kind}")
-            axis.set_ylabel(item.name)
+            if item.kind != "histogram":
+                axis.set_ylabel(item.name)
 
-        axes[-1].set_xlabel("time")
+        if all(item.kind != "histogram" for item in self.items):
+            axes[-1].set_xlabel("time")
         fig.autofmt_xdate()
         fig.tight_layout()
         plan = self.plan()
@@ -231,12 +240,17 @@ def stack(*items: PlotItem) -> PlotStack:
 
 
 def _time_axis_metadata(items: tuple[PlotItem, ...]) -> dict[str, Any]:
-    coordinates = tuple(dict.fromkeys(item.x for item in items))
+    time_items = tuple(item for item in items if item.kind != "histogram")
+    coordinates = tuple(dict.fromkeys(item.x for item in time_items))
     metadata: dict[str, Any] = {
-        "shared": True,
+        "shared": len(time_items) == len(items),
         "coordinates": list(coordinates),
         "cadence_policy": "native",
     }
+    if len(time_items) != len(items):
+        metadata["non_time_panels"] = [
+            item.name for item in items if item.kind == "histogram"
+        ]
     if "time" in coordinates:
         metadata["timezone"] = "UTC"
     return metadata
@@ -247,16 +261,19 @@ def _panel_kinds(items: tuple[PlotItem, ...]) -> list[str]:
 
 
 def _panel_metadata(items: tuple[PlotItem, ...]) -> list[dict[str, Any]]:
-    return [
-        {
+    panels = []
+    for item in items:
+        panel = {
             "name": item.name,
             "kind": item.kind,
             "x": item.x,
             "y": item.y,
             "log_color": item.log_color,
         }
-        for item in items
-    ]
+        if item.kind == "histogram":
+            panel["bins"] = item.bins
+        panels.append(panel)
+    return panels
 
 
 def line(data: Any, *, x: str = "time", name: str | None = None) -> PlotItem:
@@ -304,6 +321,22 @@ def spectrogram(
     )
 
 
+def histogram(
+    data: Any,
+    *,
+    bins: int | str = 50,
+    name: str | None = None,
+) -> PlotItem:
+    item_name = name or _data_name(data)
+    return PlotItem(
+        kind="histogram",
+        data=data,
+        name=item_name,
+        x=item_name,
+        bins=bins,
+    )
+
+
 def _line_xy(item: PlotItem) -> tuple[np.ndarray, np.ndarray]:
     data = _materialize(item.data)
     if hasattr(data, "transpose") and hasattr(data, "dims") and item.x in data.dims:
@@ -327,6 +360,18 @@ def _spectrogram_xyz(item: PlotItem) -> tuple[np.ndarray, np.ndarray, np.ndarray
     if values.ndim != 2:
         raise ValueError(f"Spectrogram plot expects 2D data, got shape {values.shape}")
     return _coord(data, item.x, axis=0), _coord(data, item.y, axis=1), values
+
+
+def _histogram_values(item: PlotItem) -> np.ndarray:
+    data = _materialize(item.data)
+    values = _values(data)
+    if not np.issubdtype(values.dtype, np.number):
+        raise ValueError("Histogram plot expects numeric data")
+    flattened = np.asarray(values, dtype=float).reshape(-1)
+    finite = flattened[np.isfinite(flattened)]
+    if finite.size == 0:
+        raise ValueError("Histogram plot has no finite numeric values")
+    return finite
 
 
 def _color_norm(item: PlotItem) -> Any | None:

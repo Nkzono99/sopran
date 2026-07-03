@@ -5,6 +5,7 @@
 - Choose panels.
 - Use `spectrogram(y=...)` for spectra.
 - Use `lines(components=...)` for vectors.
+- Use `histogram(bins=...)` for value distributions.
 - Use `quicklook(root=...)` to save outputs.
 
 ## From Loaded Objects
@@ -13,6 +14,7 @@
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),
     kg.esa1.quality.load(time).line(),
+    sza.load(time).histogram(bins=36),
 )
 
 plan = stack.plan()
