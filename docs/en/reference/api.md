@@ -16,6 +16,7 @@ Core entry points:
 | --- | --- |
 | `spn.Store` | Data root, raw files, parquet datasets, registries |
 | `spn.Project` | Analysis workspace and artifact context |
+| `spn.View` / `spn.view` | Temporary analysis lens for time, region, frame, and backend overrides |
 | `spn.Kaguya` | KAGUYA/SELENE mission API |
 | `spn.Artemis` | ARTEMIS mission API |
 | `spn.Moon` | Moon map API |

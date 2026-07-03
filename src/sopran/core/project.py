@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -9,10 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from sopran.bodies import Moon
+from sopran.core.config import config_section, configured_path, read_user_config
 from sopran.core.errors import ConfigError
 from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
+from sopran.core.view import View, ViewContext, ViewSelection, _backend_mapping, _coerce_time_range
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
@@ -20,6 +23,13 @@ from sopran.missions.kaguya import Kaguya
 
 @dataclass(frozen=True)
 class ProjectArtifact:
+    path: Path
+    metadata_path: Path
+    metadata: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ProjectCaseRecord:
     path: Path
     metadata_path: Path
     metadata: dict[str, Any]
@@ -38,6 +48,102 @@ class Project:
         self.root = Path(root)
         self.store = store or self._configured_store()
         self.artifact_root = self._configured_artifact_root(artifact_root)
+
+    @classmethod
+    def default(
+        cls,
+        *,
+        root: Path | str | None = None,
+        store: Store | None = None,
+        artifact_root: Path | str | None = None,
+    ) -> Project:
+        user_config, user_config_path = read_user_config()
+        project_config = config_section(user_config, "project")
+        resolved_root = (
+            Path(root)
+            if root is not None
+            else configured_path(
+                user_config_path.parent,
+                project_config.get("root"),
+                default=Path.cwd(),
+            )
+        )
+        return cls(resolved_root, store=store, artifact_root=artifact_root)
+
+    @property
+    def kaguya(self) -> Kaguya:
+        return Kaguya(store=self.store, download=self._merged_defaults().get("download"))
+
+    @property
+    def artemis(self) -> Artemis:
+        return Artemis(store=self.store)
+
+    @property
+    def moon(self) -> Moon:
+        return Moon()
+
+    def view(
+        self,
+        *,
+        time: object | None = None,
+        start: object | None = None,
+        stop: object | None = None,
+        region: Region | None = None,
+        frame: str | None = None,
+        cache: bool | None = None,
+        download: str | None = None,
+        backend: str | Mapping[str, str] | None = None,
+        backends: Mapping[str, str] | None = None,
+        spice_kernels: tuple[str | Path, ...] | None = None,
+        time_scale: str | None = None,
+        mission: str | tuple[str, ...] | list[str] = (),
+        instrument: str | tuple[str, ...] | list[str] = (),
+        product: str | tuple[str, ...] | list[str] = (),
+        quality: str | None = None,
+    ) -> View:
+        if time is not None and (start is not None or stop is not None):
+            raise ValueError("Use either time=... or start=/stop=..., not both")
+        if start is None and stop is not None:
+            raise ValueError("start is required when stop is provided")
+        selected_time = _coerce_time_range(time, None) if time is not None else None
+        if start is not None:
+            selected_time = _coerce_time_range(start, stop)
+
+        defaults = self._merged_defaults()
+        selected_region = region if region is not None else _case_region(defaults, {})
+        context_backends = self._merged_backends()
+        context_backends.update(_backend_mapping(backend))
+        if backends is not None:
+            context_backends.update({str(key): str(value) for key, value in backends.items()})
+        context = ViewContext(
+            frame=frame if frame is not None else _optional_str(defaults.get("frame")),
+            cache=bool(defaults.get("cache", False)) if cache is None else bool(cache),
+            download=download if download is not None else _optional_str(defaults.get("download")),
+            backend_policy="auto",
+            backends=context_backends,
+            spice_kernels=(
+                tuple(defaults.get("spice_kernels", ()))
+                if spice_kernels is None
+                else spice_kernels
+            ),
+            time_scale=(
+                str(defaults.get("time_scale", "utc"))
+                if time_scale is None
+                else time_scale
+            ),
+        )
+        return View(
+            project=self,
+            selection=ViewSelection(
+                time=selected_time,
+                region=selected_region,
+                mission=_string_tuple(mission),
+                instrument=_string_tuple(instrument),
+                product=_string_tuple(product),
+                quality=quality if quality is not None else _optional_str(defaults.get("quality")),
+            ),
+            context=context,
+        )
 
     def save(
         self,
@@ -94,12 +200,13 @@ class Project:
         if start is None or stop is None:
             start = case_config["start"] if start is None else start
             stop = case_config["stop"] if stop is None else stop
+        defaults = self._case_defaults(config.get("defaults", {}), case_config)
         return Case(
             project=self,
             name=name,
             time=period(start, stop),
-            defaults=config.get("defaults", {}),
-            region=_case_region(config.get("defaults", {}), case_config),
+            defaults=defaults,
+            region=_case_region(defaults, case_config),
         )
 
     def _read_config(self) -> dict[str, Any]:
@@ -109,28 +216,107 @@ class Project:
 
     def _configured_store(self) -> Store:
         config = self._read_config() if (self.root / "sopran.toml").exists() else {}
-        store_config = config.get("store", {})
-        root = _configured_path(
-            self.root,
-            os.environ.get("SOPRAN_DATA_ROOT") or store_config.get("data_root"),
+        user_config, user_config_path = read_user_config()
+        store_config = config_section(config, "store")
+        user_store_config = config_section(user_config, "store")
+        root = _configured_path_by_precedence(
+            os.environ.get("SOPRAN_DATA_ROOT"),
+            (self.root, store_config.get("data_root")),
+            (user_config_path.parent, user_store_config.get("data_root")),
             default=self.root / "data",
         )
-        cache_root = _configured_path(
-            self.root,
-            os.environ.get("SOPRAN_CACHE_ROOT") or store_config.get("cache_root"),
+        cache_root = _configured_path_by_precedence(
+            os.environ.get("SOPRAN_CACHE_ROOT"),
+            (self.root, store_config.get("cache_root")),
+            (user_config_path.parent, user_store_config.get("cache_root")),
             default=None,
         )
         return Store(root=root, cache_root=cache_root)
 
     def _configured_artifact_root(self, artifact_root: Path | str | None) -> Path:
         config = self._read_config() if (self.root / "sopran.toml").exists() else {}
-        project_config = config.get("project", {})
-        return _configured_path(
-            self.root,
-            artifact_root
-            or os.environ.get("SOPRAN_ARTIFACT_ROOT")
-            or project_config.get("artifact_root"),
+        user_config, user_config_path = read_user_config()
+        project_config = config_section(config, "project")
+        user_project_config = config_section(user_config, "project")
+        explicit = Path(artifact_root) if artifact_root is not None else None
+        if explicit is not None:
+            return explicit if explicit.is_absolute() else self.root / explicit
+        return _configured_path_by_precedence(
+            os.environ.get("SOPRAN_ARTIFACT_ROOT"),
+            (self.root, project_config.get("artifact_root")),
+            (user_config_path.parent, user_project_config.get("artifact_root")),
             default=self.root,
+        )
+
+    def _merged_defaults(self) -> dict[str, Any]:
+        config = self._read_config() if (self.root / "sopran.toml").exists() else {}
+        user_config, _ = read_user_config()
+        return {
+            **config_section(user_config, "defaults"),
+            **config_section(config, "defaults"),
+        }
+
+    def _merged_backends(self) -> dict[str, str]:
+        config = self._read_config() if (self.root / "sopran.toml").exists() else {}
+        user_config, _ = read_user_config()
+        backends = {
+            **config_section(user_config, "backends"),
+            **config_section(config, "backends"),
+        }
+        return {str(key): str(value) for key, value in backends.items()}
+
+    def _case_defaults(
+        self,
+        project_defaults: dict[str, Any],
+        case_config: dict[str, Any],
+    ) -> dict[str, Any]:
+        defaults = {
+            **config_section(read_user_config()[0], "defaults"),
+            **project_defaults,
+        }
+        case_context = case_config.get("context", {})
+        if case_context is not None and not isinstance(case_context, Mapping):
+            raise ConfigError("[cases.<name>.context] must be a table")
+        defaults.update(case_context or {})
+        for key in ("frame", "cache", "download", "quality", "time_scale"):
+            if key in case_config:
+                defaults[key] = case_config[key]
+        return defaults
+
+    def save_case(
+        self,
+        name: str,
+        view: View,
+        *,
+        overwrite: bool = False,
+        description: str | None = None,
+    ) -> ProjectCaseRecord:
+        if view.time is None:
+            raise ValueError("Project.save_case() requires a view with a time range")
+        self.root.mkdir(parents=True, exist_ok=True)
+        config_path = self.root / "sopran.toml"
+        existing = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
+        config = self._read_config() if config_path.exists() else {}
+        if name in config.get("cases", {}) and not overwrite:
+            raise FileExistsError(f"Case already exists: {name}")
+        if overwrite and name in config.get("cases", {}):
+            raise NotImplementedError("Project.save_case(overwrite=True) is not implemented yet")
+
+        block = _case_toml_block(name, view, description=description)
+        text = f"{existing.rstrip()}\n\n{block}\n" if existing.strip() else f"{block}\n"
+        config_path.write_text(text, encoding="utf-8")
+
+        metadata = view.metadata()
+        metadata_path = self.root / "cases" / f"{_safe_case_filename(name)}.json"
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return ProjectCaseRecord(
+            path=config_path,
+            metadata_path=metadata_path,
+            metadata=metadata,
         )
 
 
@@ -174,6 +360,19 @@ class Case:
             "region": self.region.to_metadata() if self.region is not None else None,
         }
         return metadata
+
+    def to_view(self) -> View:
+        return self.project.view(
+            time=self.time,
+            region=self.region,
+            frame=self.frame,
+            cache=self.cache,
+            download=_optional_str(self.defaults.get("download")),
+            backends=_case_backends(self.defaults),
+        )
+
+    def with_time(self, time: object, stop: object | None = None) -> View:
+        return self.to_view().with_time(time, stop)
 
     def stack(self, *items: PlotItem) -> PlotStack:
         return stack(*items)
@@ -393,6 +592,138 @@ def _configured_path(
     if path.is_absolute():
         return path
     return project_root / path
+
+
+def _configured_path_by_precedence(
+    env_value: str | None,
+    project_value: tuple[Path, object | None],
+    user_value: tuple[Path, object | None],
+    *,
+    default: Path | None,
+) -> Path | None:
+    if env_value:
+        return Path(env_value)
+    project_base, project_path = project_value
+    if project_path is not None:
+        return _configured_path(project_base, project_path, default=default)
+    user_base, user_path = user_value
+    if user_path is not None:
+        return configured_path(user_base, user_path, default=default)
+    return default
+
+
+def _optional_str(value: object | None) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _string_tuple(value: str | tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,)
+    return tuple(str(item) for item in value)
+
+
+def _case_backends(defaults: Mapping[str, Any]) -> dict[str, str]:
+    explicit = defaults.get("backends")
+    backends = (
+        {str(key): str(value) for key, value in explicit.items()}
+        if isinstance(explicit, Mapping)
+        else {}
+    )
+    for key, value in defaults.items():
+        if str(key).startswith("backend_"):
+            backend_key = str(key).removeprefix("backend_")
+            if backend_key:
+                backends[backend_key] = str(value)
+    return backends
+
+
+def _case_toml_block(
+    name: str,
+    view: View,
+    *,
+    description: str | None,
+) -> str:
+    lines = [f"[cases.{_toml_key(name)}]"]
+    if description:
+        lines.append(f"description = {_toml_string(description)}")
+    lines.append(f"start = {_toml_string(view.time.start_iso)}")
+    lines.append(f"stop = {_toml_string(view.time.stop_iso)}")
+    context_lines = _case_context_toml_lines(view.context)
+    if context_lines:
+        lines.extend(("", f"[cases.{_toml_key(name)}.context]", *context_lines))
+    if view.region is not None:
+        metadata = view.region.to_metadata()
+        lines.extend(
+            (
+                "",
+                f"[cases.{_toml_key(name)}.region]",
+                f"body = {_toml_string(str(metadata['body']))}",
+                f"lon = {_toml_array(metadata['lon'])}",
+                f"lat = {_toml_array(metadata['lat'])}",
+                f"lon_domain = {_toml_string(str(metadata['lon_domain']))}",
+                f"lon_direction = {_toml_string(str(metadata['lon_direction']))}",
+                f"lat_type = {_toml_string(str(metadata['lat_type']))}",
+            )
+        )
+    return "\n".join(lines)
+
+
+def _case_context_toml_lines(context: ViewContext) -> list[str]:
+    lines: list[str] = []
+    if context.frame is not None:
+        lines.append(f"frame = {_toml_string(context.frame)}")
+    if context.cache:
+        lines.append("cache = true")
+    if context.download is not None:
+        lines.append(f"download = {_toml_string(context.download)}")
+    if context.spice_kernels:
+        lines.append(
+            "spice_kernels = "
+            + _toml_array([path.as_posix() for path in context.spice_kernels])
+        )
+    if context.time_scale != "utc":
+        lines.append(f"time_scale = {_toml_string(context.time_scale)}")
+    for key, value in sorted(context.backends.items()):
+        lines.append(f"backend_{_toml_bare_key(key)} = {_toml_string(value)}")
+    return lines
+
+
+def _toml_key(value: str) -> str:
+    if re.fullmatch(r"[A-Za-z0-9_-]+", value):
+        return value
+    return _toml_string(value)
+
+
+def _toml_bare_key(value: str) -> str:
+    key = re.sub(r"[^A-Za-z0-9_-]+", "_", value.strip())
+    if not key:
+        raise ValueError("backend key cannot be empty")
+    return key
+
+
+def _toml_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def _toml_array(values: object) -> str:
+    if not isinstance(values, (tuple, list)):
+        raise TypeError("TOML array value must be a tuple or list")
+    return "[" + ", ".join(_toml_value(value) for value in values) + "]"
+
+
+def _toml_value(value: object) -> str:
+    if isinstance(value, str):
+        return _toml_string(value)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _safe_case_filename(name: str) -> str:
+    filename = re.sub(r"[^A-Za-z0-9_.-]+", "_", name.strip())
+    return filename or "case"
 
 
 def _artifact_metadata(

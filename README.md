@@ -28,18 +28,21 @@ ARTEMIS など、月周辺の衛星データ解析を主対象にします。
 
 ## 依存関係
 
-SOPRAN は研究・解析環境でそのまま使えることを優先し、KAGUYA/ARTEMIS、SPICE、
-SpacePy、MAP/DEM/SVM、Matplotlib/HoloViz 系の runtime backend を標準 dependencies に
-含めます。`optional-dependencies` は用途別の目印と開発環境向けに残しています。
+SOPRAN の標準 dependencies は、top-level API の import に必要な最小構成に寄せています。
+KAGUYA/ARTEMIS、SPICE、SpacePy、MAP/DEM/SVM、Matplotlib/HoloViz 系の backend は
+用途別 extras で入れます。
 
 ```text
-pip install sopran
-pip install "sopran[full]"
-pip install "sopran[dev]"
+pip install -e .
+pip install -e ".[full]"
+pip install -e ".[dev]"
 ```
 
-optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `dev` に分けますが、
-runtime 系は標準 dependencies にも含めます。
+optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `native`,
+`docs`, `dev` に分けます。Windows / Python 3.14 では `full` から `aacgmv2`, `apexpy`,
+`cartopy`, `geoviews` を marker で外し、source build を試す場合は `native` を明示して
+`pip install -e ".[full,native]"` を使います。Windows の定型セットアップは
+`docs/getting-started/installation.md` にまとめます。
 
 ## Documentation
 
@@ -52,9 +55,8 @@ set PYTHONPATH=src
 mkdocs serve
 ```
 
-`pip install -e ".[docs]"` も定義していますが、通常の runtime dependencies も解決対象になるため、
-Windows で MSVC がない環境では `aacgmv2` などの build に失敗することがあります。docs だけを
-編集する場合は上の軽量 install を使います。
+`pip install -e ".[docs]"` も定義しています。docs だけを編集する場合は上の軽量 install でも
+十分です。
 
 ## 現在動く最小 API
 
@@ -168,7 +170,7 @@ case = prj.case("wake_20080201")
 
 counts = case.kaguya.esa1.counts.load()
 artemis_b_plan = case.artemis.p1.fgm.magnetic_field.plan()
-moon_dem_plan = case.moon.dem.plan(source="kaguya.tc.dem")
+moon_dem_plan = case.moon.dem.plan(source="lro.lola.dem_118m")
 moon_sza_plan = case.moon.sza.plan()
 
 stack = case.stack(
@@ -186,7 +188,8 @@ artifact = prj.save(case.kaguya.esa1.quality.load(), "interim/kaguya_esa1_qualit
 moon = spn.Moon()
 region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
-dem_plan = moon.dem.plan(source="kaguya.tc.dem", region=region, resolution="512ppd")
+dem_plan = moon.dem.plan(source="lro.lola.dem_118m", region=region, resolution="256ppd")
+svm_plan = moon.svm_tsunakawa2015.plan(region=region)
 sza_plan = moon.sza.plan(time="2008-02-01T12:00:00", region=region)
 shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00", dem=dem_plan)
 ```
@@ -246,6 +249,6 @@ not be copied into the Apache-2.0 core without a separate license review.
 ## 開発状況
 
 現在は KAGUYA ESA1 の local PBF decode、xarray/polars 変換、parquet 保存、Pipeline run/scan、
-PlotStack、Project/Case、Moon surface skeleton、ARTEMIS FGM normalized store load skeleton を
+PlotStack、Project/Case、Moon DEM/SVM raster load、ARTEMIS FGM normalized store load skeleton を
 実装し始めています。
 詳細設計は `SPEC.md`, `STORE.md`, `PIPELINE.md`, `SURFACE.md`, `PLOTTING.md` に分けます。

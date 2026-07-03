@@ -11,7 +11,7 @@
 | KAGUYA その他 | PACE/LMAG の一部のみ | LRS、PACE 他 sensor の loader |
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
 | Frames | `FrameContext` と identity transform | SPICE / SpacePy backend |
-| Moon maps | `Moon()`, `Region`, `SurfacePlan` skeleton | DEM/SVM load、projection、shadow 計算 |
+| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load | projection、reproject、shadow 計算 |
 | Rust backend | 未接続 | decode、binning、fit、batch shard 処理 |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
 
@@ -57,11 +57,15 @@
 - `spn.Region`
 - DEM/SVM/SZA/shadow/illumination の planning endpoint
 - longitude domain、projection、shape、area-or-point metadata
+- `rasterio` backend による DEM GeoTIFF load
+- USGS LRO LOLA DEM 118m / SLDEM2015 の source metadata と直接 download 導線
+- Tsunakawa SVM (`LunarSVM_000_02_v02.dat`) の text / npy load
+- `moon.svm` から `moon.svm_tsunakawa2015` への既定 alias
+- 直接 URL が確認できない SVM source の手動取得 guide
 
 残っているもの:
 
-- DEM/SVM raster loading
-- projection / reproject / sample
+- projection / reproject / bilinear interpolation
 - SPICE 太陽位置
 - DEM と球/楕円体形状を考慮した terrain-aware shadow
 
@@ -104,5 +108,5 @@
 2. KAGUYA LRS/LMAG/他 sensor の loader と Store 保存
 3. ARTEMIS raw discovery と CDF ingest
 4. SPICE / SpacePy を使う frame transform
-5. Moon DEM/SVM load と terrain-aware shadow
+5. Moon projection/reproject と terrain-aware shadow
 6. PlotStack の interactive backend

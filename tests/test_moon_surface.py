@@ -1,8 +1,172 @@
 from __future__ import annotations
 
+import json
+
+import numpy as np
 import pytest
 
 import sopran as spn
+from sopran.core import BackendError, DownloadError
+
+
+def test_moon_svm_default_is_tsunakawa2015_endpoint() -> None:
+    moon = spn.Moon()
+
+    assert moon.svm is moon.svm_tsunakawa2015
+    assert moon.map("svm") is moon.svm_tsunakawa2015
+    assert moon.map("svm_tsunakawa2015") is moon.svm_tsunakawa2015
+
+    plan = moon.svm.plan()
+
+    assert plan.product == "svm"
+    assert plan.parameters["source"] == "kaguya.lmag.svm_tsunakawa2015"
+    assert plan.parameters["model"] == "tsunakawa2015"
+    assert moon.svm.schema().units == "nT"
+    assert moon.svm.schema().dtype == "float64"
+
+
+def test_moon_dem_loads_geotiff_with_rasterio(tmp_path) -> None:
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    path = tmp_path / "dem.tif"
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        height=2,
+        width=2,
+        count=1,
+        dtype="float32",
+        transform=from_origin(10.0, 2.0, 1.0, 1.0),
+        nodata=-9999.0,
+    ) as dataset:
+        dataset.write(np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"), 1)
+
+    layer = spn.Moon().dem.load(path=path, source="local.dem")
+
+    assert layer.product == "dem"
+    assert layer.units == "m"
+    assert layer.source == "local.dem"
+    assert layer.lon.tolist() == [10.5, 11.5]
+    assert layer.lat.tolist() == [1.5, 0.5]
+    assert layer.sample(lat=1.5, lon=10.5) == pytest.approx(1.0)
+    assert layer.sample(lat=0.5, lon=11.5) == pytest.approx(4.0)
+
+
+def test_moon_lro_lola_dem_source_applies_catalog_scale_when_geotiff_has_none(
+    tmp_path,
+) -> None:
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    path = tmp_path / "lola_dem.tif"
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        height=1,
+        width=1,
+        count=1,
+        dtype="int16",
+        transform=from_origin(0.0, 1.0, 1.0, 1.0),
+    ) as dataset:
+        dataset.write(np.array([[2]], dtype="int16"), 1)
+
+    layer = spn.Moon().dem.load(path=path, source="lro.lola.dem_118m")
+
+    assert layer.sample(lat=0.5, lon=0.5) == pytest.approx(1.0)
+
+
+def test_moon_dem_load_guides_to_rasterio_when_backend_is_missing(
+    tmp_path, monkeypatch
+) -> None:
+    import sopran.maps.raster as raster
+
+    real_import_module = raster.importlib.import_module
+
+    def missing_rasterio(name):
+        if name == "rasterio":
+            raise ModuleNotFoundError("No module named 'rasterio'")
+        return real_import_module(name)
+
+    monkeypatch.setattr(raster.importlib, "import_module", missing_rasterio)
+
+    with pytest.raises(BackendError, match=r"rasterio.*pip install -e"):
+        spn.Moon().dem.load(path=tmp_path / "missing.tif")
+
+
+def test_moon_svm_tsunakawa2015_loads_text_grid(tmp_path) -> None:
+    path = tmp_path / "LunarSVM_000_02_v02.dat"
+    path.write_text(
+        "\n".join(
+            [
+                *(f"# header {index}" for index in range(12)),
+                "0.0 -0.5 0 0 0 1.0",
+                "1.0 -0.5 0 0 0 2.0",
+                "0.0 0.5 0 0 0 3.0",
+                "1.0 0.5 0 0 0 4.0",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    layer = spn.Moon().svm_tsunakawa2015.load(path=path)
+
+    assert layer.product == "svm"
+    assert layer.variable == "svm_tsunakawa2015"
+    assert layer.units == "nT"
+    assert layer.source == "kaguya.lmag.svm_tsunakawa2015"
+    assert layer.lon.tolist() == [0.0, 1.0]
+    assert layer.lat.tolist() == [-0.5, 0.5]
+    assert layer.sample(lat=-0.5, lon=0.0) == pytest.approx(1.0)
+    assert layer.sample(lat=0.5, lon=1.0) == pytest.approx(4.0)
+
+
+def test_moon_dem_download_registers_raw_file(tmp_path, monkeypatch) -> None:
+    import sopran.bodies.moon as moon_module
+
+    store = spn.Store(tmp_path / "store")
+    calls = []
+
+    def fake_download_file(url, target, *, overwrite=False):
+        calls.append((url, target, overwrite))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"downloaded")
+
+    monkeypatch.setattr(moon_module, "_download_file", fake_download_file)
+
+    path = spn.Moon().dem.download(source="lro.lola.dem_118m", store=store)
+
+    assert path == store.raw_path(
+        "moon", "dem", "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif"
+    )
+    assert calls == [
+        (
+            "https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif",
+            path,
+            False,
+        )
+    ]
+    manifest = json.loads(path.with_name(f"{path.name}.sopran.json").read_text())
+    assert manifest["provider"] == "usgs_astrogeology"
+    assert manifest["download_url"] == calls[0][0]
+
+
+def test_moon_svm_download_requires_manual_acquisition(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    moon = spn.Moon()
+
+    with pytest.raises(DownloadError, match="LunarSVM_000_02_v02.dat"):
+        moon.svm.download(store=store)
+
+    guide = moon.svm.acquisition_guide().to_markdown()
+
+    assert "LunarSVM_000_02_v02.dat" in guide
+    assert "Tsunakawa" in guide
+    assert "http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG" in guide
+    assert "web.archive.org" not in guide
 
 
 def test_moon_surface_endpoints_plan_body_first_products() -> None:
@@ -50,7 +214,7 @@ def test_moon_surface_info_includes_schema_and_sources() -> None:
     sza_info = str(moon.sza.info())
 
     assert "schema: dem, svm, shadow, illumination, sza" in mission_info
-    assert "sources: kaguya.tc.dem, lro.lola.dem" in dem_info
+    assert "sources: lro.lola.dem_118m" in dem_info
     assert "dims: lat, lon" in dem_info
     assert "units: m" in dem_info
     assert "frame: Moon body-fixed" in dem_info
@@ -66,7 +230,8 @@ def test_moon_surface_endpoints_list_stable_source_ids() -> None:
 
     assert "kaguya.tc.dem" in moon.dem.sources()
     assert "lro.lola.dem" in moon.dem.sources()
-    assert moon.svm.sources() == ("kaguya.lism.svm",)
+    assert "kaguya.lmag.svm_tsunakawa2015" in moon.svm.sources()
+    assert "kaguya.lism.svm" in moon.svm.sources()
     assert "legacy.shadowmap_sza" in moon.shadow.sources()
     assert moon.sza.sources() == ("computed.spice.sza",)
 
@@ -246,7 +411,7 @@ def test_moon_surface_examples_return_markdown_pages() -> None:
     assert "spn.Moon" in mission_example
     assert "spn.Region" in mission_example
     assert "Moon DEM Example" in dem_example
-    assert "kaguya.tc.dem" in dem_example
+    assert "lro.lola.dem_118m" in dem_example
     assert "Moon Shadow Example" in shadow_example
     assert "moon.shadow.plan" in shadow_example
     assert "Moon Solar Zenith Angle Example" in sza_example

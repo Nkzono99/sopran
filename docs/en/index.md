@@ -4,17 +4,14 @@ SOPRAN is the **Satellite Observation Package for Retrieval, Analysis, and
 Navigation**. It is a Python-first library for retrieving, normalizing, storing,
 visualizing, and comparing lunar and planetary-spacecraft observations.
 
-The main user flow is object navigation by mission, instrument, and variable.
+The main user flow is object navigation by mission, instrument, and variable,
+with `View` carrying the active time range and region during analysis.
 
 ```python
 import sopran as spn
 
-store = spn.Store("F:/sopran_data")
-kg = spn.Kaguya(store=store)
-moon = spn.Moon()
-
-time = spn.day("2008-01-01")
-counts = kg.esa1.counts.load(time)
+view = spn.view(time=spn.day("2008-01-01"), frame="SSE")
+counts = view.kaguya.esa1.counts.load()
 counts.quicklook("kaguya_esa1_counts", root="reports", y="energy")
 ```
 
@@ -24,7 +21,9 @@ counts.quicklook("kaguya_esa1_counts", root="reports", y="energy")
 | --- | --- |
 | `Kaguya()` / `Artemis()` | Navigate missions, probes, instruments, and variables |
 | `Store()` | Manage raw files, normalized parquet, features, and databases |
-| `Project()` / `Case()` | Keep analysis time ranges, regions, defaults, and artifacts together |
+| `Project()` | Keep the selected `Store`, artifact root, and project settings together |
+| `View()` / `spn.view()` | Bind temporary analysis context such as time, region, and frame |
+| `Case()` | Work with saved `View` contexts for reproducible analysis |
 | `Moon()` | Work with DEM, SVM, SZA, shadow, and illumination maps |
 | `spn.stack()` | Build SPEDAS/tplot-like stacked time-series views |
 

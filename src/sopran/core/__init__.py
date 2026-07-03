@@ -38,6 +38,7 @@ from sopran.core.plotting import (
 from sopran.core.schema import InstrumentSchema, VariableSchema, validate_schema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, day, month, period, year
+from sopran.core.view import View, ViewContext, ViewSelection, view
 
 __all__ = [
     "GuidePage",
@@ -72,6 +73,9 @@ __all__ = [
     "TimeRange",
     "TimeBins",
     "VariableSchema",
+    "View",
+    "ViewContext",
+    "ViewSelection",
     "align",
     "day",
     "load",
@@ -84,5 +88,6 @@ __all__ = [
     "stack",
     "time_bins",
     "validate_schema",
+    "view",
     "year",
 ]

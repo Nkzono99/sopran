@@ -14,9 +14,10 @@ from sopran.core import TimeBins, align, day, histogram, line, lines, load, mont
 from sopran.core import spectrogram, stack, year
 from sopran.core import time_bins
 from sopran.core import validate_schema
+from sopran.core import View, ViewContext, ViewSelection, view
 from sopran.core.project import Project
 from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
-from sopran.maps import Region
+from sopran.maps import RasterLayer, RasterSpec, Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
 
@@ -57,6 +58,8 @@ __all__ = [
     "PipelineError",
     "ProductRef",
     "QuicklookResult",
+    "RasterLayer",
+    "RasterSpec",
     "Region",
     "SampleSpec",
     "SampleTable",
@@ -66,6 +69,9 @@ __all__ = [
     "TimeRange",
     "TimeBins",
     "VariableSchema",
+    "View",
+    "ViewContext",
+    "ViewSelection",
     "__version__",
     "align",
     "builtin_schemas",
@@ -82,5 +88,6 @@ __all__ = [
     "stack",
     "time_bins",
     "validate_schema",
+    "view",
     "year",
 ]

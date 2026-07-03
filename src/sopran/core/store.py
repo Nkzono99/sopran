@@ -11,6 +11,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
+from sopran.core.config import config_section, configured_path, read_user_config
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema, validate_schema
 from sopran.core.time import TimeRange, period
@@ -29,8 +30,33 @@ class Store:
     cache_root: Path | str | None = None
 
     def __post_init__(self) -> None:
-        root = self.root or os.environ.get("SOPRAN_DATA_ROOT") or "sopran_data"
-        cache_root = self.cache_root or os.environ.get("SOPRAN_CACHE_ROOT")
+        user_config, user_config_path = read_user_config()
+        store_config = config_section(user_config, "store")
+        config_base = user_config_path.parent
+
+        env_root = os.environ.get("SOPRAN_DATA_ROOT")
+        env_cache_root = os.environ.get("SOPRAN_CACHE_ROOT")
+        if self.root is not None:
+            root = Path(self.root)
+        elif env_root:
+            root = Path(env_root)
+        else:
+            root = configured_path(
+                config_base,
+                store_config.get("data_root"),
+                default=Path("sopran_data"),
+            )
+
+        if self.cache_root is not None:
+            cache_root = Path(self.cache_root)
+        elif env_cache_root:
+            cache_root = Path(env_cache_root)
+        else:
+            cache_root = configured_path(
+                config_base,
+                store_config.get("cache_root"),
+                default=None,
+            )
         object.__setattr__(self, "root", Path(root))
         cache_path = Path(cache_root) if cache_root else Path(root) / "cache"
         object.__setattr__(self, "cache_root", cache_path)

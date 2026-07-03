@@ -16,9 +16,9 @@ region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
 ```python
 dem_plan = moon.dem.plan(
-    source="kaguya.tc.dem",
+    source="lro.lola.dem_118m",
     region=region,
-    resolution="512ppd",
+    resolution="256ppd",
     projection="native",
 )
 
@@ -26,6 +26,46 @@ sza_plan = moon.sza.plan(
     time="2008-02-01T12:00:00Z",
     region=region,
 )
+```
+
+## Download / Load DEM
+
+DEM GeoTIFF files are loaded through `rasterio`. If it is missing, install:
+
+```powershell
+pip install -e ".[moon]"
+```
+
+The USGS LRO LOLA 118m DEM has a direct URL and can be stored under
+`raw/moon/dem/`. The file is about 8 GB.
+
+```python
+store = spn.Store(r"F:/sopran-data")
+moon = spn.Moon()
+
+dem_path = moon.dem.download(source="lro.lola.dem_118m", store=store)
+dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m")
+dem.sample(lat=0.5, lon=10.5)
+```
+
+## Load Tsunakawa SVM
+
+`moon.svm` currently points to `moon.svm_tsunakawa2015`. SOPRAN does not have a
+verified stable direct download URL for `LunarSVM_000_02_v02.dat`, so acquire it
+manually and pass `path=`, or place it in the Store.
+The original upstream URL is `http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG`.
+
+```python
+svm = moon.svm_tsunakawa2015.load(path=r"C:/data/LunarSVM_000_02_v02.dat")
+svm.sample(lat=-0.5, lon=0.0)
+```
+
+```text
+<store>/raw/moon/svm/LunarSVM_000_02_v02.dat
+```
+
+```python
+svm = moon.svm.load(store=store, download="never")
 ```
 
 ## Shadow
@@ -40,5 +80,5 @@ shadow_plan = moon.shadow.plan(
 metadata = shadow_plan.to_metadata()
 ```
 
-DEM/SVM loading and terrain-aware shadow status is tracked in
+Terrain-aware shadow and other remaining backend status is tracked in
 [Status](../reference/status.md).

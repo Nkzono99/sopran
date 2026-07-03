@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from sopran.maps.raster import RasterLayer, RasterSpec
 
 LonDomain = Literal["0_360", "-180_180", "minus180_180"]
 LonDirection = Literal["east_positive", "west_positive"]
@@ -107,4 +108,11 @@ def _canonical_lat_type(lat_type: str) -> LatType:
     raise ValueError("lat_type must be 'planetocentric' or 'planetographic'")
 
 
-__all__ = ["LatType", "LonDirection", "LonDomain", "Region"]
+__all__ = [
+    "LatType",
+    "LonDirection",
+    "LonDomain",
+    "RasterLayer",
+    "RasterSpec",
+    "Region",
+]

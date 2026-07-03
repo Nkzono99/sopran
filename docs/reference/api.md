@@ -49,6 +49,16 @@
 
 ::: sopran.core.project.ProjectArtifact
 
+::: sopran.core.project.ProjectCaseRecord
+
+::: sopran.core.view.View
+
+::: sopran.core.view.ViewSelection
+
+::: sopran.core.view.ViewContext
+
+::: sopran.core.view.view
+
 ::: sopran.missions.kaguya.mission.Kaguya
 
 ::: sopran.missions.artemis.mission.Artemis
