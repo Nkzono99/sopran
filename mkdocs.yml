@@ -5,7 +5,8 @@ repo_name: Nkzono99/sopran
 site_url: https://nkzono99.github.io/sopran/
 strict: true
 not_in_nav: |
-  en/index.md
+  en/*.md
+  en/**/*.md
 
 theme:
   name: material
@@ -55,41 +56,41 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - ホーム: index.md
-  - 導入:
-      - インストール: getting-started/installation.md
-      - 最初の解析: getting-started/first-analysis.md
-      - データストア: getting-started/data-store.md
-  - コンセプト:
-      - オブジェクト API: concepts/object-api.md
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - First Analysis: getting-started/first-analysis.md
+      - Data Store: getting-started/data-store.md
+  - Concepts:
+      - Object API: concepts/object-api.md
       - Store: concepts/store.md
       - Pipeline: concepts/pipeline.md
-      - Project と Case: concepts/project-case.md
-      - Product と Schema: concepts/products-schemas.md
-      - 時刻・単位・座標系: concepts/time-units-frames.md
-      - 可視化: concepts/plotting.md
+      - Project And Case: concepts/project-case.md
+      - Products And Schemas: concepts/products-schemas.md
+      - Time, Units, And Frames: concepts/time-units-frames.md
+      - Plotting: concepts/plotting.md
       - Maps: concepts/maps.md
-  - ミッション:
-      - 概要: missions/index.md
+  - Missions:
+      - Overview: missions/index.md
       - KAGUYA/SELENE:
-          - 概要: missions/kaguya/index.md
+          - Overview: missions/kaguya/index.md
           - PACE ESA1: missions/kaguya/esa1.md
       - ARTEMIS:
-          - 概要: missions/artemis/index.md
+          - Overview: missions/artemis/index.md
   - How-to:
-      - KAGUYA ESA1 を読む: how-to/load-kaguya-esa1.md
-      - Parquet に保存する: how-to/write-normalized-parquet.md
-      - PlotStack を作る: how-to/plotstack.md
-      - Pipeline を計画する: how-to/pipeline-plan.md
-      - 月面マップを使う: how-to/moon-maps.md
+      - Load KAGUYA ESA1: how-to/load-kaguya-esa1.md
+      - Write Normalized Parquet: how-to/write-normalized-parquet.md
+      - Build A PlotStack: how-to/plotstack.md
+      - Plan A Pipeline: how-to/pipeline-plan.md
+      - Use Moon Maps: how-to/moon-maps.md
   - Maps:
-      - 月面マップ: maps/moon.md
+      - Moon Maps: maps/moon.md
   - Reference:
-      - API リファレンス: reference/api.md
-      - スキーマ: reference/schemas.md
-      - Store layout: reference/store-layout.md
-      - Pipeline rules: reference/pipeline-rules.md
-      - 設定: reference/configuration.md
-      - 実装状況: reference/status.md
-      - 設計メモ: reference/design-notes.md
+      - API Reference: reference/api.md
+      - Schemas: reference/schemas.md
+      - Store Layout: reference/store-layout.md
+      - Pipeline Rules: reference/pipeline-rules.md
+      - Configuration: reference/configuration.md
+      - Status: reference/status.md
+      - Design Notes: reference/design-notes.md
       - License: reference/license.md

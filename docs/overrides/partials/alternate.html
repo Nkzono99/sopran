@@ -1,5 +1,9 @@
 {% set fallback_language = config.extra.sopran_language_switcher.fallback_language | d('ja') %}
-{% set current_language = 'en' if page and page.url and page.url.startswith('en/') else fallback_language %}
+{% set current_url = page.url if page and page.url else '' %}
+{% set current_language = 'en' if current_url.startswith('en/') else fallback_language %}
+{% set mirror_url = current_url[3:] if current_language == 'en' else 'en/' ~ current_url %}
+{% set ja_url = mirror_url if current_language == 'en' else current_url %}
+{% set en_url = current_url if current_language == 'en' else mirror_url %}
 
 <nav
   class="md-header__option sopran-language-switcher"
@@ -10,8 +14,9 @@
   <span class="sopran-language-switcher__prefix">Lang</span>
   <span class="sopran-language-switcher__toggle" role="group" aria-label="Language">
     {% for alt in config.extra.alternate %}
+      {% set target_url = ja_url if alt.lang == 'ja' else en_url %}
       <a
-        href="{{ alt.link | url }}"
+        href="{{ target_url | url }}"
         hreflang="{{ alt.lang }}"
         lang="{{ alt.lang }}"
         class="sopran-language-switcher__link{% if alt.lang == current_language %} sopran-language-switcher__link--active{% endif %}"

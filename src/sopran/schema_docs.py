@@ -24,15 +24,28 @@ def builtin_schemas() -> tuple[InstrumentSchema, ...]:
 
 def schema_reference_markdown(
     schemas: Iterable[InstrumentSchema] | None = None,
+    *,
+    language: str = "ja",
 ) -> str:
     selected = tuple(schemas) if schemas is not None else builtin_schemas()
-    lines = [
-        "# Schema Reference",
-        "",
-        "This page is generated from SOPRAN runtime schema objects.",
-        "Update the schema objects first, then regenerate this page.",
-        "",
-    ]
+    if language == "ja":
+        lines = [
+            "# スキーマ",
+            "",
+            "このページは SOPRAN の runtime schema object から生成しています。",
+            "スキーマを変更する場合は、先に code 側の schema object を更新してから再生成します。",
+            "",
+        ]
+    elif language == "en":
+        lines = [
+            "# Schemas",
+            "",
+            "This page is generated from SOPRAN runtime schema objects.",
+            "Update the schema objects first, then regenerate this page.",
+            "",
+        ]
+    else:
+        raise ValueError(f"unsupported schema docs language: {language}")
     for schema in selected:
         lines.extend(
             (
@@ -48,10 +61,15 @@ def schema_reference_markdown(
 def write_schema_reference(
     path: Path | str,
     schemas: Iterable[InstrumentSchema] | None = None,
+    *,
+    language: str = "ja",
 ) -> Path:
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(schema_reference_markdown(schemas), encoding="utf-8")
+    output.write_text(
+        schema_reference_markdown(schemas, language=language),
+        encoding="utf-8",
+    )
     return output
 
 
@@ -71,9 +89,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Return non-zero when the output path is stale.",
     )
+    parser.add_argument(
+        "--language",
+        choices=("ja", "en"),
+        default="ja",
+        help="Documentation language.",
+    )
     args = parser.parse_args(argv)
     path = Path(args.path)
-    expected = schema_reference_markdown()
+    expected = schema_reference_markdown(language=args.language)
     if args.check:
         if not path.exists() or path.read_text(encoding="utf-8") != expected:
             return 1

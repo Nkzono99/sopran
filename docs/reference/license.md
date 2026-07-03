@@ -1,4 +1,4 @@
-# License
+# License（ライセンス）
 
 SOPRAN 本体は Apache License 2.0 を想定しています。
 

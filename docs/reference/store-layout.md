@@ -1,4 +1,4 @@
-# Store layout
+# Store layout（保存構造）
 
 `Store` は raw file と SOPRAN dataset を同じ root の下に分けて置きます。
 

@@ -1,4 +1,4 @@
-# Pipeline
+# Pipeline（バッチ処理）
 
 `Pipeline` は download、decode、normalize、quicklook、parquet 保存を遅延実行する
 batch API です。

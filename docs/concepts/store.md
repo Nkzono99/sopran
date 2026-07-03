@@ -1,4 +1,4 @@
-# Store
+# Store（保存場所）
 
 `Store` は物理データの置き場所です。解析 workspace を表す `Project` とは分けます。
 

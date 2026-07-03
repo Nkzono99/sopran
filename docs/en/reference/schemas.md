@@ -1,7 +1,7 @@
-# スキーマ
+# Schemas
 
-このページは SOPRAN の runtime schema object から生成しています。
-スキーマを変更する場合は、先に code 側の schema object を更新してから再生成します。
+This page is generated from SOPRAN runtime schema objects.
+Update the schema objects first, then regenerate this page.
 
 ## kaguya / esa1
 

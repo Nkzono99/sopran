@@ -13,7 +13,8 @@ import sopran.schema_docs as schema_docs
 def test_schema_reference_markdown_lists_builtin_instrument_schemas() -> None:
     markdown = spn.schema_reference_markdown()
 
-    assert markdown.startswith("# Schema Reference")
+    assert markdown.startswith("# スキーマ")
+    assert "runtime schema object から生成" in markdown
     assert "## kaguya / esa1" in markdown
     assert "## artemis / fgm" in markdown
     assert "## moon / surface" in markdown
@@ -39,6 +40,14 @@ def test_write_schema_reference_writes_runtime_output(tmp_path) -> None:
 
     assert written == output
     assert output.read_text(encoding="utf-8") == spn.schema_reference_markdown()
+
+
+def test_schema_reference_markdown_can_render_english() -> None:
+    markdown = spn.schema_reference_markdown(language="en")
+
+    assert markdown.startswith("# Schemas")
+    assert "This page is generated from SOPRAN runtime schema objects." in markdown
+    assert "## kaguya / esa1" in markdown
 
 
 def test_schema_reference_cli_supports_write_and_check(tmp_path) -> None:

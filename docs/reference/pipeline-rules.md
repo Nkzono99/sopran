@@ -1,4 +1,4 @@
-# Pipeline rules
+# Pipeline rules（実行規則）
 
 Pipeline は副作用のある処理なので、実行規則を明示します。
 

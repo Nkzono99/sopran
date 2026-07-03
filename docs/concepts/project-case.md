@@ -1,4 +1,4 @@
-# Project と Case
+# Project と Case（解析単位）
 
 `Project` は解析 workspace、`Case` は特定の期間・領域・既定値を表します。
 

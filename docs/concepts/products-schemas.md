@@ -1,4 +1,4 @@
-# Product と Schema
+# Product と Schema（データ定義）
 
 SOPRAN は変数名、dimensions、units、frame、aliases を `VariableSchema` として
 コード側に持ちます。ドキュメント表、validation、dataset manifest は同じ schema

@@ -1,4 +1,4 @@
-# Maps
+# Maps（地図）
 
 DEM、SVM、SZA、shadow、illumination のような天体固定の地図は mission ではなく
 body-first に扱います。
