@@ -2163,8 +2163,8 @@ KAGUYA ESA1 の `on_error="continue"` は、v0.1 では入力 raw file が見つ
 load/write 前段失敗を 1 shard の failed catalog として記録する。partial shard の検出と
 再分割は後続 milestone で扱う。`dry_run=True` の結果は `PipelinePlan.to_dict()` と
 `PipelineResult.to_text()` / `str(result)` で source、time range、stage list、
-output target を確認できる。`PipelineResult.to_dict()` は `outputs` も JSON-ready な
-summary として返し、dataset output なら root、manifest path、manifest、quicklook などの
+output target、run parameters を確認できる。`PipelineResult.to_dict()` は `run_parameters` と
+`outputs` も JSON-ready な summary として返し、dataset output なら root、manifest path、manifest、quicklook などの
 metadata output なら artifact path / format、metadata path、metadata を含める。
 
 ### Rust backend contract

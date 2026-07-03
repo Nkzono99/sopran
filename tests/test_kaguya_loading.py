@@ -561,9 +561,17 @@ def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:
         )
     )
 
-    result = pipe.run(dry_run=True)
+    result = pipe.run(dry_run=True, download="always")
 
     assert result.status == "planned"
+    assert result.run_parameters == {
+        "download": "always",
+        "dry_run": True,
+        "mode": "create",
+        "on_error": "fail",
+        "only_failed": False,
+        "resume": False,
+    }
     assert result.plan.stage_names == ("download", "decode", "select_variables", "write")
     assert result.plan.output_dataset == "kaguya.esa1.counts"
     assert result.plan.to_dict() == {
@@ -582,9 +590,11 @@ def test_pipeline_dry_run_returns_result_without_executing(tmp_path) -> None:
             },
         ],
     }
+    assert result.to_dict()["run_parameters"] == result.run_parameters
     text = str(result)
     assert "SOPRAN pipeline result" in text
     assert "status: planned" in text
+    assert "run: dry_run=True mode='create' download='always'" in text
     assert "source: kaguya.esa1" in text
     assert "time: 2008-02-01T00:00:00Z .. 2008-03-01T00:00:00Z" in text
     assert "output: kaguya.esa1.counts (normalized)" in text

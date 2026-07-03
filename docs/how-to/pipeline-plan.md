@@ -30,8 +30,9 @@ print(result)
 ```
 
 The dry-run result does not execute pipeline stages. It reports the source,
-time range, stage list, output target, and an empty output list. Executed
-pipeline results include JSON-ready output summaries in `result.to_dict()`.
+time range, stage list, output target, run parameters, and an empty output
+list. Executed pipeline results include JSON-ready run parameters and output
+summaries in `result.to_dict()`.
 
 For KAGUYA ESA1, `run()` writes quicklooks under
 `<dataset>/preview/<name>.png` with a matching JSON metadata file. Use

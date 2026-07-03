@@ -298,6 +298,14 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     )
 
     assert result.status == "complete"
+    assert result.run_parameters == {
+        "download": None,
+        "dry_run": False,
+        "mode": "create",
+        "on_error": "fail",
+        "only_failed": False,
+        "resume": False,
+    }
     assert re.match(r"^run_\d{8}T\d{6}\d{6}Z_[0-9a-f]{8}$", result.run_id)
     manifest = result.outputs[0].manifest()
     assert manifest["dataset_id"] == "kaguya.esa1.counts"
@@ -732,6 +740,7 @@ def test_kaguya_esa1_pipeline_run_uses_explicit_download_policy(
     )
 
     assert result.status == "partial"
+    assert result.run_parameters["download"] == "always"
     assert seen_downloads == ["always"]
 
 

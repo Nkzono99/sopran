@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -75,6 +75,7 @@ class PipelineResult:
     outputs: tuple[Any, ...] = ()
     run_id: str = ""
     log_path: Path | None = None
+    run_parameters: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -82,6 +83,7 @@ class PipelineResult:
             "message": self.message,
             "run_id": self.run_id,
             "log_path": str(self.log_path) if self.log_path is not None else None,
+            "run_parameters": _jsonable(self.run_parameters),
             "outputs": [_output_summary(output) for output in self.outputs],
             "plan": self.plan.to_dict(),
         }
@@ -95,6 +97,8 @@ class PipelineResult:
         ]
         if self.log_path is not None:
             lines.append(f"log: {self.log_path}")
+        if self.run_parameters:
+            lines.append(f"run: {_format_parameters(self.run_parameters).strip()}")
         lines.extend(("", self.plan.to_text()))
         return "\n".join(lines)
 
@@ -239,16 +243,25 @@ class Pipeline:
             raise ValueError("resume=True and only_failed=True cannot be combined")
         plan = self.plan()
         run_id = _new_pipeline_run_id()
+        run_parameters = _run_parameters(
+            dry_run=dry_run,
+            mode=mode,
+            resume=resume,
+            only_failed=only_failed,
+            on_error=on_error,
+            download=download,
+        )
         if dry_run:
             return PipelineResult(
                 plan=plan,
                 status="planned",
                 message="Dry run only; no pipeline stages were executed.",
                 run_id=run_id,
+                run_parameters=run_parameters,
             )
         runner = getattr(self.context, "_run_pipeline", None)
         if runner is not None:
-            return runner(
+            result = runner(
                 self,
                 mode=mode,
                 run_id=run_id,
@@ -257,6 +270,9 @@ class Pipeline:
                 on_error=on_error,
                 download=download,
             )
+            if isinstance(result, PipelineResult) and not result.run_parameters:
+                return replace(result, run_parameters=run_parameters)
+            return result
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
     def _with_stage(self, name: str, **parameters: Any) -> Pipeline:
@@ -287,6 +303,25 @@ def _write_target(dataset: str | Any, layer: str | None) -> tuple[str, str]:
 def _new_pipeline_run_id() -> str:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     return f"run_{stamp}_{uuid4().hex[:8]}"
+
+
+def _run_parameters(
+    *,
+    dry_run: bool,
+    mode: PipelineRunMode,
+    resume: bool,
+    only_failed: bool,
+    on_error: PipelineOnError,
+    download: PipelineDownloadMode | None,
+) -> dict[str, Any]:
+    return {
+        "dry_run": dry_run,
+        "mode": mode,
+        "download": download,
+        "on_error": on_error,
+        "only_failed": only_failed,
+        "resume": resume,
+    }
 
 
 def _jsonable(value: object) -> object:

@@ -8,7 +8,8 @@
   partitioning in the manifest.
 - `quicklook()` declares preview artifacts; it does not render until `run()`.
 - `run(dry_run=True)` returns a planned `PipelineResult` without executing
-  stages; its plan can be inspected with `to_dict()` or `str(result)`.
+  stages; its plan and run parameters can be inspected with `to_dict()` or
+  `str(result)`.
 - `run(download="never"|"missing"|"always")` overrides the mission default
   download policy for that execution. KAGUYA ESA1 applies it to normal writes,
   daily partition writes, failed-shard replay, and quicklook input loading.

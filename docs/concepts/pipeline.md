@@ -35,11 +35,12 @@ pipe.run(download="always")
 
 `PipelinePlan.to_dict()` gives a JSON-like execution plan with source, time
 range, stage parameters, and output target. `PipelineResult.to_dict()` also
-includes JSON-ready output summaries, including dataset roots, manifest paths
-and manifests, or quicklook artifact paths, formats, metadata paths, and
-metadata when available.
+includes JSON-ready run parameters and output summaries, including dataset
+roots, manifest paths and manifests, or quicklook artifact paths, formats,
+metadata paths, and metadata when available.
 `str(pipe.run(dry_run=True))` renders the same plan as readable text for
-terminal logs and notebooks.
+terminal logs and notebooks, including the run parameters such as dry-run mode,
+run mode, and download override.
 
 Read existing normalized data with Polars:
 
