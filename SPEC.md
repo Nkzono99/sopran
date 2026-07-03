@@ -1695,6 +1695,8 @@ stack = spn.stack(
 - 時間ビン化は `spn.time_bins(...)` が返す `TimeBins` を第一級 object として扱う。
 - `spn.time_bins(..., partial="error")` は cadence で割り切れない範囲を失敗させる既定動作とする。
 - `partial="keep"` は末尾の短い bin を残し、`partial="drop"` は末尾の短い bin を捨てる。
+  `partial="drop"` で末尾を捨てた場合、`TimeBins.time` と downstream dataset の
+  `time_coverage` は残った bin edges の範囲に縮める。
 - 規則的な cadence でない event-driven / user-defined grid は
   `spn.time_bins(edges=[...])` で明示的な edge 列から作る。custom grid では
   `TimeBins.partial == "custom"` とし、各 bin は末尾 partial ではなく利用者定義 bin として扱う。
@@ -1809,7 +1811,8 @@ v0.1 の `spn.align` / `SampleTable` はまず 1D time series を `nearest`, `ce
 `max`, `median`, `first`, `last` で `TimeBins` に対応づける。`nearest` は center time の
 最近傍を全 sample から取り、`center` は bin 内で center time に最も近い sample を取る。
 `mean`, `max`, `median`, `first`, `last` は半開区間 `[start, stop)` の bin 内 sample を集約する。
-`TimeBins.partial` は末尾の不完全 bin の扱いを記録する。`TimeBins.to_polars()` で
+`TimeBins.partial` は末尾の不完全 bin の扱いを記録する。`partial="drop"` で末尾を捨てた
+場合は `TimeBins.time` も残った bin 範囲に合わせる。`TimeBins.to_polars()` で
 bin grid を表形式として確認でき、`TimeBins.metadata()` / `AlignmentResult.metadata()["grid"]` には
 `edges`, `centers`, `durations_seconds`, `is_partial` を保存する。
 `spn.time_bins(edges=[...])` は event window や利用者定義 interval など可変幅 grid のための

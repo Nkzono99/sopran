@@ -59,6 +59,18 @@ def test_time_bins_can_drop_partial_tail_bin() -> None:
     )
 
 
+def test_time_bins_drop_partial_tail_updates_time_coverage() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),
+        cadence="10s",
+        partial="drop",
+    )
+
+    assert bins.time.start_iso == "2008-01-01T00:00:00Z"
+    assert bins.time.stop_iso == "2008-01-01T00:00:20Z"
+    assert bins.metadata()["stop"] == "2008-01-01T00:00:20Z"
+
+
 def test_time_bins_export_bin_table_and_metadata() -> None:
     bins = spn.time_bins(
         spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:24Z"),

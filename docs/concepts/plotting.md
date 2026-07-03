@@ -65,6 +65,10 @@ pandas_frame = matrix.to_pandas(include_time=True)
 feature_metadata = aligned.feature_metadata()
 ```
 
+Use `partial="drop"` when the requested range should be trimmed to complete
+bins; the resulting `TimeBins.time` follows the retained bin-edge range, so
+feature dataset `time_coverage` does not include the discarded tail.
+
 For event-centered reviews or hand-curated intervals, define the grid with
 explicit edges and reuse the same alignment API:
 

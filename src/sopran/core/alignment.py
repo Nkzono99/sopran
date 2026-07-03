@@ -477,7 +477,19 @@ def time_bins(
             break
         current = next_edge
         edges.append(current)
-    return TimeBins(time=time, edges=tuple(edges), label=label, closed=closed, partial=partial)
+    grid_stop = edges[-1]
+    grid_time = (
+        TimeRange(time.start, grid_stop)
+        if time.start < grid_stop < time.stop
+        else time
+    )
+    return TimeBins(
+        time=grid_time,
+        edges=tuple(edges),
+        label=label,
+        closed=closed,
+        partial=partial,
+    )
 
 
 def align(

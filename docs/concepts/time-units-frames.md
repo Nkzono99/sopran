@@ -14,7 +14,9 @@ boundaries when appending daily or monthly shards.
 
 `time_bins()` is strict by default: `partial="error"` raises if the requested
 range is not exactly divisible by the cadence. Use `partial="keep"` to retain a
-short final bin, or `partial="drop"` to discard it:
+short final bin, or `partial="drop"` to discard it. When a tail is dropped,
+`TimeBins.time` and Store-managed feature dataset `time_coverage` use the
+remaining bin-edge range:
 
 ```python
 bins = spn.time_bins(time, cadence="10s", partial="keep")
