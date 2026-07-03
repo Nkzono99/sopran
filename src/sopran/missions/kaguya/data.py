@@ -10,7 +10,7 @@ from sopran.core.data import SopranArray
 from sopran.core.pages import InfoPage
 from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange
-from sopran.missions.kaguya.pace import PaceData, read_pace_pbf
+from sopran.missions.kaguya.pace import PaceCalibration, PaceData, read_pace_pbf
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
@@ -19,6 +19,7 @@ class KaguyaESA1Data:
     time: TimeRange
     files: tuple[Path, ...] = ()
     instrument: str = "ESA1"
+    calibration: PaceCalibration | None = None
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -27,6 +28,7 @@ class KaguyaESA1Data:
                 f"time: {self.time.start_iso} to {self.time.stop_iso}",
                 "variables: energy_flux, counts, energy, quality",
                 f"files: {len(self.files)}",
+                _calibration_info_line(self.calibration, self.instrument),
             ),
         )
 
@@ -162,6 +164,7 @@ class KaguyaESA1Data:
         energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
         counts_schema = KAGUYA_ESA1_SCHEMA.variable("counts")
         quality_schema = KAGUYA_ESA1_SCHEMA.variable("quality")
+        calibration = _calibration_metadata(self.calibration, self.instrument)
         return xr.Dataset(
             data_vars={
                 "energy_flux": (
@@ -170,6 +173,7 @@ class KaguyaESA1Data:
                     {
                         "units": energy_flux_schema.units,
                         "description": energy_flux_schema.description,
+                        "calibration": calibration["status"],
                     },
                 ),
                 "counts": (
@@ -189,6 +193,7 @@ class KaguyaESA1Data:
                 "instrument": self.instrument,
                 "start": self.time.start_iso,
                 "stop": self.time.stop_iso,
+                "calibration": calibration,
             },
         )
 
@@ -196,6 +201,7 @@ class KaguyaESA1Data:
         energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
         counts_schema = KAGUYA_ESA1_SCHEMA.variable("counts")
         quality_schema = KAGUYA_ESA1_SCHEMA.variable("quality")
+        calibration = _calibration_metadata(self.calibration, self.instrument)
         count_rows = []
         headers = []
 
@@ -235,7 +241,7 @@ class KaguyaESA1Data:
                     {
                         "units": energy_flux_schema.units,
                         "description": energy_flux_schema.description,
-                        "calibration": "not_applied",
+                        "calibration": calibration["status"],
                     },
                 ),
                 "counts": (
@@ -262,6 +268,7 @@ class KaguyaESA1Data:
                 "source_files": [str(path) for path in self.files],
                 "start": self.time.start_iso,
                 "stop": self.time.stop_iso,
+                "calibration": calibration,
             },
         )
 
@@ -287,6 +294,31 @@ def _header_in_time_range(header: dict[str, Any], time: TimeRange) -> bool:
         return False
     instant = datetime.fromtimestamp(float(value), tz=timezone.utc)
     return time.start <= instant < time.stop
+
+
+def _calibration_info_line(calibration: PaceCalibration | None, instrument: str) -> str:
+    metadata = _calibration_metadata(calibration, instrument)
+    return (
+        "calibration: "
+        f"fov={metadata['fov']}, "
+        f"info={metadata['info']}, "
+        f"status={metadata['status']}"
+    )
+
+
+def _calibration_metadata(
+    calibration: PaceCalibration | None,
+    instrument: str,
+) -> dict[str, object]:
+    if calibration is None:
+        return {"fov": False, "info": False, "status": "not_loaded"}
+    coverage = calibration.coverage(instrument)
+    has_any_table = bool(coverage["fov"] or coverage["info"])
+    return {
+        "fov": coverage["fov"],
+        "info": coverage["info"],
+        "status": "tables_loaded_not_applied" if has_any_table else "not_loaded",
+    }
 
 
 def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any):

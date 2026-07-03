@@ -169,6 +169,38 @@ def test_kaguya_esa1_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None
     assert str(ds["time"].values[0]) == "2008-01-01T00:00:08.000000000"
 
 
+def test_kaguya_esa1_to_xarray_records_loaded_unapplied_calibration(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    info_shape = (8, 32, 4, 16)
+    calibration = PaceCalibration(
+        info={
+            0: {
+                "gfactor_4x16": np.ones(info_shape),
+            }
+        }
+    )
+
+    kg = spn.Kaguya(store=store)
+
+    data = kg.esa1.load(spn.day("2008-01-01"), calibration=calibration)
+    ds = data.to_xarray()
+
+    assert data.info().lines[-1] == "calibration: fov=False, info=True, status=tables_loaded_not_applied"
+    assert ds.attrs["calibration"] == {
+        "fov": False,
+        "info": True,
+        "status": "tables_loaded_not_applied",
+    }
+    assert ds["energy_flux"].attrs["calibration"] == "tables_loaded_not_applied"
+    assert np.isnan(ds["energy_flux"].to_numpy()).all()
+
+
 def test_kaguya_esa1_to_xarray_filters_records_to_requested_time_range(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"

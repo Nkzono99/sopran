@@ -35,6 +35,11 @@ represented as NaN in decoded xarray output until the tables are applied and
 SPEDAS parity tests are ported.
 
 ```python
+import sopran as spn
+
+kg = spn.Kaguya()
+time = spn.day("2008-01-01")
 cal = kg.esa1.load_calibration(download="never")
 cal.coverage("ESA1")
+kg.esa1.load(time, calibration=cal).to_xarray().attrs["calibration"]
 ```

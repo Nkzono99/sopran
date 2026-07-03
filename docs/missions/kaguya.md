@@ -48,7 +48,12 @@ step is to connect the FOV / INFO tables to energy coordinates, look-angle
 coordinates, geometric factors, and SPEDAS golden tests.
 
 ```python
+import sopran as spn
+
+store = spn.Store("F:/sopran_data")
 kg = spn.Kaguya(store=store)
+time = spn.day("2008-01-01")
 cal = kg.esa1.load_calibration(download="never")
 cal.coverage("ESA1")
+kg.esa1.load(time, calibration=cal).to_xarray().attrs["calibration"]
 ```

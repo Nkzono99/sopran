@@ -740,6 +740,7 @@ fig = plot_result.fig
         self,
         time: TimeRange | None = None,
         *,
+        calibration: PaceCalibration | None = None,
         download: DownloadMode | None = None,
     ) -> KaguyaESA1Data:
         if time is None:
@@ -749,7 +750,7 @@ fig = plot_result.fig
         files: list[Path] = []
         for day in time.days():
             files.extend(self.select(day).files(download=download))
-        return KaguyaESA1Data(time=time, files=tuple(files))
+        return KaguyaESA1Data(time=time, files=tuple(files), calibration=calibration)
 
 
 def _filter_lazy_by_time(lazy, time: TimeRange):

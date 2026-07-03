@@ -18,8 +18,15 @@ For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 PACE FOV / INFO calibration tables can be read explicitly:
 
 ```python
+import sopran as spn
+
+kg = spn.Kaguya()
+time = spn.day("2008-01-01")
 cal = kg.esa1.load_calibration(download="never")
 cal.coverage("ESA1")
+
+esa1 = kg.esa1.load(time, calibration=cal)
+esa1.to_xarray().attrs["calibration"]
 ```
 
 The same readers are also available at the low-level boundary:
@@ -34,8 +41,9 @@ cal = PaceCalibration(
 cal.coverage("ESA1")
 ```
 
-This is only the table-loading boundary. Applying those tables to produce
-physical `energy_flux`, calibrated energy coordinates, and look-angle
+This is only the table-loading boundary. Passing `calibration=cal` records the
+coverage metadata as `tables_loaded_not_applied`; applying those tables to
+produce physical `energy_flux`, calibrated energy coordinates, and look-angle
 coordinates remains separate planned work.
 
 ## Examples

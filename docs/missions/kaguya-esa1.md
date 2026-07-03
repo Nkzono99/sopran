@@ -17,9 +17,16 @@ PACE calibration table support is available through the mission object when
 the files are present in `Store.raw_path("kaguya", "calibration", "pace")`:
 
 ```python
+import sopran as spn
+
+store = spn.Store("F:/sopran_data")
 kg = spn.Kaguya(store=store)
+time = spn.day("2008-01-01")
 cal = kg.esa1.load_calibration(download="never")
 cal.coverage("ESA1")
+
+esa1 = kg.esa1.load(time, calibration=cal)
+esa1.to_xarray().attrs["calibration"]
 ```
 
 The same table readers are available at the low-level boundary:
@@ -34,9 +41,10 @@ cal = PaceCalibration(
 cal.coverage("ESA1")
 ```
 
-This only loads the published FOV / INFO arrays. Applying those arrays to
-produce physical `energy_flux`, calibrated energy coordinates, and look-angle
-coordinates is still planned work.
+This only loads the published FOV / INFO arrays. Passing `calibration=cal`
+records the coverage metadata as `tables_loaded_not_applied`; applying those
+arrays to produce physical `energy_flux`, calibrated energy coordinates, and
+look-angle coordinates is still planned work.
 
 ## Example
 
