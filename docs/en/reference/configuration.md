@@ -37,8 +37,12 @@ lon_domain = "0_360"
 
 | Variable | Role |
 | --- | --- |
-| `SOPRAN_DATA_ROOT` | Default data root for `Store()` |
-| `SOPRAN_CACHE_ROOT` | Cache root |
+| `SOPRAN_DATA_ROOT` | Default data root for `Store()` and `Project(...)` |
+| `SOPRAN_CACHE_ROOT` | Default cache root. Falls back to `<data root>/cache` |
 | `SOPRAN_ARTIFACT_ROOT` | Default output root for `Project.save(...)` |
 | `SOPRAN_DOWNLOAD_MODE` | Mission download policy |
 | `SOPRAN_OFFLINE` | Truthy values force the default download policy to `never` |
+
+Explicit roots such as `spn.Store("F:/data")` take precedence over environment
+variables. When `spn.Project("workspace")` creates a store automatically,
+environment variables take precedence over `[store]`.

@@ -7,6 +7,21 @@ root の下で管理します。
 store = spn.Store("F:/sopran_data")
 ```
 
+## 既定 root
+
+個人環境の既定保存先は環境変数で固定できます。
+
+```powershell
+$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+```
+
+| 作り方 | data root | cache root |
+| --- | --- | --- |
+| `spn.Store("F:/data")` | `F:/data` | `F:/data/cache` |
+| `spn.Store()` + env | `SOPRAN_DATA_ROOT` | `SOPRAN_CACHE_ROOT` |
+| `spn.Project(...)` | env > `[store].data_root` > `project/data` | env > `[store].cache_root` > `<data root>/cache` |
+
 ## レイヤ
 
 | layer | 置くもの |

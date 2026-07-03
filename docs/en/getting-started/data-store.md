@@ -7,6 +7,21 @@ databases under one physical root.
 store = spn.Store("F:/sopran_data")
 ```
 
+## Default Roots
+
+Use environment variables to pin your personal data location.
+
+```powershell
+$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+```
+
+| Constructor | Data root | Cache root |
+| --- | --- | --- |
+| `spn.Store("F:/data")` | `F:/data` | `F:/data/cache` |
+| `spn.Store()` + env | `SOPRAN_DATA_ROOT` | `SOPRAN_CACHE_ROOT` |
+| `spn.Project(...)` | env > `[store].data_root` > `project/data` | env > `[store].cache_root` > `<data root>/cache` |
+
 ## Layers
 
 | Layer | Contents |

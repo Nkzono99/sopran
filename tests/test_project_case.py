@@ -169,6 +169,31 @@ cache_root = "configured_cache"
     assert project.store.cache_root == project_root / "configured_cache"
 
 
+def test_project_store_environment_overrides_project_config(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    env_data = tmp_path / "env_data"
+    env_cache = tmp_path / "env_cache"
+    monkeypatch.setenv("SOPRAN_DATA_ROOT", str(env_data))
+    monkeypatch.setenv("SOPRAN_CACHE_ROOT", str(env_cache))
+    (project_root / "sopran.toml").write_text(
+        """
+[store]
+data_root = "configured_data"
+cache_root = "configured_cache"
+""".strip(),
+        encoding="utf-8",
+    )
+
+    project = spn.Project(project_root)
+
+    assert project.store.root == env_data
+    assert project.store.cache_root == env_cache
+
+
 def test_project_reads_artifact_root_from_project_config(tmp_path) -> None:
     project_root = tmp_path / "project"
     project_root.mkdir()

@@ -6,6 +6,22 @@
 store = spn.Store("F:/sopran_data")
 ```
 
+## root の決め方
+
+`Store()` に root を渡さない場合は環境変数を読みます。
+
+| 項目 | 解決順 |
+| --- | --- |
+| data root | 明示引数 > `SOPRAN_DATA_ROOT` > `sopran_data` |
+| cache root | 明示引数 > `SOPRAN_CACHE_ROOT` > `<data root>/cache` |
+
+```powershell
+$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+```
+
+`Project("workspace")` から作る場合は、環境変数が `sopran.toml` の `[store]` より優先されます。
+
 ## レイヤ
 
 ```text

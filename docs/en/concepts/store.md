@@ -7,6 +7,23 @@ represented by `Project`.
 store = spn.Store("F:/sopran_data")
 ```
 
+## Root Resolution
+
+When `Store()` receives no explicit root, it reads environment variables.
+
+| Item | Resolution order |
+| --- | --- |
+| Data root | Explicit argument > `SOPRAN_DATA_ROOT` > `sopran_data` |
+| Cache root | Explicit argument > `SOPRAN_CACHE_ROOT` > `<data root>/cache` |
+
+```powershell
+$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+```
+
+When a store is created through `Project("workspace")`, environment variables take
+precedence over `[store]` in `sopran.toml`.
+
 ## Layers
 
 ```text

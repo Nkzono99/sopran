@@ -37,10 +37,13 @@ lon_domain = "0_360"
 
 | 変数 | 役割 |
 | --- | --- |
-| `SOPRAN_DATA_ROOT` | `Store()` の既定 data root |
-| `SOPRAN_CACHE_ROOT` | cache root |
+| `SOPRAN_DATA_ROOT` | `Store()` と `Project(...)` の既定 data root |
+| `SOPRAN_CACHE_ROOT` | 既定 cache root。未指定なら `<data root>/cache` |
 | `SOPRAN_ARTIFACT_ROOT` | `Project.save(...)` の既定出力先 |
 | `SOPRAN_DOWNLOAD_MODE` | mission download policy |
 | `SOPRAN_OFFLINE` | truthy のとき download policy を `never` にする |
+
+`spn.Store("F:/data")` のように明示 root を渡した場合は、環境変数よりも明示引数が優先されます。
+`spn.Project("workspace")` が store を自動生成する場合は、環境変数が `[store]` より優先されます。
 
 不正な設定は `ConfigError` を送出します。

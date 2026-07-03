@@ -13,6 +13,40 @@ from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
+def test_store_uses_environment_roots_when_paths_are_not_explicit(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    data_root = tmp_path / "env_data"
+    cache_root = tmp_path / "env_cache"
+    monkeypatch.setenv("SOPRAN_DATA_ROOT", str(data_root))
+    monkeypatch.setenv("SOPRAN_CACHE_ROOT", str(cache_root))
+
+    store = Store()
+
+    assert store.root == data_root
+    assert store.cache_root == cache_root
+
+
+def test_store_explicit_roots_override_environment(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SOPRAN_DATA_ROOT", str(tmp_path / "env_data"))
+    monkeypatch.setenv("SOPRAN_CACHE_ROOT", str(tmp_path / "env_cache"))
+
+    store = Store(tmp_path / "explicit_data", cache_root=tmp_path / "explicit_cache")
+
+    assert store.root == tmp_path / "explicit_data"
+    assert store.cache_root == tmp_path / "explicit_cache"
+
+
+def test_store_defaults_cache_under_data_root(tmp_path) -> None:
+    store = Store(tmp_path / "data")
+
+    assert store.cache_root == tmp_path / "data" / "cache"
+
+
 def test_store_registers_dataset_manifest_schema_and_catalog(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")
