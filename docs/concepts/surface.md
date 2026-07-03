@@ -65,6 +65,9 @@ Mission modules may discover provider files, but body-fixed semantics belong to
 
 Terrain-aware shadow and illumination products must eventually record DEM,
 solar position, body shape, projection, and longitude-domain metadata.
+For shadow and illumination plans, `method` and `model` are compatibility
+aliases for the calculation model; passing either one records both metadata
+keys with the same value.
 When either `geometry_source` or the compatibility alias `geometry` is provided
 to a surface plan, both metadata keys are normalized to the same value. Passing
 `ephemeris` also sets the same `geometry_source` value.

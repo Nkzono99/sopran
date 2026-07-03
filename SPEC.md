@@ -1357,6 +1357,8 @@ SOPRAN metadata として必ず保持する。
 
 Shadow map は単なる描画用の暗い overlay として扱わない。解析に使う product では、
 DEM、太陽位置、天体形状、座標系、投影、計算 method、入力データ version を manifest に残す。
+planning skeleton では `method` と `model` を compatibility alias として扱い、どちらかを
+指定したら両方の metadata key に同じ値を残す。両方を指定する場合は値が一致しなければならない。
 旧実装や外部データにある `Shadowmap(sza)` のような SZA 固定 lookup は取り込めるが、
 SOPRAN の標準 `ShadowProduct` では `model="external_precomputed"` または `model="legacy_lookup"`
 として区別し、物理計算済み product と混同しない。

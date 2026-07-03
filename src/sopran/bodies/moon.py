@@ -437,6 +437,12 @@ def _format_list(values) -> str:
 
 def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(parameters)
+    if product in {"shadow", "illumination"} and (
+        "method" in normalized or "model" in normalized
+    ):
+        model = _surface_model(normalized)
+        normalized["method"] = model
+        normalized["model"] = model
     if (
         product == "sza"
         or "geometry_source" in normalized
@@ -475,6 +481,17 @@ def _surface_parameters(product: str, parameters: dict[str, Any]) -> dict[str, A
         str(normalized.get("area_or_point", reference.get("area_or_point", "area")))
     )
     return normalized
+
+
+def _surface_model(parameters: dict[str, Any]) -> str:
+    method = parameters.get("method")
+    model = parameters.get("model")
+    if method is not None and model is not None and str(method) != str(model):
+        raise ValueError("method and model must match when both are provided")
+    value = method if method is not None else model
+    if value is None:
+        raise ValueError("method/model cannot be empty")
+    return str(value)
 
 
 def _geometry_source(parameters: dict[str, Any], *, default: str | None) -> str:

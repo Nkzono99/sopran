@@ -98,6 +98,24 @@ def test_surface_plan_normalizes_geometry_aliases_when_provided() -> None:
     assert shadow.parameters["geometry"] == "spice"
 
 
+def test_surface_plan_normalizes_shadow_method_model_aliases() -> None:
+    moon = spn.Moon()
+
+    shadow = moon.shadow.plan(
+        time="2008-02-01T12:00:00Z",
+        method="terrain_ray",
+    )
+    illumination = moon.illumination.plan(
+        time="2008-02-01T12:00:00Z",
+        model="local_slope",
+    )
+
+    assert shadow.parameters["method"] == "terrain_ray"
+    assert shadow.parameters["model"] == "terrain_ray"
+    assert illumination.parameters["method"] == "local_slope"
+    assert illumination.parameters["model"] == "local_slope"
+
+
 def test_surface_plan_normalizes_ephemeris_as_geometry_source() -> None:
     moon = spn.Moon()
 
@@ -167,6 +185,7 @@ def test_surface_plan_exports_json_ready_metadata() -> None:
                 },
             },
             "model": "sphere",
+            "method": "sphere",
             "lon_domain": "-180_180",
             "lon_direction": "east_positive",
             "lat_type": "planetocentric",
