@@ -358,6 +358,8 @@ kg.esa1.load(time)
 
 kg.esa1.energy_flux.load(time)
 kg.esa1.counts.load(time)
+kg.lmag.magnetic_field.load(time)
+kg.lmag.b.load(time)  # alias
 kg.orbit.position.load(time, frame="SSE")
 
 art.p1.fgm.load(time)
@@ -1079,6 +1081,21 @@ KAGUYA_ESA1_SCHEMA = InstrumentSchema(
             dims=("time",),
             units=None,
             dtype="uint32",
+        ),
+    ],
+)
+
+KAGUYA_LMAG_SCHEMA = InstrumentSchema(
+    mission="kaguya",
+    instrument="lmag",
+    variables=[
+        VariableSchema(
+            name="magnetic_field",
+            aliases=("b", "lmag"),
+            dims=("time", "component"),
+            units="nT",
+            frame="MOON_ME",
+            dtype="float64",
         ),
     ],
 )
@@ -2307,6 +2324,7 @@ M1: KAGUYA ESA1 vertical slice
   - 1日分または小サンプル decode
   - PACE FOV / INFO calibration table reader
   - LMAG public MAG_TS reader
+  - `kg.lmag.magnetic_field` / `kg.lmag.b` endpoint
   - KaguyaESA1Data
   - SopranArray
   - energy_flux / counts / energy / quality

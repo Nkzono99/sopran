@@ -31,7 +31,7 @@ from sopran.missions.kaguya.pace import (
     read_pace_fov,
     read_pace_info,
 )
-from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
+from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA, KAGUYA_LMAG_SCHEMA
 from sopran.missions.kaguya.sensors import normalize_sensor
 
 DownloadMode = Literal["never", "missing", "always"]
@@ -91,6 +91,8 @@ class Kaguya:
         normalized = topic.lower().replace("-", "").replace("_", "")
         if normalized in {"esa1", "esas1", "paceesa1"}:
             return self.esa1.guide(language=language)
+        if normalized in {"lmag", "mag"}:
+            return self.lmag.guide(language=language)
         raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
     def help(self, topic: str | None = None, *, language: str = "ja") -> GuidePage:
@@ -175,7 +177,7 @@ class LoadPlan:
 class VariableEndpoint:
     def __init__(
         self,
-        instrument: PaceInstrument,
+        instrument: KaguyaInstrument,
         schema: VariableSchema,
         *,
         dataset_id: str,
@@ -193,7 +195,7 @@ class VariableEndpoint:
                 f"dims: {self._schema.dims}",
                 f"units: {self._schema.units}",
                 f"aliases: {', '.join(self._schema.aliases) or 'none'}",
-                f"example: kg.esa1.{self.name}.load(time)",
+                f"example: {_endpoint_path(self)}.load(time)",
             ),
         )
 
@@ -207,6 +209,8 @@ class VariableEndpoint:
         return self.guide(language=language)
 
     def example(self) -> GuidePage:
+        endpoint_path = _endpoint_path(self)
+        plot_line = _endpoint_plot_example(self)
         return _example_page(
             f"KAGUYA {self.instrument.name} {self.name} Example",
             f"""# KAGUYA {self.instrument.name} {self.name} Example
@@ -217,12 +221,10 @@ import sopran as spn
 kg = spn.Kaguya()
 time = spn.day("2008-01-01")
 
-{self.name} = kg.esa1.{self.name}.load(time)
+{self.name} = {endpoint_path}.load(time)
 
-stack = spn.stack(
-    kg.esa1.counts.load(time).spectrogram(y="energy"),
-    kg.esa1.quality.load(time).line(),
-)
+{plot_line}
+stack = spn.stack(item)
 plot_result = stack.plot()
 fig = plot_result.fig
 ```
@@ -268,6 +270,28 @@ fig = plot_result.fig
         return line(
             lambda: self.load(time, download=download).to_xarray(),
             x=x,
+            name=name or self.name,
+        )
+
+    def lines(
+        self,
+        time: TimeRange | None = None,
+        *,
+        x: str = "time",
+        components: str | tuple[str, ...] | list[str] | None = None,
+        component_dim: str = "component",
+        name: str | None = None,
+        download: DownloadMode | None = None,
+    ):
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        from sopran.core.plotting import lines
+
+        return lines(
+            lambda: self.load(time, download=download).to_xarray(),
+            x=x,
+            components=components,
+            component_dim=component_dim,
             name=name or self.name,
         )
 
@@ -1333,11 +1357,64 @@ class LmagInstrument(KaguyaInstrument):
     def __init__(self, mission: Kaguya, *, version: str = "1.0") -> None:
         self.version = version
         super().__init__(mission, "LMAG")
+        self.magnetic_field = VariableEndpoint(
+            self,
+            KAGUYA_LMAG_SCHEMA.variable("magnetic_field"),
+            dataset_id="kaguya.lmag.magnetic_field",
+        )
+        self.b = self.magnetic_field
+
+    def info(self) -> InfoPage:
+        return InfoPage(
+            title="KAGUYA.LMAG",
+            lines=(
+                "magnetic_field: KAGUYA LMAG magnetic field vector in MOON_ME",
+                "alias: b",
+                "example: kg.lmag.magnetic_field.load(time)",
+            ),
+        )
+
+    def schema(self):
+        return KAGUYA_LMAG_SCHEMA
+
+    def guide(self, *, language: str = "ja") -> GuidePage:
+        return _read_guide(
+            "README.md",
+            title="KAGUYA LMAG",
+            language=language,
+        ).with_schema(KAGUYA_LMAG_SCHEMA)
+
+    def help(self, *, language: str = "ja") -> GuidePage:
+        return self.guide(language=language)
+
+    def example(self) -> GuidePage:
+        return _example_page(
+            "KAGUYA LMAG Example",
+            """# KAGUYA LMAG Example
+
+```python
+import sopran as spn
+
+kg = spn.Kaguya()
+time = spn.day("2008-01-01")
+
+b = kg.lmag.magnetic_field.load(time)
+item = kg.lmag.magnetic_field.lines(time, components="xyz")
+plot_result = spn.stack(item).plot()
+```
+""",
+        )
 
     def remote_files(self, start: object, stop: object | None = None) -> list[str]:
         paths: list[str] = []
         for template in lmag_public_templates(version=self.version):
             paths.extend(iter_public_paths(template, start, stop))
+        return paths
+
+    def remote_files_for_period(self, time: TimeRange) -> list[str]:
+        paths: list[str] = []
+        for day in time.days():
+            paths.extend(self.remote_files(day))
         return paths
 
     def load(
@@ -1369,6 +1446,21 @@ def _kaguya_endpoint_example(endpoint: str) -> str:
     if len(parts) >= 2 and parts[0] == "Kaguya":
         return ".".join(("kg", *(part.lower() for part in parts[1:])))
     return "kg.esa1.energy_flux"
+
+
+def _endpoint_path(endpoint: VariableEndpoint) -> str:
+    return f"kg.{endpoint.instrument.name.lower()}.{endpoint.name}"
+
+
+def _endpoint_plot_example(endpoint: VariableEndpoint) -> str:
+    dims = endpoint.schema().dims
+    path = _endpoint_path(endpoint)
+    if "energy" in dims and "time" in dims:
+        return f'item = {path}.spectrogram(time, y="energy")'
+    if "component" in dims and "time" in dims:
+        return f'item = {path}.lines(time, components="xyz")'
+    x = "time" if "time" in dims else dims[0]
+    return f'item = {path}.line(time, x="{x}")'
 
 
 def _schema_variable_suggestion(name: str) -> str:

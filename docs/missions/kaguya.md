@@ -6,8 +6,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
 ## Implemented
 
 - PACE ESA1/ESA2/IMA/IEA public PBF path planning.
-- LMAG public path planning and public `MAG_TS*.dat` loading through
-  `kg.lmag.load(time)`.
+- LMAG public path planning, public `MAG_TS*.dat` loading through
+  `kg.lmag.load(time)`, and the `kg.lmag.magnetic_field` endpoint.
 - Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
 - Mission default download policy via `Kaguya(download=...)`,
   `SOPRAN_DOWNLOAD_MODE`, and `SOPRAN_OFFLINE`.
@@ -52,6 +52,9 @@ raw/kaguya/pds3/
 lmag = kg.lmag.load(time)
 ds = lmag.to_xarray()
 ds["magnetic_field_moon_me"]
+
+b = kg.lmag.magnetic_field.load(time)
+item = kg.lmag.magnetic_field.lines(time, components="xyz")
 ```
 
 ## Calibration Status

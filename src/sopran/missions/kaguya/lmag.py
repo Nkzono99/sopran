@@ -9,7 +9,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from sopran.core.data import SopranArray
 from sopran.core.time import TimeRange
+from sopran.missions.kaguya.schema import KAGUYA_LMAG_SCHEMA
 
 LMAG_PUBLIC_COLUMNS = [
     "date",
@@ -35,6 +37,34 @@ class KaguyaLmagData:
     files: tuple[Path, ...] = ()
     time: TimeRange | None = None
     instrument: str = "LMAG"
+
+    @property
+    def magnetic_field(self) -> SopranArray:
+        if self.time is None:
+            raise ValueError(
+                "KaguyaLmagData.magnetic_field requires a TimeRange; "
+                "use kg.lmag.load(time) or read_lmag_public(..., time=time)."
+            )
+        schema = KAGUYA_LMAG_SCHEMA.variable("magnetic_field")
+        array = self.to_xarray()["magnetic_field_moon_me"].rename(schema.name)
+        array.attrs.update(
+            {
+                "units": schema.units,
+                "frame": schema.frame,
+                "description": schema.description,
+            }
+        )
+        return SopranArray(
+            name=schema.name,
+            time=self.time,
+            schema=schema,
+            files=self.files,
+            xr=array,
+        )
+
+    @property
+    def b(self) -> SopranArray:
+        return self.magnetic_field
 
     def to_pandas(self) -> pd.DataFrame:
         return self.frame.copy()

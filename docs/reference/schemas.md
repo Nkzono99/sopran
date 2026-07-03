@@ -12,6 +12,12 @@ Update the schema objects first, then regenerate this page.
 | energy | energy | eV |  |  |  | Energy bin center. |
 | quality | time |  |  |  | q, quality_flag | Quality flag. |
 
+## kaguya / lmag
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| magnetic_field | time, component | nT |  | MOON_ME | b, lmag | KAGUYA LMAG magnetic field vector in the Moon Mean Earth frame. |
+
 ## artemis / fgm
 
 | name | dims | units | dtype | frame | aliases | description |

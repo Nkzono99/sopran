@@ -35,3 +35,18 @@ KAGUYA_ESA1_SCHEMA = InstrumentSchema(
         ),
     ),
 )
+
+KAGUYA_LMAG_MAGNETIC_FIELD = VariableSchema(
+    name="magnetic_field",
+    aliases=("b", "lmag"),
+    dims=("time", "component"),
+    units="nT",
+    frame="MOON_ME",
+    description="KAGUYA LMAG magnetic field vector in the Moon Mean Earth frame.",
+)
+
+KAGUYA_LMAG_SCHEMA = InstrumentSchema(
+    mission="kaguya",
+    instrument="lmag",
+    variables=(KAGUYA_LMAG_MAGNETIC_FIELD,),
+)
