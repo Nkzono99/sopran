@@ -82,7 +82,7 @@ class PipelineResult:
             "status": self.status,
             "message": self.message,
             "run_id": self.run_id,
-            "log_path": str(self.log_path) if self.log_path is not None else None,
+            "log_path": _path_summary(self.log_path) if self.log_path is not None else None,
             "run_parameters": _jsonable(self.run_parameters),
             "outputs": [_output_summary(output) for output in self.outputs],
             "plan": self.plan.to_dict(),
@@ -338,13 +338,13 @@ def _output_summary(output: Any) -> dict[str, Any]:
     summary: dict[str, Any] = {"type": type(output).__name__}
     root = getattr(output, "root", None)
     if root is not None:
-        summary["root"] = str(root)
+        summary["root"] = _path_summary(root)
     manifest_path = getattr(output, "manifest_path", None)
     if manifest_path is not None:
-        summary["manifest_path"] = str(manifest_path)
+        summary["manifest_path"] = _path_summary(manifest_path)
     metadata_path = getattr(output, "metadata_path", None)
     if metadata_path is not None:
-        summary["metadata_path"] = str(metadata_path)
+        summary["metadata_path"] = _path_summary(metadata_path)
     artifacts = getattr(output, "artifacts", None)
     if artifacts is not None:
         summary["artifacts"] = [_artifact_summary(artifact) for artifact in artifacts]
@@ -361,11 +361,17 @@ def _artifact_summary(artifact: Any) -> dict[str, Any]:
     summary: dict[str, Any] = {}
     path = getattr(artifact, "path", None)
     if path is not None:
-        summary["path"] = str(path)
+        summary["path"] = _path_summary(path)
     format_name = getattr(artifact, "format", None)
     if format_name is not None:
         summary["format"] = str(format_name)
     return summary
+
+
+def _path_summary(path: Any) -> str:
+    if isinstance(path, Path):
+        return path.as_posix()
+    return str(path)
 
 
 def _format_output(dataset: str | None, layer: str | None) -> str:

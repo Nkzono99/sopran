@@ -37,7 +37,9 @@ pipe.run(download="always")
 range, stage parameters, and output target. `PipelineResult.to_dict()` also
 includes JSON-ready run parameters and output summaries, including dataset
 roots, manifest paths and manifests, or quicklook artifact paths, formats,
-metadata paths, and metadata when available.
+metadata paths, and metadata when available. Path strings in these summaries
+use POSIX-style `/` separators so notebook and log output is stable across
+operating systems.
 `str(pipe.run(dry_run=True))` renders the same plan as readable text for
 terminal logs and notebooks, including the run parameters such as dry-run mode,
 run mode, and download override.

@@ -43,6 +43,8 @@
   The log should include run mode, download policy, status, start/finish
   timestamps, elapsed seconds, declared stage parameters, per-stage row/shard
   counts, shard rows, and total row count.
+- `PipelineResult.to_dict()` should report output and artifact paths as
+  POSIX-style strings with `/` separators.
 - Quicklook-producing backends should write the same run ID and download policy
   into quicklook metadata so preview artifacts can be traced to the
   dataset-writing run.

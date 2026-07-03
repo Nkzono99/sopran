@@ -2170,7 +2170,8 @@ load/write 前段失敗を 1 shard の failed catalog として記録する。pa
 `PipelineResult.to_text()` / `str(result)` で source、time range、stage list、
 output target、run parameters を確認できる。`PipelineResult.to_dict()` は `run_parameters` と
 `outputs` も JSON-ready な summary として返し、dataset output なら root、manifest path、manifest、quicklook などの
-metadata output なら artifact path / format、metadata path、metadata を含める。
+metadata output なら artifact path / format、metadata path、metadata を含める。summary 内の
+path は OS に依存しない POSIX-style string (`/` 区切り) とする。
 
 ### Rust backend contract
 

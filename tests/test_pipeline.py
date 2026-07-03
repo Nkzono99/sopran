@@ -184,10 +184,10 @@ def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
     assert payload["outputs"] == [
         {
             "type": "_OutputWithManifest",
-            "root": str(tmp_path / "normalized" / "kaguya.esa1.counts"),
-            "manifest_path": str(
+            "root": (tmp_path / "normalized" / "kaguya.esa1.counts").as_posix(),
+            "manifest_path": (
                 tmp_path / "normalized" / "kaguya.esa1.counts" / "dataset.json"
-            ),
+            ).as_posix(),
             "manifest": {
                 "dataset_id": "kaguya.esa1.counts",
                 "layer": "normalized",
@@ -196,14 +196,14 @@ def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
         },
         {
             "type": "_OutputWithMetadata",
-            "metadata_path": str(tmp_path / "preview" / "counts.json"),
+            "metadata_path": (tmp_path / "preview" / "counts.json").as_posix(),
             "artifacts": [
                 {
-                    "path": str(tmp_path / "preview" / "counts.png"),
+                    "path": (tmp_path / "preview" / "counts.png").as_posix(),
                     "format": "png",
                 },
                 {
-                    "path": str(tmp_path / "preview" / "counts.html"),
+                    "path": (tmp_path / "preview" / "counts.html").as_posix(),
                     "format": "html",
                 },
             ],

@@ -449,6 +449,15 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
         "mode": "native",
         "cadence": "raw",
     }
+    output_summary = result.to_dict()["outputs"]
+    assert output_summary[0]["root"] == result.outputs[0].root.as_posix()
+    assert output_summary[0]["manifest_path"] == result.outputs[0].manifest_path.as_posix()
+    assert output_summary[1]["metadata_path"] == result.outputs[1].metadata_path.as_posix()
+    assert output_summary[1]["artifacts"] == [
+        {"path": artifact.path.as_posix(), "format": artifact.format}
+        for artifact in result.outputs[1].artifacts
+    ]
+    assert output_summary[1]["metadata"]["metadata"]["pipeline"]["run_id"] == result.run_id
 
 
 def test_kaguya_esa1_pipeline_run_replace_overwrites_counts_dataset(tmp_path: Path) -> None:
