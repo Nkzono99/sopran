@@ -9,6 +9,7 @@ decode.
 - PACE ESA1/ESA2/IMA/IEA public PBF path planning.
 - LMAG public path planning.
 - Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
+- PACE FOV / INFO calibration table readers.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, and
   `write_parquet()`.
 - Minimal Matplotlib `PlotStack` integration through top-level
@@ -28,6 +29,7 @@ paths before downloading or copying data into the store.
 
 ## Current Limits
 
-Calibration from counts to physical energy flux is not implemented yet. ESA1
-`energy_flux` is represented as NaN in decoded xarray output until calibration
-tables and SPEDAS parity tests are ported.
+PACE calibration tables can be read as `PaceCalibration`, but calibration from
+counts to physical energy flux is not implemented yet. ESA1 `energy_flux` is
+represented as NaN in decoded xarray output until the tables are applied and
+SPEDAS parity tests are ported.

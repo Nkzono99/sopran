@@ -15,6 +15,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
   and acquisition time.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, `to_pandas()`,
   and `write_parquet()`.
+- PACE FOV / INFO calibration table readers via `read_pace_fov()`,
+  `read_pace_info()`, `PaceCalibration`, and `pace_calibration_remote_files()`.
 - Variable endpoint plotting and `PlotStack` integration.
 - Pipeline run, append, replace, scan, collect, and per-run download policy
   override for ESA1 counts.
@@ -35,3 +37,10 @@ raw/kaguya/pds3/
 
 Use `kg.esa1.select(day).remote_files()` to inspect expected public archive
 paths before downloading or copying data into the store.
+
+## Calibration Status
+
+PACE calibration tables can be read and represented, but ESA1 `energy_flux` is
+still not computed from counts in `kg.esa1.load(...).to_xarray()`. The next
+step is to connect the FOV / INFO tables to energy coordinates, look-angle
+coordinates, geometric factors, and SPEDAS golden tests.

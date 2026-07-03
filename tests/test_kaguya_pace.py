@@ -12,7 +12,14 @@ import pytest
 
 import sopran as spn
 from sopran import Store
-from sopran.missions.kaguya import pace_energy_counts, read_pace_pbf
+from sopran.missions.kaguya import (
+    PaceCalibration,
+    pace_calibration_remote_files,
+    pace_energy_counts,
+    read_pace_fov,
+    read_pace_info,
+    read_pace_pbf,
+)
 
 
 def test_read_pace_pbf_type01_summarizes_energy_counts(tmp_path: Path) -> None:
@@ -43,6 +50,106 @@ def test_read_pace_pbf_accepts_gzip_files(tmp_path: Path) -> None:
 
     assert pace.source_files == (gz_path,)
     assert pace_energy_counts(pace).shape == (1, 32)
+
+
+def test_read_pace_info_parses_esa1_gfactor_tables(tmp_path: Path) -> None:
+    table = tmp_path / "ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+    table.write_text(
+        "\n".join(
+            [
+                "RAM ENE POL AZ ENERGY POLAR AZIMUTH GFACTOR ENE_SQNO POL_SQNO",
+                "0 1 2 3 0.25 -12.5 90.0 4.5 6 7",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    info = read_pace_info(table)
+
+    assert info.keys() == {0}
+    esa1 = info[0]
+    assert esa1["ene_4x16"].shape == (8, 32, 4, 16)
+    assert esa1["ene_4x16"][0, 1, 2, 3] == pytest.approx(0.25)
+    assert esa1["pol_4x16"][0, 1, 2, 3] == pytest.approx(-12.5)
+    assert esa1["az_4x16"][0, 1, 2, 3] == pytest.approx(90.0)
+    assert esa1["gfactor_4x16"][0, 1, 2, 3] == pytest.approx(4.5)
+    assert esa1["ene_sqno_4x16"][0, 1, 2, 3] == 6
+    assert esa1["pol_sqno_4x16"][0, 1, 2, 3] == 7
+
+
+def test_read_pace_fov_parses_esa1_angle_tables(tmp_path: Path) -> None:
+    channel = tmp_path / "esas1-ch_angle"
+    channel.write_text(
+        "\n".join(
+            [
+                "AZ AZ64 AZ16",
+                "3 22.5 67.5",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    polar = tmp_path / "esas1-pol_angle-RAM0"
+    polar.write_text(
+        "\n".join(
+            [
+                "ENE POL ENERGY_KEV POL16 POL4",
+                "1 2 0.25 -12.5 -15.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    fov = read_pace_fov([channel, polar])
+
+    assert fov.keys() == {0}
+    esa1 = fov[0]
+    assert esa1["az64"][3] == pytest.approx(22.5)
+    assert esa1["az16"][3] == pytest.approx(67.5)
+    assert esa1["ene"][0, 1] == pytest.approx(0.25)
+    assert esa1["pol16"][0, 1, 2] == pytest.approx(-12.5)
+    assert esa1["pol4"][0, 1, 2] == pytest.approx(-15.0)
+
+
+def test_pace_calibration_reports_sensor_table_coverage(tmp_path: Path) -> None:
+    info_table = tmp_path / "ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+    info_table.write_text(
+        "\n".join(
+            [
+                "RAM ENE POL AZ ENERGY POLAR AZIMUTH GFACTOR ENE_SQNO POL_SQNO",
+                "0 1 2 3 0.25 -12.5 90.0 4.5 6 7",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    fov_table = tmp_path / "esas1-ch_angle"
+    fov_table.write_text("AZ AZ64 AZ16\n3 22.5 67.5\n", encoding="utf-8")
+
+    calibration = PaceCalibration(
+        fov=read_pace_fov(fov_table),
+        info=read_pace_info(info_table),
+    )
+
+    assert calibration.has_fov("ESA1")
+    assert calibration.has_info("ESA1")
+    assert calibration.coverage("ESA1") == {
+        "fov": True,
+        "info": True,
+    }
+    assert calibration.coverage("ESA2") == {
+        "fov": False,
+        "info": False,
+    }
+
+
+def test_pace_calibration_remote_files_lists_esa1_tables() -> None:
+    files = pace_calibration_remote_files(["ESA1"])
+
+    assert "public/FOV_ANGLE_070726/ESAS1/esas1-ch_angle" in files
+    assert "public/FOV_ANGLE_070726/ESAS1/esas1-pol_angle-RAM7" in files
+    assert (
+        "public/Kaguya_MAP_PACE_information/"
+        "ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+    ) in files
 
 
 def test_kaguya_esa1_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None:

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import gzip
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+from sopran.missions.kaguya.sensors import normalize_sensor, normalize_sensors
 
 
 SENSOR_NAMES = {
@@ -22,6 +24,48 @@ SENSOR_SHORT_NAMES = {
     1: "esa2",
     2: "ima",
     3: "iea",
+}
+
+SENSOR_IDS = {
+    "ESA1": 0,
+    "ESA2": 1,
+    "IMA": 2,
+    "IEA": 3,
+}
+
+SENSOR_RAM_COUNTS = {
+    0: 8,
+    1: 8,
+    2: 4,
+    3: 4,
+}
+
+PACE_CALIBRATION_BASE_URL = "http://step0ku.kugi.kyoto-u.ac.jp/~haraday/data/kaguya/"
+
+PACE_FOV_LAYOUT = {
+    "ESA1": ("ESAS1", "esas1", 8),
+    "ESA2": ("ESAS2", "esas2", 8),
+    "IMA": ("IMA", "ima", 4),
+    "IEA": ("IEA", "iea", 4),
+}
+
+PACE_INFO_FILES = {
+    "ESA1": (
+        "public/Kaguya_MAP_PACE_information/ESA-S1_ENE_POL_AZ_GFACTOR_16X64_20090828.dat",
+        "public/Kaguya_MAP_PACE_information/ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat",
+    ),
+    "ESA2": (
+        "public/Kaguya_MAP_PACE_information/ESA-S2_ENE_POL_AZ_GFACTOR_16X64_20090828.dat",
+        "public/Kaguya_MAP_PACE_information/ESA-S2_ENE_POL_AZ_GFACTOR_4X16_20090828.dat",
+    ),
+    "IMA": (
+        "public/Kaguya_MAP_PACE_information/IMA_ENE_POL_AZ_GFACTOR_16X64_20090212.dat",
+        "public/Kaguya_MAP_PACE_information/IMA_ENE_POL_AZ_GFACTOR_4X16_20090212.dat",
+    ),
+    "IEA": (
+        "public/Kaguya_MAP_PACE_information/IEA_ENE_POL_AZ_GFACTOR_16X64_20080225R.dat",
+        "public/Kaguya_MAP_PACE_information/IEA_ENE_POL_AZ_GFACTOR_4X16_20080226.dat",
+    ),
 }
 
 HEADER_FIELDS = (
@@ -122,6 +166,31 @@ class PaceData:
         return SENSOR_SHORT_NAMES.get(self.sensor, f"sensor{self.sensor}")
 
 
+@dataclass(frozen=True)
+class PaceCalibration:
+    """PACE FOV and INFO calibration tables keyed by sensor id.
+
+    The arrays are loaded as published table values. Applying them to produce
+    physical ESA1 flux is a separate step so incomplete calibration is explicit.
+    """
+
+    fov: dict[int, dict[str, np.ndarray]] = field(default_factory=dict)
+    info: dict[int, dict[str, np.ndarray]] = field(default_factory=dict)
+
+    def has_fov(self, sensor: object) -> bool:
+        return _sensor_id(sensor) in self.fov
+
+    def has_info(self, sensor: object) -> bool:
+        return _sensor_id(sensor) in self.info
+
+    def coverage(self, sensor: object) -> dict[str, bool]:
+        sensor_id = _sensor_id(sensor)
+        return {
+            "fov": sensor_id in self.fov,
+            "info": sensor_id in self.info,
+        }
+
+
 def read_pace_pbf(files: str | Path | Iterable[str | Path]) -> PaceData:
     """Read KAGUYA PACE PBF binary records from one or more local files."""
 
@@ -197,6 +266,81 @@ def pace_energy_counts(pace: PaceData, *, record_type: int | None = None) -> np.
     return np.vstack(rows)
 
 
+def pace_calibration_remote_files(
+    sensors: object | None = ("ESA1", "ESA2", "IMA", "IEA"),
+) -> list[str]:
+    """Return public KAGUYA PACE calibration table paths for selected sensors."""
+
+    remote_files: list[str] = []
+    for sensor in normalize_sensors(sensors):
+        if sensor not in PACE_FOV_LAYOUT:
+            continue
+        directory, prefix, ram_count = PACE_FOV_LAYOUT[sensor]
+        remote_files.append(f"public/FOV_ANGLE_070726/{directory}/{prefix}-ch_angle")
+        remote_files.extend(
+            f"public/FOV_ANGLE_070726/{directory}/{prefix}-pol_angle-RAM{ram}"
+            for ram in range(ram_count)
+        )
+        remote_files.extend(PACE_INFO_FILES[sensor])
+    return remote_files
+
+
+def read_pace_info(files: str | Path | Iterable[str | Path]) -> dict[int, dict[str, np.ndarray]]:
+    """Read KAGUYA PACE energy/polar/azimuth/gfactor INFO tables."""
+
+    out: dict[int, dict[str, np.ndarray]] = {}
+    for path in _as_paths(files):
+        sensor = _require_sensor(path)
+        info = out.setdefault(sensor, _init_info(sensor))
+        is_16x64 = "16X64" in path.name.upper()
+        key = "16x64" if is_16x64 else "4x16"
+        table = _load_numeric_table(path, min_cols=16 if is_16x64 else 10)
+
+        for row in table:
+            ram, energy, polar, azimuth = (int(value) for value in row[:4])
+            info[f"ene_{key}"][ram, energy, polar, azimuth] = row[4]
+            info[f"pol_{key}"][ram, energy, polar, azimuth] = row[5]
+            info[f"az_{key}"][ram, energy, polar, azimuth] = row[6]
+            info[f"gfactor_{key}"][ram, energy, polar, azimuth] = row[7]
+            info[f"ene_sqno_{key}"][ram, energy, polar, azimuth] = int(row[8])
+            info[f"pol_sqno_{key}"][ram, energy, polar, azimuth] = int(row[9])
+            if is_16x64:
+                info["enemin_16x64"][ram, energy, polar, azimuth] = row[10]
+                info["enemax_16x64"][ram, energy, polar, azimuth] = row[11]
+                info["polmin_16x64"][ram, energy, polar, azimuth] = row[12]
+                info["polmax_16x64"][ram, energy, polar, azimuth] = row[13]
+                info["azmin_16x64"][ram, energy, polar, azimuth] = row[14]
+                info["azmax_16x64"][ram, energy, polar, azimuth] = row[15]
+    return out
+
+
+def read_pace_fov(files: str | Path | Iterable[str | Path]) -> dict[int, dict[str, np.ndarray]]:
+    """Read KAGUYA PACE FOV angle tables."""
+
+    out: dict[int, dict[str, np.ndarray]] = {}
+    for path in _as_paths(files):
+        sensor = _require_sensor(path)
+        fov = out.setdefault(sensor, _init_fov(sensor))
+        name = path.name.lower()
+        is_channel_angle = "ch_angle" in name
+        ram = _ram_from_name(name, sensor)
+
+        for row in _load_numeric_table(path, min_cols=2 if is_channel_angle else 4):
+            if is_channel_angle:
+                azimuth = int(row[0])
+                fov["az64"][azimuth] = row[1]
+                if azimuth < 16 and row.size >= 3:
+                    fov["az16"][azimuth] = row[2]
+            else:
+                energy = int(row[0])
+                polar = int(row[1])
+                fov["ene"][ram, energy] = row[2]
+                fov["pol16"][ram, energy, polar] = row[3]
+                if polar < 4 and row.size >= 5:
+                    fov["pol4"][ram, energy, polar] = row[4]
+    return out
+
+
 def _as_paths(files: str | Path | Iterable[str | Path]) -> list[Path]:
     if isinstance(files, str | Path):
         return [Path(files)]
@@ -207,22 +351,40 @@ def _as_paths(files: str | Path | Iterable[str | Path]) -> list[Path]:
 
 
 def _open_binary(path: Path):
-    if path.suffix == ".gz":
+    if path.suffix.lower() == ".gz":
         return gzip.open(path, "rb")
     return path.open("rb")
 
 
 def _detect_sensor(path: Path) -> int:
     name = path.name.upper()
-    if "ESA1" in name:
+    if "ESA1" in name or "ESA-S1" in name or "ESAS1" in name:
         return 0
-    if "ESA2" in name:
+    if "ESA2" in name or "ESA-S2" in name or "ESAS2" in name:
         return 1
     if "IMA" in name:
         return 2
     if "IEA" in name:
         return 3
     return -1
+
+
+def _require_sensor(path: Path) -> int:
+    sensor = _detect_sensor(path)
+    if sensor < 0:
+        raise ValueError(f"Cannot determine KAGUYA PACE sensor from {path}")
+    return sensor
+
+
+def _sensor_id(sensor: object) -> int:
+    if isinstance(sensor, int):
+        if sensor in SENSOR_NAMES:
+            return sensor
+        raise ValueError(f"Unknown KAGUYA PACE sensor id: {sensor!r}")
+    normalized = normalize_sensor(sensor)
+    if normalized not in SENSOR_IDS:
+        raise ValueError(f"Sensor is not a PACE instrument: {sensor!r}")
+    return SENSOR_IDS[normalized]
 
 
 def _choose_endian(header_bytes: bytes) -> str:
@@ -288,6 +450,75 @@ def _read_payload(payload: bytes, spec: PbfSpec, endian: str) -> dict[str, np.nd
         ).reshape(shape)
         offset += size
     return arrays
+
+
+def _init_info(sensor: int) -> dict[str, np.ndarray]:
+    ram = SENSOR_RAM_COUNTS[sensor]
+    shape16 = (ram, 32, 16, 64)
+    shape4 = (ram, 32, 4, 16)
+    return {
+        "ene_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "pol_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "az_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "gfactor_16x64": np.full(shape16, np.nan, dtype=np.float64),
+        "ene_sqno_16x64": np.zeros(shape16, dtype=np.int16),
+        "pol_sqno_16x64": np.zeros(shape16, dtype=np.int16),
+        "enemin_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "enemax_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "polmin_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "polmax_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "azmin_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "azmax_16x64": np.full(shape16, np.nan, dtype=np.float32),
+        "ene_4x16": np.full(shape4, np.nan, dtype=np.float32),
+        "pol_4x16": np.full(shape4, np.nan, dtype=np.float32),
+        "az_4x16": np.full(shape4, np.nan, dtype=np.float32),
+        "gfactor_4x16": np.full(shape4, np.nan, dtype=np.float64),
+        "ene_sqno_4x16": np.zeros(shape4, dtype=np.int16),
+        "pol_sqno_4x16": np.zeros(shape4, dtype=np.int16),
+    }
+
+
+def _init_fov(sensor: int) -> dict[str, np.ndarray]:
+    ram = SENSOR_RAM_COUNTS[sensor]
+    return {
+        "az64": np.full(64, np.nan, dtype=np.float32),
+        "az16": np.full(16, np.nan, dtype=np.float32),
+        "ene": np.full((ram, 32), np.nan, dtype=np.float32),
+        "pol16": np.full((ram, 32, 16), np.nan, dtype=np.float64),
+        "pol4": np.full((ram, 32, 4), np.nan, dtype=np.float64),
+    }
+
+
+def _load_numeric_table(path: Path, *, min_cols: int) -> np.ndarray:
+    rows: list[list[float]] = []
+    with _open_text(path) as file:
+        for line in file:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            parts = stripped.split()
+            if len(parts) < min_cols:
+                continue
+            try:
+                rows.append([float(value) for value in parts])
+            except ValueError:
+                continue
+    if not rows:
+        return np.empty((0, min_cols), dtype=float)
+    return np.asarray(rows, dtype=float)
+
+
+def _open_text(path: Path):
+    if path.suffix.lower() == ".gz":
+        return gzip.open(path, "rt")
+    return path.open("r", encoding="utf-8")
+
+
+def _ram_from_name(name: str, sensor: int) -> int:
+    for ram in range(SENSOR_RAM_COUNTS[sensor]):
+        if f"ram{ram}" in name:
+            return ram
+    return 0
 
 
 def _collapse_energy_counts(counts: np.ndarray) -> np.ndarray:

@@ -15,6 +15,22 @@ The current reader handles local PACE PBF records and exposes raw counts as:
 For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 `(energy=32, look=64)`.
 
+PACE FOV / INFO calibration tables can be read explicitly:
+
+```python
+from sopran.missions.kaguya import PaceCalibration, read_pace_fov, read_pace_info
+
+cal = PaceCalibration(
+    fov=read_pace_fov(["esas1-ch_angle", "esas1-pol_angle-RAM0"]),
+    info=read_pace_info(["ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"]),
+)
+cal.coverage("ESA1")
+```
+
+This is only the table-loading boundary. Applying those tables to produce
+physical `energy_flux`, calibrated energy coordinates, and look-angle
+coordinates remains separate planned work.
+
 ## Examples
 
 ```python
@@ -32,6 +48,6 @@ record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 
 ## Next Work
 
-- Port ESA1 calibration tables and energy/angle metadata.
+- Apply ESA1 calibration tables to energy/angle metadata and `energy_flux`.
 - Add SPEDAS parity tests for representative PBF record types.
 - Preserve look-angle coordinates instead of integer placeholder bins.

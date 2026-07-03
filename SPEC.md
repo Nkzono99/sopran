@@ -85,6 +85,9 @@ v0.1 で固定するもの:
 - `KaguyaESA1Data` と `SopranArray` の最小 data model。
 - `energy_flux`, `counts`, `energy`, `quality` の schema as code。
 - 小サンプルまたは 1 日分の raw discovery、decode、xarray 化、plot。
+- PACE FOV / INFO calibration table は `PaceCalibration`, `read_pace_fov()`,
+  `read_pace_info()` で読み込める。ただし v0.1 の `energy_flux` は、table 適用と
+  SPEDAS golden test が入るまでは未較正 placeholder と明記する。
 
 v0.1 では PlotStack、Project/Case、parquet store、Pipeline、ARTEMIS、Moon/DEM は
 設計を壊さない最小 skeleton または後続 milestone とする。
@@ -2301,6 +2304,7 @@ M0: API skeleton
 M1: KAGUYA ESA1 vertical slice
   - raw file discovery
   - 1日分または小サンプル decode
+  - PACE FOV / INFO calibration table reader
   - KaguyaESA1Data
   - SopranArray
   - energy_flux / counts / energy / quality
