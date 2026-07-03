@@ -7,7 +7,8 @@ decode.
 ## Implemented
 
 - PACE ESA1/ESA2/IMA/IEA public PBF path planning.
-- LMAG public path planning.
+- LMAG public path planning and public `MAG_TS*.dat` loading through
+  `kg.lmag.load(time)`.
 - Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
 - PACE FOV / INFO calibration table readers and `kg.esa1.load_calibration()`.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, and
@@ -22,6 +23,7 @@ Keep provider paths under the raw KAGUYA PDS3 root:
 ```text
 raw/kaguya/pds3/
   sln-l-pace-3-pbf1-v3.0/YYYYMMDD/data/IPACE_PBF1_YYMMDD_ESA1_V003.dat.gz
+  sln-l-lmag-3-mag-ts-v1.0/nominal/YYYYMMDD/data/MAG_TSYYYYMMDD.dat
 ```
 
 Use `kg.esa1.select(day).remote_files()` to inspect expected public archive

@@ -2306,6 +2306,7 @@ M1: KAGUYA ESA1 vertical slice
   - raw file discovery
   - 1日分または小サンプル decode
   - PACE FOV / INFO calibration table reader
+  - LMAG public MAG_TS reader
   - KaguyaESA1Data
   - SopranArray
   - energy_flux / counts / energy / quality

@@ -23,6 +23,7 @@ from sopran.missions.kaguya.files import (
     lmag_public_templates,
     pace_pbf_public_template,
 )
+from sopran.missions.kaguya.lmag import KaguyaLmagData, read_lmag_public
 from sopran.missions.kaguya.pace import (
     PACE_CALIBRATION_BASE_URL,
     PaceCalibration,
@@ -1338,6 +1339,19 @@ class LmagInstrument(KaguyaInstrument):
         for template in lmag_public_templates(version=self.version):
             paths.extend(iter_public_paths(template, start, stop))
         return paths
+
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        download: DownloadMode | None = None,
+    ) -> KaguyaLmagData:
+        if time is None:
+            raise _missing_time_error("Kaguya.LMAG")
+        files: list[Path] = []
+        for day in time.days():
+            files.extend(self.select(day).files(download=download))
+        return read_lmag_public(files, time=time)
 
 
 def _missing_time_error(endpoint: str) -> ValueError:

@@ -1,4 +1,5 @@
 from sopran.missions.kaguya.files import KaguyaFileSource
+from sopran.missions.kaguya.lmag import KaguyaLmagData, read_lmag_public
 from sopran.missions.kaguya.mission import Kaguya
 from sopran.missions.kaguya.pace import (
     PACE_CALIBRATION_BASE_URL,
@@ -18,6 +19,7 @@ from sopran.missions.kaguya.sensors import normalize_sensor, normalize_sensors
 __all__ = [
     "Kaguya",
     "KaguyaFileSource",
+    "KaguyaLmagData",
     "PACE_CALIBRATION_BASE_URL",
     "PACE_FOV_LAYOUT",
     "PACE_INFO_FILES",
@@ -31,4 +33,5 @@ __all__ = [
     "read_pace_fov",
     "read_pace_info",
     "read_pace_pbf",
+    "read_lmag_public",
 ]
