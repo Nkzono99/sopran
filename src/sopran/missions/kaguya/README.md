@@ -9,7 +9,8 @@ decode.
 - PACE ESA1/ESA2/IMA/IEA public PBF path planning.
 - LMAG public path planning, public `MAG_TS*.dat` loading through
   `kg.lmag.load(time)`, and the `kg.lmag.magnetic_field` endpoint.
-- Local raw cache lookup under `Store.raw_path("kaguya", "pds3")`.
+- Local raw cache lookup and missing-file downloads under
+  `Store.raw_path("kaguya", "pds3")`.
 - PACE FOV / INFO calibration table readers and `kg.esa1.load_calibration()`.
 - ESA1 typed data object with `to_xarray()`, `to_polars()`, and
   `write_parquet()`.

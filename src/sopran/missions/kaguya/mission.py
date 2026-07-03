@@ -9,6 +9,7 @@ from importlib.resources import files
 from pathlib import Path
 from time import perf_counter
 from typing import Literal
+from urllib.error import HTTPError
 
 from sopran.core import Store
 from sopran.core.errors import DatasetNotFoundError
@@ -145,9 +146,19 @@ class KaguyaQuery:
                     paths.append(path)
                 continue
             if download == "missing":
-                path = self.instrument.mission.source.download(remote_file, overwrite=False)
+                try:
+                    path = self.instrument.mission.source.download(remote_file, overwrite=False)
+                except HTTPError as exc:
+                    if self.instrument.is_optional_missing_file(remote_file, exc):
+                        continue
+                    raise
             elif download == "always":
-                path = self.instrument.mission.source.download(remote_file, overwrite=True)
+                try:
+                    path = self.instrument.mission.source.download(remote_file, overwrite=True)
+                except HTTPError as exc:
+                    if self.instrument.is_optional_missing_file(remote_file, exc):
+                        continue
+                    raise
             _register_downloaded_raw_file(
                 self.instrument.mission.store,
                 self.instrument.mission.source,
@@ -338,6 +349,9 @@ class KaguyaInstrument:
 
     def remote_files(self, start: object, stop: object | None = None) -> list[str]:
         raise NotImplementedError
+
+    def is_optional_missing_file(self, remote_file: str, exc: HTTPError) -> bool:
+        return False
 
 
 class PaceInstrument(KaguyaInstrument):
@@ -817,7 +831,7 @@ def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
         if _truthy_env("SOPRAN_OFFLINE"):
             download = "never"
         else:
-            download = os.environ.get("SOPRAN_DOWNLOAD_MODE", "never")
+            download = os.environ.get("SOPRAN_DOWNLOAD_MODE", "missing")
     _validate_download_mode(download)
     return download
 
@@ -1179,7 +1193,7 @@ def _replay_failed_pipeline_shards(
         _ensure_pipeline_input_files(data, instrument, shard_time)
         output.replace_shard(
             str(shard["path"]),
-            frame=data.to_polars(variable),
+            frame=data.to_polars(variable, layout="long"),
             time_coverage=shard_time,
         )
         replayed += 1
@@ -1416,6 +1430,9 @@ plot_result = spn.stack(item).plot()
         for day in time.days():
             paths.extend(self.remote_files(day))
         return paths
+
+    def is_optional_missing_file(self, remote_file: str, exc: HTTPError) -> bool:
+        return exc.code == 404 and "/optional/" in remote_file.replace("\\", "/")
 
     def load(
         self,

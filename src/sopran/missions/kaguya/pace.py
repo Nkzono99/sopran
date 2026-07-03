@@ -505,7 +505,11 @@ def _load_numeric_table(path: Path, *, min_cols: int) -> np.ndarray:
                 continue
     if not rows:
         return np.empty((0, min_cols), dtype=float)
-    return np.asarray(rows, dtype=float)
+    width = max(len(row) for row in rows)
+    table = np.full((len(rows), width), np.nan, dtype=float)
+    for index, row in enumerate(rows):
+        table[index, : len(row)] = row
+    return table
 
 
 def _open_text(path: Path):

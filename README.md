@@ -69,7 +69,7 @@ KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF d
 import sopran as spn
 
 store = spn.Store("F:/sopran_data")
-kg = spn.Kaguya(store=store, download="never")
+kg = spn.Kaguya(store=store)
 time = spn.day("2008-01-01")
 
 kg.esa1.energy_flux.info()
@@ -143,8 +143,11 @@ ml_features = (
 `spn.align(...).write_parquet("features.parquet")` または
 `spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
 
-raw file は `Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。
-たとえば ESA1 の 2008-01-01 は次の配置を探索します。
+未取得の KAGUYA public raw file は既定で `download="missing"` として取得します。
+明示的に local file だけを使う場合は `spn.Kaguya(store=store, download="never")`、
+または `SOPRAN_OFFLINE=1` を使います。raw file は
+`Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。
+たとえば ESA1 の 2008-01-01 は次の配置を探索・保存します。
 
 ```text
 F:/sopran_data/raw/kaguya/pds3/

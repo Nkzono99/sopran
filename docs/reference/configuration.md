@@ -81,7 +81,7 @@ view.kaguya.esa1.counts.plot()
 | `SOPRAN_DATA_ROOT` | `Store()` と `Project(...)` の既定 data root |
 | `SOPRAN_CACHE_ROOT` | 既定 cache root。未指定なら `<data root>/cache` |
 | `SOPRAN_ARTIFACT_ROOT` | `Project.save(...)` の既定出力先 |
-| `SOPRAN_DOWNLOAD_MODE` | mission download policy |
+| `SOPRAN_DOWNLOAD_MODE` | mission download policy。未指定時は `missing` |
 | `SOPRAN_OFFLINE` | truthy のとき download policy を `never` にする |
 
 `spn.Store("F:/data")` のように明示 root を渡した場合は、環境変数よりも明示引数が優先されます。

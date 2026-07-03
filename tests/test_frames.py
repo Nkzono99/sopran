@@ -75,3 +75,30 @@ def test_frame_context_rejects_unimplemented_non_identity_transform() -> None:
 
     with pytest.raises(spn.FrameTransformError, match="MOON_ME -> GSE"):
         field.transform("GSE", context=spn.FrameContext())
+
+
+def test_frame_context_transforms_identity_vectors_without_spice() -> None:
+    import numpy as np
+
+    vectors = np.array([[1.0, 2.0, 3.0], [-1.0, 0.0, 4.0]])
+
+    transformed = spn.FrameContext().transform_vectors(
+        vectors,
+        times=["2008-01-01T00:00:00", "2008-01-01T00:00:01"],
+        source_frame="SELENE_M_SPACECRAFT",
+        target_frame="selene_m_spacecraft",
+    )
+
+    assert transformed.tolist() == vectors.tolist()
+
+
+def test_frame_context_non_identity_vector_transform_reports_spice_setup() -> None:
+    import numpy as np
+
+    with pytest.raises(spn.FrameTransformError, match="SELENE_M_SPACECRAFT -> MOON_ME"):
+        spn.FrameContext().transform_vectors(
+            np.array([[1.0, 0.0, 0.0]]),
+            times=["2008-01-01T00:00:00"],
+            source_frame="SELENE_M_SPACECRAFT",
+            target_frame="MOON_ME",
+        )

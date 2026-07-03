@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import numpy as np
+import polars as pl
 import pytest
 import xarray as xr
 
@@ -176,6 +177,57 @@ def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
     item = loaded.spectrogram(y="energy", log_color=True)
 
     assert item.log_color is True
+
+
+def test_loaded_array_to_polars_uses_array_layout_for_dense_data_by_default() -> None:
+    array = xr.DataArray(
+        np.ones((2, 3, 4)),
+        dims=("time", "energy", "look"),
+        coords={
+            "time": np.array(["2008-01-01T00:00:00", "2008-01-01T00:01:00"], dtype="datetime64[ns]"),
+            "energy": [10.0, 20.0, 30.0],
+            "look": [0, 1, 2, 3],
+        },
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy", "look")),
+        xr=array,
+    )
+
+    frame = loaded.to_polars()
+
+    assert frame.shape == (2, 2)
+    assert frame.columns == ["time", "counts"]
+    assert frame.schema["counts"] == pl.Array(pl.Float64, shape=(3, 4))
+
+
+def test_loaded_array_to_polars_rejects_large_long_table_when_requested() -> None:
+    array = xr.DataArray(
+        np.ones((2, 3, 4)),
+        dims=("time", "energy", "look"),
+        coords={
+            "time": np.array(["2008-01-01T00:00:00", "2008-01-01T00:01:00"], dtype="datetime64[ns]"),
+            "energy": [10.0, 20.0, 30.0],
+            "look": [0, 1, 2, 3],
+        },
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy", "look")),
+        xr=array,
+    )
+
+    with pytest.raises(ValueError, match="would create 24 rows"):
+        loaded.to_polars(layout="long", max_rows=10)
+
+    frame = loaded.to_polars(layout="long", max_rows=10, allow_large=True)
+
+    assert frame.shape == (24, 4)
 
 
 def test_loaded_array_histogram_returns_distribution_plot_item(tmp_path) -> None:

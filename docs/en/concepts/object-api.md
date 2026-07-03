@@ -34,6 +34,10 @@ counts.to_polars()
 counts.to_pandas()
 ```
 
+Dense arrays with three or more dimensions keep one row per leading coordinate
+by default and store values in a `pl.Array` column. Use `layout="long"` when a
+fully expanded table is intentional.
+
 Simple xarray operations return another `SopranArray`, preserving schema and
 provenance.
 

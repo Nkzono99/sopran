@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.error import HTTPError
 
 import numpy as np
 
@@ -42,7 +43,7 @@ def test_kaguya_lmag_load_reads_cached_public_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    data = spn.Kaguya(store=store).lmag.load(spn.day("2008-01-01"))
+    data = spn.Kaguya(store=store, download="never").lmag.load(spn.day("2008-01-01"))
     dataset = data.to_xarray()
 
     assert data.files == (cached,)
@@ -64,7 +65,7 @@ def test_kaguya_lmag_magnetic_field_endpoint_loads_sopran_array(tmp_path: Path) 
         encoding="utf-8",
     )
 
-    kg = spn.Kaguya(store=store)
+    kg = spn.Kaguya(store=store, download="never")
     time = spn.day("2008-01-01")
     plan = kg.lmag.magnetic_field.plan(time)
     field = kg.lmag.magnetic_field.load(time)
@@ -81,3 +82,37 @@ def test_kaguya_lmag_magnetic_field_endpoint_loads_sopran_array(tmp_path: Path) 
     assert field.to_xarray().values.tolist()[0] == [-2.61, 2.98, -1.09]
     assert item.kind == "line"
     assert item.name == "magnetic_field"
+
+
+def test_kaguya_lmag_download_skips_missing_optional_file(tmp_path: Path) -> None:
+    class FakeSource:
+        def __init__(self, root: Path) -> None:
+            self.root = root
+            self.downloaded: list[str] = []
+
+        def local_path(self, remote_file: str) -> Path:
+            return self.root / remote_file
+
+        def remote_url(self, remote_file: str) -> str:
+            return f"https://example.test/{remote_file}"
+
+        def download(self, remote_file: str, *, overwrite: bool = False) -> Path:
+            self.downloaded.append(remote_file)
+            if "/optional/" in remote_file:
+                raise HTTPError(self.remote_url(remote_file), 404, "Not Found", None, None)
+            path = self.local_path(remote_file)
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                "2008-01-01T00:00:00,  -155.0,  -305.2, -1791.2,  -2.61,   2.98,  -1.09,  "
+                "157120.9, -356486.3,  -14589.0,  -1.26,  -3.78,  -1.00\n",
+                encoding="utf-8",
+            )
+            return path
+
+    source = FakeSource(tmp_path / "raw")
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), source=source, download="missing")
+
+    data = kg.lmag.load(spn.day("2008-01-01"))
+
+    assert len(data.files) == 1
+    assert any("/optional/" in path for path in source.downloaded)

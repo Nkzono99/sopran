@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
+import numpy as np
 import polars as pl
 import pytest
 
 import sopran as spn
 from sopran import Store
 from sopran.missions.kaguya import Kaguya, normalize_sensors
+from sopran.missions.kaguya.data import KaguyaESA1Data
+from sopran.missions.kaguya.pace import PaceData, PaceRecord
 import sopran.missions.kaguya.files as kaguya_files
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
@@ -119,6 +122,15 @@ def test_kaguya_query_download_never_omits_missing_files(tmp_path) -> None:
     files = kaguya.esa1.select("2008-01-01").files(download="never")
 
     assert files == []
+
+
+def test_kaguya_defaults_to_missing_download_policy(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("SOPRAN_DOWNLOAD_MODE", raising=False)
+    monkeypatch.delenv("SOPRAN_OFFLINE", raising=False)
+
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    assert kg.download == "missing"
 
 
 def test_period_is_half_open_and_available_from_top_level() -> None:
@@ -262,7 +274,7 @@ def test_kaguya_examples_return_markdown_pages(tmp_path) -> None:
 
 
 def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path) -> None:
-    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
 
     esa1 = kg.esa1.load(time)
@@ -277,7 +289,7 @@ def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path
 
 
 def test_kaguya_esa1_loaded_data_info_returns_info_page(tmp_path) -> None:
-    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
 
     info = kg.esa1.load(time).info()
@@ -354,7 +366,7 @@ def test_kaguya_reads_default_download_policy_from_environment(tmp_path, monkeyp
 
 
 def test_kaguya_esa1_exposes_core_variable_endpoints(tmp_path) -> None:
-    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
 
     assert kg.esa1.counts.schema().dims == ("time", "energy", "look")
@@ -364,7 +376,7 @@ def test_kaguya_esa1_exposes_core_variable_endpoints(tmp_path) -> None:
 
 
 def test_kaguya_esa1_to_xarray_returns_schema_backed_empty_dataset(tmp_path) -> None:
-    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
 
     ds = kg.esa1.load(time).to_xarray()
@@ -373,6 +385,146 @@ def test_kaguya_esa1_to_xarray_returns_schema_backed_empty_dataset(tmp_path) -> 
     assert ds.attrs["instrument"] == "ESA1"
     assert set(ds.data_vars) == {"energy_flux", "counts", "quality"}
     assert "energy" in ds.coords
+
+
+def test_kaguya_esa1_counts_reduce_look_handles_mixed_record_shapes() -> None:
+    first_time = datetime(2008, 8, 2, 0, 0, tzinfo=UTC).timestamp()
+    second_time = datetime(2008, 8, 2, 0, 1, tzinfo=UTC).timestamp()
+    first = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+    )
+    second = PaceRecord(
+        type=0x00,
+        index=1,
+        arrays={"cnt": np.full((32, 16, 64), 2, dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=(
+            {"time": first_time, "data_quality": 0},
+            {"time": second_time, "data_quality": 0},
+        ),
+        records={0x01: (first,), 0x00: (second,)},
+        source_files=(),
+        record_order=(first, second),
+    )
+    data = KaguyaESA1Data(time=spn.day("2008-08-02"))
+    object.__setattr__(data, "pace", pace)
+
+    frame = data.to_polars("counts", reduce_look="sum")
+
+    assert frame.shape == (64, 3)
+    rows = frame.filter(pl.col("energy") == 0).sort("time").to_dicts()
+    assert rows[0]["counts"] == 64
+    assert rows[1]["counts"] == 2048
+
+
+def test_kaguya_esa1_counts_masks_pace_fill_value() -> None:
+    sample_time = datetime(2008, 8, 2, 0, 0, tzinfo=UTC).timestamp()
+    counts = np.ones((32, 4, 16), dtype=np.uint16)
+    counts[0, :, :] = 65535
+    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+    pace = PaceData(
+        sensor=0,
+        headers=({"time": sample_time, "data_quality": 0},),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    data = KaguyaESA1Data(time=spn.day("2008-08-02"))
+    object.__setattr__(data, "pace", pace)
+
+    dataset = data.to_xarray()
+    frame = data.to_polars("counts", reduce_look="sum")
+
+    assert np.isnan(dataset["counts"].values[0, 0, 0])
+    assert np.isnan(frame.filter(pl.col("energy") == 0)["counts"][0])
+    assert frame.filter(pl.col("energy") == 1)["counts"][0] == 64
+
+
+def test_kaguya_esa1_to_xarray_pads_mixed_look_record_shapes() -> None:
+    first_time = datetime(2008, 8, 2, 0, 0, tzinfo=UTC).timestamp()
+    second_time = datetime(2008, 8, 2, 0, 1, tzinfo=UTC).timestamp()
+    first = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+    )
+    second = PaceRecord(
+        type=0x00,
+        index=1,
+        arrays={"cnt": np.full((32, 16, 64), 2, dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=(
+            {"time": first_time, "data_quality": 0},
+            {"time": second_time, "data_quality": 0},
+        ),
+        records={0x01: (first,), 0x00: (second,)},
+        source_files=(),
+        record_order=(first, second),
+    )
+    data = KaguyaESA1Data(time=spn.day("2008-08-02"))
+    object.__setattr__(data, "pace", pace)
+
+    dataset = data.to_xarray()
+
+    assert dataset["counts"].shape == (2, 32, 1024)
+    assert dataset["counts"].values[0, 0, 0] == 1
+    assert np.isnan(dataset["counts"].values[0, 0, 64])
+    assert dataset["counts"].values[1, 0, 1023] == 2
+
+
+def test_kaguya_esa1_to_polars_uses_array_layout_for_unreduced_counts() -> None:
+    sample_time = datetime(2008, 8, 2, 0, 0, tzinfo=UTC).timestamp()
+    record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=({"time": sample_time, "data_quality": 0},),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    data = KaguyaESA1Data(time=spn.day("2008-08-02"))
+    object.__setattr__(data, "pace", pace)
+
+    frame = data.to_polars("counts")
+
+    assert frame.shape == (1, 2)
+    assert frame.columns == ["time", "counts"]
+    assert frame.schema["counts"] == pl.Array(pl.Float64, shape=(32, 64))
+
+
+def test_kaguya_esa1_to_polars_rejects_large_long_table_when_requested() -> None:
+    sample_time = datetime(2008, 8, 2, 0, 0, tzinfo=UTC).timestamp()
+    record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=({"time": sample_time, "data_quality": 0},),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    data = KaguyaESA1Data(time=spn.day("2008-08-02"))
+    object.__setattr__(data, "pace", pace)
+
+    with pytest.raises(ValueError, match="would create 2048 rows"):
+        data.to_polars("counts", layout="long", max_rows=100)
+
+    frame = data.to_polars("counts", layout="long", max_rows=100, allow_large=True)
+
+    assert frame.shape == (2048, 4)
 
 
 def test_kaguya_esa1_variable_typo_suggests_available_endpoint(tmp_path) -> None:

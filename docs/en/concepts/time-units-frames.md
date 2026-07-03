@@ -49,4 +49,19 @@ b = kg.lmag.magnetic_field.load(time)
 b_moon = b.transform("MOON_ME", context=frames)
 ```
 
+Identity transforms record provenance without requiring SPICE. Non-identity
+3-component vector transforms are delegated to `spiceypy`. For frames such as
+`SELENE_M_SPACECRAFT`, `MOON_ME`, `SSE`, and `GSE`, pass the required time and
+frame kernels through `FrameContext(spice_kernels=...)`. Missing kernels are not
+guessed; SOPRAN raises `FrameTransformError`.
+
+```python
+vectors_in_spacecraft = frames.transform_vectors(
+    [[1.0, 0.0, 0.0]],
+    times=["2008-01-01T00:00:00"],
+    source_frame="MOON_ME",
+    target_frame="SELENE_M_SPACECRAFT",
+)
+```
+
 SPICE and SpacePy backend status is tracked in [Status](../reference/status.md).

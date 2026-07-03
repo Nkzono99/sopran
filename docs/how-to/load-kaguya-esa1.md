@@ -3,7 +3,7 @@
 ## 前提
 
 - `Store` root が決まっている
-- KAGUYA PDS3 raw file がある、または download policy を許可している
+- KAGUYA PDS3 raw file がある、またはネットワークから取得できる
 - 時刻範囲は半開区間 `[start, stop)` で考える
 
 ```python
@@ -24,9 +24,29 @@ kg.esa1.select("2008-01-01").remote_files()
 ## 2. 読み込む
 
 ```python
-counts = kg.esa1.counts.load(time)
+esa1 = kg.esa1.load(time)
+counts = esa1.counts
 array = counts.to_xarray()
-table = counts.to_polars()
+table = esa1.to_polars("counts")
+summed = esa1.to_polars("counts", reduce_look="sum")
+```
+
+`counts.to_xarray()` は `time x energy x look` の dense array を返します。
+`esa1.to_polars("counts")` は既定で `time` ごとに 1 行を作り、`counts` 列を
+`pl.Array` として保持します。完全な long table が必要な場合は
+`layout="long"` を明示しますが、未削減の `time x energy x look` は非常に大きく
+なるため、通常の表形式出力では `reduce_look="sum"` などで look 次元を畳んでから
+使います。SPEDAS 互換の正規化として、
+PACE raw count の `65535` は欠測として NaN に変換されます。根拠と注意点は
+`kg.esa1.guide()` を参照してください。
+
+pitch angle ごとの energy spectrum が必要な場合は calibration table を読み込んでから
+`pitch_angle_spectrum()` を使います。`look` は index であり、方向そのものではありません。
+
+```python
+cal = kg.esa1.load_calibration()
+esa1 = kg.esa1.load(time, calibration=cal)
+pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
 ```
 
 ## 3. 図にする
@@ -37,10 +57,17 @@ counts.quicklook("kaguya_esa1_counts", root="reports", y="energy", log_color=Tru
 
 ## download policy
 
+`Kaguya()` の既定は `download="missing"` です。local store に raw file がない場合は
+DARTS public PDS3 archive から取得して `Store.raw_path("kaguya", "pds3")` 以下に保存します。
+
 ```python
-kg = spn.Kaguya(store=store, download="missing")
 kg.esa1.counts.load(time)
 ```
 
-`download="never"` は offline 解析向けです。raw file がない場合の詳細な挙動は
-[実装状況](../reference/status.md) を参照してください。
+offline 解析では `download="never"` を明示します。
+
+```python
+kg = spn.Kaguya(store=store, download="never")
+```
+
+`SOPRAN_OFFLINE=1` でも既定 policy は `never` になります。

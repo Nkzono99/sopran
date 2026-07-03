@@ -9,7 +9,7 @@ local raw cache 探索、PACE ESA1 raw PBF decode、typed data object、parquet 
 - PACE ESA1/ESA2/IMA/IEA public PBF path planning。
 - LMAG public path planning、public `MAG_TS*.dat` の `kg.lmag.load(time)`、
   および `kg.lmag.magnetic_field` endpoint。
-- `Store.raw_path("kaguya", "pds3")` 以下の local raw cache lookup。
+- `Store.raw_path("kaguya", "pds3")` 以下の local raw cache lookup と missing file の自動取得。
 - PACE FOV / INFO calibration table reader と `kg.esa1.load_calibration()`。
 - ESA1 typed data object の `to_xarray()`, `to_polars()`, `write_parquet()`。
 - `sopran.stack()` 経由の最小 PlotStack 連携。

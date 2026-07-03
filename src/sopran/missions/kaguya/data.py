@@ -6,11 +6,18 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Literal
 
-from sopran.core.data import SopranArray
+from sopran.core.data import (
+    DEFAULT_MAX_POLARS_ROWS,
+    PolarsLayout,
+    SopranArray,
+    _data_array_to_array_polars,
+    ensure_polars_row_limit,
+)
 from sopran.core.pages import InfoPage
 from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData, read_pace_pbf
+from sopran.missions.kaguya.pitch import PitchAngleSpectrumOptions, build_pitch_angle_spectrum
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
@@ -99,12 +106,49 @@ class KaguyaESA1Data:
         variable: str = "counts",
         *,
         reduce_look: Literal["sum"] | None = None,
+        layout: PolarsLayout = "auto",
+        max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
+        allow_large: bool = False,
     ):
         try:
             import numpy as np
             import polars as pl
         except ImportError as exc:
             raise RuntimeError("polars is required for to_polars()") from exc
+
+        if reduce_look not in (None, "sum"):
+            raise ValueError("reduce_look must be None or 'sum'")
+        if layout not in ("auto", "array", "long"):
+            raise ValueError("layout must be 'auto', 'array', or 'long'")
+
+        pace = self.pace
+        if (
+            reduce_look == "sum"
+            and variable == "counts"
+            and pace is not None
+            and layout in ("auto", "long")
+        ):
+            return _pace_counts_sum_look_to_polars(
+                pace,
+                self.time,
+                variable,
+                np,
+                pl,
+                max_rows=max_rows,
+                allow_large=allow_large,
+            )
+        if (
+            reduce_look is None
+            and variable == "counts"
+            and pace is not None
+            and layout == "long"
+        ):
+            ensure_polars_row_limit(
+                _pace_counts_padded_row_count(pace, self.time),
+                name=f"KAGUYA ESA1 {variable}",
+                max_rows=max_rows,
+                allow_large=allow_large,
+            )
 
         dataset = self.to_xarray()
         if variable not in dataset:
@@ -115,9 +159,17 @@ class KaguyaESA1Data:
             if "look" not in array.dims:
                 raise ValueError(f"{variable} has no look dimension to reduce")
             array = array.sum("look")
-        elif reduce_look is not None:
-            raise ValueError("reduce_look must be None or 'sum'")
 
+        resolved_layout = _resolve_kaguya_polars_layout(array, layout, reduce_look=reduce_look)
+        if resolved_layout == "array":
+            return _data_array_to_array_polars(array, variable, np, pl)
+
+        ensure_polars_row_limit(
+            int(array.size),
+            name=f"KAGUYA ESA1 {variable}",
+            max_rows=max_rows,
+            allow_large=allow_large,
+        )
         return _data_array_to_polars(array, variable, np, pl)
 
     def to_pandas(
@@ -125,8 +177,54 @@ class KaguyaESA1Data:
         variable: str = "counts",
         *,
         reduce_look: Literal["sum"] | None = None,
+        layout: PolarsLayout = "auto",
+        max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
+        allow_large: bool = False,
     ):
-        return self.to_polars(variable, reduce_look=reduce_look).to_pandas()
+        return self.to_polars(
+            variable,
+            reduce_look=reduce_look,
+            layout=layout,
+            max_rows=max_rows,
+            allow_large=allow_large,
+        ).to_pandas()
+
+    def pitch_angle_spectrum(
+        self,
+        magnetic_field: Any,
+        *,
+        value: Literal["counts", "energy_flux"] = "counts",
+        pitch_bins: Any = "native",
+        look_frame: str = "SELENE_M_SPACECRAFT",
+        magnetic_frame: str | None = None,
+        min_look_bins: int = 1,
+        frame_context: Any | None = None,
+    ) -> SopranArray:
+        """Return ESA1 spectra binned by pitch angle.
+
+        The result has dimensions ``time x energy x pitch_angle``. ``look`` is
+        resolved through the PACE angle calibration tables, not treated as a
+        physical direction by itself.
+        """
+
+        return build_pitch_angle_spectrum(
+            pace=self.pace,
+            time=self.time,
+            calibration=self.calibration,
+            magnetic_field=magnetic_field,
+            files=self.files,
+            options=PitchAngleSpectrumOptions(
+                value=value,
+                pitch_bins=pitch_bins,
+                look_frame=look_frame,
+                magnetic_frame=magnetic_frame,
+                min_look_bins=min_look_bins,
+            ),
+            frame_context=frame_context,
+        )
+
+    def pas(self, magnetic_field: Any, **kwargs: Any) -> SopranArray:
+        return self.pitch_angle_spectrum(magnetic_field, **kwargs)
 
     def write_parquet(
         self,
@@ -151,7 +249,7 @@ class KaguyaESA1Data:
             product=product,
             schema=KAGUYA_ESA1_SCHEMA,
             time_coverage=self.time,
-            frame=self.to_polars(variable, reduce_look=reduce_look),
+            frame=self.to_polars(variable, reduce_look=reduce_look, layout="long"),
             source_files=tuple(str(path) for path in self.files),
             shard_path=shard_path,
             overwrite=overwrite,
@@ -218,11 +316,7 @@ class KaguyaESA1Data:
         if not count_rows:
             return self._empty_xarray(np, xr)
 
-        look_count = count_rows[0].shape[1]
-        if any(row.shape[1] != look_count for row in count_rows):
-            raise ValueError("PACE records with mixed look dimensions cannot be stacked yet")
-
-        counts = np.stack(count_rows)
+        counts = _stack_energy_look_rows(count_rows, np)
         energy_flux = np.full(counts.shape, np.nan, dtype=float)
         quality = np.array(
             [int(header.get("data_quality", 0)) for header in headers],
@@ -278,7 +372,101 @@ def _counts_to_energy_look(counts: Any):
         raise NotImplementedError(
             f"PACE count records with shape {counts.shape} cannot be mapped to ESA1 yet"
         )
-    return counts.reshape(32, -1)
+    out = counts.reshape(32, -1).astype(float, copy=True)
+    out[out == 65535] = float("nan")
+    return out
+
+
+def _stack_energy_look_rows(rows: list[Any], np: Any):
+    look_count = max(row.shape[1] for row in rows)
+    if all(row.shape[1] == look_count for row in rows):
+        return np.stack(rows)
+    output = np.full((len(rows), 32, look_count), np.nan, dtype=float)
+    for index, row in enumerate(rows):
+        output[index, :, : row.shape[1]] = row
+    return output
+
+
+def _pace_counts_sum_look_to_polars(
+    pace: PaceData,
+    time: TimeRange,
+    variable: str,
+    np: Any,
+    pl: Any,
+    *,
+    max_rows: int | None,
+    allow_large: bool,
+):
+    rows = []
+    time_values = []
+    for record in pace.record_order:
+        counts = record.arrays.get("cnt")
+        if counts is None:
+            continue
+        header = pace.headers[record.index]
+        if not _header_in_time_range(header, time):
+            continue
+        energy_look = _counts_to_energy_look(counts)
+        finite = np.isfinite(energy_look)
+        row = np.nansum(energy_look, axis=1)
+        row[~finite.any(axis=1)] = np.nan
+        rows.append(row)
+        time_values.append(_header_time_to_datetime64(header.get("time"), np))
+
+    ensure_polars_row_limit(
+        len(rows) * 32,
+        name=f"KAGUYA ESA1 {variable}",
+        max_rows=max_rows,
+        allow_large=allow_large,
+    )
+
+    if not rows:
+        return pl.DataFrame(
+            {
+                "time": np.array([], dtype="datetime64[ns]"),
+                "energy": np.array([], dtype=np.int64),
+                variable: np.array([], dtype=np.uint64),
+            }
+        )
+
+    values = np.stack(rows)
+    times = np.array(time_values, dtype="datetime64[ns]")
+    energy = np.arange(values.shape[1])
+    return pl.DataFrame(
+        {
+            "time": np.repeat(times, len(energy)),
+            "energy": np.tile(energy, len(times)),
+            variable: values.reshape(-1),
+        }
+    )
+
+
+def _pace_counts_padded_row_count(pace: PaceData, time: TimeRange) -> int:
+    records = []
+    for record in pace.record_order:
+        counts = record.arrays.get("cnt")
+        if counts is None:
+            continue
+        header = pace.headers[record.index]
+        if _header_in_time_range(header, time):
+            records.append(counts)
+    if not records:
+        return 0
+    look_count = max(int(counts.reshape(32, -1).shape[1]) for counts in records)
+    return len(records) * 32 * look_count
+
+
+def _resolve_kaguya_polars_layout(
+    array: Any,
+    layout: PolarsLayout,
+    *,
+    reduce_look: Literal["sum"] | None,
+) -> Literal["array", "long"]:
+    if layout == "auto":
+        if reduce_look is None and len(tuple(array.dims)) >= 3:
+            return "array"
+        return "long"
+    return layout
 
 
 def _header_time_to_datetime64(value: object, np: Any):

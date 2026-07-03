@@ -67,4 +67,19 @@ b = kg.lmag.magnetic_field.load(time)
 b_moon = b.transform("MOON_ME", context=frames)
 ```
 
+同じ frame への変換は identity として provenance を残します。異なる frame への
+3 成分ベクトル変換は `spiceypy` に委譲します。`SELENE_M_SPACECRAFT`, `MOON_ME`,
+`SSE`, `GSE` などの非 identity 変換には、時刻 kernel と frame kernel を含む
+SPICE kernel を `FrameContext(spice_kernels=...)` に渡してください。kernel が足りない
+場合は推定せず `FrameTransformError` で止まります。
+
+```python
+vectors_in_moon_me = frames.transform_vectors(
+    [[1.0, 0.0, 0.0]],
+    times=["2008-01-01T00:00:00"],
+    source_frame="MOON_ME",
+    target_frame="SELENE_M_SPACECRAFT",
+)
+```
+
 SPICE / SpacePy backend の実装状況は [実装状況](../reference/status.md) を参照してください。

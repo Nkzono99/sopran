@@ -36,6 +36,9 @@ counts.to_polars()
 counts.to_pandas()
 ```
 
+3 次元以上の dense array は、既定では `time` ごとに 1 行を作り、値を `pl.Array`
+列として保持します。完全に展開した table が必要な場合は `layout="long"` を明示します。
+
 簡単な xarray 操作は `SopranArray` として戻るため、schema と provenance を保てます。
 
 ```python

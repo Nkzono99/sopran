@@ -20,7 +20,8 @@ Pipeline calls have side effects, so execution rules are explicit.
 | `missing` | Fetch missing files |
 | `always` | Try fetching every time |
 
-When `SOPRAN_OFFLINE` is truthy, the default policy is `never`.
+The default policy is `missing`. When `SOPRAN_OFFLINE` is truthy, the default
+policy is `never`. `SOPRAN_DOWNLOAD_MODE` overrides the default policy.
 
 ## Provenance
 
@@ -32,7 +33,7 @@ Pipeline datasets preserve at least this provenance shape.
     "source": "kaguya.esa1",
     "stages": ["decode", "select", "write"],
     "time_range": {"start": "...", "stop": "..."},
-    "download": "never"
+    "download": "missing"
   }
 }
 ```

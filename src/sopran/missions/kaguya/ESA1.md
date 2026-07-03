@@ -13,7 +13,55 @@ The current reader handles local PACE PBF records and exposes raw counts as:
   is not applied yet.
 
 For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
-`(energy=32, look=64)`.
+`(energy=32, look=64)`. Use xarray/SOPRAN arrays as the primary dense
+representation. Polars/Pandas conversion keeps one row per time sample by
+default and stores `counts` as a `pl.Array` column. Request full expansion with
+`layout="long"`; ordinary tabular analysis should usually reduce the `look`
+dimension first.
+
+## Pitch Angle Spectrum
+
+`pitch_angle_spectrum()` maps PACE look bins back to calibrated `theta`, `phi`
+look directions, computes pitch angle against a magnetic-field vector, and
+returns a `time x energy x pitch_angle` array. The `look` coordinate is not a
+physical direction by itself; the FOV/INFO calibration tables are required.
+
+```python
+kg = spn.Kaguya()
+time = spn.day("2008-01-01")
+cal = kg.esa1.load_calibration()
+esa1 = kg.esa1.load(time, calibration=cal)
+
+pas = esa1.pitch_angle_spectrum(
+    magnetic_field=[1.0, 0.0, 0.0],
+    pitch_bins="native",
+)
+pas.to_xarray()
+```
+
+`pitch_bins="native"` uses 16 bins for 4x16 angular records and 32 bins for
+16x64 records; mixed days use the larger bin count. A magnetic-field
+`SopranArray` in another frame requires a `FrameContext` with `spiceypy` and
+the needed SPICE kernels.
+
+## Raw Count 65535
+
+The JAXA/DARTS PACE format document defines PBF1 ESA count fields as
+`USHORT cnt[...]`; for example, ESA type 00 has `cnt[32][16][64]` and type 01
+has `cnt[32][4][16]`.
+
+The checked PDS3 label does not declare a `MISSING_CONSTANT = 65535` field.
+SOPRAN therefore treats `65535` as a SPEDAS-compatibility normalization rather
+than a separately declared PDS label constant. SPEDAS `kgy_read_pbf.pro` notes
+that `65535 = uint(-1)` and `4294967295 = ulong(-1)` mean NaN, and
+`kgy_esa1_get3d.pro` replaces `cnt eq uint(-1)` with `!values.f_nan`.
+
+References:
+
+- JAXA/DARTS PACE format: https://darts.isas.jaxa.jp/app/pdap/selene/help/en/PACE_Format_en_V01.pdf
+- Example PDS3 label: https://data.darts.isas.jaxa.jp/pub/pds3/sln-l-pace-3-pbf1-v3.0/20080802/data/IPACE_PBF1_080802_ESA1_V003.lbl
+- SPEDAS `kgy_read_pbf.pro`: https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_read_pbf.pro
+- SPEDAS `kgy_esa1_get3d.pro`: https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_esa1_get3d.pro
 
 PACE FOV / INFO calibration tables can be read explicitly:
 
@@ -43,8 +91,9 @@ cal.coverage("ESA1")
 
 This is only the table-loading boundary. Passing `calibration=cal` records the
 coverage metadata as `tables_loaded_not_applied`; applying those tables to
-produce physical `energy_flux`, calibrated energy coordinates, and look-angle
-coordinates remains separate planned work.
+produce physical `energy_flux`, calibrated energy coordinates, and all
+look-angle coordinates remains separate planned work. `pitch_angle_spectrum()`
+uses the calibration tables for the look directions needed by pitch binning.
 
 ## Examples
 
@@ -57,7 +106,10 @@ esa1 = kg.esa1.load(spn.day("2008-01-01"))
 
 esa1.info()
 ds = esa1.to_xarray()
-frame = esa1.to_polars("counts", reduce_look="sum")
+frame = esa1.to_polars("counts")
+summed = esa1.to_polars("counts", reduce_look="sum")
+pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
+item = esa1.counts.spectrogram(y="energy", log_color=True)
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 ```
 

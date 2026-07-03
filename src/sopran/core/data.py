@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange
+
+
+DEFAULT_MAX_POLARS_ROWS = 10_000_000
+PolarsLayout = Literal["auto", "array", "long"]
 
 
 @dataclass(frozen=True)
@@ -58,7 +62,13 @@ class SopranArray:
             raise ValueError(f"{self.name} is not loaded as an xarray DataArray")
         return self.xr
 
-    def to_polars(self):
+    def to_polars(
+        self,
+        *,
+        layout: PolarsLayout = "auto",
+        max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
+        allow_large: bool = False,
+    ):
         try:
             import numpy as np
             import polars as pl
@@ -68,21 +78,30 @@ class SopranArray:
         array = self.to_xarray()
         dims = tuple(array.dims)
         values = np.asarray(array.values)
-        columns: dict[str, Any] = {}
-        for axis, dim in enumerate(dims):
-            coord_values = (
-                np.asarray(array.coords[dim].values)
-                if hasattr(array, "coords") and dim in array.coords
-                else np.arange(values.shape[axis])
-            )
-            repeat = int(np.prod(values.shape[axis + 1 :], dtype=int))
-            tile = int(np.prod(values.shape[:axis], dtype=int))
-            columns[dim] = np.tile(np.repeat(coord_values, repeat), tile)
-        columns[self.name] = values.reshape(-1)
-        return pl.DataFrame(columns)
+        resolved_layout = _resolve_polars_layout(values, layout)
+        if resolved_layout == "array":
+            return _data_array_to_array_polars(array, self.name, np, pl)
 
-    def to_pandas(self):
-        return self.to_polars().to_pandas()
+        ensure_polars_row_limit(
+            values.size,
+            name=self.name,
+            max_rows=max_rows,
+            allow_large=allow_large,
+        )
+        return _data_array_to_long_polars(array, self.name, np, pl)
+
+    def to_pandas(
+        self,
+        *,
+        layout: PolarsLayout = "auto",
+        max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
+        allow_large: bool = False,
+    ):
+        return self.to_polars(
+            layout=layout,
+            max_rows=max_rows,
+            allow_large=allow_large,
+        ).to_pandas()
 
     def sel(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._with_xarray(self.to_xarray().sel(*args, **kwargs))
@@ -337,3 +356,90 @@ def _metadata_with_operations(
     merged = dict(metadata or {})
     merged.setdefault("operations", [dict(operation) for operation in operations])
     return merged
+
+
+def ensure_polars_row_limit(
+    rows: int,
+    *,
+    name: str,
+    max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
+    allow_large: bool = False,
+) -> None:
+    if max_rows is None or allow_large or rows <= max_rows:
+        return
+    raise ValueError(
+        f"{name}.to_polars() would create {rows} rows. "
+        "Use to_xarray() for dense multidimensional data, reduce a dimension first, "
+        "or pass allow_large=True if this long table is intentional."
+    )
+
+
+def _resolve_polars_layout(values: Any, layout: PolarsLayout) -> Literal["array", "long"]:
+    if layout == "auto":
+        return "array" if getattr(values, "ndim", 0) >= 3 else "long"
+    if layout in ("array", "long"):
+        return layout
+    raise ValueError("layout must be 'auto', 'array', or 'long'")
+
+
+def _data_array_to_array_polars(array: Any, name: str, np: Any, pl: Any):
+    values = np.asarray(array.values)
+    if values.ndim < 2:
+        return _data_array_to_long_polars(array, name, np, pl)
+
+    dims = tuple(array.dims)
+    leading_dim = dims[0]
+    leading_values = (
+        np.asarray(array.coords[leading_dim].values)
+        if hasattr(array, "coords") and leading_dim in array.coords
+        else np.arange(values.shape[0])
+    )
+    dtype = pl.Array(_polars_inner_dtype(values, np, pl), shape=values.shape[1:])
+    return pl.DataFrame(
+        {
+            leading_dim: leading_values,
+            name: pl.Series(name, values, dtype=dtype),
+        }
+    )
+
+
+def _data_array_to_long_polars(array: Any, name: str, np: Any, pl: Any):
+    dims = tuple(array.dims)
+    values = np.asarray(array.values)
+    columns: dict[str, Any] = {}
+    for axis, dim in enumerate(dims):
+        coord_values = (
+            np.asarray(array.coords[dim].values)
+            if hasattr(array, "coords") and dim in array.coords
+            else np.arange(values.shape[axis])
+        )
+        repeat = int(np.prod(values.shape[axis + 1 :], dtype=int))
+        tile = int(np.prod(values.shape[:axis], dtype=int))
+        columns[dim] = np.tile(np.repeat(coord_values, repeat), tile)
+    columns[name] = values.reshape(-1)
+    return pl.DataFrame(columns)
+
+
+def _polars_inner_dtype(values: Any, np: Any, pl: Any):
+    dtype = np.asarray(values).dtype
+    if np.issubdtype(dtype, np.floating):
+        return pl.Float32 if dtype == np.dtype("float32") else pl.Float64
+    if np.issubdtype(dtype, np.signedinteger):
+        if dtype.itemsize <= 1:
+            return pl.Int8
+        if dtype.itemsize <= 2:
+            return pl.Int16
+        if dtype.itemsize <= 4:
+            return pl.Int32
+        return pl.Int64
+    if np.issubdtype(dtype, np.unsignedinteger):
+        if dtype.itemsize <= 1:
+            return pl.UInt8
+        if dtype.itemsize <= 2:
+            return pl.UInt16
+        if dtype.itemsize <= 4:
+            return pl.UInt32
+        return pl.UInt64
+    if np.issubdtype(dtype, np.bool_):
+        return pl.Boolean
+    return pl.Object

@@ -3,7 +3,7 @@ from __future__ import annotations
 import gzip
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -14,12 +14,15 @@ import sopran as spn
 from sopran import Store
 from sopran.missions.kaguya import (
     PaceCalibration,
+    PaceData,
+    PaceRecord,
     pace_calibration_remote_files,
     pace_energy_counts,
     read_pace_fov,
     read_pace_info,
     read_pace_pbf,
 )
+from sopran.missions.kaguya.data import KaguyaESA1Data
 
 
 def test_read_pace_pbf_type01_summarizes_energy_counts(tmp_path: Path) -> None:
@@ -108,6 +111,27 @@ def test_read_pace_fov_parses_esa1_angle_tables(tmp_path: Path) -> None:
     assert esa1["ene"][0, 1] == pytest.approx(0.25)
     assert esa1["pol16"][0, 1, 2] == pytest.approx(-12.5)
     assert esa1["pol4"][0, 1, 2] == pytest.approx(-15.0)
+
+
+def test_read_pace_fov_accepts_mixed_channel_angle_row_widths(tmp_path: Path) -> None:
+    channel = tmp_path / "esas1-ch_angle"
+    channel.write_text(
+        "\n".join(
+            [
+                "AZ AZ64 AZ16",
+                "0 1.0 2.0",
+                "1 3.0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    fov = read_pace_fov(channel)[0]
+
+    assert fov["az64"][0] == pytest.approx(1.0)
+    assert fov["az16"][0] == pytest.approx(2.0)
+    assert fov["az64"][1] == pytest.approx(3.0)
+    assert np.isnan(fov["az16"][1])
 
 
 def test_pace_calibration_reports_sensor_table_coverage(tmp_path: Path) -> None:
@@ -398,6 +422,111 @@ def test_kaguya_esa1_to_pandas_wraps_polars_conversion(tmp_path: Path) -> None:
     assert frame["counts"].tolist() == [64] * 32
 
 
+def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> None:
+    sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    counts = np.zeros((32, 4, 16), dtype=np.uint16)
+    counts[0, 0, 0] = 5
+    counts[0, 0, 8] = 7
+    counts[1, 0, 0] = 11
+    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+    pace = PaceData(
+        sensor=0,
+        headers=(
+            {
+                "time": sample_time,
+                "type": 0x01,
+                "sensor": 0,
+                "svs_tbl": 0,
+                "sampl_time": 16000,
+                "time_resolution": 16000,
+                "data_quality": 0,
+            },
+        ),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    fov = {
+        "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+    data = KaguyaESA1Data(
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(fov={0: fov}),
+    )
+    object.__setattr__(data, "pace", pace)
+
+    spectrum = data.pitch_angle_spectrum(
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+    )
+    array = spectrum.to_xarray()
+
+    assert spectrum.name == "pitch_angle_spectrum"
+    assert array.dims == ("time", "energy", "pitch_angle")
+    assert array.shape == (1, 32, 2)
+    assert array.coords["pitch_angle"].values.tolist() == [45.0, 135.0]
+    assert array.values[0, 0, 0] == pytest.approx(5.0)
+    assert array.values[0, 0, 1] == pytest.approx(7.0)
+    assert array.values[0, 1, 0] == pytest.approx(11.0)
+
+
+def test_kaguya_esa1_pitch_angle_spectrum_requires_angle_calibration() -> None:
+    sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=({"time": sample_time, "type": 0x01, "sensor": 0, "svs_tbl": 0},),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    data = KaguyaESA1Data(time=spn.day("2008-01-01"))
+    object.__setattr__(data, "pace", pace)
+
+    with pytest.raises(ValueError, match="requires PACE angle calibration"):
+        data.pitch_angle_spectrum(magnetic_field=np.array([1.0, 0.0, 0.0]))
+
+
+def test_kaguya_esa1_pitch_angle_spectrum_keeps_all_fill_bins_nan() -> None:
+    sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    counts = np.full((32, 4, 16), 65535, dtype=np.uint16)
+    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+    pace = PaceData(
+        sensor=0,
+        headers=({"time": sample_time, "type": 0x01, "sensor": 0, "svs_tbl": 0},),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    fov = {
+        "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+    data = KaguyaESA1Data(
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(fov={0: fov}),
+    )
+    object.__setattr__(data, "pace", pace)
+
+    array = data.pitch_angle_spectrum(
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+    ).to_xarray()
+
+    assert np.isnan(array.values).all()
+
+
 def test_kaguya_esa1_write_parquet_saves_counts_dataset(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
@@ -449,7 +578,7 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     manifest = result.outputs[0].manifest()
     assert manifest["dataset_id"] == "kaguya.esa1.counts"
     assert manifest["provenance"]["pipeline"] == {
-        "download": "never",
+        "download": "missing",
         "mode": "create",
         "output_dataset": "kaguya.esa1.counts",
         "output_layer": "normalized",
@@ -466,7 +595,7 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     assert log["run_id"] == result.run_id
     assert log["status"] == "complete"
     assert log["mode"] == "create"
-    assert log["download"] == "never"
+    assert log["download"] == "missing"
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["started_at"])
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", log["finished_at"])
     started_at = datetime.fromisoformat(log["started_at"].replace("Z", "+00:00"))
@@ -576,7 +705,7 @@ def test_kaguya_esa1_pipeline_run_writes_quicklook_preview(tmp_path: Path) -> No
         "kaguya.esa1.counts"
     )
     assert result.outputs[1].metadata["metadata"]["pipeline"]["output_layer"] == "normalized"
-    assert result.outputs[1].metadata["metadata"]["pipeline"]["download"] == "never"
+    assert result.outputs[1].metadata["metadata"]["pipeline"]["download"] == "missing"
     assert result.outputs[1].metadata["metadata"]["pipeline"]["run_id"] == result.run_id
     assert result.outputs[1].metadata["dataset_id"] == "kaguya.esa1.counts"
     assert result.outputs[1].metadata["time_range"] == {
@@ -821,7 +950,7 @@ def test_kaguya_esa1_pipeline_run_on_error_continue_records_failed_shard(
     tmp_path: Path,
 ) -> None:
     store = Store(tmp_path / "store")
-    kg = spn.Kaguya(store=store)
+    kg = spn.Kaguya(store=store, download="never")
     pipe = (
         kg.esa1.pipeline(spn.day("2008-01-01"))
         .decode()

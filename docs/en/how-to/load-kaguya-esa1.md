@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - A `Store` root is configured.
-- KAGUYA PDS3 raw files exist, or download policy is allowed.
+- KAGUYA PDS3 raw files exist, or the network archive is reachable.
 - Time ranges are half-open: `[start, stop)`.
 
 ```python
@@ -24,9 +24,29 @@ kg.esa1.select("2008-01-01").remote_files()
 ## 2. Load
 
 ```python
-counts = kg.esa1.counts.load(time)
+esa1 = kg.esa1.load(time)
+counts = esa1.counts
 array = counts.to_xarray()
-table = counts.to_polars()
+table = esa1.to_polars("counts")
+summed = esa1.to_polars("counts", reduce_look="sum")
+```
+
+`counts.to_xarray()` returns the dense `time x energy x look` array.
+`esa1.to_polars("counts")` keeps one row per time sample and stores `counts` as
+a `pl.Array` column. Request full expansion explicitly with `layout="long"`;
+for ordinary tabular output, reduce the look dimension first, for example with
+`reduce_look="sum"`. The PACE fill value `65535` is converted to NaN as a
+SPEDAS-compatible normalization; see `kg.esa1.guide()` for source notes and
+caveats.
+
+For an energy spectrum binned by pitch angle, load the calibration tables and
+call `pitch_angle_spectrum()`. `look` is an index; it becomes a direction only
+through the PACE angle calibration.
+
+```python
+cal = kg.esa1.load_calibration()
+esa1 = kg.esa1.load(time, calibration=cal)
+pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
 ```
 
 ## 3. Plot
@@ -37,9 +57,17 @@ counts.quicklook("kaguya_esa1_counts", root="reports", y="energy", log_color=Tru
 
 ## Download Policy
 
+`Kaguya()` defaults to `download="missing"`. Missing raw files are fetched from
+the DARTS public PDS3 archive and stored under `Store.raw_path("kaguya", "pds3")`.
+
 ```python
-kg = spn.Kaguya(store=store, download="missing")
 kg.esa1.counts.load(time)
 ```
 
-Offline behavior is tracked in [Status](../reference/status.md).
+Use `download="never"` for offline-only analysis.
+
+```python
+kg = spn.Kaguya(store=store, download="never")
+```
+
+`SOPRAN_OFFLINE=1` also forces the default policy to `never`.
