@@ -18,6 +18,12 @@ This page is generated from Python docstrings where available.
 
 ::: sopran.core.schema.validate_schema
 
+::: sopran.frames.FrameContext
+
+::: sopran.frames.FrameTransformPlan
+
+::: sopran.frames.normalize_frame
+
 ::: sopran.schema_docs.builtin_schemas
 
 ::: sopran.schema_docs.schema_reference_markdown

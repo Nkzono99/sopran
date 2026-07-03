@@ -180,3 +180,24 @@ Coordinate frames and units are still early-stage. The design goal is to avoid
 reimplementing established space-physics and planetary geometry libraries. SPICE
 and SpacePy-family tools should be used for kernel-backed geometry and common
 coordinate transforms where they fit.
+
+`FrameContext` is the public adapter boundary for this work. It records the
+time scale, SPICE kernel paths, and available backend versions. The current
+implementation supports identity transforms, which are useful for normalizing
+frame names and preserving transform provenance on a loaded `SopranArray`:
+
+```python
+frames = spn.FrameContext(
+    spice_kernels=("kernels/naif0012.tls",),
+    time_scale="utc",
+)
+
+b = kg.lmag.magnetic_field.load(time)
+b_moon = b.transform("MOON_ME", context=frames)
+b_moon.to_xarray().attrs["frame_transform"]
+```
+
+Non-identity transforms, such as `MOON_ME -> GSE`, currently raise
+`FrameTransformError` until the SPICE / SpacePy adapters are implemented. This
+keeps analysis code from silently pretending that a frame conversion happened
+without the required kernels, models, or backend metadata.

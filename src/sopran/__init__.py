@@ -15,6 +15,7 @@ from sopran.core import spectrogram, stack, year
 from sopran.core import time_bins
 from sopran.core import validate_schema
 from sopran.core.project import Project
+from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
@@ -41,6 +42,8 @@ __all__ = [
     "DecodeError",
     "DownloadError",
     "FrameTransformError",
+    "FrameContext",
+    "FrameTransformPlan",
     "FeatureMatrix",
     "InstrumentSchema",
     "Kaguya",
@@ -71,6 +74,7 @@ __all__ = [
     "lines",
     "load",
     "month",
+    "normalize_frame",
     "period",
     "schema_reference_markdown",
     "spectrogram",

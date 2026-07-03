@@ -166,6 +166,12 @@ pos = (
 )
 ```
 
+最小実装では `FrameContext` は kernel path、time scale、利用可能 backend version を
+metadata として保持し、`SopranArray.transform(frame, context=...)` の入口を提供する。
+同一 frame への変換は identity transform として xarray attrs と operation metadata に記録する。
+異なる frame への実変換は、SPICE / SpacePy adapter が入るまでは `FrameTransformError` を送出し、
+未較正・未変換データを変換済みとして扱わない。
+
 内部 backend の分担:
 
 - `SpiceFrameAdapter`: SPICE kernel に基づく spacecraft、body-fixed、inertial frame。

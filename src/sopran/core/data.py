@@ -90,6 +90,28 @@ class SopranArray:
     def where(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._with_xarray(self.to_xarray().where(*args, **kwargs))
 
+    def transform(
+        self,
+        frame: str,
+        *,
+        context: Any | None = None,
+        source_frame: str | None = None,
+        backend: str | None = None,
+    ) -> SopranArray:
+        if context is None:
+            from sopran.frames import FrameContext
+
+            context = FrameContext()
+        transform_array = getattr(context, "transform_array", None)
+        if not callable(transform_array):
+            raise TypeError("context must expose transform_array(array, target_frame, ...)")
+        return transform_array(
+            self,
+            frame,
+            source_frame=source_frame,
+            backend=backend,
+        )
+
     def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._with_xarray(self.to_xarray().mean(*args, **kwargs))
 
