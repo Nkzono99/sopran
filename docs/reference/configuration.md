@@ -1,6 +1,6 @@
-# Configuration
+# 設定
 
-Project configuration lives in `sopran.toml` in an analysis workspace:
+解析 workspace には `sopran.toml` を置けます。
 
 ```toml
 [project]
@@ -25,23 +25,22 @@ lat = [-5, 5]
 lon_domain = "0_360"
 ```
 
-`[cases.<name>.region]` becomes `case.region` as a `spn.Region`. Put the same
-keys under `[defaults.region]` when every case should share the same region.
+## 優先順位
 
-Environment variables:
+| 設定 | 優先順位 |
+| --- | --- |
+| Store root | 明示引数 > 環境変数 > `[store]` > default |
+| artifact root | 明示引数 > `SOPRAN_ARTIFACT_ROOT` > `[project]` > project root |
+| case region | `[cases.<name>.region]` > `[defaults.region]` |
 
-- `SOPRAN_DATA_ROOT`: default store root.
-- `SOPRAN_CACHE_ROOT`: optional cache root override.
-- `SOPRAN_ARTIFACT_ROOT`: project artifact root for `Project.save(...)`.
-- `SOPRAN_DOWNLOAD_MODE`: default mission download policy when not passed explicitly.
-- `SOPRAN_OFFLINE`: when truthy, default mission download policy becomes `never`.
+## 環境変数
 
-When `Project(root)` creates its own `Store`, `[store].data_root` and
-`[store].cache_root` are resolved relative to the project root unless they are
-absolute paths. Explicit `Store(...)` arguments and environment variables take
-priority over project configuration.
-`Project.save(...)` resolves artifact roots in this order: explicit
-`artifact_root`, `SOPRAN_ARTIFACT_ROOT`, `[project].artifact_root`, then the
-project root. Relative paths are resolved against the project root.
+| 変数 | 役割 |
+| --- | --- |
+| `SOPRAN_DATA_ROOT` | `Store()` の既定 data root |
+| `SOPRAN_CACHE_ROOT` | cache root |
+| `SOPRAN_ARTIFACT_ROOT` | `Project.save(...)` の既定出力先 |
+| `SOPRAN_DOWNLOAD_MODE` | mission download policy |
+| `SOPRAN_OFFLINE` | truthy のとき download policy を `never` にする |
 
-Invalid project configuration raises `ConfigError`.
+不正な設定は `ConfigError` を送出します。

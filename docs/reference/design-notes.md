@@ -1,14 +1,15 @@
-# Design Notes
+# 設計メモ
 
-The repository keeps detailed design drafts at the repository root:
+設計検討の本文はリポジトリ直下の `SPEC.md` と `_handoff/` 以下にあります。
+公開 docs では、利用者が最初に必要とする API と保存形式を優先して説明します。
 
-- `SPEC.md`: API and data store design.
-- `STORE.md`: store layer responsibilities.
-- `PIPELINE.md`: pipeline design.
-- `PLOTTING.md`: plotting design.
-- `SURFACE.md`: body-first surface product design.
-- `THIRD_PARTY_NOTICES.md`: upstream license and attribution notes.
+主な設計トピック:
 
-The published documentation should stay user-facing and concise. Detailed
-engineering notes can remain in these root-level design files until the design
-stabilizes enough to promote into public docs.
+| トピック | 公開ページ |
+| --- | --- |
+| object-first API | [オブジェクト API](../concepts/object-api.md) |
+| raw/parquet/features/database | [Store](../concepts/store.md) |
+| batch 実行 | [Pipeline](../concepts/pipeline.md) |
+| 時間 bin と feature table | [時刻・単位・座標系](../concepts/time-units-frames.md) |
+| DEM/SVM/shadow | [Maps](../concepts/maps.md) |
+| 進捗と未実装項目 | [実装状況](status.md) |

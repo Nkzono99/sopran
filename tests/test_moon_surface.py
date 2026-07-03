@@ -200,7 +200,7 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     moon = spn.Moon()
 
     assert moon.guide().language == "ja"
-    assert "月面プロダクト" in moon.guide().to_markdown()
+    assert "月面マップ" in moon.guide().to_markdown()
     assert "DEM" in moon.dem.guide().to_markdown()
     assert "| name | dims | units | dtype | frame | aliases | description |" in (
         moon.guide().to_markdown()
@@ -208,7 +208,7 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     assert "| dem | lat, lon | m | float64 | Moon body-fixed |" in (
         moon.dem.guide().to_markdown()
     )
-    assert moon.guide().url == "https://nkzono99.github.io/sopran/surface/moon/"
+    assert moon.guide().url == "https://nkzono99.github.io/sopran/maps/moon/"
     assert moon.dem.guide().url == moon.guide().url
     assert moon.help() == moon.guide()
     assert moon.dem.help() == moon.dem.guide()
@@ -242,7 +242,7 @@ def test_moon_surface_examples_return_markdown_pages() -> None:
     shadow_example = moon.shadow.example().to_markdown()
     sza_example = moon.sza.example().to_markdown()
 
-    assert "Moon Surface Example" in mission_example
+    assert "Moon Maps Example" in mission_example
     assert "spn.Moon" in mission_example
     assert "spn.Region" in mission_example
     assert "Moon DEM Example" in dem_example
@@ -266,10 +266,10 @@ def test_moon_surface_guides_can_switch_language() -> None:
     assert moon_ja.available_languages == ("ja", "en")
     assert moon_ja.language_switcher() == "Lang: 日本語/English"
     assert moon_ja.with_language("en").url == (
-        "https://nkzono99.github.io/sopran/surface/moon/"
+        "https://nkzono99.github.io/sopran/maps/moon/"
     )
-    assert "月面プロダクト" in moon_ja.to_markdown()
-    assert "Moon Surface Products" in moon_en.to_markdown()
+    assert "月面マップ" in moon_ja.to_markdown()
+    assert "Moon Maps" in moon_en.to_markdown()
     assert "DEM" in dem_ja.to_markdown()
     assert "shadow" in shadow_ja.to_markdown().lower()
     assert moon.help(language="ja") == moon_ja

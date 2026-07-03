@@ -1,5 +1,5 @@
 site_name: SOPRAN
-site_description: Satellite Observation Package for Retrieval, Analysis, and Navigation
+site_description: 衛星観測データの取得、解析、可視化、保存を一貫して扱う Python ライブラリ
 repo_url: https://github.com/Nkzono99/sopran
 repo_name: Nkzono99/sopran
 site_url: https://nkzono99.github.io/sopran/
@@ -55,39 +55,41 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Home: index.md
-  - Getting Started:
-      - Installation: getting-started/installation.md
-      - First Analysis: getting-started/first-analysis.md
-      - Data Store Setup: getting-started/data-store.md
-  - Concepts:
-      - concepts/object-api.md
-      - concepts/store.md
-      - concepts/pipeline.md
-      - concepts/project-case.md
-      - concepts/products-schemas.md
-      - concepts/time-units-frames.md
-      - concepts/plotting.md
-      - concepts/surface.md
-  - Missions:
-      - Overview: missions/index.md
-      - missions/kaguya.md
-      - missions/kaguya-esa1.md
-      - missions/artemis.md
+  - ホーム: index.md
+  - 導入:
+      - インストール: getting-started/installation.md
+      - 最初の解析: getting-started/first-analysis.md
+      - データストア: getting-started/data-store.md
+  - コンセプト:
+      - オブジェクト API: concepts/object-api.md
+      - Store: concepts/store.md
+      - Pipeline: concepts/pipeline.md
+      - Project と Case: concepts/project-case.md
+      - Product と Schema: concepts/products-schemas.md
+      - 時刻・単位・座標系: concepts/time-units-frames.md
+      - 可視化: concepts/plotting.md
+      - Maps: concepts/maps.md
+  - ミッション:
+      - 概要: missions/index.md
+      - KAGUYA/SELENE:
+          - 概要: missions/kaguya/index.md
+          - PACE ESA1: missions/kaguya/esa1.md
+      - ARTEMIS:
+          - 概要: missions/artemis/index.md
   - How-to:
-      - how-to/load-kaguya-esa1.md
-      - how-to/write-normalized-parquet.md
-      - how-to/plotstack.md
-      - how-to/pipeline-plan.md
-      - how-to/moon-surface.md
-  - Surface:
-      - surface/moon.md
+      - KAGUYA ESA1 を読む: how-to/load-kaguya-esa1.md
+      - Parquet に保存する: how-to/write-normalized-parquet.md
+      - PlotStack を作る: how-to/plotstack.md
+      - Pipeline を計画する: how-to/pipeline-plan.md
+      - 月面マップを使う: how-to/moon-maps.md
+  - Maps:
+      - 月面マップ: maps/moon.md
   - Reference:
-      - reference/api.md
-      - reference/schemas.md
-      - reference/store-layout.md
-      - reference/pipeline-rules.md
-      - reference/configuration.md
-      - reference/roadmap.md
-      - reference/design-notes.md
-      - reference/license.md
+      - API リファレンス: reference/api.md
+      - スキーマ: reference/schemas.md
+      - Store layout: reference/store-layout.md
+      - Pipeline rules: reference/pipeline-rules.md
+      - 設定: reference/configuration.md
+      - 実装状況: reference/status.md
+      - 設計メモ: reference/design-notes.md
+      - License: reference/license.md

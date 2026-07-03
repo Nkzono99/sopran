@@ -1,4 +1,13 @@
-# Build A PlotStack
+# PlotStack を作る
+
+## チェックリスト
+
+- 並べたい panel を決める
+- spectrum は `spectrogram(y=...)` を使う
+- vector は `lines(components=...)` を使う
+- 保存する場合は `quicklook()` に `root` を渡す
+
+## loaded object から作る
 
 ```python
 stack = spn.stack(
@@ -9,24 +18,9 @@ stack = spn.stack(
 plan = stack.plan()
 plot_result = stack.plot(backend="matplotlib")
 figure = plot_result.fig
-view = stack.explore(backend="panel")
-result = stack.quicklook(
-    "wake_overview",
-    root="reports",
-    formats=("png", "html"),
-    backend="matplotlib",
-)
 ```
 
-For a single loaded spectral variable, use the same spectrogram route through
-`SopranArray.quicklook()`:
-
-```python
-counts = kg.esa1.counts.load(time)
-counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
-```
-
-With a project case, omit the repeated time argument and let the case provide it:
+## Case から作る
 
 ```python
 stack = case.stack(
@@ -36,8 +30,6 @@ stack = case.stack(
     case.artemis.p1.fgm.magnetic_field.lines(components="xyz"),
 )
 
-plot_result = stack.plot(backend="matplotlib", context=case)
-figure = plot_result.fig
 quicklook = stack.quicklook(
     "wake_overview",
     root="reports",
@@ -46,22 +38,10 @@ quicklook = stack.quicklook(
 )
 ```
 
-`PlotStack` is the SPEDAS/tplot-like route for comparing time-series products
-from different instruments or missions. The current backend is Matplotlib and
-is selected with `backend="matplotlib"`.
-Use `log_color=True` on spectrogram items for positive-valued spectra that need
-a logarithmic color scale.
-Use `.lines(components="xz")` for vector products when a component subset should
-stay in one panel.
-`explore(backend="panel")` returns a Panel view containing the same Matplotlib
-figure and metadata for notebook or browser inspection.
-`plot()` returns a `PlotResult` with `fig`, `axes`, `backend`, and metadata.
-The metadata includes `items`, `panel_kinds`, `panels`, and `time_axis`,
-recording the panel names, panel kinds, x/y/log-color settings, shared UTC
-axis, and native cadence policy used by the stack.
-Pass `context=case` when the `PlotResult.metadata` should carry the case
-context.
-`quicklook()` writes `<name>.png`, optional `<name>.html`, and `<name>.json`.
-Pass `dataset_id`, `time_range`, `frame`, and `aggregation` when the quicklook
-should carry provenance into the JSON and HTML report. Pass `context=case` to
-include `case.metadata()` as the quicklook context.
+## 出力
+
+| 出力 | 内容 |
+| --- | --- |
+| `.png` | 静的 quicklook |
+| `.html` | 画像と metadata を含む簡易 report |
+| `.json` | panels、time axis、context、provenance |

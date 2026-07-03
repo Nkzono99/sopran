@@ -1,95 +1,32 @@
-# Time, Units, And Frames
+# 時刻・単位・座標系
 
-SOPRAN public APIs use half-open UTC ranges:
+SOPRAN の時刻範囲は半開区間 `[start, stop)` です。日別 shard を追加しても境界の
+サンプルを二重に数えないためです。
 
 ```python
 time = spn.period("2008-02-01", "2008-02-02")
 day = spn.day("2008-02-01")
 month = spn.month("2008-02")
-year = spn.year("2008")
 ```
 
-The interval is `[start, stop)`. This avoids double-counting records at
-boundaries when appending daily or monthly shards.
-
-`time_bins()` is strict by default: `partial="error"` raises if the requested
-range is not exactly divisible by the cadence. Use `partial="keep"` to retain a
-short final bin, or `partial="drop"` to discard it. When a tail is dropped,
-`TimeBins.time` and Store-managed feature dataset `time_coverage` use the
-remaining bin-edge range:
+## TimeBins
 
 ```python
-bins = spn.time_bins(time, cadence="10s", partial="keep")
-bin_table = bins.to_polars()
-bin_metadata = bins.metadata()
+bins = spn.time_bins(time, cadence="10s", partial="drop")
+bins.to_polars()
+bins.metadata()
 ```
 
-When event boundaries or analysis windows define the grid better than a fixed
-cadence, pass explicit edges:
+| `partial` | 動作 |
+| --- | --- |
+| `"error"` | 端数 bin があると例外 |
+| `"keep"` | 端数 bin を残す |
+| `"drop"` | 完全な bin だけを使う |
+| `"custom"` | 明示 edge で作った grid |
 
-```python
-event_bins = spn.time_bins(
-    edges=[
-        "2008-02-01T00:00:00Z",
-        "2008-02-01T00:03:30Z",
-        "2008-02-01T00:05:00Z",
-    ],
-)
-```
+## Alignment
 
-## Time Bins And Alignment
-
-Use `PlotStack` when you want to inspect products together without changing
-their native cadence. Use `TimeBins` and `align()` when you need a feature table
-for statistics or machine learning and every input can share the same sampling
-rule:
-
-```python
-bins = spn.time_bins(time, cadence="10s")
-features = spn.align(
-    sza,
-    wave_power,
-    grid=bins,
-    method="nearest",
-    tolerance="5s",
-    join="inner",
-)
-frame = features.to_feature_frame()
-metadata = features.feature_metadata()
-matrix = features.to_feature_matrix()
-matrix = matrix.select("sza", "wave_power")
-matrix_frame = matrix.to_pandas(include_time=True)
-matrix.write_parquet("features-matrix.parquet")
-matrix = spn.FeatureMatrix.read_parquet("features-matrix.parquet")
-matrix.write_npz("features.npz")
-matrix = spn.FeatureMatrix.read_npz("features.npz")
-features.write_parquet("features.parquet")
-```
-
-Use `write_parquet()` for an ad-hoc file. Use `write_dataset()` when the feature
-table should become a reusable Store-managed `features` dataset with manifest,
-schema, catalog, checksum, source dataset IDs, and alignment metadata:
-
-```python
-dataset = features.write_dataset(
-    store,
-    "analysis.wake_context",
-    source_datasets=("moon.sza", "artemis.p1.efi.wave_power"),
-    context=case,
-)
-
-dataset = features.write_dataset(
-    store.database("lunar_wake").product("wake_context"),
-    description="aligned wake context features",
-)
-```
-
-Passing a database `ProductRef` writes to the `databases` layer and registers the
-product in that database's `database.json`, so `db.products()` can discover it
-later.
-
-Use `SampleTable` when each product needs its own rule, such as nearest SZA,
-bin-maximum wave power, bin-median density, or the first/last sample:
+複数データを機械学習や統計に入れるときは、まず bin を決めてから対応づけます。
 
 ```python
 features = (
@@ -97,94 +34,28 @@ features = (
     .add(sza, method="nearest", tolerance="5s")
     .add(wave_power, method="max")
     .add(density, method="median")
-    .add(event_flag, method="last")
     .collect(join="inner")
 )
-frame = features.to_feature_frame()
+
+matrix = features.to_feature_matrix().select("sza", "wave_power")
 ```
 
-The default table layout is wide, with one feature per column. Use
-`layout="long"` for a tidy `time`, `feature`, `value` table:
+| reducer | 意味 |
+| --- | --- |
+| `nearest` | bin center に最も近い値 |
+| `center` | bin 内で center に最も近い値 |
+| `mean` / `median` | bin 内集約 |
+| `max` | bin 内最大 |
+| `first` / `last` | bin 内の最初/最後 |
 
-```python
-wide_frame_with_time = features.to_feature_frame(include_time=True)
-long_frame = features.to_polars(layout="long")
-features.write_parquet("features-long.parquet", layout="long")
-metadata = features.metadata()
-```
+| `join` | 意味 |
+| --- | --- |
+| `outer` | 全 bin を残し、欠損は null |
+| `inner` | 全 feature がある bin だけ残す |
 
-`TimeBins.to_polars()` returns one row per bin with `start`, `stop`, `center`,
-`duration_seconds`, and `is_partial`. `metadata()` returns the columns, bin
-grid, alignment method, join mode, fill policy, and detailed bin edges/centers
-so the same information can be written into a dataset manifest. It also stores
-`features`, a per-output-column list of the selected reducer and tolerance, so
-mixed `SampleTable` rules are reproducible.
-Pass `context=case` to `write_dataset()` when the manifest should preserve the
-project case metadata that produced the feature table.
-Custom edge grids are marked with `partial="custom"` and preserve the exact
-user-provided intervals instead of forcing them onto a regular cadence.
-When a source xarray/DataArray exposes `attrs["units"]` or `attrs["frame"]`,
-those values are copied into the aligned feature metadata and into the
-`schema.json` generated by `write_dataset()`.
-For ML and statistical tables, `to_feature_frame()` returns only feature
-columns by default, while `to_feature_frame(include_time=True)` keeps the bin
-center in the `time` column. `feature_metadata()` returns the feature columns,
-feature rules, grid metadata, row count, and time column name.
-`to_feature_matrix()` returns a `FeatureMatrix` object with numpy-compatible
-`values`, feature `columns`, bin-center `time`, and the same feature metadata.
-`FeatureMatrix.to_polars()` and `FeatureMatrix.to_pandas()` return feature
-tables. `write_parquet()` stores the table, time labels, and metadata sidecar in
-the default Polars-friendly format for reusable feature tables. `write_npz()`
-stores values, columns, time labels, and metadata JSON for lightweight ML
-handoff. Both writers create a sibling `.metadata.json` sidecar so
-non-Python tools can inspect columns, bin-center times, row count, and alignment
-metadata without opening the binary array file.
-Use `FeatureMatrix.read_parquet()` or `FeatureMatrix.read_npz()` to reload the
-same artifact.
-Use `FeatureMatrix.select(*columns)` before training when a model should receive
-only a chosen subset of aligned features.
+## FrameContext
 
-The first implementation supports 1D time series and `time x component` vector
-series with `nearest`, `center`, `mean`, `max`, `median`, `first`, or `last`
-alignment onto regular half-open bins. `nearest` samples the bin center across
-all samples, `center` samples the nearest value inside each bin, and the other
-reducers aggregate samples inside `[start, stop)`. Vector series are expanded to
-wide columns such as `magnetic_field_x`.
-
-The default `join="outer"` keeps every time bin and leaves missing feature
-values as null. Use `join="inner"` when a machine-learning or statistical table
-should keep only bins where every feature is present.
-
-If missing values should be explicit rather than null, pass a scalar `fill`
-value with the outer join:
-
-```python
-features = spn.align(sza, wave_power, grid=bins, method="nearest", fill=-1.0)
-```
-
-Pass `quality_mask=<1D time series>` to `align()` or `SampleTable.collect()`
-when a coarse quality series should filter bins before the feature table is
-written. The mask is sampled at the bin center inside each bin; bins with a
-mask value of 0, `False`, or no mask sample are dropped:
-
-```python
-features = (
-    spn.SampleTable(bins)
-    .add(sza, method="nearest", tolerance="5s")
-    .add(wave_power, method="max")
-    .collect(join="inner", quality_mask=quality_flag)
-)
-```
-
-Coordinate frames and units are still early-stage. The design goal is to avoid
-reimplementing established space-physics and planetary geometry libraries. SPICE
-and SpacePy-family tools should be used for kernel-backed geometry and common
-coordinate transforms where they fit.
-
-`FrameContext` is the public adapter boundary for this work. It records the
-time scale, SPICE kernel paths, and available backend versions. The current
-implementation supports identity transforms, which are useful for normalizing
-frame names and preserving transform provenance on a loaded `SopranArray`:
+座標系変換は `FrameContext` に provenance を集めます。
 
 ```python
 frames = spn.FrameContext(
@@ -194,10 +65,6 @@ frames = spn.FrameContext(
 
 b = kg.lmag.magnetic_field.load(time)
 b_moon = b.transform("MOON_ME", context=frames)
-b_moon.to_xarray().attrs["frame_transform"]
 ```
 
-Non-identity transforms, such as `MOON_ME -> GSE`, currently raise
-`FrameTransformError` until the SPICE / SpacePy adapters are implemented. This
-keeps analysis code from silently pretending that a frame conversion happened
-without the required kernels, models, or backend metadata.
+SPICE / SpacePy backend の実装状況は [実装状況](../reference/status.md) を参照してください。

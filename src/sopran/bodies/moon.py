@@ -7,7 +7,7 @@ from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 
 _GUIDE_LANGUAGES = ("ja", "en")
-_PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/surface/moon/"
+_PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/maps/moon/"
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ class SurfacePlan:
 
 
 class Moon:
-    """Body-first entry point for Moon surface products."""
+    """Body-first entry point for Moon map products."""
 
     name = "moon"
 
@@ -52,7 +52,7 @@ class Moon:
 
     def guide(self, *, language: str = "ja") -> GuidePage:
         return _guide_page(
-            title="Moon Surface Products",
+            title="Moon Maps",
             source="sopran.bodies.moon",
             markdowns=_MOON_GUIDES,
             language=language,
@@ -67,8 +67,8 @@ class Moon:
 
     def example(self) -> GuidePage:
         return _example_page(
-            "Moon Surface Example",
-            """# Moon Surface Example
+            "Moon Maps Example",
+            """# Moon Maps Example
 
 ```python
 import sopran as spn
@@ -272,9 +272,9 @@ metadata = svm_plan.to_metadata()
 
 
 _MOON_GUIDES = {
-    "en": """# Moon Surface Products
+    "en": """# Moon Maps
 
-SOPRAN uses a body-first API for Moon surface products. Mission modules provide
+SOPRAN uses a body-first API for Moon map products. Mission modules provide
 provider-specific discovery, while `spn.Moon()` owns body-fixed DEM, SVM, SZA,
 shadow, illumination, projection, and region semantics.
 
@@ -282,9 +282,9 @@ The v0.1 implementation is a planning skeleton. Terrain-aware shadow and
 illumination backends will require DEM data, solar geometry, body shape, and
 explicit longitude/projection metadata.
 """,
-    "ja": """# Moon Surface Products
+    "ja": """# Moon Maps
 
-SOPRAN は月面プロダクトを body-first API として扱います。mission module は
+SOPRAN は月面マップを body-first API として扱います。mission module は
 provider-specific discovery を担当し、`spn.Moon()` は月固定 DEM、SVM、SZA、shadow、
 illumination、projection、region semantics を受け持ちます。
 

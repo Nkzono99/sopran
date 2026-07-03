@@ -1,6 +1,7 @@
-# API Reference
+# API リファレンス
 
-This page is generated from Python docstrings where available.
+このページは Python docstring から生成されます。利用例や設計意図は各コンセプト
+ページを参照してください。
 
 ::: sopran.core.alignment.TimeBins
 

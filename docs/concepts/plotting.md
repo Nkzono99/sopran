@@ -1,147 +1,46 @@
-# Plotting
+# 可視化
 
-Data analysis usually needs visualization, so plotting is part of the public
-model. The beginner path is explicit:
+解析では「異なる観測機器を同じ時間軸で見る」ことが多いため、SOPRAN は
+`PlotStack` を公開 API として扱います。
+
+## 1 panel quicklook
 
 ```python
 counts = kg.esa1.counts.load(time)
-counts.plot()
-counts.quicklook("counts_review", root="reports", formats=("png", "html"))
-```
-
-`SopranArray.quicklook()` writes a one-panel PlotStack quicklook for the loaded
-variable and records standard metadata such as the variable name and time range.
-For spectral arrays, pass the non-time axis to write a spectrogram quicklook:
-
-```python
 counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
 ```
 
-`PlotStack` provides a SPEDAS/tplot-like multi-panel time-series view:
+## multi-panel plot
 
 ```python
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),
     kg.esa1.quality.load(time).line(),
+    art.p1.fgm.magnetic_field.load(time).lines(components="xyz"),
 )
 
-stack.plan()
 plot_result = stack.plot(backend="matplotlib")
-stack.explore(backend="panel")
-stack.quicklook("wake_overview", root="reports", backend="matplotlib")
+plot_result.fig
 ```
 
-When a `Project` case supplies the time range, variable endpoints can create
-lazy plot items directly:
+## Case から作る
 
 ```python
 stack = case.stack(
     case.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
-    case.kaguya.esa1.quality.line(),
     case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy", log_color=True),
     case.artemis.p1.fgm.magnetic_field.lines(components="xyz"),
 )
+stack.quicklook("wake_overview", root="reports", context=case)
 ```
 
-Line panels can also plot 2D `time x component` arrays as multiple lines in
-one panel, which is the intended route for vector products such as magnetic
-field components. Use `.lines(components="xz")` to keep a named component
-subset in the same panel.
-Pass `log_color=True` to spectrogram items when positive-valued spectra should
-use a logarithmic color scale in the Matplotlib backend.
-Use `stack.explore(backend="panel")` when a notebook or browser workflow should
-show the same PlotStack figure and metadata in a Panel view.
+## 可視化と feature table の違い
 
-Plotting keeps native cadence. For machine-learning tables or statistical
-joins, create explicit time bins and align products separately:
+| 目的 | API |
+| --- | --- |
+| native cadence のまま並べる | `PlotStack` |
+| 同じ時間 bin に集約する | `time_bins()` / `SampleTable` |
+| ML 用の行列にする | `to_feature_matrix()` |
+| provenance 付きで保存する | `quicklook(..., context=case)` |
 
-```python
-bins = spn.time_bins(case.time, cadence="10s")
-aligned = spn.align(sza, wave_power, grid=bins, method="mean", join="inner")
-features = aligned.to_feature_frame()
-matrix = aligned.to_feature_matrix()
-matrix = matrix.select("sza", "wave_power")
-pandas_frame = matrix.to_pandas(include_time=True)
-feature_metadata = aligned.feature_metadata()
-```
-
-Use `partial="drop"` when the requested range should be trimmed to complete
-bins; the resulting `TimeBins.time` follows the retained bin-edge range, so
-feature dataset `time_coverage` does not include the discarded tail.
-
-For event-centered reviews or hand-curated intervals, define the grid with
-explicit edges and reuse the same alignment API:
-
-```python
-event_bins = spn.time_bins(
-    edges=[
-        "2008-02-01T00:00:00Z",
-        "2008-02-01T00:03:30Z",
-        "2008-02-01T00:05:00Z",
-    ],
-)
-event_features = spn.align(sza, wave_power, grid=event_bins, method="mean")
-```
-
-When each product needs a different sampling rule, use `SampleTable`:
-
-```python
-aligned = (
-    spn.SampleTable(bins)
-    .add(sza, method="nearest", tolerance="5s")
-    .add(wave_power, method="max")
-    .add(density, method="median")
-    .add(event_flag, method="last")
-    .collect(join="inner")
-)
-features = aligned.to_feature_frame(include_time=True)
-```
-
-`join="outer"` keeps every bin with nulls for missing features. `join="inner"`
-drops bins that do not have every requested feature. Use `fill=<value>` with
-the outer join when downstream tools need explicit sentinel values instead of
-nulls.
-
-The default feature table layout is wide. `to_polars(layout="long")` returns a
-tidy `time`, `feature`, `value` table, which is often easier to facet or group
-in exploratory plotting tools.
-`to_feature_frame()` returns the ML/statistics input table without the time
-column by default; use `include_time=True` when the bin center should travel
-with the features.
-`to_feature_matrix()` returns numpy-compatible values plus feature columns,
-time labels, and metadata in a small object for ML libraries.
-Use `FeatureMatrix.to_polars()` or `FeatureMatrix.to_pandas()` when a downstream
-tool expects a table again.
-Use `FeatureMatrix.write_parquet()` for the default Polars-friendly feature
-table handoff, or `FeatureMatrix.write_npz()` when a compact local binary
-artifact is more convenient. Both write a sibling `.metadata.json` sidecar with
-columns, bin-center times, row count, and alignment metadata, and
-`FeatureMatrix.read_parquet()` / `FeatureMatrix.read_npz()` load the artifact
-again.
-Use `FeatureMatrix.select()` to keep only the columns a downstream model should
-see.
-
-Vector products such as ARTEMIS FGM are expanded to wide feature columns when
-aligned, for example `magnetic_field_x`, `magnetic_field_y`, and
-`magnetic_field_z`. Spectral products such as ARTEMIS ESA `ion_energy_flux`
-can use the same `spectrogram(y="energy")` PlotStack route as KAGUYA ESA1
-spectra once a normalized parquet dataset exists in the store.
-
-The v0.1 implementation accepts `backend="matplotlib"`. `plot()` returns a
-`PlotResult` with `fig`, `axes`, `backend`, and metadata so quicklook and
-notebook workflows can share the same plot description. Plot metadata includes
-`items`, `panel_kinds`, `panels`, and `time_axis` so saved quicklooks can state
-which panels were line or spectrogram panels, each panel's x/y/log-color
-settings, that they shared the UTC time axis, and that each product kept its
-native cadence. Pass `context=case` to `plot()` when the notebook result should
-carry `case.metadata()`.
-Objects with a JSON-ready `metadata` property, such as loaded `SopranArray`
-values, can also be passed directly as `context=loaded`.
-Current `quicklook()` output can include a Matplotlib PNG, a static HTML report
-with the PNG embedded, and a small JSON metadata file. Quicklook metadata uses
-standard keys such as `dataset_id`, `time_range`, `frame`, `backend`,
-`aggregation`, `time_axis`, and `context` when those are available. Pass
-`context=case`, `context=loaded`, or `context=region` to record the matching
-provenance metadata in both the JSON and HTML quicklook reports. HoloViz,
-Datashader, Panel dashboards, and interactive HTML quicklooks are planned for
-larger interactive products.
+長期・対話的可視化 backend の予定は [実装状況](../reference/status.md) に集約しています。

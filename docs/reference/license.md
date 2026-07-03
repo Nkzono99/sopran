@@ -1,10 +1,17 @@
-# License And Upstream Code
+# License
 
-SOPRAN original code and documentation are licensed under Apache-2.0.
+SOPRAN 本体は Apache License 2.0 を想定しています。
 
-SPEDAS/PySPEDAS-derived ports must retain upstream notices. MIT-licensed
-SPEDAS routines can be ported with attribution. GPL or NASA-OSA components
-should not be copied into the Apache-2.0 core without a separate license
-review.
+SPEDAS/IDL 由来の挙動を参考にする場合でも、公開 API と実装は pure Python + Rust として
+再実装し、IDL ソースのコピーを取り込まない方針です。
 
-See `LICENSE`, `NOTICE`, and `THIRD_PARTY_NOTICES.md` in the repository root.
+ライセンス確認の基本方針:
+
+| 対象 | 方針 |
+| --- | --- |
+| SOPRAN の新規コード | Apache-2.0 |
+| SPEDAS の挙動 | 仕様理解と parity test の参考 |
+| SPEDAS のソース文面 | 直接コピーしない |
+| 外部データ | provider の利用条件を dataset manifest に残す |
+
+詳細な upstream 調査結果は必要に応じて `SPEC.md` または issue に分けます。

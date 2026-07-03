@@ -1,6 +1,11 @@
-# Plan A Pipeline
+# Pipeline を計画する
 
-Build a pipeline without executing it:
+## チェックリスト
+
+- どの source から読むか決める
+- 実行 stage を並べる
+- 出力 dataset ID を決める
+- まず `dry_run=True` で確認する
 
 ```python
 pipe = (
@@ -9,36 +14,33 @@ pipe = (
     .decode()
     .normalize()
     .select_variables("counts")
-    .quicklook(
-        "counts",
-        frame="SSE",
-        aggregation={"mode": "native"},
-    )
+    .quicklook("counts", frame="SSE", aggregation={"mode": "native"})
     .write("kaguya.esa1.counts", layer="normalized")
 )
-
-plan = pipe.plan()
-result = pipe.run(dry_run=True)
 ```
 
-Inspect the plan in structured or readable form:
+## 実行前確認
 
 ```python
+plan = pipe.plan()
+dry = pipe.run(dry_run=True)
+
 plan.to_dict()
-result.to_dict()
-print(result)
+dry.to_dict()
+print(dry)
 ```
 
-The dry-run result does not execute pipeline stages. It reports the source,
-time range, stage list, output target, run parameters, and an empty output
-list. Executed pipeline results include JSON-ready run parameters and output
-summaries in `result.to_dict()`.
+## 実行後に見るもの
 
-For KAGUYA ESA1, `run()` writes quicklooks under
-`<dataset>/preview/<name>.png` with a matching JSON metadata file. Use
-`formats=("png", "html")` when a static HTML report should be written too.
+```python
+result = pipe.run()
+result.to_dict()
+```
 
-Use `scan()` or `collect()` when the input already exists in the store:
+`PipelineResult` は run parameters、出力 dataset、quicklook path、metadata path を
+JSON にしやすい形で返します。
+
+既存 normalized dataset を読むだけなら、stage を実行せず `from_normalized()` を使います。
 
 ```python
 frame = (

@@ -1,23 +1,18 @@
-# Project And Case
+# Project と Case
 
-`Project` represents an analysis workspace. It owns notebooks, scripts, case
-configuration, and a shared `Store`.
+`Project` は解析 workspace、`Case` は特定の期間・領域・既定値を表します。
 
 ```python
 project = spn.Project("projects/lunar_wake", store=store)
 case = project.case("wake_20080201")
 ```
 
-`sopran.toml` can define case time ranges and defaults:
+## sopran.toml
 
 ```toml
 [defaults]
 frame = "SSE"
 cache = true
-
-[store]
-data_root = "data"
-cache_root = "cache"
 
 [cases.wake_20080201]
 start = "2008-02-01T00:00:00"
@@ -30,60 +25,29 @@ lat = [-45, -10]
 lon_domain = "0_360"
 ```
 
-Case objects provide mission and body context:
+## Case から使う
+
+`Case` 経由では time や region を繰り返し渡さずに済みます。
 
 ```python
 case.kaguya.esa1.counts.load()
 case.artemis.p1.fgm.magnetic_field.plan()
-case.moon.dem.plan(source="kaguya.tc.dem")
-case.moon.shadow.plan(dem=case.moon.dem.plan(source="kaguya.tc.dem"))
-case.metadata()
+
+dem = case.moon.dem.plan(source="kaguya.tc.dem")
+shadow = case.moon.shadow.plan(dem=dem)
 ```
 
-`case.region` is `None` when no region is configured. Case-specific region
-settings override `[defaults.region]`. `case.moon.<surface>` endpoints use
-`case.region` as the default `region` when it is configured. Instant surface
-products such as `shadow` and `illumination` use `case.time.start_iso` as their
-default `time` unless a time is passed explicitly.
-`case.metadata()` returns a JSON-ready snapshot of the case name, project root,
-store roots, time range, default frame/cache values, defaults, and region
-metadata. Use it when a plot, interim artifact, or pipeline run needs to carry
-the same analysis context into provenance. Feature tables created with
-`AlignmentResult.write_dataset(..., context=case)` store the same metadata in
-the dataset manifest.
-Context-aware APIs accept a metadata mapping, an object with `metadata()`, an
-object with a JSON-ready `metadata` property, or an object with `to_metadata()`.
-Loaded `SopranArray` values can therefore be passed as `context=quality` when
-the artifact should record the loaded variable itself. Region-like objects can
-be passed directly when their `to_metadata()` output is the desired context.
+## provenance
 
-When no explicit `Store` is passed to `Project`, `[store]` paths are resolved
-relative to the project root. `SOPRAN_DATA_ROOT` and `SOPRAN_CACHE_ROOT` remain
-higher priority.
-`Project.save(...)` writes under `Project.artifact_root`. The root defaults to
-the project root and can be overridden with `Project(..., artifact_root=...)`,
-`SOPRAN_ARTIFACT_ROOT`, or `[project].artifact_root`. Relative artifact roots
-are resolved against the project root, and metadata sidecar `path` values remain
-relative to the artifact root.
-
-Use `Project.save(...)` for ad-hoc or interim artifacts that belong to the
-analysis workspace rather than the shared data `Store`:
+plot、feature table、artifact に `context=case` を渡すと、解析条件を metadata に
+残せます。
 
 ```python
-quality = case.kaguya.esa1.quality.load()
-artifact = project.save(
-    quality,
-    "interim/kaguya_esa1_quality_wake",
-    context=case,
+stack = case.stack(
+    case.kaguya.esa1.counts.spectrogram(y="energy"),
+    case.artemis.p1.fgm.magnetic_field.lines(components="xyz"),
 )
-artifact.path
-artifact.metadata_path
+result = stack.quicklook("wake_overview", root="reports", context=case)
 ```
 
-The current implementation writes xarray-compatible values as NetCDF (`.nc`)
-and records a JSON metadata sidecar with name, relative path, time coverage, and
-source files when available. When the saved value exposes a JSON-ready
-`metadata` property or method, the sidecar also records it as
-`source_metadata`; this keeps loaded-object schema and derived operations with
-the artifact. Pass `context=case` when the sidecar should also record
-`case.metadata()` as the analysis context.
+一時成果物は `Project.save(...)`、再利用するデータは `Store` に保存します。

@@ -1,16 +1,22 @@
-<div
+{% set fallback_language = config.extra.sopran_language_switcher.fallback_language | d('ja') %}
+{% set current_language = 'en' if page and page.url and page.url.startswith('en/') else fallback_language %}
+
+<nav
   class="md-header__option sopran-language-switcher"
   aria-label="{{ config.extra.sopran_language_switcher.label | d('Lang: 日本語/English') }}"
   data-label="{{ config.extra.sopran_language_switcher.label | d('Lang: 日本語/English') }}"
-  data-fallback-language="{{ config.extra.sopran_language_switcher.fallback_language | d('ja') }}"
+  data-fallback-language="{{ fallback_language }}"
 >
-  <span class="sopran-language-switcher__prefix">Lang:</span>
-  {% for alt in config.extra.alternate %}
-    <a
-      href="{{ alt.link | url }}"
-      hreflang="{{ alt.lang }}"
-      lang="{{ alt.lang }}"
-      class="sopran-language-switcher__link"
-    >{{ alt.name }}</a>{% if not loop.last %}<span class="sopran-language-switcher__separator">/</span>{% endif %}
-  {% endfor %}
-</div>
+  <span class="sopran-language-switcher__prefix">Lang</span>
+  <span class="sopran-language-switcher__toggle" role="group" aria-label="Language">
+    {% for alt in config.extra.alternate %}
+      <a
+        href="{{ alt.link | url }}"
+        hreflang="{{ alt.lang }}"
+        lang="{{ alt.lang }}"
+        class="sopran-language-switcher__link{% if alt.lang == current_language %} sopran-language-switcher__link--active{% endif %}"
+        {% if alt.lang == current_language %}aria-current="page"{% endif %}
+      >{{ alt.name }}</a>
+    {% endfor %}
+  </span>
+</nav>

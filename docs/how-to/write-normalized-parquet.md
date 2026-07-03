@@ -1,4 +1,13 @@
-# Write Normalized Parquet
+# Parquet に保存する
+
+## チェックリスト
+
+- raw file が `Store.raw` にある
+- 保存する variable を決める
+- 上書きするか、追加するか、dry-run するかを決める
+- `partition` を日別にするか決める
+
+## 単一読み込みから保存
 
 ```python
 esa1 = kg.esa1.load(time)
@@ -8,61 +17,32 @@ record = esa1.write_parquet(
     variable="counts",
     reduce_look="sum",
 )
-```
 
-The dataset can be scanned later:
-
-```python
 frame = record.scan().collect()
 ```
 
-Pipeline writes prevent accidental overwrite by default:
+## Pipeline で保存
 
 ```python
-pipe.run()
-pipe.run(mode="append")
-pipe.run(mode="replace")
-```
-
-For daily KAGUYA ESA1 shards, declare the partition on `write()`:
-
-```python
-result = (
+pipe = (
     kg.esa1.pipeline(spn.period("2008-01-01", "2008-01-03"))
     .decode()
     .select_variables("counts")
     .write("kaguya.esa1.counts", layer="normalized", partition="day")
-    .run()
 )
+
+pipe.run(dry_run=True)
+result = pipe.run()
 ```
 
-Use `resume=True` when a completed catalog should be reused instead of failing
-on the existing shard:
+## 実行 mode
 
-```python
-result = pipe.run(resume=True)
-```
+| mode | 用途 |
+| --- | --- |
+| default | 既存 dataset があると保守的に止める |
+| `append` | shard を追加する |
+| `replace` | 明示的に置き換える |
+| `resume=True` | 完了済み catalog を再利用する |
+| `only_failed=True` | 失敗 shard だけを再実行する |
 
-For KAGUYA ESA1, the current resume behavior skips execution only when the
-existing catalog is complete for the requested time range.
-
-Use `only_failed=True` when a later backend should replay only failed shards:
-
-```python
-record.update_shard_status("shards/part-000.parquet", "failed")
-failed = record.failed_shards()
-result = pipe.run(only_failed=True)
-```
-
-Use `on_error="continue"` when a batch should leave a failed catalog shard
-instead of raising immediately:
-
-```python
-result = pipe.run(on_error="continue")
-failed = result.outputs[0].failed_shards()
-```
-
-The current KAGUYA ESA1 implementation records a skip log when the catalog
-contains no failed shards. When failed shards exist, it reloads each failed
-shard's cataloged time coverage, overwrites the same shard path, refreshes the
-catalog checksum, and writes a complete run log with `replayed_shard_count`.
+Resume や failed shard の詳細は [実装状況](../reference/status.md) に集約しています。

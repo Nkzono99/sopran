@@ -206,7 +206,7 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     assert kg.esa1.energy_flux.help() == energy_flux_guide
     assert energy_flux_guide.source == "sopran.missions.kaguya/ESA1.ja.md"
     assert mission_guide.url == "https://nkzono99.github.io/sopran/missions/kaguya/"
-    assert esa1_guide.url == "https://nkzono99.github.io/sopran/missions/kaguya-esa1/"
+    assert esa1_guide.url == "https://nkzono99.github.io/sopran/missions/kaguya/esa1/"
     assert energy_flux_guide.url == esa1_guide.url
     assert "# KAGUYA/SELENE" in mission_guide._repr_markdown_()
 
@@ -229,7 +229,7 @@ def test_kaguya_guides_can_switch_language(tmp_path) -> None:
         "https://nkzono99.github.io/sopran/missions/kaguya/"
     )
     assert esa1_ja.with_language("en").url == (
-        "https://nkzono99.github.io/sopran/missions/kaguya-esa1/"
+        "https://nkzono99.github.io/sopran/missions/kaguya/esa1/"
     )
     assert "KAGUYA/SELENE は SOPRAN" in mission_ja.to_markdown()
     assert "vertical slice" in mission_en.to_markdown()

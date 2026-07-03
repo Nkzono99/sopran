@@ -1,53 +1,40 @@
-# Pipeline Rules
+# Pipeline rules
 
-- Attribute access does not execute.
-- Stage builders return a new `Pipeline`.
-- `write()` declares an output; it does not write until `run()`.
-- `write(..., partition="day")` declares daily output shards. KAGUYA ESA1 writes
-  Hive-style daily parquet paths and records `year`, `month`, and `day`
-  partitioning in the manifest.
-- `quicklook()` declares preview artifacts; it does not render until `run()`.
-- `run(dry_run=True)` returns a planned `PipelineResult` without executing
-  stages; its plan and run parameters can be inspected with `to_dict()` or
-  `str(result)`.
-- `run(download="never"|"missing"|"always")` overrides the mission default
-  download policy for that execution. KAGUYA ESA1 applies it to normal writes,
-  daily partition writes, failed-shard replay, and quicklook input loading.
-- `run()` fails on existing shards unless `mode="append"` or `mode="replace"`
-  is explicit.
-- `run(on_error="fail")` is the default error policy.
-- `run(on_error="continue")` lets a backend record failed shards and return a
-  partial result; KAGUYA ESA1 records missing-input load failures this way.
-- `run(resume=True)` may skip execution when the output catalog is already
-  complete for the requested range.
-- `resume=True` is mutually exclusive with `mode="append"` and
-  `mode="replace"`.
-- `run(only_failed=True)` may skip execution when the existing output catalog
-  contains no failed shards. KAGUYA ESA1 replays failed shards by overwriting
-  the same shard path and refreshing catalog metadata.
-- `only_failed=True` is mutually exclusive with `resume=True`, `mode="append"`,
-  and `mode="replace"`.
-- `scan()` returns a Polars `LazyFrame` when possible.
-- `collect()` is a thin materialization helper over `scan().collect()`.
-- `stream(partition="all")` yields one collected frame in the generic fallback.
-- `stream(partition="day")` groups collected scan rows by the `time` column.
-- `stream(partition="shard")` requires a mission backend; KAGUYA ESA1 yields
-  complete catalog shards directly.
-- `stream(partition="orbit")` requires a mission backend implementation.
-- `run()` returns a `PipelineResult.run_id` that identifies the execution.
-- Dataset-writing pipeline backends should write manifest provenance with the
-  pipeline run ID, source, stage names, run mode, download policy, time range,
-  output target, and selected variable/product.
-- Dataset-writing pipeline backends should write a structured log under the
-  dataset `logs/` directory and expose it through `PipelineResult.log_path`.
-  The log should include run mode, download policy, status, start/finish
-  timestamps, elapsed seconds, declared stage parameters, per-stage row/shard
-  counts, shard rows, and total row count.
-- `PipelineResult.to_dict()` should report output and artifact paths as
-  POSIX-style strings with `/` separators.
-- Quicklook-producing backends should write the same run ID and download policy
-  into quicklook metadata so preview artifacts can be traced to the
-  dataset-writing run.
+Pipeline は副作用のある処理なので、実行規則を明示します。
 
-Variable selection should use `select_variables(...)`; variable names should not
-become pipeline stage methods.
+## 実行 mode
+
+| mode | 規則 |
+| --- | --- |
+| default | 既存 dataset を不用意に壊さない |
+| `append` | shard を追加する |
+| `replace` | 明示的に既存出力を置き換える |
+| `resume=True` | 完了済み出力を再利用する |
+| `only_failed=True` | 失敗 shard の再実行を意図する |
+
+## download policy
+
+| policy | 意味 |
+| --- | --- |
+| `never` | local file だけを使う |
+| `missing` | 見つからない file だけ取得する |
+| `always` | 毎回取得を試みる |
+
+`SOPRAN_OFFLINE` が truthy の場合、既定 policy は `never` です。
+
+## provenance
+
+Pipeline が Store に書く dataset は、少なくとも次を manifest に残します。
+
+```json
+{
+  "provenance": {
+    "source": "kaguya.esa1",
+    "stages": ["decode", "select", "write"],
+    "time_range": {"start": "...", "stop": "..."},
+    "download": "never"
+  }
+}
+```
+
+Backend ごとの対応状況は [実装状況](status.md) を参照してください。

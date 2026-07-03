@@ -38,7 +38,7 @@ DownloadMode = Literal["never", "missing", "always"]
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URLS = {
     "README.md": "https://nkzono99.github.io/sopran/missions/kaguya/",
-    "ESA1.md": "https://nkzono99.github.io/sopran/missions/kaguya-esa1/",
+    "ESA1.md": "https://nkzono99.github.io/sopran/missions/kaguya/esa1/",
 }
 
 
