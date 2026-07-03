@@ -18,6 +18,13 @@ For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 PACE FOV / INFO calibration tables can be read explicitly:
 
 ```python
+cal = kg.esa1.load_calibration(download="never")
+cal.coverage("ESA1")
+```
+
+The same readers are also available at the low-level boundary:
+
+```python
 from sopran.missions.kaguya import PaceCalibration, read_pace_fov, read_pace_info
 
 cal = PaceCalibration(

@@ -23,6 +23,13 @@ from sopran.missions.kaguya.files import (
     lmag_public_templates,
     pace_pbf_public_template,
 )
+from sopran.missions.kaguya.pace import (
+    PACE_CALIBRATION_BASE_URL,
+    PaceCalibration,
+    pace_calibration_remote_files,
+    read_pace_fov,
+    read_pace_info,
+)
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 from sopran.missions.kaguya.sensors import normalize_sensor
 
@@ -325,6 +332,54 @@ class PaceInstrument(KaguyaInstrument):
             self,
             KAGUYA_ESA1_SCHEMA.variable(name),
             dataset_id=f"kaguya.esa1.{name}",
+        )
+
+    def calibration_remote_files(self) -> list[str]:
+        return pace_calibration_remote_files([self.sensor])
+
+    def calibration_files(self, *, download: DownloadMode | None = None) -> list[Path]:
+        download = self.mission.download if download is None else download
+        _validate_download_mode(download)
+        source = KaguyaFileSource(
+            local_root=self.mission.store.raw_path("kaguya", "calibration", "pace"),
+            remote_base_url=PACE_CALIBRATION_BASE_URL,
+        )
+        paths: list[Path] = []
+        for remote_file in self.calibration_remote_files():
+            path = source.local_path(remote_file)
+            if download == "never":
+                if path.exists():
+                    paths.append(path)
+                continue
+            if download == "missing":
+                path = source.download(remote_file, overwrite=False)
+            elif download == "always":
+                path = source.download(remote_file, overwrite=True)
+            _register_downloaded_calibration_file(
+                self.mission.store,
+                source,
+                path,
+                remote_file=remote_file,
+            )
+            if path.exists():
+                paths.append(path)
+        return paths
+
+    def load_calibration(self, *, download: DownloadMode | None = None) -> PaceCalibration:
+        paths = self.calibration_files(download=download)
+        fov_files = [
+            path
+            for path in paths
+            if "FOV_ANGLE" in path.as_posix().upper()
+        ]
+        info_files = [
+            path
+            for path in paths
+            if "KAGUYA_MAP_PACE_INFORMATION" in path.as_posix().upper()
+        ]
+        return PaceCalibration(
+            fov=read_pace_fov(fov_files) if fov_files else {},
+            info=read_pace_info(info_files) if info_files else {},
         )
 
     def __getattr__(self, name: str):
@@ -756,6 +811,26 @@ def _register_downloaded_raw_file(
             provider="darts-pds3",
             provider_path=remote_file,
             data_version=_kaguya_data_version(remote_file),
+            download_url=remote_url(remote_file) if callable(remote_url) else None,
+        )
+    except ValueError:
+        return
+
+
+def _register_downloaded_calibration_file(
+    store: Store,
+    source,
+    path: Path,
+    *,
+    remote_file: str,
+) -> None:
+    remote_url = getattr(source, "remote_url", None)
+    try:
+        store.register_raw_file(
+            path,
+            mission="kaguya",
+            provider="kyoto-u-kaguya-pace-calibration",
+            provider_path=remote_file,
             download_url=remote_url(remote_file) if callable(remote_url) else None,
         )
     except ValueError:

@@ -13,7 +13,16 @@ reference instrument.
 For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 `(energy=32, look=64)`.
 
-PACE calibration table support is available at the low-level reader boundary:
+PACE calibration table support is available through the mission object when
+the files are present in `Store.raw_path("kaguya", "calibration", "pace")`:
+
+```python
+kg = spn.Kaguya(store=store)
+cal = kg.esa1.load_calibration(download="never")
+cal.coverage("ESA1")
+```
+
+The same table readers are available at the low-level boundary:
 
 ```python
 from sopran.missions.kaguya import PaceCalibration, read_pace_fov, read_pace_info

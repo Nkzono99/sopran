@@ -86,8 +86,9 @@ v0.1 で固定するもの:
 - `energy_flux`, `counts`, `energy`, `quality` の schema as code。
 - 小サンプルまたは 1 日分の raw discovery、decode、xarray 化、plot。
 - PACE FOV / INFO calibration table は `PaceCalibration`, `read_pace_fov()`,
-  `read_pace_info()` で読み込める。ただし v0.1 の `energy_flux` は、table 適用と
-  SPEDAS golden test が入るまでは未較正 placeholder と明記する。
+  `read_pace_info()`, `kg.esa1.load_calibration()` で読み込める。ただし v0.1 の
+  `energy_flux` は、table 適用と SPEDAS golden test が入るまでは未較正 placeholder と
+  明記する。
 
 v0.1 では PlotStack、Project/Case、parquet store、Pipeline、ARTEMIS、Moon/DEM は
 設計を壊さない最小 skeleton または後続 milestone とする。

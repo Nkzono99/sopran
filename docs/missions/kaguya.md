@@ -17,6 +17,8 @@ focuses on local public archive discovery and PACE ESA1 raw PBF decode.
   and `write_parquet()`.
 - PACE FOV / INFO calibration table readers via `read_pace_fov()`,
   `read_pace_info()`, `PaceCalibration`, and `pace_calibration_remote_files()`.
+- ESA1 mission API helpers `kg.esa1.calibration_files()` and
+  `kg.esa1.load_calibration()`.
 - Variable endpoint plotting and `PlotStack` integration.
 - Pipeline run, append, replace, scan, collect, and per-run download policy
   override for ESA1 counts.
@@ -44,3 +46,9 @@ PACE calibration tables can be read and represented, but ESA1 `energy_flux` is
 still not computed from counts in `kg.esa1.load(...).to_xarray()`. The next
 step is to connect the FOV / INFO tables to energy coordinates, look-angle
 coordinates, geometric factors, and SPEDAS golden tests.
+
+```python
+kg = spn.Kaguya(store=store)
+cal = kg.esa1.load_calibration(download="never")
+cal.coverage("ESA1")
+```

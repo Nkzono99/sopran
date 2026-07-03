@@ -28,6 +28,65 @@ def test_kaguya_esa1_query_builds_public_pbf_paths(tmp_path) -> None:
     ]
 
 
+def test_kaguya_esa1_calibration_loads_local_store_tables(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    root = store.raw_path("kaguya", "calibration", "pace")
+    fov_file = root / "public/FOV_ANGLE_070726/ESAS1/esas1-ch_angle"
+    info_file = (
+        root
+        / "public/Kaguya_MAP_PACE_information/ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+    )
+    fov_file.parent.mkdir(parents=True)
+    info_file.parent.mkdir(parents=True)
+    fov_file.write_text("AZ AZ64 AZ16\n3 22.5 67.5\n", encoding="utf-8")
+    info_file.write_text(
+        "\n".join(
+            [
+                "RAM ENE POL AZ ENERGY POLAR AZIMUTH GFACTOR ENE_SQNO POL_SQNO",
+                "0 1 2 3 0.25 -12.5 90.0 4.5 6 7",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    kg = Kaguya(store=store)
+
+    assert kg.esa1.calibration_remote_files()[:2] == [
+        "public/FOV_ANGLE_070726/ESAS1/esas1-ch_angle",
+        "public/FOV_ANGLE_070726/ESAS1/esas1-pol_angle-RAM0",
+    ]
+    assert kg.esa1.calibration_files(download="never") == [fov_file, info_file]
+
+    calibration = kg.esa1.load_calibration(download="never")
+
+    assert calibration.coverage("ESA1") == {"fov": True, "info": True}
+    assert calibration.fov[0]["az64"][3] == pytest.approx(22.5)
+    assert calibration.info[0]["gfactor_4x16"][0, 1, 2, 3] == pytest.approx(4.5)
+
+
+def test_kaguya_esa1_calibration_download_registers_raw_manifest(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    def fake_urlretrieve(url, target):
+        path = Path(target)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"downloaded from {url}\n", encoding="utf-8")
+
+    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+    store = Store(tmp_path / "store")
+    kg = Kaguya(store=store, download="missing")
+
+    paths = kg.esa1.calibration_files()
+
+    assert len(paths) == 11
+    first = paths[0]
+    manifest = (first.with_name(f"{first.name}.sopran.json")).read_text(encoding="utf-8")
+    assert "kyoto-u-kaguya-pace-calibration" in manifest
+    assert "public/FOV_ANGLE_070726/ESAS1/esas1-ch_angle" in manifest
+    assert "http://step0ku.kugi.kyoto-u.ac.jp/~haraday/data/kaguya/" in manifest
+
+
 def test_kaguya_lmag_query_builds_nominal_and_optional_paths(tmp_path) -> None:
     kaguya = Kaguya(store=Store(tmp_path / "store"))
 
