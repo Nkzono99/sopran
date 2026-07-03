@@ -65,14 +65,26 @@ def test_mkdocs_build_includes_language_switcher_in_header(tmp_path: Path) -> No
     assert "KAGUYA/SELENE は" in kaguya_ja
     assert "KAGUYA/SELENE is" in kaguya_en
 
+    for relative in _primary_docs_pages():
+        if relative == Path("index.md"):
+            continue
+        ja_html = _built_page(site_dir, relative).read_text(encoding="utf-8")
+        en_html = _built_page(site_dir / "en", relative).read_text(encoding="utf-8")
+        ja_to_en = _relative_href(
+            _built_page(site_dir, relative),
+            _page_dir(site_dir / "en", relative),
+        )
+        en_to_ja = _relative_href(
+            _built_page(site_dir / "en", relative),
+            _page_dir(site_dir, relative),
+        )
+        assert f'href="{ja_to_en}"' in ja_html, relative
+        assert f'href="{en_to_ja}"' in en_html, relative
+
 
 def test_every_primary_docs_page_has_english_mirror() -> None:
     docs_root = Path("docs")
-    primary_pages = sorted(
-        path.relative_to(docs_root)
-        for path in docs_root.rglob("*.md")
-        if path.relative_to(docs_root).parts[0] != "en"
-    )
+    primary_pages = _primary_docs_pages()
 
     missing = [
         str(Path("docs") / "en" / relative)
@@ -81,3 +93,29 @@ def test_every_primary_docs_page_has_english_mirror() -> None:
     ]
 
     assert missing == []
+
+
+def _primary_docs_pages() -> list[Path]:
+    docs_root = Path("docs")
+    return sorted(
+        path.relative_to(docs_root)
+        for path in docs_root.rglob("*.md")
+        if path.relative_to(docs_root).parts[0] != "en"
+    )
+
+
+def _built_page(site_root: Path, source_relative: Path) -> Path:
+    if source_relative == Path("index.md"):
+        return site_root / "index.html"
+    if source_relative.name == "index.md":
+        return site_root / source_relative.parent / "index.html"
+    return site_root / source_relative.with_suffix("") / "index.html"
+
+
+def _page_dir(site_root: Path, source_relative: Path) -> Path:
+    return _built_page(site_root, source_relative).parent
+
+
+def _relative_href(page_path: Path, target_dir: Path) -> str:
+    relative = os.path.relpath(target_dir, start=page_path.parent).replace(os.sep, "/")
+    return f"{relative}/"
