@@ -52,8 +52,17 @@ pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
 ## 3. Plot
 
 ```python
+counts.plot()
 counts.quicklook("kaguya_esa1_counts", root="reports", y="energy", log_color=True)
+pas.plot()
+pas.pitch_spectrogram(log_color=True)
+pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 ```
+
+`plot()` and `quicklook()` default to `mode="auto"`. `time x energy` arrays
+become energy spectrograms; `time x energy x pitch_angle` arrays become a
+two-panel pitch/time and energy/time overview. Use `plot(mode="raw")` when you
+want direct xarray plotting.
 
 ## Download Policy
 

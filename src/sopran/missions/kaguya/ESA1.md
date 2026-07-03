@@ -37,12 +37,17 @@ pas = esa1.pitch_angle_spectrum(
     pitch_bins="native",
 )
 pas.to_xarray()
+pas.plot()
+pas.pitch_spectrogram(log_color=True)
+pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 ```
 
 `pitch_bins="native"` uses 16 bins for 4x16 angular records and 32 bins for
 16x64 records; mixed days use the larger bin count. A magnetic-field
 `SopranArray` in another frame requires a `FrameContext` with `spiceypy` and
 the needed SPICE kernels.
+`pas.plot()` uses the default `mode="auto"` and returns a two-panel pitch/time
+and energy/time overview.
 
 ## Raw Count 65535
 
@@ -109,6 +114,7 @@ ds = esa1.to_xarray()
 frame = esa1.to_polars("counts")
 summed = esa1.to_polars("counts", reduce_look="sum")
 pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
+pas.plot()
 item = esa1.counts.spectrogram(y="energy", log_color=True)
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 ```

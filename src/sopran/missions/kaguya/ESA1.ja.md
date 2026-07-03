@@ -36,11 +36,16 @@ pas = esa1.pitch_angle_spectrum(
     pitch_bins="native",
 )
 pas.to_xarray()
+pas.plot()
+pas.pitch_spectrogram(log_color=True)
+pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 ```
 
 `pitch_bins="native"` は 4x16 angular record では 16 bins、16x64 record では
 32 bins を使います。混在する日は大きい側に合わせます。frame が一致しない磁場を
 渡す場合は `spiceypy` と必要な SPICE kernel を設定した `FrameContext` が必要です。
+`pas.plot()` は既定の `mode="auto"` により pitch/time と energy/time の 2 panel
+overview を返します。
 
 ## raw count の 65535
 
@@ -107,6 +112,7 @@ array = counts.to_xarray()
 table = esa1.to_polars("counts")
 summed = esa1.to_polars("counts", reduce_look="sum")
 pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
+pas.plot()
 item = counts.spectrogram(y="energy", log_color=True)
 ```
 

@@ -179,6 +179,126 @@ def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
     assert item.log_color is True
 
 
+def test_loaded_array_auto_plot_items_prefers_pitch_angle_overview() -> None:
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.arange(24, dtype=float).reshape(2, 3, 4),
+        dims=("time", "energy", "pitch_angle"),
+        coords={
+            "time": times,
+            "energy": [10.0, 20.0, 30.0],
+            "pitch_angle": [22.5, 67.5, 112.5, 157.5],
+        },
+        name="pitch_angle_spectrum",
+    )
+    loaded = SopranArray(
+        name="pitch_angle_spectrum",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="pitch_angle_spectrum",
+            dims=("time", "energy", "pitch_angle"),
+        ),
+        xr=array,
+    )
+
+    pitch_item, energy_item = loaded.plot_items(mode="auto")
+
+    assert (pitch_item.kind, pitch_item.y, pitch_item.name) == (
+        "spectrogram",
+        "pitch_angle",
+        "pitch_angle_spectrum_pitch",
+    )
+    assert pitch_item.data.dims == ("time", "pitch_angle")
+    assert pitch_item.data.values.tolist() == array.sum("energy").values.tolist()
+    assert (energy_item.kind, energy_item.y, energy_item.name) == (
+        "spectrogram",
+        "energy",
+        "pitch_angle_spectrum_energy",
+    )
+    assert energy_item.data.dims == ("time", "energy")
+    assert energy_item.data.values.tolist() == array.sum("pitch_angle").values.tolist()
+
+
+def test_loaded_array_pitch_and_energy_spectrogram_select_ranges() -> None:
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    values = np.arange(24, dtype=float).reshape(2, 3, 4)
+    array = xr.DataArray(
+        values,
+        dims=("time", "energy", "pitch_angle"),
+        coords={
+            "time": times,
+            "energy": [10.0, 20.0, 30.0],
+            "pitch_angle": [22.5, 67.5, 112.5, 157.5],
+        },
+        name="pitch_angle_spectrum",
+    )
+    loaded = SopranArray(
+        name="pitch_angle_spectrum",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="pitch_angle_spectrum",
+            dims=("time", "energy", "pitch_angle"),
+        ),
+        xr=array,
+    )
+
+    pitch_item = loaded.pitch_spectrogram(energy=(10.0, 20.0))
+    energy_item = loaded.energy_spectrogram(pitch=(0.0, 90.0))
+
+    assert pitch_item.y == "pitch_angle"
+    assert pitch_item.data.values.tolist() == (
+        array.sel(energy=slice(10.0, 20.0)).sum("energy").values.tolist()
+    )
+    assert energy_item.y == "energy"
+    assert energy_item.data.values.tolist() == (
+        array.sel(pitch_angle=slice(0.0, 90.0)).sum("pitch_angle").values.tolist()
+    )
+
+
+def test_loaded_array_plot_auto_returns_plot_result_for_pitch_angle_data() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.arange(24, dtype=float).reshape(2, 3, 4) + 1.0,
+        dims=("time", "energy", "pitch_angle"),
+        coords={
+            "time": times,
+            "energy": [10.0, 20.0, 30.0],
+            "pitch_angle": [22.5, 67.5, 112.5, 157.5],
+        },
+        name="pitch_angle_spectrum",
+    )
+    loaded = SopranArray(
+        name="pitch_angle_spectrum",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="pitch_angle_spectrum",
+            dims=("time", "energy", "pitch_angle"),
+        ),
+        xr=array,
+    )
+
+    result = loaded.plot(mode="auto")
+
+    assert isinstance(result, spn.PlotResult)
+    assert result.metadata["panel_kinds"] == ["spectrogram", "spectrogram"]
+    assert [panel["y"] for panel in result.metadata["panels"]] == [
+        "pitch_angle",
+        "energy",
+    ]
+
+
 def test_loaded_array_to_polars_uses_array_layout_for_dense_data_by_default() -> None:
     array = xr.DataArray(
         np.ones((2, 3, 4)),

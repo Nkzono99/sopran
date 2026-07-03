@@ -7,8 +7,14 @@
 
 ```python
 counts = kg.esa1.counts.load(time)
+counts.plot()
 counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
 ```
+
+`SopranArray.plot()` と `SopranArray.quicklook()` は既定で `mode="auto"` を使います。
+1D は line、2D の `time x energy` は spectrogram、3D の
+`time x energy x pitch_angle` は pitch/time と energy/time の 2 panel overview に
+します。低レベルの xarray plot を直接呼びたい場合は `plot(mode="raw")` を使います。
 
 ## multi-panel plot
 

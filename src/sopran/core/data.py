@@ -11,6 +11,7 @@ from sopran.core.time import TimeRange
 
 DEFAULT_MAX_POLARS_ROWS = 10_000_000
 PolarsLayout = Literal["auto", "array", "long"]
+PlotMode = Literal["auto", "line", "spectrogram", "pitch", "energy", "raw"]
 
 
 @dataclass(frozen=True)
@@ -193,10 +194,132 @@ class SopranArray:
             partitioning=partitioning,
         )
 
-    def plot(self, *args: Any, **kwargs: Any) -> Any:
-        if self.xr is not None and hasattr(self.xr, "plot"):
-            return self.xr.plot(*args, **kwargs)
-        return None
+    def plot(
+        self,
+        *args: Any,
+        mode: PlotMode = "auto",
+        backend: str = "matplotlib",
+        context: Any | None = None,
+        figsize: tuple[float, float] | None = None,
+        x: str = "time",
+        y: str | None = None,
+        pitch: Any | None = None,
+        energy: Any | None = None,
+        log_color: bool = False,
+        reduction: str = "sum",
+        **kwargs: Any,
+    ) -> Any:
+        if mode == "raw":
+            if self.xr is not None and hasattr(self.xr, "plot"):
+                return self.xr.plot(*args, **kwargs)
+            return None
+        if args or kwargs:
+            raise TypeError(
+                "SopranArray.plot(mode='auto') does not accept raw xarray plot "
+                "arguments. Use mode='raw' for direct xarray plotting."
+            )
+
+        from sopran.core.plotting import stack
+
+        return stack(
+            *self.plot_items(
+                mode=mode,
+                x=x,
+                y=y,
+                pitch=pitch,
+                energy=energy,
+                log_color=log_color,
+                reduction=reduction,
+            )
+        ).plot(
+            backend=backend,  # type: ignore[arg-type]
+            context=context,
+            figsize=figsize,
+        )
+
+    def plot_items(
+        self,
+        *,
+        mode: PlotMode = "auto",
+        x: str = "time",
+        y: str | None = None,
+        pitch: Any | None = None,
+        energy: Any | None = None,
+        log_color: bool = False,
+        reduction: str = "sum",
+        name: str | None = None,
+    ) -> tuple[Any, ...]:
+        if mode == "raw":
+            raise ValueError("mode='raw' is only supported by SopranArray.plot()")
+        if mode == "line":
+            return (self.line(x=_line_x(self.to_xarray(), x), name=name),)
+        if mode == "spectrogram":
+            array = self.to_xarray()
+            resolved_x = _plot_x(array, x)
+            return (
+                self.spectrogram(
+                    x=resolved_x,
+                    y=y or _infer_spectrogram_y(array, x=resolved_x),
+                    name=name,
+                    reduction=reduction,
+                    log_color=log_color,
+                ),
+            )
+        if mode == "pitch":
+            return (
+                self.pitch_spectrogram(
+                    x=x,
+                    energy=energy,
+                    reduction=reduction,
+                    log_color=log_color,
+                    name=name,
+                ),
+            )
+        if mode == "energy":
+            return (
+                self.energy_spectrogram(
+                    x=x,
+                    pitch=pitch,
+                    reduction=reduction,
+                    log_color=log_color,
+                    name=name,
+                ),
+            )
+        if mode != "auto":
+            raise ValueError(
+                "mode must be 'auto', 'line', 'spectrogram', 'pitch', 'energy', or 'raw'"
+            )
+
+        array = self.to_xarray()
+        dims = _dims(array)
+        if {"time", "energy", "pitch_angle"}.issubset(dims):
+            return (
+                self.pitch_spectrogram(
+                    x=x,
+                    energy=energy,
+                    reduction=reduction,
+                    log_color=log_color,
+                    name=name or f"{self.name}_pitch",
+                ),
+                self.energy_spectrogram(
+                    x=x,
+                    pitch=pitch,
+                    reduction=reduction,
+                    log_color=log_color,
+                    name=name or f"{self.name}_energy",
+                ),
+            )
+        if len(dims) <= 1:
+            return (self.line(x=_line_x(array, x), name=name),)
+        return (
+            self.spectrogram(
+                x=_plot_x(array, x),
+                y=y or _infer_spectrogram_y(array, x=_plot_x(array, x)),
+                name=name,
+                reduction=reduction,
+                log_color=log_color,
+            ),
+        )
 
     def line(self, *, x: str = "time", name: str | None = None):
         from sopran.core.plotting import line
@@ -226,6 +349,62 @@ class SopranArray:
 
         return histogram(self.to_xarray(), bins=bins, name=name or self.name)
 
+    def pitch_spectrogram(
+        self,
+        *,
+        x: str = "time",
+        pitch_dim: str = "pitch_angle",
+        energy_dim: str = "energy",
+        energy: Any | None = None,
+        reduction: str = "sum",
+        log_color: bool = False,
+        name: str | None = None,
+    ):
+        from sopran.core.plotting import spectrogram
+
+        array = self.to_xarray()
+        _require_dims(array, (x, pitch_dim), "pitch_spectrogram")
+        if energy is not None:
+            array = _select_coordinate_range(array, energy_dim, energy)
+        reduce_dims = tuple(dim for dim in _dims(array) if dim not in {x, pitch_dim})
+        if reduce_dims:
+            array = _reduce_xarray(array, reduce_dims, reduction)
+        return spectrogram(
+            array,
+            x=x,
+            y=pitch_dim,
+            name=name or f"{self.name}_pitch",
+            log_color=log_color,
+        )
+
+    def energy_spectrogram(
+        self,
+        *,
+        x: str = "time",
+        energy_dim: str = "energy",
+        pitch_dim: str = "pitch_angle",
+        pitch: Any | None = None,
+        reduction: str = "sum",
+        log_color: bool = False,
+        name: str | None = None,
+    ):
+        from sopran.core.plotting import spectrogram
+
+        array = self.to_xarray()
+        _require_dims(array, (x, energy_dim), "energy_spectrogram")
+        if pitch is not None:
+            array = _select_coordinate_range(array, pitch_dim, pitch)
+        reduce_dims = tuple(dim for dim in _dims(array) if dim not in {x, energy_dim})
+        if reduce_dims:
+            array = _reduce_xarray(array, reduce_dims, reduction)
+        return spectrogram(
+            array,
+            x=x,
+            y=energy_dim,
+            name=name or f"{self.name}_energy",
+            log_color=log_color,
+        )
+
     def quicklook(
         self,
         name: str | None = None,
@@ -243,22 +422,34 @@ class SopranArray:
         metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
+        mode: PlotMode = "auto",
+        pitch: Any | None = None,
+        energy: Any | None = None,
     ):
         from sopran.core.plotting import stack
 
         quicklook_name = name or self.name
-        item = (
-            self.spectrogram(
-                x=x,
-                y=y,
-                log_color=log_color,
-                reduce_dims=reduce_dims,
-                reduction=reduction,
+        items = (
+            (
+                self.spectrogram(
+                    x=x,
+                    y=y,
+                    log_color=log_color,
+                    reduce_dims=reduce_dims,
+                    reduction=reduction,
+                ),
             )
             if y is not None
-            else self.line(x=x)
+            else self.plot_items(
+                mode=mode,
+                x=x,
+                pitch=pitch,
+                energy=energy,
+                log_color=log_color,
+                reduction=reduction,
+            )
         )
-        return stack(item).quicklook(
+        return stack(*items).quicklook(
             quicklook_name,
             root=root,
             formats=formats,
@@ -356,6 +547,62 @@ def _metadata_with_operations(
     merged = dict(metadata or {})
     merged.setdefault("operations", [dict(operation) for operation in operations])
     return merged
+
+
+def _dims(array: Any) -> tuple[str, ...]:
+    return tuple(str(dim) for dim in getattr(array, "dims", ()))
+
+
+def _plot_x(array: Any, requested: str) -> str:
+    dims = _dims(array)
+    if requested in dims or not dims:
+        return requested
+    return dims[0]
+
+
+def _line_x(array: Any, requested: str) -> str:
+    return _plot_x(array, requested)
+
+
+def _infer_spectrogram_y(array: Any, *, x: str) -> str:
+    dims = _dims(array)
+    for preferred in ("energy", "pitch_angle", "look"):
+        if preferred in dims and preferred != x:
+            return preferred
+    for dim in dims:
+        if dim != x:
+            return dim
+    raise ValueError("spectrogram requires at least two dimensions")
+
+
+def _require_dims(array: Any, required: tuple[str, ...], method: str) -> None:
+    dims = set(_dims(array))
+    missing = [dim for dim in required if dim not in dims]
+    if missing:
+        raise ValueError(
+            f"{method} requires dimensions {', '.join(required)}; "
+            f"missing {', '.join(missing)}"
+        )
+
+
+def _select_coordinate_range(array: Any, dim: str, selection: Any) -> Any:
+    _require_dims(array, (dim,), "coordinate range selection")
+    if isinstance(selection, slice):
+        return array.sel({dim: selection})
+    try:
+        start, stop = selection
+    except TypeError as exc:
+        raise TypeError("range selection must be a slice or a two-value tuple") from exc
+    if start > stop:
+        start, stop = stop, start
+    return array.sel({dim: slice(start, stop)})
+
+
+def _reduce_xarray(array: Any, dims: tuple[str, ...], reduction: str) -> Any:
+    reducer = getattr(array, reduction, None)
+    if not callable(reducer):
+        raise ValueError(f"Unsupported reduction: {reduction}")
+    return reducer(dims)
 
 
 def ensure_polars_row_limit(

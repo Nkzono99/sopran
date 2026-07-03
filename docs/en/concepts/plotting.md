@@ -7,8 +7,14 @@ because analysis often compares products from different instruments.
 
 ```python
 counts = kg.esa1.counts.load(time)
+counts.plot()
 counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
 ```
+
+`SopranArray.plot()` and `SopranArray.quicklook()` default to `mode="auto"`.
+1D arrays become line plots, 2D `time x energy` arrays become spectrograms, and
+3D `time x energy x pitch_angle` arrays become a two-panel pitch/time and
+energy/time overview. Use `plot(mode="raw")` for direct xarray plotting.
 
 ## Multi-Panel Plot
 
