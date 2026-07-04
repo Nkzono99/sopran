@@ -24,6 +24,38 @@ plot_result = stack.plot(backend="matplotlib")
 figure = plot_result.fig
 ```
 
+## Overlay Spectrum Peaks
+
+```python
+ima = kg.ima.counts.load(time)
+peak = ima.peak_trace(axis="energy", min_value=5.0)
+
+stack = spn.stack(
+    ima.spectrogram(y="energy", log_color=True).overlay(
+        peak.line(name="energy_peak")
+    ),
+    kg.lmag.magnetic_field.load(time).lines(components="xyz"),
+)
+
+plot_result = stack.plot(backend="matplotlib")
+```
+
+## Customize With Matplotlib Before Saving
+
+```python
+def configure(result):
+    result.axes[0].set_ylim(10, 1000)
+    result.axes[-1].tick_params(axis="x", rotation=30)
+    result.fig.tight_layout()
+
+quicklook = stack.quicklook(
+    "ima_lmag_overview",
+    root="reports",
+    formats=("png", "html"),
+    configure=configure,
+)
+```
+
 ## From A Case
 
 ```python

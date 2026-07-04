@@ -159,6 +159,106 @@ class SopranArray:
             time=time,
         )
 
+    def peak_trace(
+        self,
+        *,
+        axis: str,
+        time: str = "time",
+        method: Literal["max", "prominence"] = "max",
+        max_peaks: int = 1,
+        min_value: float | None = None,
+        min_prominence: float | None = None,
+        reduction: str = "sum",
+        name: str | None = None,
+    ) -> SopranArray:
+        if max_peaks < 1:
+            raise ValueError("max_peaks must be at least 1")
+        if method not in ("max", "prominence"):
+            raise ValueError("method must be 'max' or 'prominence'")
+
+        import numpy as np
+        import xarray as xr
+
+        array = self.to_xarray()
+        _require_dims(array, (time, axis), "peak_trace")
+        reduce_dims = tuple(dim for dim in _dims(array) if dim not in {time, axis})
+        if reduce_dims:
+            array = _reduce_xarray(array, reduce_dims, reduction)
+        array = array.transpose(time, axis)
+        values = np.asarray(array.values, dtype=float)
+        if values.ndim != 2:
+            raise ValueError(f"peak_trace expects 2D reduced data, got shape {values.shape}")
+
+        axis_values = _numeric_coord_values(array, axis, np)
+        peak_values = np.full((values.shape[0], max_peaks), np.nan, dtype=float)
+        for index, row in enumerate(values):
+            selected = _peak_indices(
+                row,
+                np,
+                method=method,
+                max_peaks=max_peaks,
+                min_value=min_value,
+                min_prominence=min_prominence,
+            )
+            peak_values[index, : len(selected)] = axis_values[selected]
+
+        output_name = name or (
+            f"{self.name}_{axis}_peak" if max_peaks == 1 else f"{self.name}_{axis}_peaks"
+        )
+        time_coord = array.coords[time] if hasattr(array, "coords") and time in array.coords else (
+            time,
+            np.arange(values.shape[0]),
+        )
+        dims: tuple[str, ...]
+        if max_peaks == 1:
+            xr_array = xr.DataArray(
+                peak_values[:, 0],
+                dims=(time,),
+                coords={time: time_coord},
+                name=output_name,
+            )
+            dims = (time,)
+        else:
+            xr_array = xr.DataArray(
+                peak_values,
+                dims=(time, "peak"),
+                coords={time: time_coord, "peak": np.arange(max_peaks)},
+                name=output_name,
+            )
+            dims = (time, "peak")
+        schema = VariableSchema(
+            name=output_name,
+            dims=dims,
+            units=_coord_units(array, axis),
+            frame=self.schema.frame,
+            description=f"{self.name} {axis} peak coordinate trace.",
+        )
+        return SopranArray(
+            name=output_name,
+            time=self.time,
+            schema=schema,
+            files=self.files,
+            operations=(
+                *self.operations,
+                {
+                    "operation": "peak_trace",
+                    "parameters": {
+                        "axis": axis,
+                        "time": time,
+                        "method": method,
+                        "max_peaks": max_peaks,
+                        "min_value": min_value,
+                        "min_prominence": min_prominence,
+                        "reduction": reduction,
+                    },
+                },
+            ),
+            xr=xr_array,
+        )
+
+    def detect_peaks(self, **kwargs: Any) -> SopranArray:
+        return self.peak_trace(**kwargs)
+
     def write_parquet(
         self,
         store: Any,
@@ -223,6 +323,7 @@ class SopranArray:
         metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
+        configure: Any | None = None,
         x: str = "time",
         y: str | None = None,
         pitch: Any | None = None,
@@ -262,6 +363,7 @@ class SopranArray:
             metadata=_metadata_with_operations(metadata, self.operations),
             context=context,
             figsize=figsize,
+            configure=configure,
         )
 
     def plot_items(
@@ -449,6 +551,7 @@ class SopranArray:
         metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
+        configure: Any | None = None,
         mode: PlotMode = "auto",
         pitch: Any | None = None,
         energy: Any | None = None,
@@ -488,6 +591,7 @@ class SopranArray:
             metadata=_metadata_with_operations(metadata, self.operations),
             context=context,
             figsize=figsize,
+            configure=configure,
         )
 
     def spectrogram(
@@ -600,6 +704,60 @@ def _infer_spectrogram_y(array: Any, *, x: str) -> str:
         if dim != x:
             return dim
     raise ValueError("spectrogram requires at least two dimensions")
+
+
+def _numeric_coord_values(array: Any, dim: str, np: Any) -> Any:
+    if hasattr(array, "coords") and dim in array.coords:
+        values = array.coords[dim].values
+    else:
+        values = np.arange(array.shape[array.dims.index(dim)])
+    try:
+        return np.asarray(values, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"peak_trace requires numeric coordinate values for {dim}") from exc
+
+
+def _coord_units(array: Any, dim: str) -> str | None:
+    if hasattr(array, "coords") and dim in array.coords:
+        units = getattr(array.coords[dim], "attrs", {}).get("units")
+        if units is not None:
+            return str(units)
+    return None
+
+
+def _peak_indices(
+    row: Any,
+    np: Any,
+    *,
+    method: str,
+    max_peaks: int,
+    min_value: float | None,
+    min_prominence: float | None,
+) -> Any:
+    if method == "prominence" or min_prominence is not None:
+        candidates = _prominent_peak_indices(row, np, min_prominence=min_prominence)
+    else:
+        candidates = np.flatnonzero(np.isfinite(row))
+    if min_value is not None:
+        candidates = candidates[row[candidates] >= min_value]
+    if candidates.size == 0:
+        return candidates
+    order = np.argsort(row[candidates])[::-1]
+    return candidates[order[:max_peaks]]
+
+
+def _prominent_peak_indices(row: Any, np: Any, *, min_prominence: float | None) -> Any:
+    try:
+        from scipy.signal import find_peaks  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise RuntimeError(
+            "scipy is required for peak_trace(method='prominence'). "
+            "Use method='max' or install sopran[full]."
+        ) from exc
+    finite_row = np.asarray(row, dtype=float)
+    finite_row = np.where(np.isfinite(finite_row), finite_row, -np.inf)
+    peaks, _ = find_peaks(finite_row, prominence=min_prominence)
+    return peaks
 
 
 def _require_dims(array: Any, required: tuple[str, ...], method: str) -> None:

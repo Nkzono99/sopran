@@ -4,7 +4,7 @@ import base64
 import html
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
@@ -12,6 +12,17 @@ from typing import Any, Literal
 import numpy as np
 
 PlotKind = Literal["line", "spectrogram", "histogram"]
+OverlayKind = Literal["line"]
+
+
+@dataclass(frozen=True)
+class PlotOverlay:
+    kind: OverlayKind
+    data: Any
+    name: str
+    x: str = "time"
+    color: str | None = None
+    linestyle: str = "-"
 
 
 @dataclass(frozen=True)
@@ -23,6 +34,41 @@ class PlotItem:
     y: str | None = None
     log_color: bool = False
     bins: int | str | None = None
+    overlays: tuple[PlotOverlay, ...] = ()
+
+    def overlay(
+        self,
+        overlay: PlotItem | Any,
+        *,
+        x: str | None = None,
+        name: str | None = None,
+        color: str | None = None,
+        linestyle: str = "-",
+    ) -> PlotItem:
+        if isinstance(overlay, PlotItem):
+            if overlay.kind != "line":
+                raise ValueError("Only line PlotItem overlays are supported")
+            item = PlotOverlay(
+                kind="line",
+                data=overlay.data,
+                name=name or overlay.name,
+                x=x or overlay.x,
+                color=color,
+                linestyle=linestyle,
+            )
+        else:
+            item = PlotOverlay(
+                kind="line",
+                data=overlay,
+                name=name or _data_name(overlay),
+                x=x or self.x,
+                color=color,
+                linestyle=linestyle,
+            )
+        return replace(self, overlays=(*self.overlays, item))
+
+    def with_overlay(self, *args: Any, **kwargs: Any) -> PlotItem:
+        return self.overlay(*args, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -75,6 +121,7 @@ class PlotStack:
         metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
+        configure: Any | None = None,
     ) -> PlotResult:
         if not self.items:
             raise ValueError("PlotStack requires at least one item")
@@ -114,6 +161,7 @@ class PlotStack:
                 axis.set_ylabel("count")
             else:
                 raise ValueError(f"Unsupported plot item kind: {item.kind}")
+            _draw_overlays(axis, item)
             if item.kind != "histogram":
                 axis.set_ylabel(item.name)
 
@@ -142,12 +190,17 @@ class PlotStack:
             metadata_payload["metadata"] = _metadata_value(metadata)
         if context is not None:
             metadata_payload["context"] = _context_metadata(context)
-        return PlotResult(
+        if configure is not None:
+            metadata_payload["customized"] = True
+        result = PlotResult(
             fig=fig,
             axes=tuple(axes),
             backend=backend,
             metadata=metadata_payload,
         )
+        if configure is not None:
+            configure(result)
+        return result
 
     def explore(
         self,
@@ -191,12 +244,13 @@ class PlotStack:
         metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
+        configure: Any | None = None,
     ) -> QuicklookResult:
         target_root = Path(root)
         target_root.mkdir(parents=True, exist_ok=True)
         if backend != "matplotlib":
             raise ValueError("PlotStack.quicklook() currently supports only matplotlib")
-        plot_result = self.plot(backend=backend, figsize=figsize)
+        plot_result = self.plot(backend=backend, figsize=figsize, configure=configure)
         fig = plot_result.fig
         plan = self.plan()
         artifacts = tuple(
@@ -226,6 +280,8 @@ class PlotStack:
             payload["metadata"] = _metadata_value(metadata)
         if context is not None:
             payload["context"] = _context_metadata(context)
+        if configure is not None:
+            payload["customized"] = True
         for artifact in artifacts:
             if artifact.format == "png":
                 fig.savefig(artifact.path)
@@ -275,9 +331,9 @@ def _panel_kinds(items: tuple[PlotItem, ...]) -> list[str]:
 
 
 def _panel_metadata(items: tuple[PlotItem, ...]) -> list[dict[str, Any]]:
-    panels = []
+    panels: list[dict[str, Any]] = []
     for item in items:
-        panel = {
+        panel: dict[str, Any] = {
             "name": item.name,
             "kind": item.kind,
             "x": item.x,
@@ -286,6 +342,15 @@ def _panel_metadata(items: tuple[PlotItem, ...]) -> list[dict[str, Any]]:
         }
         if item.kind == "histogram":
             panel["bins"] = item.bins
+        if item.overlays:
+            panel["overlays"] = [
+                {
+                    "name": overlay.name,
+                    "kind": overlay.kind,
+                    "x": overlay.x,
+                }
+                for overlay in item.overlays
+            ]
         panels.append(panel)
     return panels
 
@@ -352,14 +417,38 @@ def histogram(
 
 
 def _line_xy(item: PlotItem) -> tuple[np.ndarray, np.ndarray]:
-    data = _materialize(item.data)
-    if hasattr(data, "transpose") and hasattr(data, "dims") and item.x in data.dims:
-        remaining_dims = [dim for dim in data.dims if dim != item.x]
-        data = data.transpose(item.x, *remaining_dims)
-    values = _values(data)
+    return _line_xy_data(item.data, x=item.x)
+
+
+def _draw_overlays(axis: Any, item: PlotItem) -> None:
+    for overlay in item.overlays:
+        if overlay.kind != "line":
+            raise ValueError(f"Unsupported plot overlay kind: {overlay.kind}")
+        x_values, y_values = _line_xy_data(overlay.data, x=overlay.x)
+        axis.plot(
+            x_values,
+            y_values,
+            label=overlay.name,
+            color=overlay.color,
+            linestyle=overlay.linestyle,
+        )
+    if item.overlays:
+        axis.legend(loc="best")
+
+
+def _line_xy_data(data: Any, *, x: str) -> tuple[np.ndarray, np.ndarray]:
+    materialized = _materialize(data)
+    if (
+        hasattr(materialized, "transpose")
+        and hasattr(materialized, "dims")
+        and x in materialized.dims
+    ):
+        remaining_dims = [dim for dim in materialized.dims if dim != x]
+        materialized = materialized.transpose(x, *remaining_dims)
+    values = _values(materialized)
     if values.ndim not in (1, 2):
         raise ValueError(f"Line plot expects 1D or 2D data, got shape {values.shape}")
-    return _coord(data, item.x, axis=0), values
+    return _coord(materialized, x, axis=0), values
 
 
 def _spectrogram_xyz(item: PlotItem) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

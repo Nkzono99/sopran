@@ -97,6 +97,31 @@ def test_plot_stack_plot_records_standard_provenance_metadata() -> None:
     assert result.metadata["metadata"] == {"endpoint": "kg.esa1.quality"}
 
 
+def test_plot_stack_plot_allows_backend_configure_hook() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": ["2008-01-01T00:00:00", "2008-01-01T00:01:00"]},
+        name="quality",
+    )
+    seen = {}
+
+    def configure(result: spn.PlotResult) -> None:
+        seen["backend"] = result.backend
+        result.axes[0].set_title("Custom title")
+        result.axes[0].tick_params(axis="x", rotation=30)
+
+    result = spn.stack(spn.line(quality)).plot(configure=configure)
+
+    assert seen == {"backend": "matplotlib"}
+    assert result.axes[0].get_title() == "Custom title"
+    assert result.axes[0].get_xticklabels()[0].get_rotation() == 30
+    assert result.metadata["customized"] is True
+
+
 def test_plot_stack_records_shared_native_time_axis_metadata() -> None:
     import matplotlib
 
@@ -151,6 +176,57 @@ def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     assert isinstance(result.axes[0].collections[0].norm, LogNorm)
 
 
+def test_spectrogram_overlay_draws_loaded_peak_trace() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        [
+            "2008-01-01T00:00:00",
+            "2008-01-01T00:01:00",
+            "2008-01-01T00:02:00",
+        ],
+        dtype="datetime64[ns]",
+    )
+    energy = np.array([10.0, 20.0, 30.0, 40.0])
+    counts = xr.DataArray(
+        np.array(
+            [
+                [1.0, 8.0, 2.0, 0.0],
+                [0.0, 3.0, 9.0, 1.0],
+                [1.0, 0.0, 4.0, 10.0],
+            ]
+        ),
+        dims=("time", "energy"),
+        coords={"time": times, "energy": ("energy", energy, {"units": "eV"})},
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy"), units="count"),
+        xr=counts,
+    )
+
+    peak = loaded.peak_trace(axis="energy")
+    item = loaded.spectrogram(y="energy", log_color=True).overlay(
+        peak.line(name="energy_peak")
+    )
+    result = spn.stack(item).plot()
+
+    assert peak.name == "counts_energy_peak"
+    assert peak.schema.dims == ("time",)
+    assert peak.schema.units == "eV"
+    assert peak.to_xarray().values.tolist() == [20.0, 30.0, 40.0]
+    assert len(result.axes) == 1
+    assert len(result.axes[0].collections) == 1
+    assert len(result.axes[0].lines) == 1
+    assert result.axes[0].lines[0].get_ydata().tolist() == [20.0, 30.0, 40.0]
+    assert result.metadata["panels"][0]["overlays"] == [
+        {"name": "energy_peak", "kind": "line", "x": "time"}
+    ]
+
+
 def test_plot_stack_histogram_plots_distribution_and_metadata() -> None:
     import matplotlib
 
@@ -182,6 +258,79 @@ def test_plot_stack_histogram_plots_distribution_and_metadata() -> None:
         "cadence_policy": "native",
         "non_time_panels": ["wave_power"],
     }
+
+
+def test_loaded_array_peak_trace_can_return_top_two_peaks_after_reduction() -> None:
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    energy = np.array([10.0, 20.0, 30.0, 40.0])
+    values = np.array(
+        [
+            [[1.0, 0.0], [5.0, 5.0], [3.0, 2.0], [0.0, 0.0]],
+            [[0.0, 0.0], [1.0, 1.0], [4.0, 5.0], [3.0, 4.0]],
+        ]
+    )
+    array = xr.DataArray(
+        values,
+        dims=("time", "energy", "look"),
+        coords={
+            "time": times,
+            "energy": ("energy", energy, {"units": "eV"}),
+            "look": [0, 1],
+        },
+        name="counts",
+    )
+    loaded = SopranArray(
+        name="counts",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="counts", dims=("time", "energy", "look")),
+        xr=array,
+    )
+
+    peaks = loaded.peak_trace(axis="energy", max_peaks=2, min_value=5.0)
+    detected = loaded.detect_peaks(axis="energy", max_peaks=1, min_value=5.0)
+
+    assert peaks.name == "counts_energy_peaks"
+    assert peaks.schema.dims == ("time", "peak")
+    assert peaks.schema.units == "eV"
+    assert peaks.to_xarray().dims == ("time", "peak")
+    assert peaks.to_xarray().values.tolist() == [[20.0, 30.0], [30.0, 40.0]]
+    assert peaks.metadata["operations"] == [
+        {
+            "operation": "peak_trace",
+            "parameters": {
+                "axis": "energy",
+                "time": "time",
+                "method": "max",
+                "max_peaks": 2,
+                "min_value": 5.0,
+                "min_prominence": None,
+                "reduction": "sum",
+            },
+        }
+    ]
+    assert detected.name == "counts_energy_peak"
+    assert detected.to_xarray().values.tolist() == [20.0, 30.0]
+
+
+def test_loaded_array_peak_trace_rejects_missing_axis() -> None:
+    array = xr.DataArray(
+        np.ones(2),
+        dims=("time",),
+        coords={"time": ["2008-01-01T00:00:00", "2008-01-01T00:01:00"]},
+        name="quality",
+    )
+    loaded = SopranArray(
+        name="quality",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="quality", dims=("time",)),
+        xr=array,
+    )
+
+    with pytest.raises(ValueError, match="peak_trace requires dimensions"):
+        loaded.peak_trace(axis="energy")
 
 
 def test_loaded_array_spectrogram_preserves_log_color_option() -> None:
@@ -1120,6 +1269,33 @@ def test_plot_stack_quicklook_writes_png_and_metadata(tmp_path) -> None:
         "timezone": "UTC",
         "cadence_policy": "native",
     }
+
+
+def test_plot_stack_quicklook_applies_configure_before_saving(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": ["2008-01-01T00:00:00", "2008-01-01T00:01:00"]},
+        name="quality",
+    )
+
+    def configure(result: spn.PlotResult) -> None:
+        result.axes[0].set_ylabel("custom quality")
+        result.fig.suptitle("Configured quicklook")
+
+    result = spn.stack(spn.line(quality)).quicklook(
+        "configured_quality",
+        root=tmp_path,
+        configure=configure,
+    )
+
+    metadata = json.loads((tmp_path / "configured_quality.json").read_text(encoding="utf-8"))
+    assert (tmp_path / "configured_quality.png").exists()
+    assert result.metadata["customized"] is True
+    assert metadata["customized"] is True
 
 
 def test_plot_stack_quicklook_writes_html_report(tmp_path) -> None:

@@ -30,6 +30,55 @@ plot_result = stack.plot(backend="matplotlib")
 plot_result.fig
 ```
 
+## spectrum peak を重ねる
+
+`peak_trace(axis="energy")` は各時刻で最も強い energy bin の座標を返します。
+`overlay()` を使うと、spectrogram と同じ panel にピーク候補線を重ねられます。
+これは quicklook 用の候補抽出で、論文用の最終判定は利用者側で条件を明示して
+確認してください。
+
+```python
+ima = kg.ima.counts.load(time)
+peak = ima.peak_trace(axis="energy", min_value=5.0)
+
+stack = spn.stack(
+    ima.spectrogram(y="energy", log_color=True).overlay(
+        peak.line(name="energy_peak")
+    ),
+    kg.lmag.magnetic_field.load(time).lines(components="xyz"),
+)
+stack.plot()
+```
+
+`max_peaks=2` のようにすると `time x peak` の複数線を返します。PACE の
+`time x energy x look` のような配列では、既定で `look` などの余分な軸を `sum`
+で畳み込んでからピーク候補を求めます。
+
+## backend 側で細かく調整する
+
+SOPRAN は代表的な引数だけを API として持ち、細かな体裁は backend-native object を
+直接触る方針です。matplotlib backend では `PlotResult.fig` と `PlotResult.axes` を
+そのまま使えます。
+
+```python
+result = stack.plot()
+result.axes[0].set_ylim(10, 1000)
+result.axes[0].tick_params(axis="x", rotation=30)
+result.fig.suptitle("IMA / LMAG overview")
+result.fig.tight_layout()
+```
+
+`quicklook()` で保存前に調整したい場合は `configure` に関数を渡します。
+
+```python
+def configure(result):
+    result.axes[0].set_ylim(10, 1000)
+    result.axes[-1].tick_params(axis="x", rotation=30)
+    result.fig.suptitle("IMA / LMAG overview")
+
+stack.quicklook("ima_lmag", root="reports", configure=configure)
+```
+
 ## Case から作る
 
 ```python

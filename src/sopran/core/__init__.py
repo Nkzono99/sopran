@@ -25,6 +25,7 @@ from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, Pipelin
 from sopran.core.plotting import (
     PlotArtifact,
     PlotItem,
+    PlotOverlay,
     PlotPlan,
     PlotResult,
     PlotStack,
@@ -61,6 +62,7 @@ __all__ = [
     "PipelineStage",
     "PlotArtifact",
     "PlotItem",
+    "PlotOverlay",
     "PlotPlan",
     "PlotResult",
     "PlotStack",

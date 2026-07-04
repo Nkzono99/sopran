@@ -30,6 +30,56 @@ plot_result = stack.plot(backend="matplotlib")
 plot_result.fig
 ```
 
+## Overlay Spectrum Peaks
+
+`peak_trace(axis="energy")` returns the coordinate of the strongest energy bin
+at each time. Use `overlay()` to draw that candidate trace on the same
+spectrogram panel. Treat it as quicklook candidate extraction; final scientific
+selection should still use explicit user-side criteria.
+
+```python
+ima = kg.ima.counts.load(time)
+peak = ima.peak_trace(axis="energy", min_value=5.0)
+
+stack = spn.stack(
+    ima.spectrogram(y="energy", log_color=True).overlay(
+        peak.line(name="energy_peak")
+    ),
+    kg.lmag.magnetic_field.load(time).lines(components="xyz"),
+)
+stack.plot()
+```
+
+Use `max_peaks=2` to return multiple `time x peak` traces. For arrays such as
+PACE `time x energy x look`, extra axes such as `look` are summed before peak
+candidates are selected.
+
+## Customize Through The Backend
+
+SOPRAN keeps only common options in its public plotting API. For detailed
+styling, use the backend-native objects returned on `PlotResult`. With the
+matplotlib backend, `PlotResult.fig` and `PlotResult.axes` are the real
+matplotlib objects.
+
+```python
+result = stack.plot()
+result.axes[0].set_ylim(10, 1000)
+result.axes[0].tick_params(axis="x", rotation=30)
+result.fig.suptitle("IMA / LMAG overview")
+result.fig.tight_layout()
+```
+
+Pass `configure` when a quicklook needs those edits before files are saved.
+
+```python
+def configure(result):
+    result.axes[0].set_ylim(10, 1000)
+    result.axes[-1].tick_params(axis="x", rotation=30)
+    result.fig.suptitle("IMA / LMAG overview")
+
+stack.quicklook("ima_lmag", root="reports", configure=configure)
+```
+
 ## Plotting vs Feature Tables
 
 | Goal | API |
