@@ -43,3 +43,4 @@ def test_docs_workflow_installs_package_docs_extra_before_build() -> None:
 
     assert 'python -m pip install -e ".[docs]"' in workflow
     assert "mkdocs build --strict" in workflow
+    assert "NO_MKDOCS_2_WARNING" in workflow

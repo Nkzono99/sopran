@@ -75,6 +75,7 @@ pip install -e ".[docs]"
 
 ```powershell
 $env:PYTHONPATH = "src"
+$env:NO_MKDOCS_2_WARNING = "true"
 python -m pytest -q
 python -m mkdocs build --strict
 ```

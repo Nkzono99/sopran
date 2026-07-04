@@ -12,9 +12,10 @@ def test_mkdocs_build_includes_language_switcher_in_header(tmp_path: Path) -> No
     env["PYTHONPATH"] = (
         src if not env.get("PYTHONPATH") else f"{src}{os.pathsep}{env['PYTHONPATH']}"
     )
+    env["NO_MKDOCS_2_WARNING"] = "true"
     site_dir = tmp_path / "site"
 
-    subprocess.run(
+    result = subprocess.run(
         [
             sys.executable,
             "-m",
@@ -26,7 +27,11 @@ def test_mkdocs_build_includes_language_switcher_in_header(tmp_path: Path) -> No
         ],
         check=True,
         env=env,
+        capture_output=True,
+        text=True,
     )
+    assert "Warning from the Material for MkDocs team" not in result.stderr
+    assert "MkDocs 2.0" not in result.stderr
 
     index = (site_dir / "index.html").read_text(encoding="utf-8")
     english_index = (site_dir / "en" / "index.html").read_text(encoding="utf-8")
