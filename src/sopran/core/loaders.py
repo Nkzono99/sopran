@@ -15,14 +15,19 @@ def load(dataset_id: str, time: TimeRange, *, store: Store | None = None, **kwar
     """
 
     parts = tuple(part for part in dataset_id.split(".") if part)
-    if parts[:2] == ("kaguya", "esa1"):
+    if len(parts) >= 2 and parts[0] == "kaguya" and parts[1] in {
+        "esa1",
+        "esa2",
+        "ima",
+        "iea",
+    }:
         from sopran.missions.kaguya import Kaguya
 
-        esa1 = Kaguya(store=store).esa1
+        instrument = getattr(Kaguya(store=store), parts[1])
         if len(parts) == 2:
-            return esa1.load(time, **kwargs)
+            return instrument.load(time, **kwargs)
         if len(parts) == 3:
-            return getattr(esa1, parts[2]).load(time, **kwargs)
+            return getattr(instrument, parts[2]).load(time, **kwargs)
     if len(parts) == 4 and parts[0] == "artemis":
         from sopran.missions.artemis import Artemis
 

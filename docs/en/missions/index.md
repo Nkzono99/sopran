@@ -16,7 +16,7 @@ operations happen only through explicit execution calls.
 
 | Mission | Entry point | Main scope |
 | --- | --- | --- |
-| KAGUYA/SELENE | `spn.Kaguya()` | PACE ESA1, LMAG, PDS3 archive |
+| KAGUYA/SELENE | `spn.Kaguya()` | PACE ESA1/ESA2/IMA/IEA, LMAG, LRS, PDS3 archive |
 | ARTEMIS | `spn.Artemis()` | P1/P2, FGM, ESA normalized parquet |
 
 Details:

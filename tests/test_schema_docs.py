@@ -16,6 +16,9 @@ def test_schema_reference_markdown_lists_builtin_instrument_schemas() -> None:
     assert markdown.startswith("# スキーマ")
     assert "runtime schema object から生成" in markdown
     assert "## kaguya / esa1" in markdown
+    assert "## kaguya / esa2" in markdown
+    assert "## kaguya / ima" in markdown
+    assert "## kaguya / iea" in markdown
     assert "## artemis / fgm" in markdown
     assert "## moon / surface" in markdown
     assert "| name | dims | units | dtype | frame | aliases | description |" in markdown
@@ -48,6 +51,7 @@ def test_schema_reference_markdown_can_render_english() -> None:
     assert markdown.startswith("# Schemas")
     assert "This page is generated from SOPRAN runtime schema objects." in markdown
     assert "## kaguya / esa1" in markdown
+    assert "## kaguya / ima" in markdown
 
 
 def test_schema_reference_cli_supports_write_and_check(tmp_path) -> None:

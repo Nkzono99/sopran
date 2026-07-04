@@ -12,6 +12,33 @@ Update the schema objects first, then regenerate this page.
 | energy | energy |  |  |  |  | PACE ESA1 energy channel index. Physical eV calibration is not applied. |
 | quality | time |  |  |  | q, quality_flag | Quality flag. |
 
+## kaguya / esa2
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | Uncalibrated placeholder for KAGUYA PACE ESA2 differential electron energy flux; values are NaN until calibration is implemented. |
+| counts | time, energy, look | count |  |  |  | Raw ESA2 counts. |
+| energy | energy |  |  |  |  | PACE ESA2 energy channel index. Physical eV calibration is not applied. |
+| quality | time |  |  |  | q, quality_flag | Quality flag. |
+
+## kaguya / ima
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | Uncalibrated placeholder for KAGUYA PACE IMA differential ion energy flux; values are NaN until calibration is implemented. |
+| counts | time, energy, look | count |  |  |  | Raw IMA counts. |
+| energy | energy |  |  |  |  | PACE IMA energy channel index. Physical eV calibration is not applied. |
+| quality | time |  |  |  | q, quality_flag | Quality flag. |
+
+## kaguya / iea
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | Uncalibrated placeholder for KAGUYA PACE IEA differential ion energy flux; values are NaN until calibration is implemented. |
+| counts | time, energy, look | count |  |  |  | Raw IEA counts. |
+| energy | energy |  |  |  |  | PACE IEA energy channel index. Physical eV calibration is not applied. |
+| quality | time |  |  |  | q, quality_flag | Quality flag. |
+
 ## kaguya / lmag
 
 | name | dims | units | dtype | frame | aliases | description |

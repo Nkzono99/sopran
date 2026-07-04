@@ -6,10 +6,10 @@
 
 | 領域 | 現状 | 次の主作業 |
 | --- | --- | --- |
-| KAGUYA ESA1 | PBF decode、Store 保存、pipeline、quicklook | 較正、SPEDAS parity、look-angle |
+| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode、Store 保存、pipeline、quicklook | 較正、SPEDAS parity、look-angle |
 | KAGUYA LMAG/geometry | path planning、`MAG_TS*.dat` load、MOON_ME/GSE magnetic field、`|B|`、MOON_ME/GSE orbit geometry、radial distance、SZA、magnetic connection、Store cache | SPICE-backed Sun geometry、SPEDAS parity |
 | KAGUYA LRS | NPW/WFC CDF path planning、spectrum/gain/mode/PSD endpoint、Store cache | SPEDAS parity、実データでの数値検証 |
-| KAGUYA その他 | PACE/LMAG/LRS の一部のみ | PACE 他 sensor の loader |
+| KAGUYA その他 | PACE/LMAG/LRS の一部を実装済み | instrument 固有の較正と実データ parity |
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
 | Frames | `FrameContext`、identity transform、SPICE vector 委譲 | SpacePy / Astropy backend |
 | Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load | projection、reproject、shadow 計算 |
@@ -17,11 +17,11 @@
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
 | CI / 型検査 | pytest、compileall、schema docs、ruff。mypy は informational step | mypy error の解消と blocking 化 |
 
-## KAGUYA ESA1
+## KAGUYA PACE
 
 入っているもの:
 
-- PACE ESA1 raw PBF discovery
+- PACE ESA1/ESA2/IMA/IEA raw PBF discovery
 - local decode
 - `xarray` / `polars` conversion
 - parquet Store 保存
@@ -92,7 +92,7 @@
 入っているもの:
 
 - Store manifest、schema、catalog、checksum
-- KAGUYA ESA1 backend
+- KAGUYA PACE backend
 - daily partition
 - failed shard status と resume の基礎
 
@@ -136,8 +136,8 @@
 
 ## 直近の優先度
 
-1. KAGUYA ESA1 calibration / SPEDAS parity
-2. KAGUYA LRS/LMAG の parity test と他 sensor の Store 保存
+1. KAGUYA PACE calibration / SPEDAS parity
+2. KAGUYA LRS/LMAG の parity test と実データ数値検証
 3. ARTEMIS raw discovery と CDF ingest
 4. SPICE / SpacePy を使う frame transform
 5. Moon projection/reproject と terrain-aware shadow

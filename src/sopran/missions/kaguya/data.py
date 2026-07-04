@@ -16,18 +16,27 @@ from sopran.core.data import (
 from sopran.core.pages import InfoPage
 from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange
-from sopran.missions.kaguya.pace import PaceCalibration, PaceData, read_pace_pbf
+from sopran.missions.kaguya.pace import (
+    PaceCalibration,
+    PaceData,
+    pace_count_energy_look,
+    read_pace_pbf,
+)
 from sopran.missions.kaguya.pitch import PitchAngleSpectrumOptions, build_pitch_angle_spectrum
-from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
+from sopran.missions.kaguya.schema import kaguya_pace_schema
 
 
 @dataclass(frozen=True)
-class KaguyaESA1Data:
+class KaguyaPaceData:
     time: TimeRange
     files: tuple[Path, ...] = ()
     instrument: str = "ESA1"
     calibration: PaceCalibration | None = None
     missing_reason: str | None = None
+
+    @cached_property
+    def instrument_schema(self):
+        return kaguya_pace_schema(self.instrument)
 
     def info(self) -> InfoPage:
         lines = [
@@ -48,7 +57,7 @@ class KaguyaESA1Data:
         return SopranArray(
             name="energy_flux",
             time=self.time,
-            schema=KAGUYA_ESA1_SCHEMA.variable("energy_flux"),
+            schema=self.instrument_schema.variable("energy_flux"),
             files=self.files,
             xr=self.to_xarray()["energy_flux"],
         )
@@ -62,7 +71,7 @@ class KaguyaESA1Data:
         return SopranArray(
             name="counts",
             time=self.time,
-            schema=KAGUYA_ESA1_SCHEMA.variable("counts"),
+            schema=self.instrument_schema.variable("counts"),
             files=self.files,
             xr=self.to_xarray()["counts"],
         )
@@ -72,7 +81,7 @@ class KaguyaESA1Data:
         return SopranArray(
             name="energy",
             time=self.time,
-            schema=KAGUYA_ESA1_SCHEMA.variable("energy"),
+            schema=self.instrument_schema.variable("energy"),
             files=self.files,
             xr=self.to_xarray()["energy"],
         )
@@ -82,7 +91,7 @@ class KaguyaESA1Data:
         return SopranArray(
             name="quality",
             time=self.time,
-            schema=KAGUYA_ESA1_SCHEMA.variable("quality"),
+            schema=self.instrument_schema.variable("quality"),
             files=self.files,
             xr=self.to_xarray()["quality"],
         )
@@ -149,14 +158,14 @@ class KaguyaESA1Data:
         ):
             ensure_polars_row_limit(
                 _pace_counts_padded_row_count(pace, self.time),
-                name=f"KAGUYA ESA1 {variable}",
+                name=f"KAGUYA {self.instrument} {variable}",
                 max_rows=max_rows,
                 allow_large=allow_large,
             )
 
         dataset = self.to_xarray()
         if variable not in dataset:
-            raise KeyError(f"Unknown variable for KAGUYA ESA1 data: {variable}")
+            raise KeyError(f"Unknown variable for KAGUYA {self.instrument} data: {variable}")
 
         array = dataset[variable]
         if reduce_look == "sum":
@@ -170,7 +179,7 @@ class KaguyaESA1Data:
 
         ensure_polars_row_limit(
             int(array.size),
-            name=f"KAGUYA ESA1 {variable}",
+            name=f"KAGUYA {self.instrument} {variable}",
             max_rows=max_rows,
             allow_large=allow_large,
         )
@@ -204,7 +213,7 @@ class KaguyaESA1Data:
         min_look_bins: int = 1,
         frame_context: Any | None = None,
     ) -> SopranArray:
-        """Return ESA1 spectra binned by pitch angle.
+        """Return PACE spectra binned by pitch angle.
 
         The result has dimensions ``time x energy x pitch_angle``. ``look`` is
         resolved through the PACE angle calibration tables, not treated as a
@@ -246,12 +255,12 @@ class KaguyaESA1Data:
     ) -> DatasetRecord:
         product = variable
         return store.write_parquet_dataset(
-            dataset_id=dataset_id or f"kaguya.esa1.{product}",
+            dataset_id=dataset_id or f"kaguya.{self.instrument.lower()}.{product}",
             layer=layer,
             mission="kaguya",
-            instrument="esa1",
+            instrument=self.instrument.lower(),
             product=product,
-            schema=KAGUYA_ESA1_SCHEMA,
+            schema=self.instrument_schema,
             time_coverage=self.time,
             frame=self.to_polars(variable, reduce_look=reduce_look, layout="long"),
             source_files=tuple(str(path) for path in self.files),
@@ -263,10 +272,10 @@ class KaguyaESA1Data:
         )
 
     def _empty_xarray(self, np: Any, xr: Any):
-        energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
-        counts_schema = KAGUYA_ESA1_SCHEMA.variable("counts")
-        energy_schema = KAGUYA_ESA1_SCHEMA.variable("energy")
-        quality_schema = KAGUYA_ESA1_SCHEMA.variable("quality")
+        energy_flux_schema = self.instrument_schema.variable("energy_flux")
+        counts_schema = self.instrument_schema.variable("counts")
+        energy_schema = self.instrument_schema.variable("energy")
+        quality_schema = self.instrument_schema.variable("quality")
         calibration = _calibration_metadata(self.calibration, self.instrument)
         attrs = {
             "mission": "kaguya",
@@ -304,10 +313,10 @@ class KaguyaESA1Data:
         )
 
     def _pace_to_xarray(self, np: Any, xr: Any, pace: PaceData):
-        energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
-        counts_schema = KAGUYA_ESA1_SCHEMA.variable("counts")
-        energy_schema = KAGUYA_ESA1_SCHEMA.variable("energy")
-        quality_schema = KAGUYA_ESA1_SCHEMA.variable("quality")
+        energy_flux_schema = self.instrument_schema.variable("energy_flux")
+        counts_schema = self.instrument_schema.variable("counts")
+        energy_schema = self.instrument_schema.variable("energy")
+        quality_schema = self.instrument_schema.variable("quality")
         calibration = _calibration_metadata(self.calibration, self.instrument)
         count_rows = []
         headers = []
@@ -377,11 +386,7 @@ class KaguyaESA1Data:
 
 
 def _counts_to_energy_look(counts: Any):
-    if counts.ndim < 2 or counts.shape[0] != 32:
-        raise NotImplementedError(
-            f"PACE count records with shape {counts.shape} cannot be mapped to ESA1 yet"
-        )
-    out = counts.reshape(32, -1).astype(float, copy=True)
+    out = pace_count_energy_look(counts).astype(float, copy=True)
     out[out == 65535] = float("nan")
     return out
 
@@ -424,7 +429,7 @@ def _pace_counts_sum_look_to_polars(
 
     ensure_polars_row_limit(
         len(rows) * 32,
-        name=f"KAGUYA ESA1 {variable}",
+        name=f"KAGUYA PACE {variable}",
         max_rows=max_rows,
         allow_large=allow_large,
     )
@@ -461,7 +466,7 @@ def _pace_counts_padded_row_count(pace: PaceData, time: TimeRange) -> int:
             records.append(counts)
     if not records:
         return 0
-    look_count = max(int(counts.reshape(32, -1).shape[1]) for counts in records)
+    look_count = max(int(_counts_to_energy_look(counts).shape[1]) for counts in records)
     return len(records) * 32 * look_count
 
 
@@ -569,3 +574,6 @@ def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any):
             }
         )
     raise NotImplementedError(f"Cannot convert {variable} with dims {dims} to Polars")
+
+
+KaguyaESA1Data = KaguyaPaceData

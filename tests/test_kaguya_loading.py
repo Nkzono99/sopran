@@ -258,11 +258,58 @@ def test_kaguya_mission_and_esa1_instrument_are_discoverable(tmp_path) -> None:
     assert "energy_flux" in str(kg.esa1.info())
 
 
+def test_kaguya_pace_ion_instruments_expose_esa_style_spectrum_api(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
+    time = spn.period("2008-02-01", "2008-02-02")
+    instruments = {
+        "ESA2": kg.esa2,
+        "IMA": kg.ima,
+        "IEA": kg.iea,
+    }
+
+    for sensor, instrument in instruments.items():
+        sensor_key = sensor.lower()
+        data = instrument.load(time)
+
+        assert instrument.schema().instrument == sensor_key
+        assert instrument.counts.schema().dims == ("time", "energy", "look")
+        assert instrument.energy_flux.schema().dims == ("time", "energy", "look")
+        assert instrument.energy.schema().dims == ("energy",)
+        assert instrument.quality.schema().dims == ("time",)
+        assert instrument.plan(time).dataset_id == f"kaguya.{sensor_key}"
+        assert instrument.counts.plan(time).dataset_id == f"kaguya.{sensor_key}.counts"
+        assert instrument.counts.plan(time).remote_files == [
+            (
+                "sln-l-pace-3-pbf1-v3.0/20080201/data/"
+                f"IPACE_PBF1_080201_{sensor}_V003.dat.gz"
+            )
+        ]
+        assert data.instrument == sensor
+        assert data.counts.name == "counts"
+        assert data.energy_flux.name == "energy_flux"
+        assert data.eflux is data.energy_flux
+        assert data.to_xarray().attrs["instrument"] == sensor
+
+
+def test_top_level_load_dispatches_kaguya_pace_spectrum_ids(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    for sensor in ("esa2", "ima", "iea"):
+        data = spn.load(f"kaguya.{sensor}", time, store=store, download="never")
+        counts = spn.load(f"kaguya.{sensor}.counts", time, store=store, download="never")
+
+        assert data.instrument == sensor.upper()
+        assert counts.name == "counts"
+        assert counts.schema.description == f"Raw {sensor.upper()} counts."
+
+
 def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
 
     mission_guide = kg.guide()
     esa1_guide = kg.esa1.guide()
+    ima_guide = kg.ima.guide()
     energy_flux_guide = kg.esa1.energy_flux.guide()
 
     assert mission_guide.language == "ja"
@@ -277,8 +324,10 @@ def test_kaguya_guides_return_markdown_pages(tmp_path) -> None:
     assert "eflux, differential_energy_flux" in esa1_guide.to_markdown()
     assert "q, quality_flag" in esa1_guide.to_markdown()
     assert kg.guide("esa1") == esa1_guide
+    assert kg.guide("ima") == ima_guide
     assert kg.help() == mission_guide
     assert kg.help("esa1") == esa1_guide
+    assert kg.help("ima") == ima_guide
     assert kg.esa1.help() == esa1_guide
     assert kg.esa1.energy_flux.help() == energy_flux_guide
     assert energy_flux_guide.source == "sopran.missions.kaguya/ESA1.ja.md"
@@ -530,16 +579,19 @@ def test_kaguya_endpoint_discovery_does_not_touch_source_io(tmp_path) -> None:
 
     endpoints = [
         kg.esa1.counts,
+        kg.ima.counts,
         kg.lmag.magnetic_field,
         kg.lrs.npw_rx1,
     ]
 
     assert [endpoint.name for endpoint in endpoints] == [
         "counts",
+        "counts",
         "magnetic_field",
         "npw_rx1",
     ]
     assert [endpoint.schema().name for endpoint in endpoints] == [
+        "counts",
         "counts",
         "magnetic_field",
         "npw_rx1",
@@ -547,7 +599,11 @@ def test_kaguya_endpoint_discovery_does_not_touch_source_io(tmp_path) -> None:
     assert kg.esa1.counts.plan(time).remote_files == [
         "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
     ]
+    assert kg.ima.counts.plan(time).remote_files == [
+        "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_IMA_V003.dat.gz"
+    ]
     assert "KAGUYA.ESA1.counts" in str(kg.esa1.counts.info())
+    assert "KAGUYA.IMA.counts" in str(kg.ima.counts.info())
     assert source.calls == []
 
 

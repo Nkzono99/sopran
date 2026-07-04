@@ -22,7 +22,7 @@ from sopran.missions.kaguya import (
     read_pace_info,
     read_pace_pbf,
 )
-from sopran.missions.kaguya.data import KaguyaESA1Data
+from sopran.missions.kaguya.data import KaguyaESA1Data, KaguyaPaceData
 
 
 def test_read_pace_pbf_type01_summarizes_energy_counts(tmp_path: Path) -> None:
@@ -53,6 +53,20 @@ def test_read_pace_pbf_accepts_gzip_files(tmp_path: Path) -> None:
 
     assert pace.source_files == (gz_path,)
     assert pace_energy_counts(pace).shape == (1, 32)
+
+
+def test_read_pace_pbf_type40_summarizes_ion_energy_counts(tmp_path: Path) -> None:
+    path = tmp_path / "IPACE_PBF1_080101_IMA_V003.dat"
+    _write_type40_pbf(path)
+
+    pace = read_pace_pbf(path)
+    counts = pace_energy_counts(pace)
+
+    assert pace.sensor == 2
+    assert pace.sensor_name == "IMA"
+    assert pace.headers[0]["type"] == 0x40
+    assert counts.shape == (1, 32)
+    assert np.all(counts == 4096)
 
 
 def test_read_pace_info_parses_esa1_gfactor_tables(tmp_path: Path) -> None:
@@ -191,6 +205,52 @@ def test_kaguya_esa1_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None
     assert int(ds["counts"].isel(time=0, energy=0).sum()) == 64
     assert ds["quality"].to_numpy().tolist() == [0]
     assert str(ds["time"].values[0]) == "2008-01-01T00:00:08.000000000"
+
+
+def test_kaguya_ima_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_IMA_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat", sensor=2)
+
+    kg = spn.Kaguya(store=store)
+    data = kg.ima.load(spn.day("2008-01-01"))
+    ds = data.to_xarray()
+
+    assert data.instrument == "IMA"
+    assert ds.attrs["instrument"] == "IMA"
+    assert ds.attrs["sensor"] == "IMA"
+    assert ds["counts"].shape == (1, 32, 64)
+    assert int(ds["counts"].isel(time=0, energy=0).sum()) == 64
+    assert ds["energy"].attrs["description"].startswith("PACE IMA energy channel index")
+    assert np.isnan(ds["energy_flux"].to_numpy()).all()
+
+
+def test_kaguya_pace_data_accepts_energy_axis_after_sensor_axis() -> None:
+    sample_time = datetime(2008, 8, 2, 0, 0, tzinfo=UTC).timestamp()
+    record = PaceRecord(
+        type=0x40,
+        index=0,
+        arrays={"cnt": np.ones((4, 32, 16), dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=2,
+        headers=({"time": sample_time, "data_quality": 0},),
+        records={0x40: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    data = KaguyaPaceData(time=spn.day("2008-08-02"), instrument="IMA")
+    object.__setattr__(data, "pace", pace)
+
+    dataset = data.to_xarray()
+    frame = data.to_polars("counts", reduce_look="sum")
+
+    assert dataset["counts"].shape == (1, 32, 64)
+    assert dataset["counts"].values[0, 0, 0] == 1
+    assert frame.shape == (32, 3)
+    assert frame["counts"].to_list() == [64] * 32
 
 
 def test_kaguya_esa1_to_xarray_records_loaded_unapplied_calibration(
@@ -1104,12 +1164,17 @@ def test_kaguya_esa1_pipeline_run_only_failed_replays_failed_shards(
     assert log["replayed_shard_count"] == 1
 
 
-def _write_type01_pbf(path: Path, *, yyyymmdd: int = 20080101) -> None:
+def _write_type01_pbf(
+    path: Path,
+    *,
+    yyyymmdd: int = 20080101,
+    sensor: int = 0,
+) -> None:
     file_header = bytearray(1024)
     file_header[-1] = 0xEE
 
     header = np.zeros(64, dtype="<u4")
-    header[0] = 0
+    header[0] = sensor
     header[3] = 0x01
     header[5] = 16000
     header[6] = 16
@@ -1134,7 +1199,36 @@ def _write_type01_pbf_gzip(
     scratch_path: Path,
     *,
     yyyymmdd: int = 20080101,
+    sensor: int = 0,
 ) -> None:
-    _write_type01_pbf(scratch_path, yyyymmdd=yyyymmdd)
+    _write_type01_pbf(scratch_path, yyyymmdd=yyyymmdd, sensor=sensor)
     with scratch_path.open("rb") as source, gzip.open(gzip_path, "wb") as target:
         target.write(source.read())
+
+
+def _write_type40_pbf(
+    path: Path,
+    *,
+    yyyymmdd: int = 20080101,
+    sensor: int = 2,
+) -> None:
+    file_header = bytearray(1024)
+    file_header[-1] = 0xEE
+
+    header = np.zeros(64, dtype="<u4")
+    header[0] = sensor
+    header[3] = 0x40
+    header[5] = 16000
+    header[6] = 16
+    header[19] = yyyymmdd
+    header[20] = 0
+    header[25] = 0
+
+    event = np.arange(64, dtype="<u4").reshape(4, 16)
+    counts = np.ones((4, 32, 1024), dtype="<u2")
+
+    with path.open("wb") as file:
+        file.write(file_header)
+        file.write(header.tobytes())
+        file.write(event.tobytes())
+        file.write(counts.tobytes())

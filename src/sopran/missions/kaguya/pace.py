@@ -525,8 +525,27 @@ def _ram_from_name(name: str, sensor: int) -> int:
 
 
 def _collapse_energy_counts(counts: np.ndarray) -> np.ndarray:
-    if counts.ndim < 2 or counts.shape[0] != 32:
+    energy_look = pace_count_energy_look(counts)
+    return energy_look.astype(np.uint64, copy=False).sum(axis=1)
+
+
+def pace_count_energy_look(counts: np.ndarray) -> np.ndarray:
+    """Return a PACE count array as ``energy x flattened-look``.
+
+    PACE electron records usually store the 32-bin energy axis first, while ion
+    records can store sensor/RAM-like axes before energy. This helper normalizes
+    both layouts without applying fill-value masking or calibration.
+    """
+
+    if counts.ndim < 2:
         raise NotImplementedError(
-            f"Energy count collapse expects a leading 32-bin energy axis, got {counts.shape}"
+            f"PACE count records with shape {counts.shape} cannot be mapped to energy spectra"
         )
-    return counts.astype(np.uint64, copy=False).sum(axis=tuple(range(1, counts.ndim)))
+    if counts.shape[0] != 32:
+        energy_axes = [index for index, size in enumerate(counts.shape) if size == 32]
+        if not energy_axes:
+            raise NotImplementedError(
+                f"PACE count records with shape {counts.shape} cannot be mapped to energy spectra"
+            )
+        counts = np.swapaxes(counts, 0, energy_axes[0])
+    return counts.reshape(32, -1)

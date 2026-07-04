@@ -2,43 +2,78 @@ from __future__ import annotations
 
 from sopran.core.schema import InstrumentSchema, VariableSchema
 
-KAGUYA_ESA1_SCHEMA = InstrumentSchema(
-    mission="kaguya",
-    instrument="esa1",
-    variables=(
-        VariableSchema(
-            name="energy_flux",
-            aliases=("eflux", "differential_energy_flux"),
-            dims=("time", "energy", "look"),
-            units="eV/(cm^2 s sr eV)",
-            description=(
-                "Uncalibrated placeholder for KAGUYA PACE ESA1 differential "
-                "electron energy flux; values are NaN until calibration is implemented."
+_PACE_PARTICLE = {
+    "ESA1": "electron",
+    "ESA2": "electron",
+    "IMA": "ion",
+    "IEA": "ion",
+}
+
+
+def _pace_spectrum_schema(sensor: str) -> InstrumentSchema:
+    particle = _PACE_PARTICLE[sensor]
+    return InstrumentSchema(
+        mission="kaguya",
+        instrument=sensor.lower(),
+        variables=(
+            VariableSchema(
+                name="energy_flux",
+                aliases=("eflux", "differential_energy_flux"),
+                dims=("time", "energy", "look"),
+                units="eV/(cm^2 s sr eV)",
+                description=(
+                    f"Uncalibrated placeholder for KAGUYA PACE {sensor} "
+                    f"differential {particle} energy flux; values are NaN until "
+                    "calibration is implemented."
+                ),
+            ),
+            VariableSchema(
+                name="counts",
+                dims=("time", "energy", "look"),
+                units="count",
+                description=f"Raw {sensor} counts.",
+            ),
+            VariableSchema(
+                name="energy",
+                dims=("energy",),
+                units=None,
+                description=(
+                    f"PACE {sensor} energy channel index. Physical eV calibration "
+                    "is not applied."
+                ),
+            ),
+            VariableSchema(
+                name="quality",
+                aliases=("q", "quality_flag"),
+                dims=("time",),
+                units=None,
+                description="Quality flag.",
             ),
         ),
-        VariableSchema(
-            name="counts",
-            dims=("time", "energy", "look"),
-            units="count",
-            description="Raw ESA1 counts.",
-        ),
-        VariableSchema(
-            name="energy",
-            dims=("energy",),
-            units=None,
-            description=(
-                "PACE ESA1 energy channel index. Physical eV calibration is not applied."
-            ),
-        ),
-        VariableSchema(
-            name="quality",
-            aliases=("q", "quality_flag"),
-            dims=("time",),
-            units=None,
-            description="Quality flag.",
-        ),
-    ),
-)
+    )
+
+
+KAGUYA_ESA1_SCHEMA = _pace_spectrum_schema("ESA1")
+KAGUYA_ESA2_SCHEMA = _pace_spectrum_schema("ESA2")
+KAGUYA_IMA_SCHEMA = _pace_spectrum_schema("IMA")
+KAGUYA_IEA_SCHEMA = _pace_spectrum_schema("IEA")
+
+KAGUYA_PACE_SCHEMAS = {
+    "ESA1": KAGUYA_ESA1_SCHEMA,
+    "ESA2": KAGUYA_ESA2_SCHEMA,
+    "IMA": KAGUYA_IMA_SCHEMA,
+    "IEA": KAGUYA_IEA_SCHEMA,
+}
+
+
+def kaguya_pace_schema(sensor: str) -> InstrumentSchema:
+    normalized = sensor.upper()
+    if normalized == "ESA-S1":
+        normalized = "ESA1"
+    elif normalized == "ESA-S2":
+        normalized = "ESA2"
+    return KAGUYA_PACE_SCHEMAS[normalized]
+
 
 KAGUYA_LMAG_MAGNETIC_FIELD = VariableSchema(
     name="magnetic_field",

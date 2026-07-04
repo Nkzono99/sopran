@@ -19,7 +19,7 @@ from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange, _filter_polars_time, day, period
-from sopran.missions.kaguya.data import KaguyaESA1Data
+from sopran.missions.kaguya.data import KaguyaPaceData
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
     iter_hourly_public_paths,
@@ -63,6 +63,7 @@ from sopran.missions.kaguya.schema import (
     KAGUYA_LMAG_SCHEMA,
     KAGUYA_LRS_SCHEMA,
     KAGUYA_ORBIT_SCHEMA,
+    kaguya_pace_schema,
 )
 from sopran.missions.kaguya.sensors import normalize_sensor
 
@@ -126,8 +127,20 @@ class Kaguya:
         if topic is None:
             return _read_guide("README.md", title="KAGUYA/SELENE", language=language)
         normalized = topic.lower().replace("-", "").replace("_", "")
-        if normalized in {"esa1", "esas1", "paceesa1"}:
-            return self.esa1.guide(language=language)
+        pace_topics = {
+            "esa1": self.esa1,
+            "esas1": self.esa1,
+            "paceesa1": self.esa1,
+            "esa2": self.esa2,
+            "esas2": self.esa2,
+            "paceesa2": self.esa2,
+            "ima": self.ima,
+            "paceima": self.ima,
+            "iea": self.iea,
+            "paceiea": self.iea,
+        }
+        if normalized in pace_topics:
+            return pace_topics[normalized].guide(language=language)
         if normalized in {"lmag", "mag"}:
             return self.lmag.guide(language=language)
         if normalized in {"lrs", "npw", "wfc"}:
@@ -626,18 +639,17 @@ class PaceInstrument(KaguyaInstrument):
         self.sensor = normalize_sensor(sensor)
         self.version = version
         super().__init__(mission, self.sensor)
-        if self.sensor == "ESA1":
-            self.energy_flux = self._variable("energy_flux")
-            self.eflux = self.energy_flux
-            self.counts = self._variable("counts")
-            self.energy = self._variable("energy")
-            self.quality = self._variable("quality")
+        self.energy_flux = self._variable("energy_flux")
+        self.eflux = self.energy_flux
+        self.counts = self._variable("counts")
+        self.energy = self._variable("energy")
+        self.quality = self._variable("quality")
 
     def _variable(self, name: str) -> VariableEndpoint:
         return VariableEndpoint(
             self,
-            KAGUYA_ESA1_SCHEMA.variable(name),
-            dataset_id=f"kaguya.esa1.{name}",
+            self.schema().variable(name),
+            dataset_id=f"kaguya.{self.sensor.lower()}.{name}",
         )
 
     def calibration_remote_files(self) -> list[str]:
@@ -689,17 +701,18 @@ class PaceInstrument(KaguyaInstrument):
         )
 
     def __getattr__(self, name: str):
-        if name.startswith("__") or self.sensor != "ESA1":
+        if name.startswith("__"):
             raise AttributeError(name)
-        suggestion = _schema_variable_suggestion(name)
+        suggestion = _schema_variable_suggestion(name, schema=self.schema())
         available = "\n".join(
-            f"  {variable.name}" for variable in KAGUYA_ESA1_SCHEMA.variables
+            f"  {variable.name}" for variable in self.schema().variables
         )
         raise AttributeError(
             f"Kaguya.{self.name} has no variable {name!r}.\n\n"
             f"Available variables:\n{available}\n\n"
             f"Did you mean:\n  {suggestion}?\n\n"
-            f"Try:\n  kg.esa1.info()\n  kg.esa1.{suggestion}.load(time)"
+            f"Try:\n  kg.{self.sensor.lower()}.info()\n"
+            f"  kg.{self.sensor.lower()}.{suggestion}.load(time)"
         )
 
     def remote_files(self, start: object, stop: object | None = None) -> list[str]:
@@ -716,17 +729,13 @@ class PaceInstrument(KaguyaInstrument):
         return Pipeline(source=f"kaguya.{self.sensor.lower()}", time=time, context=self)
 
     def _scan_pipeline(self, pipeline: Pipeline):
-        if self.sensor != "ESA1":
-            raise NotImplementedError(f"pipeline scan is not implemented for {self.sensor}")
         variable = _pipeline_variable(pipeline)
-        dataset_id = pipeline.output_dataset or f"kaguya.esa1.{variable}"
+        dataset_id = pipeline.output_dataset or f"kaguya.{self.sensor.lower()}.{variable}"
         layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
         lazy = self.mission.store.scan_dataset(dataset_id, layer=layer)
         return _filter_lazy_by_time(lazy, pipeline.time)
 
     def _stream_pipeline(self, pipeline: Pipeline, *, partition: str):
-        if self.sensor != "ESA1":
-            raise NotImplementedError(f"pipeline stream is not implemented for {self.sensor}")
         if partition == "all":
             yield self._scan_pipeline(pipeline).collect()
             return
@@ -739,7 +748,7 @@ class PaceInstrument(KaguyaInstrument):
             yield from _stream_pipeline_shards(self, pipeline)
             return
         raise NotImplementedError(
-            "KAGUYA ESA1 pipeline stream currently supports partition='all', "
+            "KAGUYA PACE pipeline stream currently supports partition='all', "
             "partition='day', and partition='shard'"
         )
 
@@ -754,8 +763,6 @@ class PaceInstrument(KaguyaInstrument):
         on_error: str = "fail",
         download: str | None = None,
     ) -> PipelineResult:
-        if self.sensor != "ESA1":
-            raise NotImplementedError(f"pipeline run is not implemented for {self.sensor}")
         if pipeline.output_dataset is None or pipeline.output_layer is None:
             raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
         download = self.mission.download if download is None else download
@@ -908,6 +915,7 @@ class PaceInstrument(KaguyaInstrument):
                 raise
             stage = "load" if data is None else "write"
             output = _write_failed_pipeline_output(
+                self,
                 self.mission.store,
                 pipeline,
                 variable=variable,
@@ -978,10 +986,8 @@ class PaceInstrument(KaguyaInstrument):
             title=f"KAGUYA.{self.name}",
             lines=tuple(
                 f"{variable.name}: {variable.description}"
-                for variable in KAGUYA_ESA1_SCHEMA.variables
-            )
-            if self.sensor == "ESA1"
-            else (),
+                for variable in self.schema().variables
+            ),
         )
 
     def guide(self, *, language: str = "ja") -> GuidePage:
@@ -990,24 +996,20 @@ class PaceInstrument(KaguyaInstrument):
                 "ESA1.md",
                 title="PACE ESA1",
                 language=language,
-            ).with_schema(KAGUYA_ESA1_SCHEMA)
-        return _read_guide("README.md", title=f"KAGUYA {self.sensor}", language=language)
+            ).with_schema(self.schema())
+        return _read_guide(
+            "README.md",
+            title=f"KAGUYA {self.sensor}",
+            language=language,
+        ).with_schema(self.schema())
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def example(self) -> GuidePage:
-        if self.sensor != "ESA1":
-            return _example_page(
-                f"KAGUYA {self.sensor} Example",
-                f"""# KAGUYA {self.sensor} Example
-
-`load()` is not implemented for KAGUYA {self.sensor} yet.
-""",
-            )
         return _example_page(
-            "KAGUYA ESA1 Example",
-            """# KAGUYA ESA1 Example
+            f"KAGUYA {self.sensor} Example",
+            f"""# KAGUYA {self.sensor} Example
 
 ```python
 import sopran as spn
@@ -1015,12 +1017,12 @@ import sopran as spn
 kg = spn.Kaguya()
 time = spn.day("2008-01-01")
 
-esa1 = kg.esa1.load(time)
-counts = kg.esa1.counts.load(time)
+data = kg.{self.sensor.lower()}.load(time)
+counts = kg.{self.sensor.lower()}.counts.load(time)
 
 stack = spn.stack(
     counts.spectrogram(y="energy"),
-    kg.esa1.quality.load(time).line(),
+    kg.{self.sensor.lower()}.quality.load(time).line(),
 )
 plot_result = stack.plot()
 fig = plot_result.fig
@@ -1029,9 +1031,7 @@ fig = plot_result.fig
         )
 
     def schema(self):
-        if self.sensor != "ESA1":
-            raise NotImplementedError(f"Schema is not implemented for {self.sensor}")
-        return KAGUYA_ESA1_SCHEMA
+        return kaguya_pace_schema(self.sensor)
 
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
         if time is None:
@@ -1049,11 +1049,9 @@ fig = plot_result.fig
         calibration: PaceCalibration | None = None,
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
-    ) -> KaguyaESA1Data:
+    ) -> KaguyaPaceData:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.name}")
-        if self.sensor != "ESA1":
-            raise NotImplementedError(f"load() is not implemented for {self.sensor}")
         _validate_missing_mode(missing)
         files: list[Path] = []
         for time_day in time.days():
@@ -1065,9 +1063,10 @@ fig = plot_result.fig
                 raise FileNotFoundError(missing_reason)
             if missing == "warn":
                 warnings.warn(missing_reason, UserWarning, stacklevel=2)
-        return KaguyaESA1Data(
+        return KaguyaPaceData(
             time=time,
             files=tuple(files),
+            instrument=self.sensor,
             calibration=calibration,
             missing_reason=missing_reason,
         )
@@ -1274,7 +1273,7 @@ def _load_endpoint_plot_array(
 
 
 def _write_pipeline_quicklooks(
-    data: KaguyaESA1Data,
+    data: KaguyaPaceData,
     output,
     *,
     pipeline: Pipeline,
@@ -1324,7 +1323,7 @@ def _write_pipeline_quicklooks(
     return tuple(results)
 
 
-def _pipeline_plot_item(data: KaguyaESA1Data, variable: str, *, y: str):
+def _pipeline_plot_item(data: KaguyaPaceData, variable: str, *, y: str):
     array = getattr(data, variable)
     dims = array.schema.dims
     if "time" in dims and y in dims:
@@ -1380,6 +1379,7 @@ def _pipeline_dataset_provenance(
 
 
 def _write_failed_pipeline_output(
+    instrument: PaceInstrument,
     store: Store,
     pipeline: Pipeline,
     *,
@@ -1392,9 +1392,9 @@ def _write_failed_pipeline_output(
         dataset_id=str(pipeline.output_dataset),
         layer=str(pipeline.output_layer),
         mission="kaguya",
-        instrument="esa1",
+        instrument=instrument.sensor.lower(),
         product=variable,
-        schema=KAGUYA_ESA1_SCHEMA,
+        schema=instrument.schema(),
         time_coverage=pipeline.time,
         shards=(
             {
@@ -1427,7 +1427,7 @@ def _write_daily_partitioned_pipeline_output(
 ):
     if mode == "replace":
         raise NotImplementedError(
-            "KAGUYA ESA1 partition='day' does not support mode='replace' yet"
+            "KAGUYA PACE partition='day' does not support mode='replace' yet"
         )
 
     output = None
@@ -1494,7 +1494,7 @@ def _stream_pipeline_shards(instrument: PaceInstrument, pipeline: Pipeline):
     import polars as pl
 
     variable = _pipeline_variable(pipeline)
-    dataset_id = pipeline.output_dataset or f"kaguya.esa1.{variable}"
+    dataset_id = pipeline.output_dataset or f"kaguya.{instrument.sensor.lower()}.{variable}"
     layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
     output = instrument.mission.store.dataset(dataset_id, layer=layer)
     for shard in output.shards(status="complete"):
@@ -1568,7 +1568,7 @@ def _replay_failed_pipeline_shards(
 
 
 def _ensure_pipeline_input_files(
-    data: KaguyaESA1Data,
+    data: KaguyaPaceData,
     instrument: PaceInstrument,
     time: TimeRange,
 ) -> None:
@@ -1576,7 +1576,8 @@ def _ensure_pipeline_input_files(
         return
     expected = ", ".join(instrument.remote_files_for_period(time))
     raise FileNotFoundError(
-        f"No local KAGUYA ESA1 raw files found for {time.start_iso} .. {time.stop_iso}. "
+        f"No local KAGUYA {instrument.name} raw files found for "
+        f"{time.start_iso} .. {time.stop_iso}. "
         f"Expected: {expected}"
     )
 
@@ -2468,14 +2469,14 @@ def _endpoint_plot_example(endpoint: VariableEndpoint) -> str:
     return f'item = {path}.line(time, x="{x}")'
 
 
-def _schema_variable_suggestion(name: str) -> str:
+def _schema_variable_suggestion(name: str, *, schema=KAGUYA_ESA1_SCHEMA) -> str:
     aliases = {
         alias: variable.name
-        for variable in KAGUYA_ESA1_SCHEMA.variables
+        for variable in schema.variables
         for alias in variable.aliases
     }
     aliases["flux"] = "energy_flux"
-    canonical_names = tuple(variable.name for variable in KAGUYA_ESA1_SCHEMA.variables)
+    canonical_names = tuple(variable.name for variable in schema.variables)
     candidates = (*canonical_names, *aliases)
     matches = get_close_matches(name, candidates, n=1, cutoff=0.4)
     if matches:
@@ -2537,7 +2538,7 @@ def _pipeline_variable(pipeline: Pipeline) -> str:
         if stage.name == "select_variables":
             names = stage.parameters.get("names", ())
             if len(names) != 1:
-                raise NotImplementedError("KAGUYA ESA1 pipeline run expects one selected variable")
+                raise NotImplementedError("KAGUYA PACE pipeline run expects one selected variable")
             return str(names[0])
     if pipeline.output_dataset:
         return pipeline.output_dataset.split(".")[-1]
