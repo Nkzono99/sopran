@@ -58,6 +58,9 @@ mkdocs serve
 `pip install -e ".[docs]"` も定義しています。docs だけを編集する場合は上の軽量 install でも
 十分です。
 
+設計ドラフトは `docs/design/` に集約しています。安定した利用者向け説明は `docs/concepts/`,
+`docs/how-to/`, `docs/reference/` を優先します。
+
 ## 現在動く最小 API
 
 KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF decode、
@@ -254,4 +257,4 @@ not be copied into the Apache-2.0 core without a separate license review.
 現在は KAGUYA ESA1 の local PBF decode、xarray/polars 変換、parquet 保存、Pipeline run/scan、
 PlotStack、Project/Case、Moon DEM/SVM raster load、ARTEMIS FGM normalized store load skeleton を
 実装し始めています。
-詳細設計は `SPEC.md`, `STORE.md`, `PIPELINE.md`, `SURFACE.md`, `PLOTTING.md` に分けます。
+詳細設計は `docs/design/` に分けます。

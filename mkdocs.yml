@@ -96,4 +96,11 @@ nav:
       - Status: reference/status.md
       - Release: reference/release.md
       - Design Notes: reference/design-notes.md
+      - Design Drafts:
+          - Overview: design/index.md
+          - API And Data Store Spec: design/spec.md
+          - Store Spec: design/store.md
+          - Pipeline Spec: design/pipeline.md
+          - Surface Spec: design/surface.md
+          - Plotting Spec: design/plotting.md
       - License: reference/license.md

@@ -32,7 +32,7 @@ belong in `normalized` when they are standard instrument quantities. PAD,
 moments, loss-cone fits, wake context, and residual context belong in
 `features`.
 
-See `SPEC.md` for the public API contract.
+See [API and Data Store Spec](spec.md) for the public API contract.
 
 ## Database Metadata
 

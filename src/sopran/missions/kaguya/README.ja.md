@@ -47,4 +47,4 @@ ima = kg.ima.counts.load(time)
 conn_on_ima = conn.resample_like(ima, method="nearest", tolerance="2s")
 ```
 
-詳細な data layout、pipeline、保存形式は英語 guide と `SPEC.md` を参照してください。
+詳細な data layout、pipeline、保存形式は英語 guide と `docs/design/spec.md` を参照してください。
