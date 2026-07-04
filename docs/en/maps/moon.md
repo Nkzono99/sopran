@@ -43,9 +43,13 @@ pip install -e ".[moon]"
 moon = spn.Moon()
 
 dem_path = moon.dem.download(source="lro.lola.dem_118m")
-dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m")
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m", region=region)
 height = dem.sample(lat=0.5, lon=10.5)
 ```
+
+For a single longitude / latitude region, GeoTIFF DEM files are read with a
+raster window rather than loading the whole file.
 
 `moon.svm` points to the default Tsunakawa SVM endpoint. SOPRAN does not
 currently ship a verified stable direct download URL for

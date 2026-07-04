@@ -11,10 +11,12 @@
 ## From Loaded Objects
 
 ```python
+sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),
     kg.esa1.quality.load(time).line(),
-    sza.load(time).histogram(bins=36),
+    sza.histogram(bins=36),
 )
 
 plan = stack.plan()

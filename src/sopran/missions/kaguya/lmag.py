@@ -37,16 +37,59 @@ class KaguyaLmagData:
     files: tuple[Path, ...] = ()
     time: TimeRange | None = None
     instrument: str = "LMAG"
+    missing_reason: str | None = None
 
     @property
     def magnetic_field(self) -> SopranArray:
+        return self._magnetic_field("magnetic_field", "magnetic_field_moon_me")
+
+    @property
+    def magnetic_field_gse(self) -> SopranArray:
+        return self._magnetic_field("magnetic_field_gse", "magnetic_field_gse")
+
+    @property
+    def magnetic_field_magnitude(self) -> SopranArray:
         if self.time is None:
             raise ValueError(
-                "KaguyaLmagData.magnetic_field requires a TimeRange; "
+                "KaguyaLmagData.magnetic_field_magnitude requires a TimeRange; "
                 "use kg.lmag.load(time) or read_lmag_public(..., time=time)."
             )
-        schema = KAGUYA_LMAG_SCHEMA.variable("magnetic_field")
-        array = self.to_xarray()["magnetic_field_moon_me"].rename(schema.name)
+        try:
+            import xarray as xr
+        except ImportError as exc:
+            raise RuntimeError("xarray is required for magnetic_field_magnitude") from exc
+        schema = KAGUYA_LMAG_SCHEMA.variable("magnetic_field_magnitude")
+        dataset = self.to_xarray()
+        values = np.linalg.norm(
+            dataset["magnetic_field_moon_me"].values.astype(float),
+            axis=1,
+        )
+        array = xr.DataArray(
+            values,
+            dims=("time",),
+            coords={"time": dataset.coords["time"].values},
+            name=schema.name,
+            attrs={
+                "units": schema.units,
+                "description": schema.description,
+            },
+        )
+        return SopranArray(
+            name=schema.name,
+            time=self.time,
+            schema=schema,
+            files=self.files,
+            xr=array,
+        )
+
+    def _magnetic_field(self, name: str, source: str) -> SopranArray:
+        if self.time is None:
+            raise ValueError(
+                f"KaguyaLmagData.{name} requires a TimeRange; "
+                "use kg.lmag.load(time) or read_lmag_public(..., time=time)."
+            )
+        schema = KAGUYA_LMAG_SCHEMA.variable(name)
+        array = self.to_xarray()[source].rename(schema.name)
         array.attrs.update(
             {
                 "units": schema.units,
@@ -65,6 +108,10 @@ class KaguyaLmagData:
     @property
     def b(self) -> SopranArray:
         return self.magnetic_field
+
+    @property
+    def bmag(self) -> SopranArray:
+        return self.magnetic_field_magnitude
 
     def to_pandas(self) -> pd.DataFrame:
         return self.frame.copy()
@@ -85,6 +132,13 @@ class KaguyaLmagData:
         frame = self.frame
         components = np.asarray(["x", "y", "z"], dtype=object)
         time_values = _datetime64_from_unix(frame["time"].to_numpy(dtype=float))
+        attrs: dict[str, Any] = {
+            "mission": "kaguya",
+            "instrument": self.instrument,
+            "source_files": [str(path) for path in self.files],
+        }
+        if self.missing_reason is not None:
+            attrs["missing_reason"] = self.missing_reason
         return xr.Dataset(
             data_vars={
                 "position_moon_me": (
@@ -109,11 +163,7 @@ class KaguyaLmagData:
                 ),
             },
             coords={"time": time_values, "component": components},
-            attrs={
-                "mission": "kaguya",
-                "instrument": self.instrument,
-                "source_files": [str(path) for path in self.files],
-            },
+            attrs=attrs,
         )
 
 
@@ -121,12 +171,18 @@ def read_lmag_public(
     files: str | Path | Iterable[str | Path],
     *,
     time: TimeRange | None = None,
+    missing_reason: str | None = None,
 ) -> KaguyaLmagData:
     paths = _as_paths(files)
     frames = [_read_public_file(path) for path in paths]
     frame = pd.concat(frames, ignore_index=True) if frames else _empty_frame()
     frame = _filter_time(frame, time).sort_values("time", ignore_index=True)
-    return KaguyaLmagData(frame=frame, files=tuple(paths), time=time)
+    return KaguyaLmagData(
+        frame=frame,
+        files=tuple(paths),
+        time=time,
+        missing_reason=missing_reason,
+    )
 
 
 def _as_paths(files: str | Path | Iterable[str | Path]) -> list[Path]:

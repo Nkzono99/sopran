@@ -21,6 +21,26 @@ def test_frame_context_records_backend_and_kernel_metadata() -> None:
     ]
     assert "spiceypy" in metadata["available_backends"]
     assert "spacepy" in metadata["available_backends"]
+    assert metadata["implemented_backends"]["identity"] == "built-in"
+    assert "spiceypy" in metadata["implemented_backends"]
+
+
+def test_frame_context_plan_distinguishes_implemented_planned_and_unavailable() -> None:
+    context = spn.FrameContext()
+
+    identity = context.plan("MOON_ME", "MOON_ME").metadata()
+    spice = context.plan("MOON_ME", "SSE").metadata()
+    planned = context.plan("GSE", "GSM").metadata()
+    unavailable = context.plan("MOON_ME", "SSE", backend="experimental").metadata()
+
+    assert identity["status"] == "applied"
+    assert identity["backend_available"] is True
+    assert spice["status"] == "implemented"
+    assert isinstance(spice["backend_available"], bool)
+    assert planned["status"] == "planned"
+    assert isinstance(planned["backend_available"], bool)
+    assert unavailable["status"] == "unavailable"
+    assert unavailable["backend_available"] is False
 
 
 def test_sopran_array_identity_transform_preserves_values_and_records_provenance() -> None:

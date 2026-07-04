@@ -79,6 +79,8 @@ nav:
           - Overview: missions/artemis/index.md
   - How-to:
       - Load KAGUYA ESA1: how-to/load-kaguya-esa1.md
+      - Load KAGUYA LRS: how-to/load-kaguya-lrs.md
+      - Visualize KAGUYA LMAG Geometry: how-to/visualize-kaguya-lmag.md
       - Write Normalized Parquet: how-to/write-normalized-parquet.md
       - Build A PlotStack: how-to/plotstack.md
       - Plan A Pipeline: how-to/pipeline-plan.md

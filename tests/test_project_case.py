@@ -5,10 +5,12 @@ import json
 import numpy as np
 import pytest
 import xarray as xr
+
 import sopran as spn
 from sopran import Store
 from sopran.core.data import SopranArray
 from sopran.missions.kaguya.data import KaguyaESA1Data
+from sopran.missions.kaguya.files import KaguyaFileSource
 
 
 def test_project_case_reads_defaults_and_exposes_moon_context(tmp_path) -> None:
@@ -43,6 +45,45 @@ lon_domain = "0_360"
     assert plan.product == "dem"
     assert plan.parameters["source"] == "kaguya.tc.dem"
     assert plan.parameters["region"] == case.region
+
+
+def test_project_case_kaguya_inherits_project_download_default(tmp_path) -> None:
+    class FakeSource(KaguyaFileSource):
+        def __init__(self, root):
+            self.root = root
+            self.downloaded = []
+
+        def local_path(self, remote_file):
+            return self.root / remote_file
+
+        def download(self, remote_file, *, overwrite=False):
+            self.downloaded.append((remote_file, overwrite))
+            path = self.local_path(remote_file)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"downloaded")
+            return path
+
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+download = "always"
+
+[cases.wake]
+start = "2008-02-01T00:00:00"
+stop = "2008-02-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    source = FakeSource(tmp_path / "raw")
+    case = spn.Project(project_root, store=Store(tmp_path / "store")).case("wake")
+    case.kaguya._mission.source = source
+
+    data = case.kaguya.esa1.load()
+
+    assert data.files == (source.local_path(source.downloaded[0][0]),)
+    assert source.downloaded[0][1] is True
 
 
 def test_project_case_supplies_region_and_time_to_moon_surface_plans(tmp_path) -> None:

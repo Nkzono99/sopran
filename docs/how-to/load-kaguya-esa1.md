@@ -32,6 +32,7 @@ summed = esa1.to_polars("counts", reduce_look="sum")
 ```
 
 `counts.to_xarray()` は `time x energy x look` の dense array を返します。
+現時点の `energy` は物理 eV ではなく channel index です。
 `esa1.to_polars("counts")` は既定で `time` ごとに 1 行を作り、`counts` 列を
 `pl.Array` として保持します。完全な long table が必要な場合は
 `layout="long"` を明示しますが、未削減の `time x energy x look` は非常に大きく

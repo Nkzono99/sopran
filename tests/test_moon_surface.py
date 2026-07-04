@@ -54,6 +54,114 @@ def test_moon_dem_loads_geotiff_with_rasterio(tmp_path) -> None:
     assert layer.sample(lat=0.5, lon=11.5) == pytest.approx(4.0)
 
 
+def test_raster_layer_sample_normalizes_longitude_domain() -> None:
+    positive = spn.RasterLayer(
+        [[1.0, 2.0], [3.0, 4.0]],
+        lon=[350.0, 10.0],
+        lat=[-1.0, 1.0],
+        product="dem",
+        variable="elevation",
+        source="synthetic",
+    )
+    minus180 = spn.RasterLayer(
+        [[1.0, 2.0], [3.0, 4.0]],
+        lon=[-10.0, 10.0],
+        lat=[-1.0, 1.0],
+        product="dem",
+        variable="elevation",
+        source="synthetic",
+    )
+
+    assert positive.sample(lat=-1.0, lon=-10.0) == pytest.approx(1.0)
+    assert minus180.sample(lat=-1.0, lon=350.0) == pytest.approx(1.0)
+
+
+def test_moon_dem_loads_geotiff_window_for_region(tmp_path) -> None:
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    path = tmp_path / "dem.tif"
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        height=4,
+        width=4,
+        count=1,
+        dtype="float32",
+        transform=from_origin(10.0, 4.0, 1.0, 1.0),
+        nodata=-9999.0,
+    ) as dataset:
+        dataset.write(
+            np.array(
+                [
+                    [1.0, 2.0, 3.0, 4.0],
+                    [5.0, 6.0, 7.0, 8.0],
+                    [9.0, 10.0, 11.0, 12.0],
+                    [13.0, 14.0, 15.0, 16.0],
+                ],
+                dtype="float32",
+            ),
+            1,
+        )
+
+    region = spn.Region(lon=(11.0, 13.0), lat=(1.0, 3.0), body="moon")
+
+    layer = spn.Moon().dem.load(path=path, source="local.dem", region=region)
+
+    assert layer.shape == (2, 2)
+    assert layer.values.tolist() == [[6.0, 7.0], [10.0, 11.0]]
+    assert layer.lon.tolist() == [11.5, 12.5]
+    assert layer.lat.tolist() == [2.5, 1.5]
+    assert layer.metadata["windowed"] is True
+    assert layer.metadata["source_width"] == 4
+    assert layer.metadata["source_height"] == 4
+    assert layer.metadata["width"] == 2
+    assert layer.metadata["height"] == 2
+    assert layer.metadata["window"] == {
+        "col_off": 1,
+        "row_off": 1,
+        "width": 2,
+        "height": 2,
+    }
+
+
+def test_moon_dem_window_converts_region_to_raster_lon_domain(tmp_path) -> None:
+    rasterio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    path = tmp_path / "minus180_dem.tif"
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        height=2,
+        width=4,
+        count=1,
+        dtype="float32",
+        transform=from_origin(-180.0, 2.0, 1.0, 1.0),
+        nodata=-9999.0,
+    ) as dataset:
+        dataset.write(
+            np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]], dtype="float32"),
+            1,
+        )
+
+    region = spn.Region(
+        lon=(181.0, 183.0),
+        lat=(0.0, 2.0),
+        body="moon",
+        lon_domain="0_360",
+    )
+
+    layer = spn.Moon().dem.load(path=path, source="local.dem", region=region)
+
+    assert layer.shape == (2, 2)
+    assert layer.values.tolist() == [[2.0, 3.0], [6.0, 7.0]]
+    assert layer.lon.tolist() == [-178.5, -177.5]
+    assert layer.metadata["windowed"] is True
+
+
 def test_moon_lro_lola_dem_source_applies_catalog_scale_when_geotiff_has_none(
     tmp_path,
 ) -> None:
@@ -152,6 +260,65 @@ def test_moon_dem_download_registers_raw_file(tmp_path, monkeypatch) -> None:
     manifest = json.loads(path.with_name(f"{path.name}.sopran.json").read_text())
     assert manifest["provider"] == "usgs_astrogeology"
     assert manifest["download_url"] == calls[0][0]
+
+
+def test_moon_download_file_removes_partial_file_on_failure(tmp_path, monkeypatch) -> None:
+    import sopran.bodies.moon as moon_module
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+    def fake_copyfileobj(response, output):
+        output.write(b"partial")
+        raise OSError("network interrupted")
+
+    monkeypatch.setattr(moon_module.urllib.request, "urlopen", lambda url: FakeResponse())
+    monkeypatch.setattr(moon_module.shutil, "copyfileobj", fake_copyfileobj)
+    target = tmp_path / "moon" / "dem.tif"
+
+    with pytest.raises(OSError, match="network interrupted"):
+        moon_module._download_file("https://example.invalid/dem.tif", target)
+
+    assert not target.exists()
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
+
+
+def test_moon_download_file_overwrite_failure_preserves_existing_file(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    import sopran.bodies.moon as moon_module
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+    def fake_copyfileobj(response, output):
+        output.write(b"partial")
+        raise OSError("network interrupted")
+
+    monkeypatch.setattr(moon_module.urllib.request, "urlopen", lambda url: FakeResponse())
+    monkeypatch.setattr(moon_module.shutil, "copyfileobj", fake_copyfileobj)
+    target = tmp_path / "moon" / "dem.tif"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"existing")
+
+    with pytest.raises(OSError, match="network interrupted"):
+        moon_module._download_file(
+            "https://example.invalid/dem.tif",
+            target,
+            overwrite=True,
+        )
+
+    assert target.read_bytes() == b"existing"
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
 
 
 def test_moon_svm_download_requires_manual_acquisition(tmp_path) -> None:

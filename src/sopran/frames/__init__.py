@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -16,6 +16,8 @@ _FRAME_ALIASES = {
     "SSE": "SSE",
 }
 _KNOWN_BACKENDS = ("spiceypy", "astropy", "spacepy")
+_IMPLEMENTED_BACKENDS = ("identity", "spiceypy")
+_PLANNED_BACKENDS = ("astropy", "spacepy")
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class FrameTransformPlan:
             "time_scale": self.time_scale,
             "spice_kernels": [path.as_posix() for path in self.spice_kernels],
             "status": self.status,
+            "backend_available": _backend_available(self.backend),
         }
 
 
@@ -65,6 +68,8 @@ class FrameContext:
             "time_scale": self.time_scale,
             "spice_kernels": [path.as_posix() for path in self.spice_kernels],
             "available_backends": _backend_versions(),
+            "implemented_backends": _implemented_backend_versions(),
+            "planned_backends": _planned_backend_versions(),
         }
 
     def plan(
@@ -85,7 +90,7 @@ class FrameContext:
             backend=selected_backend,
             time_scale=self.time_scale,
             spice_kernels=self.spice_kernels,
-            status="applied" if source == target else "planned",
+            status=_transform_plan_status(source, target, selected_backend),
         )
 
     def transform_array(
@@ -187,7 +192,13 @@ def _identity_transform(array: Any, plan: FrameTransformPlan):
     )
 
 
-def _vector_array_transform(array: Any, context: FrameContext, plan: FrameTransformPlan, *, backend: str | None):
+def _vector_array_transform(
+    array: Any,
+    context: FrameContext,
+    plan: FrameTransformPlan,
+    *,
+    backend: str | None,
+):
     from sopran.core.data import SopranArray
 
     if not isinstance(array, SopranArray):
@@ -202,7 +213,8 @@ def _vector_array_transform(array: Any, context: FrameContext, plan: FrameTransf
     values = getattr(xr_array, "values", None)
     if values is None or getattr(values, "shape", ())[-1] != 3:
         raise FrameTransformError(
-            f"Frame transform expects three vector components: {plan.source_frame} -> {plan.target_frame}"
+            "Frame transform expects three vector components: "
+            f"{plan.source_frame} -> {plan.target_frame}"
         )
     if "time" not in getattr(xr_array, "coords", {}):
         raise FrameTransformError(
@@ -247,6 +259,34 @@ def _array_frame(array: Any) -> str | None:
 
 def _backend_versions() -> dict[str, str | None]:
     return {name: _package_version(name) for name in _KNOWN_BACKENDS}
+
+
+def _implemented_backend_versions() -> dict[str, str | None]:
+    versions = {"identity": "built-in"}
+    versions.update({name: _package_version(name) for name in _IMPLEMENTED_BACKENDS[1:]})
+    return versions
+
+
+def _planned_backend_versions() -> dict[str, str | None]:
+    return {name: _package_version(name) for name in _PLANNED_BACKENDS}
+
+
+def _transform_plan_status(source_frame: str, target_frame: str, backend: str) -> str:
+    if source_frame == target_frame:
+        return "applied"
+    if backend in _IMPLEMENTED_BACKENDS:
+        return "implemented"
+    if backend in _PLANNED_BACKENDS:
+        return "planned"
+    return "unavailable"
+
+
+def _backend_available(backend: str) -> bool:
+    if backend == "identity":
+        return True
+    if backend in _KNOWN_BACKENDS:
+        return _package_version(backend) is not None
+    return False
 
 
 def _package_version(name: str) -> str | None:
@@ -307,10 +347,11 @@ def _time_to_utc_string(value: Any) -> str:
     if isinstance(value, np.datetime64):
         return np.datetime_as_string(value.astype("datetime64[ns]"), unit="ns") + " UTC"
     if isinstance(value, datetime):
-        dt = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat() + " UTC"
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return dt.astimezone(UTC).replace(tzinfo=None).isoformat() + " UTC"
     if isinstance(value, (int, float, np.integer, np.floating)):
-        return datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None).isoformat() + " UTC"
+        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
+        return timestamp.replace(tzinfo=None).isoformat() + " UTC"
     text = str(value)
     return text if text.upper().endswith("UTC") else f"{text} UTC"
 

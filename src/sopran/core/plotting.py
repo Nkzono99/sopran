@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import base64
 import html
-from io import BytesIO
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
-
 
 PlotKind = Literal["line", "spectrogram", "histogram"]
 
@@ -69,6 +68,11 @@ class PlotStack:
         self,
         *,
         backend: Literal["matplotlib"] = "matplotlib",
+        dataset_id: str | None = None,
+        time_range: Any | None = None,
+        frame: str | None = None,
+        aggregation: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
     ) -> PlotResult:
@@ -118,7 +122,7 @@ class PlotStack:
         fig.autofmt_xdate()
         fig.tight_layout()
         plan = self.plan()
-        metadata = {
+        metadata_payload = {
             "backend": backend,
             "panel_count": plan.panel_count,
             "items": list(plan.items),
@@ -126,13 +130,23 @@ class PlotStack:
             "panels": _panel_metadata(self.items),
             "time_axis": _time_axis_metadata(self.items),
         }
+        if dataset_id is not None:
+            metadata_payload["dataset_id"] = dataset_id
+        if time_range is not None:
+            metadata_payload["time_range"] = _time_range_metadata(time_range)
+        if frame is not None:
+            metadata_payload["frame"] = frame
+        if aggregation is not None:
+            metadata_payload["aggregation"] = _metadata_value(aggregation)
+        if metadata:
+            metadata_payload["metadata"] = _metadata_value(metadata)
         if context is not None:
-            metadata["context"] = _context_metadata(context)
+            metadata_payload["context"] = _context_metadata(context)
         return PlotResult(
             fig=fig,
             axes=tuple(axes),
             backend=backend,
-            metadata=metadata,
+            metadata=metadata_payload,
         )
 
     def explore(

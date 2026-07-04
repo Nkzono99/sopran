@@ -73,7 +73,8 @@ def test_instrument_schema_exports_markdown_variable_table() -> None:
             "",
             "| name | dims | units | dtype | frame | aliases | description |",
             "| --- | --- | --- | --- | --- | --- | --- |",
-            "| magnetic_field | time, component | nT | float64 | SSE | b | Vector magnetic field. |",
+            "| magnetic_field | time, component | nT | float64 | SSE | b | "
+            "Vector magnetic field. |",
         ]
     )
 

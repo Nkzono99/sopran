@@ -338,7 +338,10 @@ class Case:
         self.frame = defaults.get("frame")
         self.cache = bool(defaults.get("cache", False))
         self.region = region
-        self.kaguya = CaseKaguya(Kaguya(store=project.store), self)
+        self.kaguya = CaseKaguya(
+            Kaguya(store=project.store, download=_optional_str(defaults.get("download"))),
+            self,
+        )
         self.artemis = CaseMission(Artemis(store=project.store), self)
         self.moon = CaseMoon(Moon(), self)
 

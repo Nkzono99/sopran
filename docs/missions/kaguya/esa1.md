@@ -17,8 +17,11 @@ counts.to_polars()
 | endpoint | dims | 使い方 |
 | --- | --- | --- |
 | `kg.esa1.counts` | `time, energy, look` | raw counts の確認、quicklook |
-| `kg.esa1.energy_flux` | `time, energy, look` | 物理較正後の flux 用 |
+| `kg.esa1.energy_flux` | `time, energy, look` | 未較正 placeholder。現状は NaN |
 | `kg.esa1.quality` | `time` | flag panel、mask、alignment |
+
+`energy` 座標は現時点では channel index で、物理 eV calibration は未適用です。
+raw file が無い場合の挙動は `missing="empty" | "warn" | "error"` で選びます。
 
 ## quicklook
 
@@ -42,5 +45,5 @@ record = (
 )
 ```
 
-較正 table、`energy_flux`、look-angle 座標、SPEDAS parity test の現状は
+較正 table、物理 `energy_flux`、look-angle 座標、SPEDAS parity test の現状は
 [実装状況](../../reference/status.md) にまとめています。

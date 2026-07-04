@@ -215,13 +215,19 @@ def test_kaguya_esa1_to_xarray_records_loaded_unapplied_calibration(
     data = kg.esa1.load(spn.day("2008-01-01"), calibration=calibration)
     ds = data.to_xarray()
 
-    assert data.info().lines[-1] == "calibration: fov=False, info=True, status=tables_loaded_not_applied"
+    assert data.info().lines[-1] == (
+        "calibration: fov=False, info=True, status=tables_loaded_not_applied"
+    )
     assert ds.attrs["calibration"] == {
         "fov": False,
         "info": True,
         "status": "tables_loaded_not_applied",
     }
     assert ds["energy_flux"].attrs["calibration"] == "tables_loaded_not_applied"
+    assert ds["energy_flux"].attrs["calibration_status"] == "tables_loaded_not_applied"
+    assert ds["energy_flux"].attrs["physical_validity"] == "placeholder"
+    assert ds["energy"].attrs["description"].startswith("PACE ESA1 energy channel index")
+    assert "units" not in ds["energy"].attrs
     assert np.isnan(ds["energy_flux"].to_numpy()).all()
 
 
@@ -273,9 +279,27 @@ def test_kaguya_esa1_variable_endpoint_can_plot_with_time(tmp_path: Path) -> Non
 
     kg = spn.Kaguya(store=store)
 
-    axes = kg.esa1.counts.plot(spn.day("2008-01-01"))
+    result = kg.esa1.counts.plot(
+        spn.day("2008-01-01"),
+        download="never",
+        missing="warn",
+    )
 
-    assert axes is not None
+    assert result is not None
+    assert result.metadata["dataset_id"] == "kaguya.esa1.counts"
+    assert result.metadata["time_range"] == {
+        "start": "2008-01-01T00:00:00Z",
+        "stop": "2008-01-02T00:00:00Z",
+    }
+    assert result.metadata["metadata"]["endpoint"] == "kg.esa1.counts"
+    assert result.metadata["metadata"]["instrument"] == "ESA1"
+    assert result.metadata["metadata"]["variable"] == "counts"
+    assert result.metadata["metadata"]["download"] == "never"
+    assert result.metadata["metadata"]["missing"] == "warn"
+    assert result.metadata["metadata"]["source_files"] == [str(cached)]
+    assert result.metadata["metadata"]["remote_files"] == [remote_file]
+    assert result.metadata["metadata"]["schema"]["name"] == "counts"
+    assert result.metadata["metadata"]["schema"]["dims"] == ["time", "energy", "look"]
 
 
 def test_project_case_variable_endpoint_can_plot_with_case_time(tmp_path: Path) -> None:
@@ -472,6 +496,18 @@ def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> N
     assert array.values[0, 0, 0] == pytest.approx(5.0)
     assert array.values[0, 0, 1] == pytest.approx(7.0)
     assert array.values[0, 1, 0] == pytest.approx(11.0)
+    assert spectrum.metadata["operations"] == [
+        {
+            "operation": "pitch_angle_spectrum",
+            "parameters": {
+                "value": "counts",
+                "pitch_edges": [0.0, 90.0, 180.0],
+                "look_frame": "SELENE_M_SPACECRAFT",
+                "magnetic_frame": None,
+                "min_look_bins": 1,
+            },
+        }
+    ]
 
 
 def test_kaguya_esa1_pitch_angle_spectrum_requires_angle_calibration() -> None:
@@ -493,6 +529,16 @@ def test_kaguya_esa1_pitch_angle_spectrum_requires_angle_calibration() -> None:
 
     with pytest.raises(ValueError, match="requires PACE angle calibration"):
         data.pitch_angle_spectrum(magnetic_field=np.array([1.0, 0.0, 0.0]))
+
+
+def test_kaguya_esa1_pitch_angle_spectrum_rejects_uncalibrated_energy_flux() -> None:
+    data = KaguyaESA1Data(time=spn.day("2008-01-01"))
+
+    with pytest.raises(ValueError, match="energy_flux calibration is not implemented"):
+        data.pitch_angle_spectrum(
+            magnetic_field=np.array([1.0, 0.0, 0.0]),
+            value="energy_flux",
+        )
 
 
 def test_kaguya_esa1_pitch_angle_spectrum_keeps_all_fill_bins_nan() -> None:

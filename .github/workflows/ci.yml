@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,kaguya,moon,viz]"
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Compile Python sources
+        run: python -m compileall src
+
+      - name: Check generated schema docs
+        run: |
+          python -m sopran.schema_docs --check docs/reference/schemas.md
+          python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md
+
+      - name: Lint
+        run: python -m ruff check src tests
+
+      - name: Type check
+        continue-on-error: true
+        run: python -m mypy src

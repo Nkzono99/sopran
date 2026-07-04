@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 import numpy as np
@@ -13,13 +13,12 @@ from sopran.core.time import TimeRange
 from sopran.frames import FrameContext, normalize_frame
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData, PaceRecord
 
-
 PitchBins = Literal["native"] | int | Any
 
 
 @dataclass(frozen=True)
 class PitchAngleSpectrumOptions:
-    value: Literal["counts", "energy_flux"] = "counts"
+    value: str = "counts"
     pitch_bins: PitchBins = "native"
     look_frame: str = "SELENE_M_SPACECRAFT"
     magnetic_frame: str | None = None
@@ -37,8 +36,13 @@ def build_pitch_angle_spectrum(
     frame_context: FrameContext | None = None,
 ) -> SopranArray:
     options = options or PitchAngleSpectrumOptions()
-    if options.value not in ("counts", "energy_flux"):
-        raise ValueError("value must be 'counts' or 'energy_flux'")
+    if options.value == "energy_flux":
+        raise ValueError(
+            "KAGUYA ESA1 energy_flux calibration is not implemented; "
+            "pitch_angle_spectrum currently supports value='counts' only."
+        )
+    if options.value != "counts":
+        raise ValueError("value must be 'counts'")
     if options.min_look_bins <= 0:
         raise ValueError("min_look_bins must be positive")
     if pace is None:
@@ -137,7 +141,7 @@ def _selected_records(pace: PaceData, time: TimeRange) -> list[tuple[PaceRecord,
         value = header.get("time")
         if value is None:
             continue
-        instant = datetime.fromtimestamp(float(value), tz=timezone.utc)
+        instant = datetime.fromtimestamp(float(value), tz=UTC)
         if time.start <= instant < time.stop:
             rows.append((record, header))
     return rows
@@ -149,7 +153,10 @@ def _has_angle_calibration(calibration: PaceCalibration | None, sensor: int) -> 
     return sensor in calibration.info or sensor in calibration.fov
 
 
-def _pitch_edges(pitch_bins: PitchBins, records: list[tuple[PaceRecord, dict[str, Any]]]) -> np.ndarray:
+def _pitch_edges(
+    pitch_bins: PitchBins,
+    records: list[tuple[PaceRecord, dict[str, Any]]],
+) -> np.ndarray:
     if isinstance(pitch_bins, str):
         if pitch_bins != "native":
             raise ValueError("pitch_bins must be 'native', an integer, or an array of bin edges")
@@ -191,7 +198,9 @@ def _record_angular_data(
 ) -> _AngularRecord:
     counts = record.arrays.get("cnt")
     if counts is None or counts.ndim != 3 or counts.shape[0] != 32:
-        raise ValueError(f"PACE count record shape cannot be pitch-binned: {getattr(counts, 'shape', None)}")
+        raise ValueError(
+            f"PACE count record shape cannot be pitch-binned: {getattr(counts, 'shape', None)}"
+        )
     shape = tuple(int(item) for item in counts.shape)
     key = _angular_key(shape[1], shape[2])
     if key is None:
@@ -251,7 +260,13 @@ def _calibration_grid(
         return energy, theta, phi, gfactor, detector_bins, enesq, polsq
     ram_index = min(ram, info[f"gfactor_{key}"].shape[0] - 1)
     enesq, polsq = _seq_or_default(info, key, ram_index, shape[1])
-    gfactor = _assign_by_sequence(shape, enesq, polsq, info[f"gfactor_{key}"][ram_index], default=0.0)
+    gfactor = _assign_by_sequence(
+        shape,
+        enesq,
+        polsq,
+        info[f"gfactor_{key}"][ram_index],
+        default=0.0,
+    )
     detector_bins[~np.isfinite(gfactor) | (gfactor == 0.0)] = 0
     energy = _assign_by_sequence(shape, enesq, polsq, info[f"ene_{key}"][ram_index] * 1000.0)
     theta = _assign_by_sequence(shape, enesq, polsq, info[f"pol_{key}"][ram_index])
@@ -271,8 +286,16 @@ def _fallback_fov_grid(
         pol_name = "pol16" if polar_count == 16 else "pol4"
         if {"ene", az_name, pol_name} <= set(fov):
             ram_index = min(ram, fov["ene"].shape[0] - 1)
-            energy = np.broadcast_to(fov["ene"][ram_index, :, None, None] * 1000.0, shape).astype(float).copy()
-            theta = np.broadcast_to(-fov[pol_name][ram_index, :, :, None], shape).astype(float).copy()
+            energy = (
+                np.broadcast_to(fov["ene"][ram_index, :, None, None] * 1000.0, shape)
+                .astype(float)
+                .copy()
+            )
+            theta = (
+                np.broadcast_to(-fov[pol_name][ram_index, :, :, None], shape)
+                .astype(float)
+                .copy()
+            )
             phi = np.broadcast_to(fov[az_name][None, None, :], shape).astype(float).copy()
             return energy, theta, phi
     raise ValueError("pitch_angle_spectrum requires PACE angle calibration")
@@ -390,7 +413,9 @@ def _magnetic_vectors_at(
     except FrameTransformError:
         raise
     except Exception as exc:
-        raise FrameTransformError(f"Failed to align magnetic field frame {source} -> {target}") from exc
+        raise FrameTransformError(
+            f"Failed to align magnetic field frame {source} -> {target}"
+        ) from exc
 
 
 def _magnetic_source_vectors(
@@ -407,11 +432,16 @@ def _magnetic_source_vectors(
         vectors = np.vstack(
             [np.interp(times_unix, source_times, values[:, component]) for component in range(3)]
         ).T
-        frame = magnetic_frame or magnetic_field.schema.frame or getattr(array, "attrs", {}).get("frame")
+        frame = magnetic_frame or magnetic_field.schema.frame or getattr(
+            array, "attrs", {}
+        ).get("frame")
         return vectors, str(frame) if frame is not None else None
     arr = np.asarray(magnetic_field, dtype=float)
     if arr.shape == (3,):
-        return np.broadcast_to(arr[None, :], (times_unix.size, 3)).astype(float).copy(), magnetic_frame
+        return (
+            np.broadcast_to(arr[None, :], (times_unix.size, 3)).astype(float).copy(),
+            magnetic_frame,
+        )
     if arr.ndim == 2 and arr.shape[1] >= 4:
         vectors = np.vstack(
             [np.interp(times_unix, arr[:, 0], arr[:, component]) for component in range(1, 4)]
@@ -425,7 +455,7 @@ def _unix_from_datetime64(values: np.ndarray) -> np.ndarray:
 
 
 def _datetime64_from_unix(value: float) -> np.datetime64:
-    text = datetime.fromtimestamp(value, tz=timezone.utc).replace(tzinfo=None).isoformat()
+    text = datetime.fromtimestamp(value, tz=UTC).replace(tzinfo=None).isoformat()
     return np.datetime64(text, "ns")
 
 
@@ -471,7 +501,29 @@ def _pitch_spectrum_array(
         frame=normalize_frame(options.look_frame),
         description="KAGUYA PACE ESA1 energy spectrum binned by pitch angle.",
     )
-    return SopranArray(name=schema.name, time=time, schema=schema, files=files, xr=array)
+    return SopranArray(
+        name=schema.name,
+        time=time,
+        schema=schema,
+        files=files,
+        operations=(
+            {
+                "operation": "pitch_angle_spectrum",
+                "parameters": {
+                    "value": options.value,
+                    "pitch_edges": pitch_edges.tolist(),
+                    "look_frame": normalize_frame(options.look_frame),
+                    "magnetic_frame": (
+                        normalize_frame(options.magnetic_frame)
+                        if options.magnetic_frame is not None
+                        else None
+                    ),
+                    "min_look_bins": options.min_look_bins,
+                },
+            },
+        ),
+        xr=array,
+    )
 
 
 def _empty_pitch_spectrum(

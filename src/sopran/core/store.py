@@ -4,6 +4,7 @@ import json
 import os
 import sys
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -13,7 +14,7 @@ from typing import Any
 
 from sopran.core.config import config_section, configured_path, read_user_config
 from sopran.core.errors import DatasetNotFoundError
-from sopran.core.schema import InstrumentSchema, validate_schema
+from sopran.core.schema import InstrumentSchema, VariableSchema, validate_schema
 from sopran.core.time import TimeRange, period
 
 _LAYERS = ("raw", "normalized", "features", "models", "databases")
@@ -173,25 +174,55 @@ class Store:
             database.create()
         return database
 
-    def dataset_path(self, dataset_id: str, *, layer: str) -> Path:
-        return self._layer_path(layer, *_dataset_parts(dataset_id))
+    def dataset_path(
+        self,
+        dataset_id: str,
+        *,
+        layer: str,
+        variant_id: str | None = None,
+    ) -> Path:
+        parts = _dataset_parts(dataset_id)
+        if variant_id is not None:
+            _validate_variant_id(variant_id)
+            parts = (*parts, "variants", variant_id)
+        return self._layer_path(layer, *parts)
 
-    def dataset(self, dataset_id: str, *, layer: str | None = None) -> DatasetRecord:
+    def dataset(
+        self,
+        dataset_id: str,
+        *,
+        layer: str | None = None,
+        variant_id: str | None = None,
+    ) -> DatasetRecord:
         if layer is not None:
-            record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+            record = DatasetRecord(
+                root=self.dataset_path(
+                    dataset_id,
+                    layer=layer,
+                    variant_id=variant_id,
+                )
+            )
             if record.manifest_path.exists():
                 return record
-            raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
+            suffix = f", variant={variant_id}" if variant_id is not None else ""
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer}{suffix})")
 
         matches = []
         for candidate_layer in _LAYERS:
-            record = DatasetRecord(root=self.dataset_path(dataset_id, layer=candidate_layer))
+            record = DatasetRecord(
+                root=self.dataset_path(
+                    dataset_id,
+                    layer=candidate_layer,
+                    variant_id=variant_id,
+                )
+            )
             if record.manifest_path.exists():
                 matches.append(record)
         if len(matches) == 1:
             return matches[0]
         if not matches:
-            raise DatasetNotFoundError(f"Dataset not found: {dataset_id}")
+            suffix = f" (variant={variant_id})" if variant_id is not None else ""
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id}{suffix}")
         raise DatasetNotFoundError(f"Dataset exists in multiple layers: {dataset_id}")
 
     def register_dataset(
@@ -199,6 +230,8 @@ class Store:
         *,
         dataset_id: str,
         layer: str,
+        variant_id: str | None = None,
+        variant: dict[str, Any] | None = None,
         mission: str,
         instrument: str,
         product: str,
@@ -212,12 +245,19 @@ class Store:
         status: str = "candidate",
         parameters: dict[str, Any] | None = None,
         context: Any | None = None,
+        storage_layout: dict[str, Any] | None = None,
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
     ) -> DatasetRecord:
         _validate_dataset_status(status)
         source_files = _normalize_store_source_files(self.root, source_files)
-        record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+        record = DatasetRecord(
+            root=self.dataset_path(
+                dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+            )
+        )
         record.root.mkdir(parents=True, exist_ok=True)
         manifest = {
             "dataset_id": dataset_id,
@@ -237,16 +277,20 @@ class Store:
             "parameters": parameters or {},
             "partitioning": list(partitioning),
         }
+        if storage_layout is not None:
+            manifest["storage_layout"] = storage_layout
+        if variant_id is not None:
+            manifest["variant"] = {**(variant or {}), "id": variant_id}
         if provenance is not None:
             manifest["provenance"] = provenance
         if context is not None:
             manifest["context"] = _context_metadata(context)
-        _write_json(
-            record.manifest_path,
-            manifest,
+        _write_dataset_metadata(
+            record,
+            manifest=manifest,
+            schema_payload=_schema_to_json(schema),
+            shards=shards,
         )
-        _write_json(record.schema_path, _schema_to_json(schema))
-        _write_catalog(record.catalog_path, shards)
         return record
 
     def write_parquet_dataset(
@@ -254,6 +298,8 @@ class Store:
         *,
         dataset_id: str,
         layer: str,
+        variant_id: str | None = None,
+        variant: dict[str, Any] | None = None,
         mission: str,
         instrument: str,
         product: str,
@@ -279,7 +325,13 @@ class Store:
         _validate_dataset_status(status)
         _validate_product_frame(frame, schema, product)
 
-        record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
+        record = DatasetRecord(
+            root=self.dataset_path(
+                dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+            )
+        )
         existing_shards = _read_catalog_shards(record.catalog_path) if append else ()
         manifest_time_coverage = (
             _merge_time_coverage(record.manifest_path, time_coverage) if append else time_coverage
@@ -298,42 +350,81 @@ class Store:
         if target.exists() and not overwrite:
             raise FileExistsError(f"Parquet shard already exists: {target}")
         target.parent.mkdir(parents=True, exist_ok=True)
-        frame.write_parquet(target, compression=compression)
+        target_preexisting = target.exists()
+        temp_target = target.with_name(f"{target.name}.tmp")
+        backup_target = _sibling_temp_path(target, ".bak")
+        if temp_target.exists():
+            temp_target.unlink()
+        new_target_written = False
+        try:
+            frame.write_parquet(temp_target, compression=compression)
+            if target_preexisting:
+                target.replace(backup_target)
+            temp_target.replace(target)
+            new_target_written = True
+            written = self.register_dataset(
+                dataset_id=dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+                variant=variant,
+                mission=mission,
+                instrument=instrument,
+                product=product,
+                schema=schema,
+                time_coverage=manifest_time_coverage,
+                source_files=manifest_source_files,
+                source_datasets=manifest_source_datasets,
+                shards=(
+                    *existing_shards,
+                    {
+                        "path": Path(shard_path).as_posix(),
+                        "start": time_coverage.start_iso,
+                        "stop": time_coverage.stop_iso,
+                        "row_count": _frame_row_count(frame),
+                        "checksum": _sha256_file(target),
+                        "status": "complete",
+                    },
+                ),
+                producer=producer,
+                provenance=provenance,
+                parameters=parameters,
+                context=context,
+                storage_layout=_parquet_storage_layout(frame, schema, product),
+                status=status,
+                dataset_version=dataset_version,
+                partitioning=partitioning,
+            )
+        except Exception:
+            if new_target_written and target.exists():
+                target.unlink()
+            if target_preexisting and backup_target.exists():
+                backup_target.replace(target)
+            if temp_target.exists():
+                temp_target.unlink()
+            if backup_target.exists():
+                backup_target.unlink()
+            raise
+        if backup_target.exists():
+            backup_target.unlink()
+        return written
 
-        return self.register_dataset(
-            dataset_id=dataset_id,
-            layer=layer,
-            mission=mission,
-            instrument=instrument,
-            product=product,
-            schema=schema,
-            time_coverage=manifest_time_coverage,
-            source_files=manifest_source_files,
-            source_datasets=manifest_source_datasets,
-            shards=(
-                *existing_shards,
-                {
-                    "path": Path(shard_path).as_posix(),
-                    "start": time_coverage.start_iso,
-                    "stop": time_coverage.stop_iso,
-                    "row_count": _frame_row_count(frame),
-                    "checksum": _sha256_file(target),
-                    "status": "complete",
-                },
-            ),
-            producer=producer,
-            provenance=provenance,
-            parameters=parameters,
-            context=context,
-            status=status,
-            dataset_version=dataset_version,
-            partitioning=partitioning,
+    def scan_dataset(
+        self,
+        dataset_id: str,
+        *,
+        layer: str,
+        variant_id: str | None = None,
+    ):
+        record = DatasetRecord(
+            root=self.dataset_path(
+                dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+            )
         )
-
-    def scan_dataset(self, dataset_id: str, *, layer: str):
-        record = DatasetRecord(root=self.dataset_path(dataset_id, layer=layer))
         if not record.catalog_path.exists():
-            raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer})")
+            suffix = f", variant={variant_id}" if variant_id is not None else ""
+            raise DatasetNotFoundError(f"Dataset not found: {dataset_id} ({layer}{suffix})")
         return record.scan(dataset_id=dataset_id)
 
     def dataset_source_files(
@@ -341,8 +432,13 @@ class Store:
         dataset_id: str,
         *,
         layer: str | None = None,
+        variant_id: str | None = None,
     ) -> tuple[RawFileRecord, ...]:
-        manifest = self.dataset(dataset_id, layer=layer).manifest()
+        manifest = self.dataset(
+            dataset_id,
+            layer=layer,
+            variant_id=variant_id,
+        ).manifest()
         return tuple(self.raw_file(path) for path in manifest.get("source_files", []))
 
     def verify_dataset(
@@ -350,15 +446,20 @@ class Store:
         dataset_id: str,
         *,
         layer: str | None = None,
+        variant_id: str | None = None,
         source_files: bool = True,
         shard_status: str | None = None,
     ) -> bool:
-        record = self.dataset(dataset_id, layer=layer)
+        record = self.dataset(dataset_id, layer=layer, variant_id=variant_id)
         if not record.verify_checksums(status=shard_status):
             return False
         if source_files:
             try:
-                source_records = self.dataset_source_files(dataset_id, layer=layer)
+                source_records = self.dataset_source_files(
+                    dataset_id,
+                    layer=layer,
+                    variant_id=variant_id,
+                )
             except FileNotFoundError:
                 return False
             return all(raw_file.verify_checksum() for raw_file in source_records)
@@ -378,6 +479,7 @@ class Store:
         mission: str | None = None,
         instrument: str | None = None,
         product: str | None = None,
+        variant_id: str | None = None,
         schema_version: str | None = None,
         dataset_version: str | None = None,
         status: str | None = None,
@@ -399,6 +501,7 @@ class Store:
             "mission": mission,
             "instrument": instrument,
             "product": product,
+            "variant_id": variant_id,
             "schema_version": schema_version,
             "version": dataset_version,
             "status": status,
@@ -407,10 +510,16 @@ class Store:
             if value is not None:
                 frame = frame.filter(pl.col(column) == value)
         if time_range is not None:
-            frame = frame.filter(
-                (pl.col("start") < time_range.stop_iso)
-                & (pl.col("stop") > time_range.start_iso)
-            )
+            rows = [
+                row
+                for row in frame.to_dicts()
+                if _time_coverage_intersects(
+                    str(row.get("start") or ""),
+                    str(row.get("stop") or ""),
+                    time_range,
+                )
+            ]
+            frame = pl.DataFrame(rows, schema=frame.schema)
         if created_after is not None or created_before is not None:
             frame = frame.filter(pl.col("created_at") != "")
         if created_after is not None:
@@ -488,34 +597,60 @@ class DatasetRecord:
 
         target = _resolve_child(self.root, path_text)
         target.parent.mkdir(parents=True, exist_ok=True)
-        frame.write_parquet(target, compression=compression)
-        row_count = _frame_row_count(frame)
-        checksum = _sha256_file(target)
-        updated = catalog.with_columns(
-            [
-                pl.when(pl.col("path") == path_text)
-                .then(pl.lit(time_coverage.start_iso))
-                .otherwise(pl.col("start"))
-                .alias("start"),
-                pl.when(pl.col("path") == path_text)
-                .then(pl.lit(time_coverage.stop_iso))
-                .otherwise(pl.col("stop"))
-                .alias("stop"),
-                pl.when(pl.col("path") == path_text)
-                .then(pl.lit(row_count))
-                .otherwise(pl.col("row_count"))
-                .alias("row_count"),
-                pl.when(pl.col("path") == path_text)
-                .then(pl.lit(checksum))
-                .otherwise(pl.col("checksum"))
-                .alias("checksum"),
-                pl.when(pl.col("path") == path_text)
-                .then(pl.lit("complete"))
-                .otherwise(pl.col("status"))
-                .alias("status"),
-            ]
-        )
-        updated.write_parquet(self.catalog_path)
+        backup_target = _sibling_temp_path(target, ".bak")
+        temp_target = _sibling_temp_path(target, ".tmp")
+        try:
+            frame.write_parquet(temp_target, compression=compression)
+            if target.exists():
+                target.replace(backup_target)
+            temp_target.replace(target)
+            row_count = _frame_row_count(frame)
+            checksum = _sha256_file(target)
+            updated = catalog.with_columns(
+                [
+                    pl.when(pl.col("path") == path_text)
+                    .then(pl.lit(time_coverage.start_iso))
+                    .otherwise(pl.col("start"))
+                    .alias("start"),
+                    pl.when(pl.col("path") == path_text)
+                    .then(pl.lit(time_coverage.stop_iso))
+                    .otherwise(pl.col("stop"))
+                    .alias("stop"),
+                    pl.when(pl.col("path") == path_text)
+                    .then(pl.lit(row_count))
+                    .otherwise(pl.col("row_count"))
+                    .alias("row_count"),
+                    pl.when(pl.col("path") == path_text)
+                    .then(pl.lit(checksum))
+                    .otherwise(pl.col("checksum"))
+                    .alias("checksum"),
+                    pl.when(pl.col("path") == path_text)
+                    .then(pl.lit("complete"))
+                    .otherwise(pl.col("status"))
+                    .alias("status"),
+                ]
+            )
+            updated_shards = tuple(updated.to_dicts())
+            manifest = self.manifest()
+            manifest["time_coverage"] = _time_coverage_to_json(
+                _time_coverage_from_shards(updated_shards)
+            )
+            _write_dataset_metadata(
+                self,
+                manifest=manifest,
+                schema_payload=self.schema(),
+                shards=updated_shards,
+            )
+        except Exception:
+            if target.exists():
+                target.unlink()
+            if backup_target.exists():
+                backup_target.replace(target)
+            if temp_target.exists():
+                temp_target.unlink()
+            raise
+        if backup_target.exists():
+            backup_target.unlink(missing_ok=True)
         return self
 
     def scan(self, *, dataset_id: str | None = None):
@@ -556,7 +691,7 @@ class DatasetRecord:
             .otherwise(pl.col("status"))
             .alias("status")
         )
-        updated.write_parquet(self.catalog_path)
+        _write_parquet(updated, self.catalog_path)
         return self
 
 
@@ -576,6 +711,18 @@ def _dataset_parts(dataset_id: str) -> tuple[str, ...]:
     return tuple(part for part in dataset_id.split(".") if part)
 
 
+def _validate_variant_id(variant_id: str) -> None:
+    if not variant_id:
+        raise ValueError("variant_id must not be empty")
+    invalid = [
+        character
+        for character in variant_id
+        if not (character.isalnum() or character in {"-", "_", "."})
+    ]
+    if invalid:
+        raise ValueError("variant_id may only contain letters, numbers, '-', '_', or '.'")
+
+
 def _schema_to_json(schema: InstrumentSchema) -> dict[str, Any]:
     return schema.to_metadata(schema_version=_DATASET_SCHEMA_VERSION)
 
@@ -586,6 +733,92 @@ def _validate_product_frame(frame: Any, schema: InstrumentSchema, product: str) 
     except KeyError:
         return
     validate_schema(frame, schema, variables=(product,))
+
+
+def _parquet_storage_layout(
+    frame: Any,
+    schema: InstrumentSchema,
+    product: str,
+) -> dict[str, Any]:
+    columns = _frame_columns(frame)
+    try:
+        variable = schema.variable(product)
+    except KeyError:
+        return {
+            "format": "parquet",
+            "layout": "table",
+            "index_columns": [],
+            "value_columns": columns,
+            "encoded_dims": [],
+        }
+    value_name = _variable_column_name(columns, variable)
+    index_columns = [dim for dim in variable.dims if dim in columns]
+    encoded_dims = [dim for dim in variable.dims if dim not in index_columns]
+    value_columns = [value_name] if value_name is not None else [
+        column for column in columns if column not in index_columns
+    ]
+    if not encoded_dims and value_name is not None:
+        layout = "long"
+    elif value_name is not None and _column_stores_array(frame, value_name):
+        layout = "array"
+    else:
+        layout = "table"
+    return {
+        "format": "parquet",
+        "layout": layout,
+        "index_columns": index_columns,
+        "value_columns": value_columns,
+        "encoded_dims": encoded_dims,
+    }
+
+
+def _variable_column_name(columns: list[str], variable: VariableSchema) -> str | None:
+    if variable.name in columns:
+        return variable.name
+    for alias in variable.aliases:
+        if alias in columns:
+            return alias
+    return None
+
+
+def _frame_columns(frame: Any) -> list[str]:
+    if hasattr(frame, "collect_schema"):
+        return [str(name) for name in frame.collect_schema().names()]
+    if hasattr(frame, "columns"):
+        return [str(column) for column in frame.columns]
+    if isinstance(frame, Mapping):
+        return [str(column) for column in frame]
+    return []
+
+
+def _column_stores_array(frame: Any, column: str) -> bool:
+    dtype = _frame_column_dtype(frame, column)
+    dtype_text = str(dtype).lower() if dtype is not None else ""
+    if "array" in dtype_text or "list" in dtype_text:
+        return True
+    try:
+        series = frame[column]
+    except Exception:
+        return False
+    try:
+        value = series[0]
+    except Exception:
+        return False
+    return (
+        isinstance(value, (list, tuple))
+        or (
+            hasattr(value, "shape")
+            and not isinstance(value, (str, bytes, bytearray))
+        )
+    )
+
+
+def _frame_column_dtype(frame: Any, column: str) -> Any | None:
+    if hasattr(frame, "collect_schema"):
+        return frame.collect_schema().get(column)
+    if hasattr(frame, "schema") and isinstance(frame.schema, Mapping):
+        return frame.schema.get(column)
+    return None
 
 
 def _software_metadata() -> dict[str, str]:
@@ -635,15 +868,90 @@ def _sopran_version() -> str:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    _write_text(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def _write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = _sibling_temp_path(path, ".tmp")
+    try:
+        temp_path.write_text(text, encoding="utf-8")
+        temp_path.replace(path)
+    except Exception:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
+
+
+def _write_parquet(frame: Any, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = _sibling_temp_path(path, ".tmp")
+    try:
+        frame.write_parquet(temp_path)
+        temp_path.replace(path)
+    except Exception:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
+
+
+def _write_dataset_metadata(
+    record: DatasetRecord,
+    *,
+    manifest: dict[str, Any],
+    schema_payload: dict[str, Any],
+    shards: tuple[dict[str, Any], ...],
+) -> None:
+    temp_manifest = _sibling_temp_path(record.manifest_path, ".tmp")
+    temp_schema = _sibling_temp_path(record.schema_path, ".tmp")
+    temp_catalog = _sibling_temp_path(record.catalog_path, ".tmp")
+    temp_paths = (temp_manifest, temp_schema, temp_catalog)
+    backups: list[tuple[Path, Path]] = []
+    committed: list[Path] = []
+    try:
+        _write_json(temp_manifest, manifest)
+        _write_json(temp_schema, schema_payload)
+        _write_catalog(temp_catalog, shards)
+        for target, temp in (
+            (record.schema_path, temp_schema),
+            (record.catalog_path, temp_catalog),
+            (record.manifest_path, temp_manifest),
+        ):
+            backup = _sibling_temp_path(target, ".bak")
+            if target.exists():
+                target.replace(backup)
+                backups.append((target, backup))
+            temp.replace(target)
+            committed.append(target)
+    except Exception:
+        for target in reversed(committed):
+            if target.exists():
+                target.unlink()
+        for target, backup in reversed(backups):
+            if backup.exists():
+                backup.replace(target)
+        for path in temp_paths:
+            if path.exists():
+                path.unlink()
+        raise
+    for _, backup in backups:
+        if backup.exists():
+            with suppress(OSError):
+                backup.unlink(missing_ok=True)
 
 
 def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
     import polars as pl
 
+    schema = {
+        "path": pl.Utf8,
+        "schema_version": pl.Utf8,
+        "start": pl.Utf8,
+        "stop": pl.Utf8,
+        "row_count": pl.Int64,
+        "checksum": pl.Utf8,
+        "status": pl.Utf8,
+    }
     rows = [
         {
             "path": shard.get("path", ""),
@@ -656,19 +964,12 @@ def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
         }
         for shard in shards
     ]
+    for row in rows:
+        _validate_catalog_shard_status(str(row["status"]))
     if not rows:
-        rows = [
-            {
-                "path": "",
-                "schema_version": _DATASET_SCHEMA_VERSION,
-                "start": "",
-                "stop": "",
-                "row_count": 0,
-                "checksum": "",
-                "status": "empty",
-            }
-        ]
-    pl.DataFrame(rows).write_parquet(path)
+        _write_parquet(pl.DataFrame(schema=schema), path)
+        return
+    _write_parquet(pl.DataFrame(rows, schema=schema), path)
 
 
 def _time_coverage_to_json(time_coverage: TimeRange | None) -> dict[str, str] | None:
@@ -686,9 +987,53 @@ def _merge_time_coverage(path: Path, new: TimeRange | None) -> TimeRange | None:
     existing = json.loads(path.read_text(encoding="utf-8")).get("time_coverage")
     if not existing:
         return new
-    start = min(str(existing["start"]), new.start_iso)
-    stop = max(str(existing["stop"]), new.stop_iso)
-    return period(start, stop)
+    existing_range = _time_range_from_coverage(
+        str(existing.get("start") or ""),
+        str(existing.get("stop") or ""),
+    )
+    if existing_range is None:
+        return new
+    return TimeRange(
+        min(existing_range.start, new.start),
+        max(existing_range.stop, new.stop),
+    )
+
+
+def _time_range_from_coverage(start: str, stop: str) -> TimeRange | None:
+    if not start or not stop:
+        return None
+    try:
+        return period(start, stop)
+    except (TypeError, ValueError):
+        return None
+
+
+def _time_coverage_intersects(start: str, stop: str, time_range: TimeRange) -> bool:
+    coverage = _time_range_from_coverage(start, stop)
+    if coverage is None:
+        return False
+    return coverage.start < time_range.stop and coverage.stop > time_range.start
+
+
+def _time_coverage_from_shards(shards: tuple[dict[str, Any], ...]) -> TimeRange | None:
+    ranges = [
+        coverage
+        for shard in shards
+        if str(shard.get("status") or "") == "complete"
+        for coverage in (
+            _time_range_from_coverage(
+                str(shard.get("start") or ""),
+                str(shard.get("stop") or ""),
+            ),
+        )
+        if coverage is not None
+    ]
+    if not ranges:
+        return None
+    return TimeRange(
+        min(time_range.start for time_range in ranges),
+        max(time_range.stop for time_range in ranges),
+    )
 
 
 def _merge_source_files(path: Path, new: tuple[str, ...]) -> tuple[str, ...]:
@@ -775,6 +1120,15 @@ def _resolve_child(root: Path, child: str) -> Path:
     return target
 
 
+def _sibling_temp_path(path: Path, suffix: str) -> Path:
+    index = 0
+    while True:
+        candidate = path.with_name(f"{path.name}{suffix}{index}")
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
 def _resolve_raw_file(root: Path, path: Path | str) -> Path:
     raw_root = (root / "raw").resolve()
     candidate = Path(path)
@@ -817,6 +1171,7 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
         for manifest_path in sorted(layer_root.rglob("dataset.json")):
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             time_coverage = manifest.get("time_coverage") or {}
+            variant = manifest.get("variant") or {}
             dataset_root = manifest_path.parent
             rows.append(
                 {
@@ -825,6 +1180,7 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
                     "mission": str(manifest.get("mission") or ""),
                     "instrument": str(manifest.get("instrument") or ""),
                     "product": str(manifest.get("product") or ""),
+                    "variant_id": str(variant.get("id") or ""),
                     "version": str(manifest.get("version") or "1"),
                     "schema_version": str(
                         manifest.get("schema_version") or _DATASET_SCHEMA_VERSION
@@ -848,6 +1204,7 @@ def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
         "mission": pl.Utf8,
         "instrument": pl.Utf8,
         "product": pl.Utf8,
+        "variant_id": pl.Utf8,
         "version": pl.Utf8,
         "schema_version": pl.Utf8,
         "status": pl.Utf8,

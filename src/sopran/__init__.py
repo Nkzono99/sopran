@@ -1,20 +1,55 @@
 """Satellite Observation Package for Retrieval, Analysis, and Navigation."""
 
 from sopran.bodies import Moon
-from sopran.core import AlignmentResult
-from sopran.core import BackendError, ConfigError, DecodeError, DownloadError
-from sopran.core import Database, DatasetNotFoundError, GuidePage, InfoPage
-from sopran.core import FeatureMatrix
-from sopran.core import FrameTransformError, PipelineError, SchemaError
-from sopran.core import InstrumentSchema, VariableSchema
-from sopran.core import PlotArtifact, PlotItem, PlotPlan, PlotResult, ProductRef
-from sopran.core import PlotStack, SampleSpec, SampleTable, SopranError, Store, TimeRange
-from sopran.core import QuicklookResult
-from sopran.core import TimeBins, align, day, histogram, line, lines, load, month, period
-from sopran.core import spectrogram, stack, year
-from sopran.core import time_bins
-from sopran.core import validate_schema
-from sopran.core import View, ViewContext, ViewSelection, view
+from sopran.core import (
+    AlignmentResult,
+    BackendError,
+    ConfigError,
+    Database,
+    DatasetNotFoundError,
+    DecodeError,
+    DownloadError,
+    FeatureMatrix,
+    FrameTransformError,
+    GuidePage,
+    InfoPage,
+    InstrumentSchema,
+    PipelineError,
+    PlotArtifact,
+    PlotItem,
+    PlotPlan,
+    PlotResult,
+    PlotStack,
+    ProductRef,
+    QuicklookResult,
+    ResampleLikeMethod,
+    SampleSpec,
+    SampleTable,
+    SchemaError,
+    SopranError,
+    Store,
+    TimeBins,
+    TimeRange,
+    VariableSchema,
+    View,
+    ViewContext,
+    ViewSelection,
+    align,
+    day,
+    histogram,
+    line,
+    lines,
+    load,
+    month,
+    period,
+    resample_like,
+    spectrogram,
+    stack,
+    time_bins,
+    validate_schema,
+    view,
+    year,
+)
 from sopran.core.project import Project
 from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
 from sopran.maps import RasterLayer, RasterSpec, Region
@@ -61,6 +96,7 @@ __all__ = [
     "RasterLayer",
     "RasterSpec",
     "Region",
+    "ResampleLikeMethod",
     "SampleSpec",
     "SampleTable",
     "SchemaError",
@@ -83,6 +119,7 @@ __all__ = [
     "month",
     "normalize_frame",
     "period",
+    "resample_like",
     "schema_reference_markdown",
     "spectrogram",
     "stack",

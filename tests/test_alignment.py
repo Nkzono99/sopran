@@ -121,8 +121,8 @@ def test_time_bins_can_build_user_defined_edges() -> None:
     assert bins.start_iso == "2008-01-01T00:00:00Z"
     assert bins.stop_iso == "2008-01-01T00:00:20Z"
     assert bins.centers_iso == (
-        "2008-01-01T00:00:03Z",
-        "2008-01-01T00:00:13Z",
+        "2008-01-01T00:00:03.500000Z",
+        "2008-01-01T00:00:13.500000Z",
     )
     assert bins.durations_seconds == (7.0, 13.0)
     assert bins.is_partial == (False, False)
@@ -158,8 +158,8 @@ def test_align_aggregates_arrays_inside_user_defined_time_bins() -> None:
     aligned = spn.align(wave_power, grid=bins, method="mean")
 
     assert aligned.to_polars().to_dicts() == [
-        {"time": "2008-01-01T00:00:03Z", "wave_power": 3.0},
-        {"time": "2008-01-01T00:00:13Z", "wave_power": 12.0},
+        {"time": "2008-01-01T00:00:03.500000Z", "wave_power": 3.0},
+        {"time": "2008-01-01T00:00:13.500000Z", "wave_power": 12.0},
     ]
 
 
@@ -491,6 +491,28 @@ def test_align_nearest_expands_vector_components_to_wide_columns() -> None:
             "magnetic_field_z": 30.0,
         },
     ]
+
+
+def test_align_rejects_duplicate_feature_column_names() -> None:
+    bins = spn.time_bins(
+        spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:10Z"),
+        cadence="10s",
+    )
+    sza_a = xr.DataArray(
+        np.array([70.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+    sza_b = xr.DataArray(
+        np.array([80.0]),
+        dims=("time",),
+        coords={"time": np.array(["2008-01-01T00:00:04"], dtype="datetime64[ns]")},
+        name="sza",
+    )
+
+    with pytest.raises(ValueError, match="duplicate feature column names: sza"):
+        spn.align(sza_a, sza_b, grid=bins, method="nearest", tolerance="3s")
 
 
 def test_align_mean_aggregates_vector_components_inside_bins() -> None:

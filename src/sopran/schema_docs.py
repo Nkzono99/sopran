@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Sequence
 
 from sopran.core.schema import InstrumentSchema
 
@@ -11,11 +10,20 @@ from sopran.core.schema import InstrumentSchema
 def builtin_schemas() -> tuple[InstrumentSchema, ...]:
     from sopran.bodies.moon import MOON_SURFACE_SCHEMA
     from sopran.missions.artemis.mission import ARTEMIS_ESA_SCHEMA, ARTEMIS_FGM_SCHEMA
-    from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA, KAGUYA_LMAG_SCHEMA
+    from sopran.missions.kaguya.schema import (
+        KAGUYA_ESA1_SCHEMA,
+        KAGUYA_LMAG_CONNECTION_SCHEMA,
+        KAGUYA_LMAG_SCHEMA,
+        KAGUYA_LRS_SCHEMA,
+        KAGUYA_ORBIT_SCHEMA,
+    )
 
     return (
         KAGUYA_ESA1_SCHEMA,
         KAGUYA_LMAG_SCHEMA,
+        KAGUYA_LRS_SCHEMA,
+        KAGUYA_ORBIT_SCHEMA,
+        KAGUYA_LMAG_CONNECTION_SCHEMA,
         ARTEMIS_FGM_SCHEMA,
         ARTEMIS_ESA_SCHEMA,
         MOON_SURFACE_SCHEMA,

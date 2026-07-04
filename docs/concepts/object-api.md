@@ -42,9 +42,9 @@ counts.to_pandas()
 簡単な xarray 操作は `SopranArray` として戻るため、schema と provenance を保てます。
 
 ```python
-band = counts.sel(energy=slice(100, 1000)).mean("energy")
-band.quicklook("counts_energy_band")
-band.metadata["operations"]
+channel_band = counts.isel(energy=slice(4, 12)).mean("energy")
+channel_band.quicklook("counts_channel_band")
+channel_band.metadata["operations"]
 ```
 
 ## 言語

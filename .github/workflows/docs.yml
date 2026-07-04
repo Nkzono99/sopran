@@ -24,10 +24,8 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install mkdocs mkdocs-material "mkdocstrings[python]" pymdown-extensions numpy
+      - run: python -m pip install -e ".[docs]"
       - run: mkdocs build --strict
-        env:
-          PYTHONPATH: src
       - uses: peaceiris/actions-gh-pages@v4
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:

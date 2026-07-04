@@ -53,6 +53,35 @@ matrix = features.to_feature_matrix().select("sza", "wave_power")
 | `outer` | 全 bin を残し、欠損は null |
 | `inner` | 全 feature がある bin だけ残す |
 
+## Resample Like
+
+ある時刻列を別 instrument の実サンプル時刻へ合わせる場合は `resample_like` を使います。
+`linear` の `tolerance` は補間点の前後にある source sample の両方に適用され、離れた
+sample をまたぐ補間は欠損になります。
+source 外側への `linear` 外挿はしません。pandas/polars/xarray の時刻は UTC として
+`datetime64[ns]` に正規化してから合わせます。DataFrame 入力の `linear` は数値列だけを
+補間します。source 側の時刻は一意である必要があります。pandas DataFrame の重複列名は
+曖昧さを避けるため拒否します。Polars は `DataFrame` と `LazyFrame` の両方を受け取れます。
+
+| method | 意味 |
+| --- | --- |
+| `nearest` | target 時刻に最も近い source sample |
+| `previous` | target 時刻以前の最後の source sample |
+| `next` | target 時刻以後の最初の source sample |
+| `linear` | source sample 間の線形補間 |
+
+```python
+esa1 = kg.esa1.counts.load(time)
+conn = kg.lmag.magnetic_connection.load(time, cache="use")
+conn_on_esa1 = conn.resample_like(esa1, method="nearest", tolerance="2s")
+
+altitude_on_esa1 = kg.orbit.altitude.load(time).resample_like(
+    esa1,
+    method="linear",
+    tolerance="10s",
+)
+```
+
 ## FrameContext
 
 座標系変換は `FrameContext` に provenance を集めます。
@@ -72,6 +101,8 @@ b_moon = b.transform("MOON_ME", context=frames)
 `SSE`, `GSE` などの非 identity 変換には、時刻 kernel と frame kernel を含む
 SPICE kernel を `FrameContext(spice_kernels=...)` に渡してください。kernel が足りない
 場合は推定せず `FrameTransformError` で止まります。
+`FrameContext.metadata()` は Python 環境で見えている `available_backends` と、
+SOPRAN が実装済みとして扱う `implemented_backends` を分けて返します。
 
 ```python
 vectors_in_moon_me = frames.transform_vectors(

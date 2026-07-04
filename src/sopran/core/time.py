@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time as datetime_time, timedelta, timezone
-
-
-UTC = timezone.utc
+from datetime import UTC, date, datetime, timedelta
+from datetime import time as datetime_time
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -91,5 +90,61 @@ def _as_utc_datetime(value: datetime) -> datetime:
 
 
 def _format_utc(value: datetime) -> str:
-    text = value.astimezone(UTC).replace(tzinfo=None).isoformat(timespec="seconds")
+    normalized = value.astimezone(UTC).replace(tzinfo=None)
+    timespec = "microseconds" if normalized.microsecond else "seconds"
+    text = normalized.isoformat(timespec=timespec)
     return f"{text}Z"
+
+
+def _filter_polars_time(frame_or_lazy: Any, time: TimeRange, *, column: str = "time") -> Any:
+    import polars as pl
+
+    schema = (
+        frame_or_lazy.collect_schema()
+        if hasattr(frame_or_lazy, "collect_schema")
+        else frame_or_lazy.schema
+    )
+    dtype = schema.get(column)
+    dtype_base = _polars_dtype_base(dtype)
+    expr = pl.col(column)
+    if dtype_base == pl.Date:
+        start = time.start.date()
+        stop = ((time.stop - timedelta(microseconds=1)).date() + timedelta(days=1))
+        time_expr = expr
+    else:
+        if dtype_base == pl.Datetime:
+            timezone = getattr(dtype, "time_zone", None)
+            if timezone is None:
+                start = time.start.replace(tzinfo=None)
+                stop = time.stop.replace(tzinfo=None)
+            else:
+                start = time.start.astimezone(UTC)
+                stop = time.stop.astimezone(UTC)
+            time_expr = expr
+        else:
+            start = time.start.replace(tzinfo=None)
+            stop = time.stop.replace(tzinfo=None)
+            text = expr.cast(pl.Utf8)
+            time_expr = pl.coalesce(
+                text.str.strptime(
+                    pl.Datetime,
+                    format="%Y-%m-%dT%H:%M:%S%.fZ",
+                    strict=False,
+                ),
+                text.str.strptime(
+                    pl.Datetime,
+                    format="%Y-%m-%dT%H:%M:%S%.f",
+                    strict=False,
+                ),
+                text.str.strptime(pl.Date, format="%Y-%m-%d", strict=False).cast(
+                    pl.Datetime
+                ),
+            )
+    return frame_or_lazy.filter((time_expr >= start) & (time_expr < stop))
+
+
+def _polars_dtype_base(dtype: Any) -> Any:
+    base_type = getattr(dtype, "base_type", None)
+    if callable(base_type):
+        return base_type()
+    return dtype

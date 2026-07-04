@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tomllib
+from pathlib import Path
 
 import sopran as spn
 import sopran.schema_docs as schema_docs

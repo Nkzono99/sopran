@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Literal
 
 from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange
-
 
 DEFAULT_MAX_POLARS_ROWS = 10_000_000
 PolarsLayout = Literal["auto", "array", "long"]
@@ -77,7 +77,6 @@ class SopranArray:
             raise RuntimeError("polars is required for SopranArray.to_polars()") from exc
 
         array = self.to_xarray()
-        dims = tuple(array.dims)
         values = np.asarray(array.values)
         resolved_layout = _resolve_polars_layout(values, layout)
         if resolved_layout == "array":
@@ -142,6 +141,24 @@ class SopranArray:
             parameters={str(key): value for key, value in kwargs.items()},
         )
 
+    def resample_like(
+        self,
+        target: Any,
+        *,
+        method: str = "nearest",
+        tolerance: str | timedelta | None = None,
+        time: str = "time",
+    ) -> SopranArray:
+        from sopran.core.resampling import resample_like
+
+        return resample_like(
+            self,
+            target,
+            method=method,  # type: ignore[arg-type]
+            tolerance=tolerance,
+            time=time,
+        )
+
     def write_parquet(
         self,
         store: Any,
@@ -199,6 +216,11 @@ class SopranArray:
         *args: Any,
         mode: PlotMode = "auto",
         backend: str = "matplotlib",
+        dataset_id: str | None = None,
+        time_range: Any | None = None,
+        frame: str | None = None,
+        aggregation: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
         x: str = "time",
@@ -233,6 +255,11 @@ class SopranArray:
             )
         ).plot(
             backend=backend,  # type: ignore[arg-type]
+            dataset_id=dataset_id or self.name,
+            time_range=time_range or self.time,
+            frame=frame or self.schema.frame,
+            aggregation=aggregation,
+            metadata=_metadata_with_operations(metadata, self.operations),
             context=context,
             figsize=figsize,
         )

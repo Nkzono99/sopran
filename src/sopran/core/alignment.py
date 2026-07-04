@@ -622,6 +622,12 @@ def _collect_features(
     quality_mask_samples: tuple[tuple[datetime, float], ...] | None,
 ) -> AlignmentResult:
     columns = tuple(feature.name for feature in features)
+    duplicate_columns = tuple(
+        column for index, column in enumerate(columns) if column in columns[:index]
+    )
+    if duplicate_columns:
+        names = ", ".join(dict.fromkeys(duplicate_columns))
+        raise ValueError(f"duplicate feature column names: {names}")
     rows = []
     for bin_index, center in enumerate(grid.centers):
         start = grid.edges[bin_index]

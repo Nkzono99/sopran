@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 from dataclasses import dataclass, field
+from math import ceil, floor
 from pathlib import Path
 from typing import Any
 
@@ -93,7 +94,10 @@ class RasterLayer:
             np.asarray(lon, dtype=np.float64),
         )
         flat = [
-            self.values[_nearest_index(self.lat, y), _nearest_index(self.lon, x)]
+            self.values[
+                _nearest_index(self.lat, y),
+                _nearest_index(self.lon, _normalize_sample_lon(self.lon, x)),
+            ]
             for y, x in zip(lat_values.ravel(), lon_values.ravel(), strict=True)
         ]
         sampled = np.asarray(flat, dtype=np.float64).reshape(lat_values.shape)
@@ -137,12 +141,14 @@ def read_geotiff(
     body: str = "moon",
     source_scale: float | None = None,
     source_offset: float | None = None,
+    region: Any | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> RasterLayer:
     rasterio = _import_rasterio()
     source_path = Path(path)
     with rasterio.open(source_path) as dataset:
-        band = dataset.read(1, masked=True)
+        window = _region_window(rasterio, dataset, region)
+        band = dataset.read(1, masked=True, window=window)
         values = np.asarray(band.filled(np.nan), dtype=np.float64)
         scale = _first_numeric(getattr(dataset, "scales", None), default=1.0)
         offset = _first_numeric(getattr(dataset, "offsets", None), default=0.0)
@@ -151,17 +157,41 @@ def read_geotiff(
             offset = float(source_offset or 0.0)
         if scale != 1.0 or offset != 0.0:
             values = values * scale + offset
-        lon = np.asarray([dataset.xy(0, col)[0] for col in range(dataset.width)])
-        lat = np.asarray([dataset.xy(row, 0)[1] for row in range(dataset.height)])
+        row_offset = 0 if window is None else int(window.row_off)
+        col_offset = 0 if window is None else int(window.col_off)
+        lon = np.asarray(
+            [
+                dataset.xy(row_offset, col)[0]
+                for col in range(col_offset, col_offset + values.shape[1])
+            ]
+        )
+        lat = np.asarray(
+            [
+                dataset.xy(row, col_offset)[1]
+                for row in range(row_offset, row_offset + values.shape[0])
+            ]
+        )
         raster_metadata = {
             "driver": dataset.driver,
-            "width": dataset.width,
-            "height": dataset.height,
+            "source_width": dataset.width,
+            "source_height": dataset.height,
+            "width": values.shape[1],
+            "height": values.shape[0],
             "crs": str(dataset.crs) if dataset.crs is not None else None,
             "transform": tuple(dataset.transform),
             "scale": scale,
             "offset": offset,
         }
+        if region is not None:
+            raster_metadata["region"] = _region_metadata(region)
+            raster_metadata["windowed"] = window is not None
+        if window is not None:
+            raster_metadata["window"] = {
+                "col_off": int(window.col_off),
+                "row_off": int(window.row_off),
+                "width": int(window.width),
+                "height": int(window.height),
+            }
     return RasterLayer(
         values,
         lon=lon,
@@ -259,6 +289,14 @@ def _nearest_index(axis: np.ndarray, value: float) -> int:
     return int(np.abs(axis - value).argmin())
 
 
+def _normalize_sample_lon(axis: np.ndarray, value: float) -> float:
+    if axis.size == 0:
+        return float(value)
+    if np.nanmin(axis) < 0.0:
+        return _convert_lon(float(value), "-180_180")
+    return _convert_lon(float(value), "0_360")
+
+
 def _first_numeric(values: Any, *, default: float) -> float:
     if values is None:
         return default
@@ -269,6 +307,99 @@ def _first_numeric(values: Any, *, default: float) -> float:
     if value is None:
         return default
     return float(value)
+
+
+def _region_window(rasterio: Any, dataset: Any, region: Any | None) -> Any | None:
+    if region is None:
+        return None
+    lon, lat = _region_lon_lat_for_raster(dataset, region)
+    if lon[0] > lon[1]:
+        return None
+    left, right = min(lon), max(lon)
+    bottom, top = min(lat), max(lat)
+    raw = rasterio.windows.from_bounds(
+        left,
+        bottom,
+        right,
+        top,
+        transform=dataset.transform,
+    )
+    col_start = max(floor(raw.col_off), 0)
+    row_start = max(floor(raw.row_off), 0)
+    col_stop = min(ceil(raw.col_off + raw.width), int(dataset.width))
+    row_stop = min(ceil(raw.row_off + raw.height), int(dataset.height))
+    if col_stop <= col_start or row_stop <= row_start:
+        raise ValueError("region does not overlap raster")
+    return rasterio.windows.Window(
+        col_start,
+        row_start,
+        col_stop - col_start,
+        row_stop - row_start,
+    )
+
+
+def _region_lon_lat_for_raster(
+    dataset: Any,
+    region: Any,
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    lon, lat = _region_lon_lat(region)
+    target_domain = _raster_lon_domain(dataset)
+    source_domain = _region_lon_domain(region)
+    if target_domain != source_domain:
+        lon = tuple(_convert_lon(value, target_domain) for value in lon)  # type: ignore[assignment]
+    return lon, lat
+
+
+def _region_lon_lat(region: Any) -> tuple[tuple[float, float], tuple[float, float]]:
+    if isinstance(region, dict):
+        lon = region["lon"]
+        lat = region["lat"]
+    else:
+        lon = region.lon
+        lat = region.lat
+    return (
+        (float(lon[0]), float(lon[1])),
+        (float(lat[0]), float(lat[1])),
+    )
+
+
+def _region_lon_domain(region: Any) -> str:
+    if isinstance(region, dict):
+        return _canonical_lon_domain(str(region.get("lon_domain", "0_360")))
+    return _canonical_lon_domain(str(getattr(region, "lon_domain", "0_360")))
+
+
+def _raster_lon_domain(dataset: Any) -> str:
+    bounds = getattr(dataset, "bounds", None)
+    if bounds is not None and float(bounds.left) < 0.0:
+        return "-180_180"
+    return "0_360"
+
+
+def _convert_lon(value: float, lon_domain: str) -> float:
+    lon_domain = _canonical_lon_domain(lon_domain)
+    if lon_domain == "0_360":
+        return float(value % 360.0)
+    converted = (float(value) + 180.0) % 360.0 - 180.0
+    return float(180.0 if converted == -180.0 and value > 0 else converted)
+
+
+def _canonical_lon_domain(lon_domain: str) -> str:
+    if lon_domain == "minus180_180":
+        return "-180_180"
+    if lon_domain in {"0_360", "-180_180"}:
+        return lon_domain
+    raise ValueError("lon_domain must be '0_360', '-180_180', or 'minus180_180'")
+
+
+def _region_metadata(region: Any) -> dict[str, Any]:
+    to_metadata = getattr(region, "to_metadata", None)
+    if callable(to_metadata):
+        return dict(to_metadata())
+    if isinstance(region, dict):
+        return {str(key): value for key, value in region.items()}
+    lon, lat = _region_lon_lat(region)
+    return {"lon": list(lon), "lat": list(lat)}
 
 
 def _read_svm_rows(path: Path) -> list[tuple[float, float, float]]:

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 import platform
-from shutil import which
 import subprocess
-from typing import Mapping, Sequence
-
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from shutil import which
 
 WINDOWS_PY314_NATIVE_BACKENDS = ("aacgmv2", "apexpy", "cartopy", "geoviews")
 WINDOWS_TOOLCHAIN_COMMAND = (

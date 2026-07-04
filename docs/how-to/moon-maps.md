@@ -44,9 +44,12 @@ store = spn.Store(r"F:/sopran-data")
 moon = spn.Moon()
 
 dem_path = moon.dem.download(source="lro.lola.dem_118m", store=store)
-dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m")
+dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m", region=region)
 dem.sample(lat=0.5, lon=10.5)
 ```
+
+`region=` を渡すと、GeoTIFF 全体ではなく region に対応する raster window だけを読みます。
+0/360 度境界をまたぐ region はまだ単一 window に分割せず、従来通り全体読み込みに戻します。
 
 ## Tsunakawa SVM を読む
 

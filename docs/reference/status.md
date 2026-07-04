@@ -7,13 +7,15 @@
 | 領域 | 現状 | 次の主作業 |
 | --- | --- | --- |
 | KAGUYA ESA1 | PBF decode、Store 保存、pipeline、quicklook | 較正、SPEDAS parity、look-angle |
-| KAGUYA LMAG | path planning、`MAG_TS*.dat` load、magnetic field endpoint | schema 拡張、plot/Store 連携の強化 |
-| KAGUYA その他 | PACE/LMAG の一部のみ | LRS、PACE 他 sensor の loader |
+| KAGUYA LMAG/geometry | path planning、`MAG_TS*.dat` load、MOON_ME/GSE magnetic field、`|B|`、MOON_ME/GSE orbit geometry、radial distance、SZA、magnetic connection、Store cache | SPICE-backed Sun geometry、SPEDAS parity |
+| KAGUYA LRS | NPW/WFC CDF path planning、spectrum/gain/mode/PSD endpoint、Store cache | SPEDAS parity、実データでの数値検証 |
+| KAGUYA その他 | PACE/LMAG/LRS の一部のみ | PACE 他 sensor の loader |
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
-| Frames | `FrameContext` と identity transform | SPICE / SpacePy backend |
+| Frames | `FrameContext`、identity transform、SPICE vector 委譲 | SpacePy / Astropy backend |
 | Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load | projection、reproject、shadow 計算 |
 | Rust backend | 未接続 | decode、binning、fit、batch shard 処理 |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
+| CI / 型検査 | pytest、compileall、schema docs、ruff。mypy は informational step | mypy error の解消と blocking 化 |
 
 ## KAGUYA ESA1
 
@@ -32,6 +34,22 @@
 - FOV / INFO calibration table の本格適用
 - look-angle 座標
 - SPEDAS/IDL との golden test
+
+## KAGUYA LMAG / geometry
+
+入っているもの:
+
+- `kg.lmag.load(time)` と `kg.lmag.magnetic_field` / `magnetic_field_gse` /
+  `magnetic_field_magnitude`
+- LMAG native time の `kg.orbit.position`, `position_gse`, `radial_distance`,
+  `altitude`, `subpoint`, `sza`
+- `kg.lmag.magnetic_connection` の footpoint / distance / incidence angle
+- Store variant cache と `resample_like` による ESA1/PACE などへの時刻合わせ
+
+残っているもの:
+
+- SPICE kernel による Sun vector / GSE / SSE の実運用 parity
+- SPEDAS/IDL との geometry golden test
 
 ## ARTEMIS
 
@@ -83,6 +101,20 @@
 - mission 非依存の generic backend
 - provider-native streaming
 - Rust stage 接続
+
+## CI / 型検査
+
+入っているもの:
+
+- GitHub Actions の `ci` workflow
+- `pytest`、`compileall`、schema docs check、`ruff`
+- `mypy` 実行。現時点では既存の型 annotation debt が残るため `continue-on-error` の
+  informational step
+
+残っているもの:
+
+- `mypy` error の解消
+- type check の blocking CI 化
 - 長期 batch の監査 UI
 
 ## 可視化
@@ -105,7 +137,7 @@
 ## 直近の優先度
 
 1. KAGUYA ESA1 calibration / SPEDAS parity
-2. KAGUYA LRS/LMAG/他 sensor の loader と Store 保存
+2. KAGUYA LRS/LMAG の parity test と他 sensor の Store 保存
 3. ARTEMIS raw discovery と CDF ingest
 4. SPICE / SpacePy を使う frame transform
 5. Moon projection/reproject と terrain-aware shadow

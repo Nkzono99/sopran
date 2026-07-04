@@ -250,13 +250,19 @@ class BoundSurfaceEndpoint:
         self._view = view
 
     def plan(self, **parameters):
-        return self._endpoint.plan(**_surface_parameters_with_view(self._endpoint, self._view, parameters))
+        return self._endpoint.plan(
+            **_surface_parameters_with_view(self._endpoint, self._view, parameters)
+        )
 
     def load(self, **parameters):
-        return self._endpoint.load(**_surface_parameters_with_view(self._endpoint, self._view, parameters))
+        return self._endpoint.load(
+            **_surface_parameters_with_view(self._endpoint, self._view, parameters)
+        )
 
     def compute(self, **parameters):
-        return self._endpoint.compute(**_surface_parameters_with_view(self._endpoint, self._view, parameters))
+        return self._endpoint.compute(
+            **_surface_parameters_with_view(self._endpoint, self._view, parameters)
+        )
 
     def __getattr__(self, name: str):
         return getattr(self._endpoint, name)
@@ -295,7 +301,11 @@ def _time_metadata(time: TimeRange | None) -> dict[str, str] | None:
     }
 
 
-def _surface_parameters_with_view(endpoint: Any, view: View, parameters: dict[str, Any]) -> dict[str, Any]:
+def _surface_parameters_with_view(
+    endpoint: Any,
+    view: View,
+    parameters: dict[str, Any],
+) -> dict[str, Any]:
     normalized = dict(parameters)
     if "region" not in normalized and view.region is not None:
         normalized["region"] = view.region

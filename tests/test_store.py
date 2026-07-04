@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import json
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 import polars as pl
 import pytest
 
 import sopran as spn
+import sopran.core.store as store_module
 from sopran import Store
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
@@ -140,6 +142,35 @@ def test_store_schema_json_preserves_dtype_and_frame_metadata(tmp_path) -> None:
     assert dataset.schema()["variables"][0]["frame"] == "SSE"
 
 
+def test_store_register_dataset_without_shards_writes_zero_row_catalog(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    dataset = store.register_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+    )
+
+    catalog = dataset.catalog()
+
+    assert catalog.height == 0
+    assert catalog.columns == [
+        "path",
+        "schema_version",
+        "start",
+        "stop",
+        "row_count",
+        "checksum",
+        "status",
+    ]
+    assert dataset.shards() == ()
+
+
 def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")
@@ -173,6 +204,122 @@ def test_store_writes_polars_frame_as_parquet_dataset(tmp_path) -> None:
     assert catalog.select("start").to_series().to_list() == [time.start_iso]
     assert catalog.select("stop").to_series().to_list() == [time.stop_iso]
     assert catalog.select("checksum").to_series().to_list()[0].startswith("sha256:")
+    assert dataset.manifest()["storage_layout"]["layout"] == "table"
+    assert dataset.manifest()["storage_layout"]["encoded_dims"] == ["look"]
+
+
+def test_store_manifest_records_long_parquet_storage_layout(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument="esa1",
+        variables=(
+            VariableSchema(name="counts", dims=("time", "energy", "look")),
+        ),
+    )
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=schema,
+        time_coverage=time,
+        frame=pl.DataFrame(
+            {
+                "time": [time.start_iso],
+                "energy": [0],
+                "look": [0],
+                "counts": [1.0],
+            }
+        ),
+    )
+
+    assert dataset.manifest()["storage_layout"] == {
+        "format": "parquet",
+        "layout": "long",
+        "index_columns": ["time", "energy", "look"],
+        "value_columns": ["counts"],
+        "encoded_dims": [],
+    }
+
+
+def test_store_manifest_records_array_parquet_storage_layout(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument="esa1",
+        variables=(
+            VariableSchema(name="counts", dims=("time", "energy", "look")),
+        ),
+    )
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=schema,
+        time_coverage=time,
+        frame=pl.DataFrame(
+            {
+                "time": [time.start_iso],
+                "counts": [[[1.0, 2.0], [3.0, 4.0]]],
+            }
+        ),
+    )
+
+    assert dataset.manifest()["storage_layout"] == {
+        "format": "parquet",
+        "layout": "array",
+        "index_columns": ["time"],
+        "value_columns": ["counts"],
+        "encoded_dims": ["energy", "look"],
+    }
+
+
+def test_store_manifest_storage_layout_resolves_schema_alias_columns(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument="esa1",
+        variables=(
+            VariableSchema(
+                name="energy_flux",
+                dims=("time", "energy"),
+                aliases=("eflux",),
+            ),
+        ),
+    )
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.energy_flux",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="energy_flux",
+        schema=schema,
+        time_coverage=time,
+        frame=pl.DataFrame(
+            {
+                "time": [time.start_iso],
+                "eflux": [[1.0, 2.0]],
+            }
+        ),
+    )
+
+    assert dataset.manifest()["storage_layout"] == {
+        "format": "parquet",
+        "layout": "array",
+        "index_columns": ["time"],
+        "value_columns": ["eflux"],
+        "encoded_dims": ["energy"],
+    }
 
 
 def test_store_supports_models_layer_datasets(tmp_path) -> None:
@@ -317,6 +464,132 @@ def test_store_writes_dataset_parameters_into_manifest(tmp_path) -> None:
     }
 
 
+def test_store_writes_parameterized_dataset_variants(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument="lmag",
+        variables=(
+            VariableSchema(
+                name="connected_plus",
+                dims=("time",),
+                dtype="bool",
+            ),
+        ),
+    )
+
+    first = store.write_parquet_dataset(
+        dataset_id="kaguya.lmag.magnetic_connection",
+        variant_id="sphere_moon_mean_plus",
+        variant={
+            "surface": "sphere",
+            "radius_km": 1737.4,
+            "direction": "plus",
+        },
+        layer="features",
+        mission="kaguya",
+        instrument="lmag",
+        product="connected_plus",
+        schema=schema,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "connected_plus": [True]}),
+    )
+    second = store.write_parquet_dataset(
+        dataset_id="kaguya.lmag.magnetic_connection",
+        variant_id="sphere_moon_mean_minus",
+        variant={
+            "surface": "sphere",
+            "radius_km": 1737.4,
+            "direction": "minus",
+        },
+        layer="features",
+        mission="kaguya",
+        instrument="lmag",
+        product="connected_plus",
+        schema=schema,
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "connected_plus": [False]}),
+    )
+
+    assert first.root == (
+        tmp_path
+        / "store"
+        / "features"
+        / "kaguya"
+        / "lmag"
+        / "magnetic_connection"
+        / "variants"
+        / "sphere_moon_mean_plus"
+    )
+    assert second.root.name == "sphere_moon_mean_minus"
+    assert first.manifest()["variant"] == {
+        "id": "sphere_moon_mean_plus",
+        "surface": "sphere",
+        "radius_km": 1737.4,
+        "direction": "plus",
+    }
+    assert store.dataset(
+        "kaguya.lmag.magnetic_connection",
+        layer="features",
+        variant_id="sphere_moon_mean_minus",
+    ).root == second.root
+    assert store.scan_dataset(
+        "kaguya.lmag.magnetic_connection",
+        layer="features",
+        variant_id="sphere_moon_mean_plus",
+    ).collect().to_dicts() == [
+        {"time": time.start_iso, "connected_plus": True}
+    ]
+    assert store.scan_dataset(
+        "kaguya.lmag.magnetic_connection",
+        layer="features",
+        variant_id="sphere_moon_mean_minus",
+    ).collect().to_dicts() == [
+        {"time": time.start_iso, "connected_plus": False}
+    ]
+
+    index = store.datasets(refresh=True)
+
+    assert index.select("variant_id").to_series().to_list() == [
+        "sphere_moon_mean_minus",
+        "sphere_moon_mean_plus",
+    ]
+
+
+def test_store_variant_parameter_id_cannot_override_variant_id(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.lmag.magnetic_connection",
+        variant_id="canonical_variant",
+        variant={"id": "conflicting_variant", "radius_km": 1737.4},
+        layer="features",
+        mission="kaguya",
+        instrument="lmag",
+        product="connected_plus",
+        schema=InstrumentSchema(
+            mission="kaguya",
+            instrument="lmag",
+            variables=(
+                VariableSchema(
+                    name="connected_plus",
+                    dims=("time",),
+                    dtype="bool",
+                ),
+            ),
+        ),
+        time_coverage=time,
+        frame=pl.DataFrame({"time": [time.start_iso], "connected_plus": [True]}),
+    )
+
+    assert dataset.manifest()["variant"]["id"] == "canonical_variant"
+    assert store.datasets(refresh=True).select("variant_id").to_series().to_list() == [
+        "canonical_variant"
+    ]
+
+
 def test_store_accepts_to_metadata_object_as_context(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.period("2008-02-01", "2008-02-02")
@@ -421,6 +694,224 @@ def test_store_parquet_writer_refuses_to_overwrite_existing_shard(tmp_path) -> N
 
     with pytest.raises(FileExistsError):
         store.write_parquet_dataset(**kwargs)
+
+
+def test_store_parquet_writer_removes_new_shard_when_registration_fails(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    def fail_register_dataset(self, **kwargs):
+        raise RuntimeError("manifest write failed")
+
+    monkeypatch.setattr(Store, "register_dataset", fail_register_dataset)
+
+    with pytest.raises(RuntimeError, match="manifest write failed"):
+        store.write_parquet_dataset(
+            dataset_id="kaguya.esa1.counts",
+            layer="normalized",
+            mission="kaguya",
+            instrument="esa1",
+            product="counts",
+            schema=KAGUYA_ESA1_SCHEMA,
+            time_coverage=time,
+            frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [64]}),
+        )
+
+    dataset_root = store.dataset_path("kaguya.esa1.counts", layer="normalized")
+    assert not (dataset_root / "shards" / "part-000.parquet").exists()
+    assert not (dataset_root / "shards" / "part-000.parquet.tmp").exists()
+
+
+def test_store_parquet_writer_restores_overwritten_shard_when_registration_fails(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+        "time_coverage": time,
+    }
+    dataset = store.write_parquet_dataset(
+        **kwargs,
+        frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [1]}),
+    )
+    shard = dataset.root / "shards" / "part-000.parquet"
+    original_rows = pl.read_parquet(shard).to_dicts()
+    original_checksum = dataset.shards()[0]["checksum"]
+
+    def fail_register_dataset(self, **kwargs):
+        raise RuntimeError("manifest write failed")
+
+    monkeypatch.setattr(Store, "register_dataset", fail_register_dataset)
+
+    with pytest.raises(RuntimeError, match="manifest write failed"):
+        store.write_parquet_dataset(
+            **kwargs,
+            frame=pl.DataFrame({"time": ["2008-02-01T00:00:08Z"], "counts": [2]}),
+            overwrite=True,
+        )
+
+    assert pl.read_parquet(shard).to_dicts() == original_rows
+    assert dataset.verify_checksums()
+    assert dataset.shards()[0]["checksum"] == original_checksum
+
+
+def test_dataset_record_replace_shard_restores_file_when_catalog_write_fails(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    original_time = spn.period("2008-02-01", "2008-02-02")
+    replacement_time = spn.period("2008-02-03", "2008-02-04")
+    dataset = store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=original_time,
+        frame=pl.DataFrame({"time": [original_time.start_iso], "counts": [1]}),
+    )
+    shard = dataset.root / "shards" / "part-000.parquet"
+    original_rows = pl.read_parquet(shard).to_dicts()
+    original_catalog = dataset.catalog().to_dicts()
+    original_checksum = dataset.shards()[0]["checksum"]
+
+    def fail_write_parquet(frame, path):
+        raise RuntimeError("catalog write failed")
+
+    monkeypatch.setattr(store_module, "_write_parquet", fail_write_parquet)
+
+    with pytest.raises(RuntimeError, match="catalog write failed"):
+        dataset.replace_shard(
+            "shards/part-000.parquet",
+            frame=pl.DataFrame({"time": [replacement_time.start_iso], "counts": [2]}),
+            time_coverage=replacement_time,
+        )
+
+    assert pl.read_parquet(shard).to_dicts() == original_rows
+    assert dataset.catalog().to_dicts() == original_catalog
+    assert dataset.verify_checksums()
+    assert dataset.shards()[0]["checksum"] == original_checksum
+
+
+def test_store_register_dataset_keeps_existing_metadata_when_catalog_write_fails(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.period("2008-02-01", "2008-02-02")
+    dataset = store.register_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        shards=(
+            {
+                "path": "shards/part-000.parquet",
+                "start": time.start_iso,
+                "stop": time.stop_iso,
+                "row_count": 1,
+                "checksum": "sha256:original",
+                "status": "complete",
+            },
+        ),
+        parameters={"version": "old"},
+    )
+    original_manifest = dataset.manifest()
+    original_schema = dataset.schema()
+    original_catalog = dataset.catalog().to_dicts()
+
+    def fail_write_catalog(path, shards):
+        raise RuntimeError("catalog write failed")
+
+    monkeypatch.setattr(store_module, "_write_catalog", fail_write_catalog)
+
+    with pytest.raises(RuntimeError, match="catalog write failed"):
+        store.register_dataset(
+            dataset_id="kaguya.esa1.counts",
+            layer="normalized",
+            mission="kaguya",
+            instrument="esa1",
+            product="counts",
+            schema=KAGUYA_ESA1_SCHEMA,
+            time_coverage=time,
+            shards=(
+                {
+                    "path": "shards/part-001.parquet",
+                    "start": time.start_iso,
+                    "stop": time.stop_iso,
+                    "row_count": 2,
+                    "checksum": "sha256:new",
+                    "status": "complete",
+                },
+            ),
+            parameters={"version": "new"},
+        )
+
+    assert dataset.manifest() == original_manifest
+    assert dataset.schema() == original_schema
+    assert dataset.catalog().to_dicts() == original_catalog
+    assert not list(dataset.root.glob("*.tmp*"))
+
+
+def test_store_register_dataset_keeps_commit_when_backup_cleanup_fails(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    original_time = spn.period("2008-02-01", "2008-02-02")
+    updated_time = spn.period("2008-02-03", "2008-02-04")
+    dataset = store.register_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=original_time,
+        parameters={"version": "old"},
+    )
+
+    real_unlink = Path.unlink
+
+    def flaky_unlink(self, *args, **kwargs):
+        if str(self.name).endswith(".bak0"):
+            raise PermissionError("backup locked")
+        return real_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", flaky_unlink)
+
+    updated = store.register_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=updated_time,
+        parameters={"version": "new"},
+    )
+
+    assert updated.root == dataset.root
+    assert updated.manifest()["parameters"] == {"version": "new"}
+    assert updated.manifest()["time_coverage"] == {
+        "start": "2008-02-03T00:00:00Z",
+        "stop": "2008-02-04T00:00:00Z",
+    }
 
 
 def test_store_registers_raw_file_manifest(tmp_path) -> None:
@@ -566,7 +1057,7 @@ def test_database_register_product_creates_metadata_and_empty_dataset(tmp_path) 
     assert dataset.manifest()["dataset_id"] == "my_project.event_table"
     assert dataset.manifest()["layer"] == "databases"
     assert dataset.manifest()["time_coverage"] is None
-    assert dataset.catalog().select("status").to_series().to_list() == ["empty"]
+    assert dataset.catalog().height == 0
 
 
 def test_store_creates_database_metadata_when_requested(tmp_path) -> None:
@@ -963,6 +1454,7 @@ def test_dataset_record_lists_shards_by_status(tmp_path) -> None:
 def test_dataset_record_replaces_shard_and_updates_catalog(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.day("2008-02-01")
+    replacement_time = spn.day("2008-02-02")
     dataset = store.write_parquet_dataset(
         dataset_id="kaguya.esa1.counts",
         layer="normalized",
@@ -978,8 +1470,8 @@ def test_dataset_record_replaces_shard_and_updates_catalog(tmp_path) -> None:
 
     updated = dataset.replace_shard(
         "shards/part-000.parquet",
-        frame=pl.DataFrame({"time": [time.start_iso], "counts": [2]}),
-        time_coverage=time,
+        frame=pl.DataFrame({"time": [replacement_time.start_iso], "counts": [2]}),
+        time_coverage=replacement_time,
     )
 
     assert updated == dataset
@@ -987,8 +1479,12 @@ def test_dataset_record_replaces_shard_and_updates_catalog(tmp_path) -> None:
     assert dataset.failed_shards() == ()
     assert dataset.catalog().select("row_count").to_series().to_list() == [1]
     assert dataset.catalog().select("status").to_series().to_list() == ["complete"]
+    assert dataset.manifest()["time_coverage"] == {
+        "start": replacement_time.start_iso,
+        "stop": replacement_time.stop_iso,
+    }
     assert dataset.scan().collect().to_dicts() == [
-        {"time": time.start_iso, "counts": 2}
+        {"time": replacement_time.start_iso, "counts": 2}
     ]
 
 
@@ -1262,6 +1758,44 @@ def test_store_append_expands_manifest_time_coverage(tmp_path) -> None:
     ]
     assert dataset.manifest()["source_files"] == ["raw/first.dat", "raw/second.dat"]
     assert dataset.manifest()["source_datasets"] == ["source.first", "source.second"]
+
+
+def test_store_time_coverage_preserves_and_filters_subsecond_ranges(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    first = spn.period("2008-02-01T00:00:00Z", "2008-02-01T00:00:00.000001Z")
+    second = spn.period(
+        "2008-02-01T00:00:00.000001Z",
+        "2008-02-01T00:00:00.000002Z",
+    )
+    kwargs = {
+        "dataset_id": "kaguya.esa1.counts",
+        "layer": "normalized",
+        "mission": "kaguya",
+        "instrument": "esa1",
+        "product": "counts",
+        "schema": KAGUYA_ESA1_SCHEMA,
+    }
+    store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=first,
+        frame=pl.DataFrame({"time": [first.start_iso], "counts": [1]}),
+    )
+
+    dataset = store.write_parquet_dataset(
+        **kwargs,
+        time_coverage=second,
+        frame=pl.DataFrame({"time": [second.start_iso], "counts": [2]}),
+        append=True,
+    )
+
+    assert dataset.manifest()["time_coverage"] == {
+        "start": first.start_iso,
+        "stop": second.stop_iso,
+    }
+    matching = store.datasets(time_range=second, refresh=True)
+    assert matching.select("dataset_id").to_series().to_list() == [
+        "kaguya.esa1.counts"
+    ]
 
 
 def test_dataset_record_scans_its_catalog_shards(tmp_path) -> None:

@@ -8,11 +8,11 @@ import polars as pl
 import pytest
 
 import sopran as spn
+import sopran.missions.kaguya.files as kaguya_files
 from sopran import Store
 from sopran.missions.kaguya import Kaguya, normalize_sensors
 from sopran.missions.kaguya.data import KaguyaESA1Data
 from sopran.missions.kaguya.pace import PaceData, PaceRecord
-import sopran.missions.kaguya.files as kaguya_files
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
 
 
@@ -90,6 +90,54 @@ def test_kaguya_esa1_calibration_download_registers_raw_manifest(
     assert "http://step0ku.kugi.kyoto-u.ac.jp/~haraday/data/kaguya/" in manifest
 
 
+def test_kaguya_time_filter_handles_string_times_with_subsecond_range() -> None:
+    from sopran.missions.kaguya.mission import _filter_frame_by_time
+
+    time = spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:00.000001Z")
+    frame = pl.DataFrame({"time": ["2008-01-01T00:00:00Z"], "value": [1.0]})
+
+    assert _filter_frame_by_time(frame, time).to_dicts() == [
+        {"time": "2008-01-01T00:00:00Z", "value": 1.0}
+    ]
+
+
+def test_kaguya_time_filter_handles_timezone_aware_polars_datetime() -> None:
+    from sopran.missions.kaguya.mission import _filter_frame_by_time
+
+    time = spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:00:01Z")
+    frame = pl.DataFrame(
+        {
+            "time": pl.Series(
+                [datetime(2008, 1, 1, 0, 0, tzinfo=UTC)],
+                dtype=pl.Datetime("us", "UTC"),
+            ),
+            "value": [1.0],
+        }
+    )
+
+    assert _filter_frame_by_time(frame, time).select("value").to_series().to_list() == [
+        1.0
+    ]
+
+
+def test_kaguya_time_filter_handles_polars_date_with_subday_range() -> None:
+    from datetime import date
+
+    from sopran.missions.kaguya.mission import _filter_frame_by_time
+
+    time = spn.period("2008-01-01T12:00:00Z", "2008-01-01T13:00:00Z")
+    frame = pl.DataFrame(
+        {
+            "time": pl.Series([date(2008, 1, 1), date(2008, 1, 2)], dtype=pl.Date),
+            "value": [1.0, 2.0],
+        }
+    )
+
+    assert _filter_frame_by_time(frame, time).select("value").to_series().to_list() == [
+        1.0
+    ]
+
+
 def test_kaguya_lmag_query_builds_nominal_and_optional_paths(tmp_path) -> None:
     kaguya = Kaguya(store=Store(tmp_path / "store"))
 
@@ -141,6 +189,13 @@ def test_period_is_half_open_and_available_from_top_level() -> None:
     assert time.days() == ["2008-02-01"]
 
 
+def test_period_iso_preserves_subsecond_precision_when_needed() -> None:
+    time = spn.period("2008-02-01T00:00:00Z", "2008-02-01T00:00:00.000001Z")
+
+    assert time.start_iso == "2008-02-01T00:00:00Z"
+    assert time.stop_iso == "2008-02-01T00:00:00.000001Z"
+
+
 def test_day_month_and_year_helpers_return_half_open_periods() -> None:
     assert spn.day("2008-02-01").days() == ["2008-02-01"]
 
@@ -170,6 +225,16 @@ def test_kaguya_esa1_energy_flux_endpoint_exposes_schema_info_and_plan(tmp_path)
     assert plan.remote_files == [
         "sln-l-pace-3-pbf1-v3.0/20080201/data/IPACE_PBF1_080201_ESA1_V003.dat.gz"
     ]
+
+
+def test_kaguya_esa1_energy_schema_marks_channel_index_not_physical_ev(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+
+    schema = kg.esa1.energy.schema()
+
+    assert schema.units is None
+    assert "channel index" in schema.description
+    assert "Physical eV calibration is not applied" in schema.description
 
 
 def test_kaguya_spectrogram_endpoint_preserves_log_color_option(tmp_path) -> None:
@@ -288,6 +353,29 @@ def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path
     assert flux.time == time
 
 
+def test_kaguya_esa1_load_missing_error_rejects_silent_empty_dataset(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    with pytest.raises(FileNotFoundError, match="No local KAGUYA ESA1 raw files found"):
+        kg.esa1.load(time, missing="error")
+
+    with pytest.raises(FileNotFoundError, match="IPACE_PBF1_080201_ESA1_V003.dat.gz"):
+        kg.esa1.counts.load(time, missing="error")
+
+
+def test_kaguya_esa1_load_missing_warn_records_missing_reason(tmp_path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
+    time = spn.period("2008-02-01", "2008-02-02")
+
+    with pytest.warns(UserWarning, match="No local KAGUYA ESA1 raw files found"):
+        data = kg.esa1.load(time, missing="warn")
+
+    assert data.missing_reason.startswith("No local KAGUYA ESA1 raw files found")
+    assert "missing_reason:" in str(data.info())
+    assert data.to_xarray().attrs["missing_reason"] == data.missing_reason
+
+
 def test_kaguya_esa1_loaded_data_info_returns_info_page(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
@@ -351,6 +439,50 @@ def test_kaguya_download_registers_raw_file_manifest(tmp_path, monkeypatch) -> N
     assert record.verify_checksum()
 
 
+def test_kaguya_file_source_download_removes_partial_file_on_failure(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = kaguya_files.KaguyaFileSource(tmp_path / "raw")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    target = source.local_root / remote_file
+
+    def fake_urlretrieve(url, target):
+        Path(target).write_bytes(b"partial")
+        raise OSError("network interrupted")
+
+    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+
+    with pytest.raises(OSError, match="network interrupted"):
+        source.download(remote_file)
+
+    assert not target.exists()
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
+
+
+def test_kaguya_file_source_overwrite_failure_preserves_existing_file(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    source = kaguya_files.KaguyaFileSource(tmp_path / "raw")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    target = source.local_root / remote_file
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"existing")
+
+    def fake_urlretrieve(url, target):
+        Path(target).write_bytes(b"partial")
+        raise OSError("network interrupted")
+
+    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+
+    with pytest.raises(OSError, match="network interrupted"):
+        source.download(remote_file, overwrite=True)
+
+    assert target.read_bytes() == b"existing"
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
+
+
 def test_kaguya_reads_default_download_policy_from_environment(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("SOPRAN_DOWNLOAD_MODE", "missing")
 
@@ -375,6 +507,50 @@ def test_kaguya_esa1_exposes_core_variable_endpoints(tmp_path) -> None:
     assert kg.esa1.counts.load(time).name == "counts"
 
 
+def test_kaguya_endpoint_discovery_does_not_touch_source_io(tmp_path) -> None:
+    class ExplodingSource:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def local_path(self, remote_file):
+            self.calls.append(("local_path", remote_file))
+            raise AssertionError("local_path should not be called during discovery")
+
+        def remote_url(self, remote_file):
+            self.calls.append(("remote_url", remote_file))
+            raise AssertionError("remote_url should not be called during discovery")
+
+        def download(self, remote_file, *, overwrite=False):
+            self.calls.append(("download", remote_file, overwrite))
+            raise AssertionError("download should not be called during discovery")
+
+    source = ExplodingSource()
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), source=source, download="never")
+    time = spn.day("2008-01-01")
+
+    endpoints = [
+        kg.esa1.counts,
+        kg.lmag.magnetic_field,
+        kg.lrs.npw_rx1,
+    ]
+
+    assert [endpoint.name for endpoint in endpoints] == [
+        "counts",
+        "magnetic_field",
+        "npw_rx1",
+    ]
+    assert [endpoint.schema().name for endpoint in endpoints] == [
+        "counts",
+        "magnetic_field",
+        "npw_rx1",
+    ]
+    assert kg.esa1.counts.plan(time).remote_files == [
+        "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    ]
+    assert "KAGUYA.ESA1.counts" in str(kg.esa1.counts.info())
+    assert source.calls == []
+
+
 def test_kaguya_esa1_to_xarray_returns_schema_backed_empty_dataset(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
@@ -385,6 +561,10 @@ def test_kaguya_esa1_to_xarray_returns_schema_backed_empty_dataset(tmp_path) -> 
     assert ds.attrs["instrument"] == "ESA1"
     assert set(ds.data_vars) == {"energy_flux", "counts", "quality"}
     assert "energy" in ds.coords
+    assert ds["energy"].attrs["description"].startswith("PACE ESA1 energy channel index")
+    assert "units" not in ds["energy"].attrs
+    assert ds["energy_flux"].attrs["physical_validity"] == "placeholder"
+    assert ds["energy_flux"].attrs["calibration_status"] == "not_loaded"
 
 
 def test_kaguya_esa1_counts_reduce_look_handles_mixed_record_shapes() -> None:
@@ -817,6 +997,9 @@ def test_project_case_supplies_time_to_kaguya_endpoints(tmp_path) -> None:
     project_root.mkdir()
     (project_root / "sopran.toml").write_text(
         """
+[defaults]
+download = "never"
+
 [cases.wake_20080201]
 start = "2008-02-01T00:00:00"
 stop = "2008-02-02T00:00:00"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import polars as pl
 import pytest
 
@@ -57,7 +58,7 @@ def test_artemis_fgm_unknown_variable_error_lists_available_variables() -> None:
     art = spn.Artemis()
 
     with pytest.raises(AttributeError) as exc:
-        art.p1.fgm.field
+        _ = art.p1.fgm.field
 
     message = str(exc.value)
     assert "ARTEMIS.P1.FGM has no variable 'field'" in message
@@ -72,7 +73,7 @@ def test_artemis_esa_unknown_variable_error_lists_available_variables() -> None:
     art = spn.Artemis()
 
     with pytest.raises(AttributeError) as exc:
-        art.p1.esa.energy_flux
+        _ = art.p1.esa.energy_flux
 
     message = str(exc.value)
     assert "ARTEMIS.P1.ESA has no variable 'energy_flux'" in message
@@ -397,8 +398,19 @@ def test_artemis_load_reads_normalized_magnetic_field_from_store(tmp_path) -> No
 
     assert magnetic_field.name == "magnetic_field"
     assert array.dims == ("time", "component")
+    assert np.issubdtype(array.coords["time"].dtype, np.datetime64)
     assert array.coords["component"].values.tolist() == ["x", "y", "z"]
     assert array.values.tolist() == [[1.0, 2.0, 3.0]]
+
+
+def test_artemis_load_filters_string_times_with_subsecond_range(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    time = spn.period("2011-07-01T00:00:00Z", "2011-07-01T00:00:00.000001Z")
+    _write_artemis_fgm_dataset(store, time)
+
+    magnetic_field = spn.Artemis(store=store).p1.fgm.magnetic_field.load(time)
+
+    assert magnetic_field.to_xarray().values.tolist() == [[1.0, 2.0, 3.0]]
 
 
 def test_artemis_load_reads_normalized_ion_energy_flux_from_store(tmp_path) -> None:

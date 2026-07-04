@@ -5,6 +5,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from sopran.core.errors import DatasetNotFoundError, DownloadError
 from sopran.core.pages import GuidePage, InfoPage
@@ -419,6 +420,7 @@ metadata = svm_plan.to_metadata()
                 body=self.body.name,
                 source_scale=_optional_source_scale(source),
                 source_offset=_optional_source_offset(source),
+                region=plan.parameters.get("region"),
                 metadata=plan.to_metadata()["parameters"],
             )
         if self.product == "svm":
@@ -810,8 +812,22 @@ def _download_file(url: str, target: Path, *, overwrite: bool = False) -> None:
     if target.exists() and not overwrite:
         return
     target.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url) as response, target.open("wb") as output:
-        shutil.copyfileobj(response, output)
+    temp = _temporary_download_path(target)
+    try:
+        with urllib.request.urlopen(url) as response, temp.open("wb") as output:
+            shutil.copyfileobj(response, output)
+        temp.replace(target)
+    except Exception:
+        temp.unlink(missing_ok=True)
+        raise
+
+
+def _temporary_download_path(target: Path) -> Path:
+    for _ in range(100):
+        temp = target.with_name(f"{target.name}.{uuid4().hex}.tmp")
+        if not temp.exists():
+            return temp
+    raise FileExistsError(f"Could not allocate temporary download path for {target}")
 
 
 def _acquisition_markdowns(source: SurfaceSource) -> dict[str, str]:

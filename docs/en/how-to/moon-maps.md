@@ -44,9 +44,13 @@ store = spn.Store(r"F:/sopran-data")
 moon = spn.Moon()
 
 dem_path = moon.dem.download(source="lro.lola.dem_118m", store=store)
-dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m")
+dem = moon.dem.load(path=dem_path, source="lro.lola.dem_118m", region=region)
 dem.sample(lat=0.5, lon=10.5)
 ```
+
+When `region=` is provided, SOPRAN reads only the matching GeoTIFF raster window.
+Regions crossing the 0/360-degree longitude boundary currently fall back to the
+full raster read instead of being split into multiple windows.
 
 ## Load Tsunakawa SVM
 

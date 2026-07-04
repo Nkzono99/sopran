@@ -68,6 +68,35 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     ]
 
 
+def test_plot_stack_plot_records_standard_provenance_metadata() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    quality = xr.DataArray(
+        np.array([0, 1]),
+        dims=("time",),
+        coords={"time": ["2008-01-01T00:00:00", "2008-01-01T00:01:00"]},
+        name="quality",
+    )
+
+    result = spn.stack(spn.line(quality)).plot(
+        dataset_id="kaguya.esa1.quality",
+        time_range=spn.period("2008-01-01T00:00:00Z", "2008-01-01T00:02:00Z"),
+        frame="SELENE_SC",
+        aggregation={"cadence": "native"},
+        metadata={"endpoint": "kg.esa1.quality"},
+    )
+
+    assert result.metadata["dataset_id"] == "kaguya.esa1.quality"
+    assert result.metadata["time_range"] == {
+        "start": "2008-01-01T00:00:00Z",
+        "stop": "2008-01-01T00:02:00Z",
+    }
+    assert result.metadata["frame"] == "SELENE_SC"
+    assert result.metadata["aggregation"] == {"cadence": "native"}
+    assert result.metadata["metadata"] == {"endpoint": "kg.esa1.quality"}
+
+
 def test_plot_stack_records_shared_native_time_axis_metadata() -> None:
     import matplotlib
 
@@ -304,7 +333,10 @@ def test_loaded_array_to_polars_uses_array_layout_for_dense_data_by_default() ->
         np.ones((2, 3, 4)),
         dims=("time", "energy", "look"),
         coords={
-            "time": np.array(["2008-01-01T00:00:00", "2008-01-01T00:01:00"], dtype="datetime64[ns]"),
+            "time": np.array(
+                ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+                dtype="datetime64[ns]",
+            ),
             "energy": [10.0, 20.0, 30.0],
             "look": [0, 1, 2, 3],
         },
@@ -329,7 +361,10 @@ def test_loaded_array_to_polars_rejects_large_long_table_when_requested() -> Non
         np.ones((2, 3, 4)),
         dims=("time", "energy", "look"),
         coords={
-            "time": np.array(["2008-01-01T00:00:00", "2008-01-01T00:01:00"], dtype="datetime64[ns]"),
+            "time": np.array(
+                ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+                dtype="datetime64[ns]",
+            ),
             "energy": [10.0, 20.0, 30.0],
             "look": [0, 1, 2, 3],
         },

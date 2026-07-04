@@ -11,6 +11,8 @@ The current reader handles local PACE PBF records and exposes raw counts as:
 - `quality`: record quality flag with dimension `time`.
 - `energy_flux`: placeholder with the same dimensions as `counts`; calibration
   is not applied yet.
+- `energy`: PACE ESA1 energy channel index; physical eV/bin-center calibration
+  is not applied yet.
 
 For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 `(energy=32, look=64)`. Use xarray/SOPRAN arrays as the primary dense
@@ -23,8 +25,9 @@ dimension first.
 
 `pitch_angle_spectrum()` maps PACE look bins back to calibrated `theta`, `phi`
 look directions, computes pitch angle against a magnetic-field vector, and
-returns a `time x energy x pitch_angle` array. The `look` coordinate is not a
-physical direction by itself; the FOV/INFO calibration tables are required.
+returns a counts-based `time x energy x pitch_angle` array. The `look`
+coordinate is not a physical direction by itself; the FOV/INFO calibration
+tables are required.
 
 ```python
 kg = spn.Kaguya()

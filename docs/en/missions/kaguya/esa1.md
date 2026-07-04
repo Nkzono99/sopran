@@ -17,8 +17,12 @@ counts.to_polars()
 | Endpoint | Dims | Use |
 | --- | --- | --- |
 | `kg.esa1.counts` | `time, energy, look` | Raw counts and quicklooks |
-| `kg.esa1.energy_flux` | `time, energy, look` | Calibrated flux target |
+| `kg.esa1.energy_flux` | `time, energy, look` | Uncalibrated placeholder; currently NaN |
 | `kg.esa1.quality` | `time` | Flag panel, masks, alignment |
+
+The `energy` coordinate is currently a channel index, not calibrated physical
+eV. Use `missing="empty"`, `"warn"`, or `"error"` to control behavior when raw
+files are unavailable.
 
 ## Quicklook
 
@@ -42,5 +46,5 @@ record = (
 )
 ```
 
-Calibration tables, `energy_flux`, look-angle coordinates, and SPEDAS parity
-tests are tracked in [Status](../../reference/status.md).
+Calibration tables, physical `energy_flux`, look-angle coordinates, and SPEDAS
+parity tests are tracked in [Status](../../reference/status.md).

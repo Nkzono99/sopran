@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
 from typing import Any, Literal
@@ -27,16 +27,20 @@ class KaguyaESA1Data:
     files: tuple[Path, ...] = ()
     instrument: str = "ESA1"
     calibration: PaceCalibration | None = None
+    missing_reason: str | None = None
 
     def info(self) -> InfoPage:
+        lines = [
+            f"time: {self.time.start_iso} to {self.time.stop_iso}",
+            "variables: energy_flux, counts, energy, quality",
+            f"files: {len(self.files)}",
+            _calibration_info_line(self.calibration, self.instrument),
+        ]
+        if self.missing_reason is not None:
+            lines.append(f"missing_reason: {self.missing_reason}")
         return InfoPage(
             title=f"KAGUYA.{self.instrument}",
-            lines=(
-                f"time: {self.time.start_iso} to {self.time.stop_iso}",
-                "variables: energy_flux, counts, energy, quality",
-                f"files: {len(self.files)}",
-                _calibration_info_line(self.calibration, self.instrument),
-            ),
+            lines=tuple(lines),
         )
 
     @cached_property
@@ -193,7 +197,7 @@ class KaguyaESA1Data:
         self,
         magnetic_field: Any,
         *,
-        value: Literal["counts", "energy_flux"] = "counts",
+        value: str = "counts",
         pitch_bins: Any = "native",
         look_frame: str = "SELENE_M_SPACECRAFT",
         magnetic_frame: str | None = None,
@@ -261,18 +265,24 @@ class KaguyaESA1Data:
     def _empty_xarray(self, np: Any, xr: Any):
         energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
         counts_schema = KAGUYA_ESA1_SCHEMA.variable("counts")
+        energy_schema = KAGUYA_ESA1_SCHEMA.variable("energy")
         quality_schema = KAGUYA_ESA1_SCHEMA.variable("quality")
         calibration = _calibration_metadata(self.calibration, self.instrument)
+        attrs = {
+            "mission": "kaguya",
+            "instrument": self.instrument,
+            "start": self.time.start_iso,
+            "stop": self.time.stop_iso,
+            "calibration": calibration,
+        }
+        if self.missing_reason is not None:
+            attrs["missing_reason"] = self.missing_reason
         return xr.Dataset(
             data_vars={
                 "energy_flux": (
                     energy_flux_schema.dims,
                     np.empty((0, 0, 0)),
-                    {
-                        "units": energy_flux_schema.units,
-                        "description": energy_flux_schema.description,
-                        "calibration": calibration["status"],
-                    },
+                    _energy_flux_attrs(energy_flux_schema, calibration),
                 ),
                 "counts": (
                     counts_schema.dims,
@@ -285,19 +295,18 @@ class KaguyaESA1Data:
                     {"description": quality_schema.description},
                 ),
             },
-            coords={"time": [], "energy": [], "look": []},
-            attrs={
-                "mission": "kaguya",
-                "instrument": self.instrument,
-                "start": self.time.start_iso,
-                "stop": self.time.stop_iso,
-                "calibration": calibration,
+            coords={
+                "time": [],
+                "energy": ("energy", [], _variable_attrs(energy_schema)),
+                "look": [],
             },
+            attrs=attrs,
         )
 
     def _pace_to_xarray(self, np: Any, xr: Any, pace: PaceData):
         energy_flux_schema = KAGUYA_ESA1_SCHEMA.variable("energy_flux")
         counts_schema = KAGUYA_ESA1_SCHEMA.variable("counts")
+        energy_schema = KAGUYA_ESA1_SCHEMA.variable("energy")
         quality_schema = KAGUYA_ESA1_SCHEMA.variable("quality")
         calibration = _calibration_metadata(self.calibration, self.instrument)
         count_rows = []
@@ -332,11 +341,7 @@ class KaguyaESA1Data:
                 "energy_flux": (
                     energy_flux_schema.dims,
                     energy_flux,
-                    {
-                        "units": energy_flux_schema.units,
-                        "description": energy_flux_schema.description,
-                        "calibration": calibration["status"],
-                    },
+                    _energy_flux_attrs(energy_flux_schema, calibration),
                 ),
                 "counts": (
                     counts_schema.dims,
@@ -351,7 +356,11 @@ class KaguyaESA1Data:
             },
             coords={
                 "time": time_values,
-                "energy": np.arange(counts.shape[1]),
+                "energy": (
+                    "energy",
+                    np.arange(counts.shape[1]),
+                    _variable_attrs(energy_schema),
+                ),
                 "look": np.arange(counts.shape[2]),
             },
             attrs={
@@ -472,7 +481,7 @@ def _resolve_kaguya_polars_layout(
 def _header_time_to_datetime64(value: object, np: Any):
     if value is None:
         return np.datetime64("NaT", "ns")
-    text = datetime.fromtimestamp(float(value), tz=timezone.utc).replace(tzinfo=None).isoformat()
+    text = datetime.fromtimestamp(float(value), tz=UTC).replace(tzinfo=None).isoformat()
     return np.datetime64(text, "ns")
 
 
@@ -480,7 +489,7 @@ def _header_in_time_range(header: dict[str, Any], time: TimeRange) -> bool:
     value = header.get("time")
     if value is None:
         return False
-    instant = datetime.fromtimestamp(float(value), tz=timezone.utc)
+    instant = datetime.fromtimestamp(float(value), tz=UTC)
     return time.start <= instant < time.stop
 
 
@@ -506,6 +515,24 @@ def _calibration_metadata(
         "fov": coverage["fov"],
         "info": coverage["info"],
         "status": "tables_loaded_not_applied" if has_any_table else "not_loaded",
+    }
+
+
+def _variable_attrs(schema: Any) -> dict[str, object]:
+    attrs: dict[str, object] = {"description": schema.description}
+    if schema.units is not None:
+        attrs["units"] = schema.units
+    if schema.frame is not None:
+        attrs["frame"] = schema.frame
+    return attrs
+
+
+def _energy_flux_attrs(schema: Any, calibration: dict[str, object]) -> dict[str, object]:
+    return {
+        **_variable_attrs(schema),
+        "calibration": calibration["status"],
+        "calibration_status": calibration["status"],
+        "physical_validity": "placeholder",
     }
 
 

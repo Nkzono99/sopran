@@ -2,29 +2,55 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from difflib import get_close_matches
 from importlib.resources import files
+from inspect import signature
 from pathlib import Path
 from time import perf_counter
-from typing import Literal
+from typing import Any, Literal
 from urllib.error import HTTPError
 
 from sopran.core import Store
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
-from sopran.core.schema import VariableSchema
-from sopran.core.time import TimeRange, day, period
+from sopran.core.schema import InstrumentSchema, VariableSchema
+from sopran.core.time import TimeRange, _filter_polars_time, day, period
 from sopran.missions.kaguya.data import KaguyaESA1Data
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
+    iter_hourly_public_paths,
     iter_public_paths,
     lmag_public_templates,
+    lrs_public_template,
     pace_pbf_public_template,
 )
+from sopran.missions.kaguya.geometry import (
+    MOON_MEAN_RADIUS_KM,
+    array_from_polars,
+    connection_schema,
+    connection_variant_id,
+    lmag_altitude,
+    lmag_magnetic_connection,
+    lmag_position,
+    lmag_position_gse,
+    lmag_radial_distance,
+    lmag_subpoint,
+    lmag_sza,
+    orbit_variant_id,
+    variant_metadata,
+)
 from sopran.missions.kaguya.lmag import KaguyaLmagData, read_lmag_public
+from sopran.missions.kaguya.lrs import (
+    KaguyaLrsData,
+    empty_lrs_data,
+    lrs_array_from_polars,
+    lrs_kind_for_variable,
+    read_lrs_public,
+)
 from sopran.missions.kaguya.pace import (
     PACE_CALIBRATION_BASE_URL,
     PaceCalibration,
@@ -32,10 +58,17 @@ from sopran.missions.kaguya.pace import (
     read_pace_fov,
     read_pace_info,
 )
-from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA, KAGUYA_LMAG_SCHEMA
+from sopran.missions.kaguya.schema import (
+    KAGUYA_ESA1_SCHEMA,
+    KAGUYA_LMAG_SCHEMA,
+    KAGUYA_LRS_SCHEMA,
+    KAGUYA_ORBIT_SCHEMA,
+)
 from sopran.missions.kaguya.sensors import normalize_sensor
 
 DownloadMode = Literal["never", "missing", "always"]
+MissingMode = Literal["empty", "warn", "error"]
+CacheMode = Literal["use", "refresh", "never"]
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URLS = {
     "README.md": "https://nkzono99.github.io/sopran/missions/kaguya/",
@@ -73,6 +106,8 @@ class Kaguya:
         self.ima = PaceInstrument(self, "IMA")
         self.iea = PaceInstrument(self, "IEA")
         self.lmag = LmagInstrument(self)
+        self.lrs = LrsInstrument(self)
+        self.orbit = OrbitInstrument(self)
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -83,6 +118,7 @@ class Kaguya:
                 "ima: PACE Ion Mass Analyzer",
                 "iea: PACE Ion Energy Analyzer",
                 "lmag: Lunar MAGnetometer",
+                "lrs: Lunar Radar Sounder plasma wave spectra",
             ),
         )
 
@@ -94,6 +130,8 @@ class Kaguya:
             return self.esa1.guide(language=language)
         if normalized in {"lmag", "mag"}:
             return self.lmag.guide(language=language)
+        if normalized in {"lrs", "npw", "wfc"}:
+            return self.lrs.guide(language=language)
         raise KeyError(f"Unknown KAGUYA guide topic: {topic}")
 
     def help(self, topic: str | None = None, *, language: str = "ja") -> GuidePage:
@@ -251,10 +289,19 @@ fig = plot_result.fig
             remote_files=self.instrument.remote_files_for_period(time),
         )
 
-    def load(self, time: TimeRange | None = None, *, download: DownloadMode | None = None):
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+    ):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
-        data = self.instrument.load(time, download=download)
+        if missing is None:
+            data = self.instrument.load(time, download=download)
+        else:
+            data = self.instrument.load(time, download=download, missing=missing)
         return getattr(data, self.name)
 
     def plot(
@@ -262,9 +309,31 @@ fig = plot_result.fig
         time: TimeRange | None = None,
         *,
         download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        cache: CacheMode | None = None,
         **kwargs,
     ):
-        return self.load(time, download=download).plot(**kwargs)
+        loaded = _load_endpoint(
+            self,
+            time,
+            download=download,
+            missing=missing,
+            cache=cache,
+        )
+        kwargs.setdefault("dataset_id", self.dataset_id)
+        kwargs.setdefault("time_range", loaded.time)
+        kwargs.setdefault("frame", self._schema.frame)
+        kwargs["metadata"] = _merge_metadata(
+            _endpoint_plot_metadata(
+                self,
+                loaded,
+                download=download,
+                missing=missing,
+                cache=cache,
+            ),
+            kwargs.pop("metadata", None),
+        )
+        return loaded.plot(**kwargs)
 
     def line(
         self,
@@ -273,13 +342,21 @@ fig = plot_result.fig
         x: str = "time",
         name: str | None = None,
         download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        cache: CacheMode | None = None,
     ):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import line
 
         return line(
-            lambda: self.load(time, download=download).to_xarray(),
+            lambda: _load_endpoint(
+                self,
+                time,
+                download=download,
+                missing=missing,
+                cache=cache,
+            ).to_xarray(),
             x=x,
             name=name or self.name,
         )
@@ -293,13 +370,21 @@ fig = plot_result.fig
         component_dim: str = "component",
         name: str | None = None,
         download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        cache: CacheMode | None = None,
     ):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import lines
 
         return lines(
-            lambda: self.load(time, download=download).to_xarray(),
+            lambda: _load_endpoint(
+                self,
+                time,
+                download=download,
+                missing=missing,
+                cache=cache,
+            ).to_xarray(),
             x=x,
             components=components,
             component_dim=component_dim,
@@ -317,6 +402,8 @@ fig = plot_result.fig
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
         log_color: bool = False,
+        missing: MissingMode | None = None,
+        cache: CacheMode | None = None,
     ):
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -327,6 +414,8 @@ fig = plot_result.fig
                 self,
                 time,
                 download=download,
+                missing=missing,
+                cache=cache,
                 x=x,
                 y=y,
                 reduce_dims=reduce_dims,
@@ -337,6 +426,184 @@ fig = plot_result.fig
             name=name or self.name,
             log_color=log_color,
         )
+
+
+class OrbitInstrument:
+    def __init__(self, mission: Kaguya) -> None:
+        self.mission = mission
+        self.name = "orbit"
+        self.position = GeometryArrayEndpoint(
+            self,
+            KAGUYA_ORBIT_SCHEMA.variable("position"),
+            dataset_id="kaguya.orbit.position",
+            compute=lambda data, **_: lmag_position(data),
+            product="position",
+        )
+        self.position_gse = GeometryArrayEndpoint(
+            self,
+            KAGUYA_ORBIT_SCHEMA.variable("position_gse"),
+            dataset_id="kaguya.orbit.position_gse",
+            compute=lambda data, **_: lmag_position_gse(data),
+            product="position_gse",
+        )
+        self.radial_distance = GeometryArrayEndpoint(
+            self,
+            KAGUYA_ORBIT_SCHEMA.variable("radial_distance"),
+            dataset_id="kaguya.orbit.radial_distance",
+            compute=lambda data, **_: lmag_radial_distance(data),
+            product="radial_distance",
+        )
+        self.radius = self.radial_distance
+        self.altitude = GeometryArrayEndpoint(
+            self,
+            KAGUYA_ORBIT_SCHEMA.variable("altitude"),
+            dataset_id="kaguya.orbit.altitude",
+            compute=lambda data, *, radius_km, **_: lmag_altitude(
+                data,
+                radius_km=radius_km,
+            ),
+            product="altitude",
+        )
+        self.subpoint = GeometryArrayEndpoint(
+            self,
+            KAGUYA_ORBIT_SCHEMA.variable("subpoint"),
+            dataset_id="kaguya.orbit.subpoint",
+            compute=lambda data, **_: lmag_subpoint(data),
+            product="subpoint",
+        )
+        self.sza = GeometryArrayEndpoint(
+            self,
+            KAGUYA_ORBIT_SCHEMA.variable("sza"),
+            dataset_id="kaguya.orbit.sza",
+            compute=lambda data, *, sun_vector, sun_frame, context, backend, **_: lmag_sza(
+                data,
+                sun_vector=sun_vector,
+                sun_frame=sun_frame,
+                context=context,
+                backend=backend,
+            ),
+            product="sza",
+        )
+
+
+class GeometryArrayEndpoint:
+    def __init__(
+        self,
+        orbit: OrbitInstrument,
+        schema: VariableSchema,
+        *,
+        dataset_id: str,
+        compute,
+        product: str,
+    ) -> None:
+        self.instrument = orbit
+        self._schema = schema
+        self.dataset_id = dataset_id
+        self.name = schema.name
+        self._compute = compute
+        self._product = product
+
+    def schema(self) -> VariableSchema:
+        return self._schema
+
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        radius_km: float = MOON_MEAN_RADIUS_KM,
+        cache: CacheMode = "use",
+        download: DownloadMode | None = None,
+        frame: str | None = None,
+        sun_vector: Any | None = None,
+        sun_frame: str = "MOON_ME",
+        context: Any | None = None,
+        backend: str | None = None,
+        missing: MissingMode = "empty",
+    ):
+        if time is None:
+            raise _missing_time_error(f"Kaguya.orbit.{self.name}")
+        _validate_cache_mode(cache)
+        if self.name == "sza" and sun_vector is None:
+            raise ValueError("sun_vector is required for KAGUYA orbit sza")
+        variant_id = orbit_variant_id(
+            self.name,
+            radius_km=radius_km,
+            sun_vector=sun_vector,
+            sun_frame=sun_frame,
+            context=context,
+            backend=backend,
+        )
+        if cache == "use":
+            cached = _read_cached_array(
+                self.instrument.mission.store,
+                self.dataset_id,
+                variant_id=variant_id,
+                schema=self._schema,
+                time=time,
+            )
+            if cached is not None:
+                return _maybe_transform_geometry_array(
+                    cached,
+                    frame=frame,
+                    context=context,
+                    backend=backend,
+                )
+        data = self.instrument.mission.lmag.load(time, download=download, missing=missing)
+        product = self._compute(
+            data,
+            radius_km=radius_km,
+            sun_vector=sun_vector,
+            sun_frame=sun_frame,
+            context=context,
+            backend=backend,
+        )
+        if cache != "never" and data.missing_reason is None:
+            self.instrument.mission.store.write_parquet_dataset(
+                dataset_id=self.dataset_id,
+                variant_id=variant_id,
+                variant=variant_metadata(
+                    radius_km=radius_km,
+                    sun_vector=sun_vector,
+                    sun_frame=sun_frame,
+                    context=context,
+                    backend=backend,
+                ),
+                layer="features",
+                mission="kaguya",
+                instrument="orbit",
+                product=self._product,
+                schema=KAGUYA_ORBIT_SCHEMA,
+                time_coverage=time,
+                frame=product.to_polars(),
+                source_files=tuple(str(path) for path in data.files),
+                source_datasets=("kaguya.lmag",),
+                overwrite=True,
+                producer=f"sopran.kaguya.orbit.{self.name}",
+            )
+        return _maybe_transform_geometry_array(
+            product,
+            frame=frame,
+            context=context,
+            backend=backend,
+        )
+
+
+def _maybe_transform_geometry_array(
+    product,
+    *,
+    frame: str | None,
+    context: Any | None,
+    backend: str | None,
+):
+    if frame is None:
+        return product
+    if frame == product.schema.frame:
+        return product
+    if product.name not in {"position", "position_gse"}:
+        raise ValueError(
+            "frame transform is only supported for KAGUYA orbit position vectors"
+        )
+    return product.transform(frame, context=context, backend=backend)
 
 
 class KaguyaInstrument:
@@ -441,8 +708,8 @@ class PaceInstrument(KaguyaInstrument):
 
     def remote_files_for_period(self, time: TimeRange) -> list[str]:
         paths: list[str] = []
-        for day in time.days():
-            paths.extend(self.remote_files(day))
+        for time_day in time.days():
+            paths.extend(self.remote_files(time_day))
         return paths
 
     def pipeline(self, time: TimeRange) -> Pipeline:
@@ -781,49 +1048,47 @@ fig = plot_result.fig
         *,
         calibration: PaceCalibration | None = None,
         download: DownloadMode | None = None,
+        missing: MissingMode = "empty",
     ) -> KaguyaESA1Data:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.name}")
         if self.sensor != "ESA1":
             raise NotImplementedError(f"load() is not implemented for {self.sensor}")
+        _validate_missing_mode(missing)
         files: list[Path] = []
-        for day in time.days():
-            files.extend(self.select(day).files(download=download))
-        return KaguyaESA1Data(time=time, files=tuple(files), calibration=calibration)
+        for time_day in time.days():
+            files.extend(self.select(time_day).files(download=download))
+        missing_reason = None
+        if not files:
+            missing_reason = _missing_raw_files_message(self, time)
+            if missing == "error":
+                raise FileNotFoundError(missing_reason)
+            if missing == "warn":
+                warnings.warn(missing_reason, UserWarning, stacklevel=2)
+        return KaguyaESA1Data(
+            time=time,
+            files=tuple(files),
+            calibration=calibration,
+            missing_reason=missing_reason,
+        )
 
 
 def _filter_lazy_by_time(lazy, time: TimeRange):
-    import polars as pl
-
-    dtype = lazy.collect_schema().get("time")
-    if dtype == pl.Datetime or dtype == pl.Date:
-        start = time.start.replace(tzinfo=None)
-        stop = time.stop.replace(tzinfo=None)
-    else:
-        start = time.start_iso
-        stop = time.stop_iso
-    return lazy.filter(
-        (pl.col("time") >= start)
-        & (pl.col("time") < stop)
-    )
+    return _filter_polars_time(lazy, time)
 
 
 def _filter_frame_by_time(frame, time: TimeRange):
-    import polars as pl
-
-    dtype = frame.schema.get("time")
-    if dtype == pl.Datetime or dtype == pl.Date:
-        start = time.start.replace(tzinfo=None)
-        stop = time.stop.replace(tzinfo=None)
-    else:
-        start = time.start_iso
-        stop = time.stop_iso
-    return frame.filter((pl.col("time") >= start) & (pl.col("time") < stop))
+    return _filter_polars_time(frame, time)
 
 
 def _validate_download_mode(download: str) -> None:
     if download not in ("never", "missing", "always"):
         raise ValueError("download must be 'never', 'missing', or 'always'")
+
+
+def _validate_missing_mode(missing: str) -> None:
+    if missing not in ("empty", "warn", "error"):
+        raise ValueError("missing must be 'empty', 'warn', or 'error'")
 
 
 def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
@@ -834,6 +1099,96 @@ def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
             download = os.environ.get("SOPRAN_DOWNLOAD_MODE", "missing")
     _validate_download_mode(download)
     return download
+
+
+def _missing_raw_files_message(instrument: Any, time: TimeRange) -> str:
+    expected = ", ".join(instrument.remote_files_for_period(time))
+    return (
+        f"No local KAGUYA {instrument.name} raw files found for "
+        f"{time.start_iso} .. {time.stop_iso}. Expected: {expected}"
+    )
+
+
+def _missing_partial_raw_files_message(
+    instrument: Any,
+    time: TimeRange,
+    missing_files: list[str],
+) -> str:
+    missing = ", ".join(missing_files)
+    return (
+        f"Missing local KAGUYA {instrument.name} raw files for "
+        f"{time.start_iso} .. {time.stop_iso}. Missing: {missing}"
+    )
+
+
+def _missing_lrs_raw_files_message(
+    instrument: LrsInstrument,
+    time: TimeRange,
+    *,
+    kind: str,
+    missing_files: list[str] | None = None,
+) -> str:
+    missing_files = missing_files or instrument.remote_files_for_period(time, kind=kind)
+    missing = ", ".join(missing_files)
+    if len(missing_files) == len(instrument.remote_files_for_period(time, kind=kind)):
+        return (
+            f"No local KAGUYA LRS {kind.upper()} raw files found for "
+            f"{time.start_iso} .. {time.stop_iso}. Expected: {missing}"
+        )
+    return (
+        f"Missing KAGUYA LRS {kind.upper()} raw files for "
+        f"{time.start_iso} .. {time.stop_iso}. Missing: {missing}"
+    )
+
+
+def _resolve_kaguya_files(
+    instrument: KaguyaInstrument,
+    remote_files: list[str],
+    *,
+    download: DownloadMode | None,
+    overwrite: bool = False,
+) -> list[Path]:
+    download = instrument.mission.download if download is None else download
+    _validate_download_mode(download)
+    paths: list[Path] = []
+    for remote_file in remote_files:
+        path = instrument.mission.source.local_path(remote_file)
+        if download == "never":
+            if path.exists():
+                paths.append(path)
+            continue
+        if download == "missing":
+            try:
+                path = instrument.mission.source.download(remote_file, overwrite=False)
+            except HTTPError as exc:
+                if instrument.is_optional_missing_file(remote_file, exc):
+                    continue
+                raise
+        elif download == "always":
+            try:
+                path = instrument.mission.source.download(remote_file, overwrite=True)
+            except HTTPError as exc:
+                if instrument.is_optional_missing_file(remote_file, exc):
+                    continue
+                raise
+        _register_downloaded_raw_file(
+            instrument.mission.store,
+            instrument.mission.source,
+            path,
+            remote_file=remote_file,
+        )
+        if overwrite or path.exists():
+            paths.append(path)
+    return paths
+
+
+def _lrs_kinds(kind: str) -> tuple[str, ...]:
+    normalized = kind.upper()
+    if normalized == "ALL":
+        return ("NPW", "WFC")
+    if normalized in {"NPW", "WFC"}:
+        return (normalized,)
+    raise ValueError("kind must be 'NPW', 'WFC', or 'all'")
 
 
 def _register_downloaded_raw_file(
@@ -895,12 +1250,20 @@ def _load_endpoint_plot_array(
     time: TimeRange,
     *,
     download: DownloadMode | None,
+    missing: MissingMode | None,
+    cache: CacheMode | None,
     x: str,
     y: str,
     reduce_dims: tuple[str, ...] | None,
     reduction: str,
 ):
-    array = endpoint.load(time, download=download).to_xarray()
+    array = _load_endpoint(
+        endpoint,
+        time,
+        download=download,
+        missing=missing,
+        cache=cache,
+    ).to_xarray()
     dims = getattr(array, "dims", ())
     dims_to_reduce = reduce_dims
     if dims_to_reduce is None:
@@ -945,7 +1308,11 @@ def _write_pipeline_quicklooks(
                 dataset_id=pipeline.output_dataset,
                 time_range=pipeline.time,
                 frame=stage.parameters.get("frame"),
-                aggregation=aggregation if isinstance(aggregation, dict) else {"mode": str(aggregation)},
+                aggregation=(
+                    aggregation
+                    if isinstance(aggregation, dict)
+                    else {"mode": str(aggregation)}
+                ),
                 metadata=_pipeline_quicklook_metadata(
                     pipeline,
                     variable,
@@ -1244,9 +1611,7 @@ def _shard_time_range(shard: dict[str, object]) -> TimeRange:
 
 def _record_covers_time(output, pipeline: Pipeline) -> bool:
     coverage = output.manifest().get("time_coverage") or {}
-    start = str(coverage.get("start") or "")
-    stop = str(coverage.get("stop") or "")
-    return start <= pipeline.time.start_iso and stop >= pipeline.time.stop_iso
+    return _coverage_contains_time_range(coverage, pipeline.time)
 
 
 def _write_pipeline_log(
@@ -1367,6 +1732,264 @@ def _jsonable(value: object) -> object:
     return value
 
 
+class LrsInstrument(KaguyaInstrument):
+    npw_rx1: LrsVariableEndpoint
+    npw_rx2: LrsVariableEndpoint
+    npw_mode: LrsVariableEndpoint
+    wfc_ex_db: LrsVariableEndpoint
+    wfc_ey_db: LrsVariableEndpoint
+    wfc_gain: LrsVariableEndpoint
+    wfc_ex_field: LrsVariableEndpoint
+    wfc_ey_field: LrsVariableEndpoint
+    wfc_ex_power_spectral_density: LrsVariableEndpoint
+    wfc_ey_power_spectral_density: LrsVariableEndpoint
+    wfc_ex_power: LrsVariableEndpoint
+    wfc_ey_power: LrsVariableEndpoint
+    wfc_xymode: LrsVariableEndpoint
+    wfc_fband: LrsVariableEndpoint
+    wfc_omode: LrsVariableEndpoint
+    wfc_pdc_ti: LrsVariableEndpoint
+    wfc_postgap: LrsVariableEndpoint
+    npw: LrsEndpointGroup
+    wfc: LrsEndpointGroup
+
+    def __init__(self, mission: Kaguya, *, version: str = "010") -> None:
+        self.version = version
+        super().__init__(mission, "LRS")
+        for variable in KAGUYA_LRS_SCHEMA.variables:
+            endpoint = self._variable(variable.name)
+            setattr(self, variable.name, endpoint)
+        self.wfc_ex_power = self.wfc_ex_power_spectral_density
+        self.wfc_ey_power = self.wfc_ey_power_spectral_density
+        self.npw = LrsEndpointGroup(
+            rx1=self.npw_rx1,
+            rx2=self.npw_rx2,
+            mode=self.npw_mode,
+        )
+        self.wfc = LrsEndpointGroup(
+            ex_db=self.wfc_ex_db,
+            ey_db=self.wfc_ey_db,
+            gain=self.wfc_gain,
+            ex_field=self.wfc_ex_field,
+            ey_field=self.wfc_ey_field,
+            ex_power_spectral_density=self.wfc_ex_power_spectral_density,
+            ey_power_spectral_density=self.wfc_ey_power_spectral_density,
+            ex_power=self.wfc_ex_power_spectral_density,
+            ey_power=self.wfc_ey_power_spectral_density,
+            xymode=self.wfc_xymode,
+            fband=self.wfc_fband,
+            omode=self.wfc_omode,
+            pdc_ti=self.wfc_pdc_ti,
+            postgap=self.wfc_postgap,
+        )
+
+    def _variable(self, name: str) -> LrsVariableEndpoint:
+        return LrsVariableEndpoint(
+            self,
+            KAGUYA_LRS_SCHEMA.variable(name),
+            dataset_id=f"kaguya.lrs.{name}",
+            kind=lrs_kind_for_variable(name),
+        )
+
+    def info(self) -> InfoPage:
+        return InfoPage(
+            title="KAGUYA.LRS",
+            lines=tuple(
+                f"{variable.name}: {variable.description}"
+                for variable in KAGUYA_LRS_SCHEMA.variables
+            ),
+        )
+
+    def schema(self) -> InstrumentSchema:
+        return KAGUYA_LRS_SCHEMA
+
+    def guide(self, *, language: str = "ja") -> GuidePage:
+        return _read_guide(
+            "README.md",
+            title="KAGUYA LRS",
+            language=language,
+        ).with_schema(KAGUYA_LRS_SCHEMA)
+
+    def help(self, *, language: str = "ja") -> GuidePage:
+        return self.guide(language=language)
+
+    def example(self) -> GuidePage:
+        return _example_page(
+            "KAGUYA LRS Example",
+            """# KAGUYA LRS Example
+
+```python
+import sopran as spn
+
+kg = spn.Kaguya()
+time = spn.day("2008-04-01")
+
+ey = kg.lrs.wfc_ey_power_spectral_density.load(time)
+item = ey.spectrogram(y="frequency", log_color=True)
+plot_result = spn.stack(item).plot()
+```
+""",
+        )
+
+    def plan(
+        self,
+        time: TimeRange | None = None,
+        *,
+        kind: str = "all",
+    ) -> LoadPlan:
+        if time is None:
+            raise _missing_time_error("Kaguya.LRS")
+        return LoadPlan(
+            dataset_id=f"kaguya.lrs.{kind.lower()}",
+            time=time,
+            remote_files=self.remote_files_for_period(time, kind=kind),
+        )
+
+    def remote_files(
+        self,
+        start: object,
+        stop: object | None = None,
+        *,
+        kind: str = "all",
+    ) -> list[str]:
+        paths: list[str] = []
+        for lrs_kind in _lrs_kinds(kind):
+            template, resolution, skip_odd_hours = lrs_public_template(
+                lrs_kind,
+                version=self.version,
+            )
+            if resolution == "daily":
+                paths.extend(iter_public_paths(template, start, stop))
+            elif resolution == "hourly":
+                paths.extend(
+                    iter_hourly_public_paths(
+                        template,
+                        start,
+                        stop,
+                        skip_odd_hours=skip_odd_hours,
+                    )
+                )
+            else:
+                raise ValueError(f"Unsupported KAGUYA LRS resolution: {resolution}")
+        return paths
+
+    def remote_files_for_period(
+        self,
+        time: TimeRange,
+        *,
+        kind: str = "all",
+    ) -> list[str]:
+        paths: list[str] = []
+        kinds = _lrs_kinds(kind)
+        if "NPW" in kinds:
+            for label in time.days():
+                paths.extend(self.remote_files(label, kind="NPW"))
+        if "WFC" in kinds:
+            paths.extend(self.remote_files(time.start, time.stop, kind="WFC"))
+        return paths
+
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        kind: str = "all",
+        download: DownloadMode | None = None,
+        missing: MissingMode = "empty",
+    ) -> KaguyaLrsData:
+        if time is None:
+            raise _missing_time_error("Kaguya.LRS")
+        _validate_missing_mode(missing)
+        remote_files = self.remote_files_for_period(time, kind=kind)
+        files = _resolve_kaguya_files(self, remote_files, download=download)
+        missing_remote_files = [
+            remote_file
+            for remote_file in remote_files
+            if not self.mission.source.local_path(remote_file).exists()
+        ]
+        missing_reason = (
+            _missing_lrs_raw_files_message(
+                self,
+                time,
+                kind=kind,
+                missing_files=missing_remote_files,
+            )
+            if missing_remote_files
+            else None
+        )
+        if missing_reason is not None:
+            if missing == "error":
+                raise FileNotFoundError(missing_reason)
+            if missing == "warn":
+                warnings.warn(missing_reason, UserWarning, stacklevel=2)
+        if not files:
+            return empty_lrs_data(time, kind=kind, missing_reason=missing_reason)
+        return read_lrs_public(files, time=time, missing_reason=missing_reason)
+
+    def is_optional_missing_file(self, remote_file: str, exc: HTTPError) -> bool:
+        return exc.code == 404
+
+
+@dataclass(frozen=True)
+class LrsEndpointGroup:
+    def __init__(self, **endpoints) -> None:
+        for name, endpoint in endpoints.items():
+            object.__setattr__(self, name, endpoint)
+
+
+class LrsVariableEndpoint(VariableEndpoint):
+    def __init__(
+        self,
+        instrument: LrsInstrument,
+        schema: VariableSchema,
+        *,
+        dataset_id: str,
+        kind: str,
+    ) -> None:
+        super().__init__(instrument, schema, dataset_id=dataset_id)
+        self.kind = kind
+
+    def plan(self, time: TimeRange | None = None) -> LoadPlan:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        return LoadPlan(
+            dataset_id=self.dataset_id,
+            time=time,
+            remote_files=self.instrument.remote_files_for_period(time, kind=self.kind),
+        )
+
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        cache: CacheMode = "use",
+    ):
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        _validate_cache_mode(cache)
+        if cache == "use":
+            cached = _read_cached_lrs_array(
+                self.instrument.mission.store,
+                self.dataset_id,
+                layer=_lrs_cache_layer(self.name),
+                schema=self._schema,
+                time=time,
+            )
+            if cached is not None:
+                return cached
+        data = self.instrument.load(
+            time,
+            kind=self.kind,
+            download=download,
+            missing=missing or "empty",
+        )
+        product = getattr(data, self.name)
+        if cache != "never" and data.missing_reason is None:
+            _write_lrs_array_cache(self, product, data, time=time)
+        return product
+
+
 class LmagInstrument(KaguyaInstrument):
     def __init__(self, mission: Kaguya, *, version: str = "1.0") -> None:
         self.version = version
@@ -1377,13 +2000,28 @@ class LmagInstrument(KaguyaInstrument):
             dataset_id="kaguya.lmag.magnetic_field",
         )
         self.b = self.magnetic_field
+        self.magnetic_field_gse = VariableEndpoint(
+            self,
+            KAGUYA_LMAG_SCHEMA.variable("magnetic_field_gse"),
+            dataset_id="kaguya.lmag.magnetic_field_gse",
+        )
+        self.bgse = self.magnetic_field_gse
+        self.magnetic_field_magnitude = VariableEndpoint(
+            self,
+            KAGUYA_LMAG_SCHEMA.variable("magnetic_field_magnitude"),
+            dataset_id="kaguya.lmag.magnetic_field_magnitude",
+        )
+        self.bmag = self.magnetic_field_magnitude
+        self.magnetic_connection = LmagConnectionEndpoint(self)
 
     def info(self) -> InfoPage:
         return InfoPage(
             title="KAGUYA.LMAG",
             lines=(
                 "magnetic_field: KAGUYA LMAG magnetic field vector in MOON_ME",
-                "alias: b",
+                "magnetic_field_gse: KAGUYA LMAG magnetic field vector in GSE",
+                "magnetic_field_magnitude: KAGUYA LMAG |B| time series",
+                "alias: b, bgse, bmag",
                 "example: kg.lmag.magnetic_field.load(time)",
             ),
         )
@@ -1427,8 +2065,8 @@ plot_result = spn.stack(item).plot()
 
     def remote_files_for_period(self, time: TimeRange) -> list[str]:
         paths: list[str] = []
-        for day in time.days():
-            paths.extend(self.remote_files(day))
+        for time_day in time.days():
+            paths.extend(self.remote_files(time_day))
         return paths
 
     def is_optional_missing_file(self, remote_file: str, exc: HTTPError) -> bool:
@@ -1439,13 +2077,298 @@ plot_result = spn.stack(item).plot()
         time: TimeRange | None = None,
         *,
         download: DownloadMode | None = None,
+        missing: MissingMode = "empty",
     ) -> KaguyaLmagData:
         if time is None:
             raise _missing_time_error("Kaguya.LMAG")
+        _validate_missing_mode(missing)
         files: list[Path] = []
-        for day in time.days():
-            files.extend(self.select(day).files(download=download))
-        return read_lmag_public(files, time=time)
+        missing_remote_files: list[str] = []
+        for time_day in time.days():
+            query = self.select(time_day)
+            day_files = query.files(download=download)
+            files.extend(day_files)
+            if not day_files:
+                missing_remote_files.extend(query.remote_files())
+        missing_reason = None
+        if missing_remote_files:
+            missing_reason = (
+                _missing_raw_files_message(self, time)
+                if not files
+                else _missing_partial_raw_files_message(self, time, missing_remote_files)
+            )
+            if missing == "error":
+                raise FileNotFoundError(missing_reason)
+            if missing == "warn":
+                warnings.warn(missing_reason, UserWarning, stacklevel=2)
+        return read_lmag_public(files, time=time, missing_reason=missing_reason)
+
+
+class LmagConnectionEndpoint:
+    def __init__(self, instrument: LmagInstrument) -> None:
+        self.instrument = instrument
+        self.name = "magnetic_connection"
+        self.dataset_id = "kaguya.lmag.magnetic_connection"
+
+    def schema(self):
+        return connection_schema()
+
+    def info(self) -> InfoPage:
+        return InfoPage(
+            title="KAGUYA.LMAG.magnetic_connection",
+            lines=(
+                "field_model: straight_local_field_line",
+                "surface: sphere",
+                "frame: MOON_ME",
+                "plots: footpoint, altitude, incidence, distance",
+                "example: kg.lmag.magnetic_connection.load(time, cache='use')",
+            ),
+        )
+
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        radius_km: float = MOON_MEAN_RADIUS_KM,
+        direction: str = "both",
+        cache: CacheMode = "use",
+        download: DownloadMode | None = None,
+        missing: MissingMode = "empty",
+    ):
+        if time is None:
+            raise _missing_time_error("Kaguya.LMAG.magnetic_connection")
+        _validate_cache_mode(cache)
+        _validate_connection_direction(direction)
+        variant_id = connection_variant_id(
+            radius_km=radius_km,
+            direction=direction,  # type: ignore[arg-type]
+        )
+        if cache == "use":
+            cached = _read_cached_connection(
+                self.instrument.mission.store,
+                self.dataset_id,
+                variant_id=variant_id,
+                time=time,
+                radius_km=radius_km,
+                direction=direction,
+            )
+            if cached is not None:
+                return cached
+        data = self.instrument.load(time, download=download, missing=missing)
+        product = lmag_magnetic_connection(
+            data,
+            radius_km=radius_km,
+            direction=direction,  # type: ignore[arg-type]
+        )
+        if cache != "never" and data.missing_reason is None:
+            self.instrument.mission.store.write_parquet_dataset(
+                dataset_id=self.dataset_id,
+                variant_id=variant_id,
+                variant=variant_metadata(
+                    radius_km=radius_km,
+                    direction=direction,  # type: ignore[arg-type]
+                ),
+                layer="features",
+                mission="kaguya",
+                instrument="lmag",
+                product="magnetic_connection",
+                schema=connection_schema(),
+                time_coverage=time,
+                frame=product.to_polars(),
+                source_files=tuple(str(path) for path in data.files),
+                source_datasets=("kaguya.lmag.magnetic_field", "kaguya.orbit.position"),
+                overwrite=True,
+                producer="sopran.kaguya.lmag.magnetic_connection",
+            )
+        return product
+
+    def plot(
+        self,
+        time: TimeRange | None = None,
+        *,
+        kind: str = "footpoint",
+        radius_km: float = MOON_MEAN_RADIUS_KM,
+        direction: str = "both",
+        cache: CacheMode = "use",
+        download: DownloadMode | None = None,
+        missing: MissingMode = "empty",
+    ):
+        return self.load(
+            time,
+            radius_km=radius_km,
+            direction=direction,
+            cache=cache,
+            download=download,
+            missing=missing,
+        ).plot(kind=kind)  # type: ignore[arg-type]
+
+
+def _validate_cache_mode(cache: str) -> None:
+    if cache not in {"use", "refresh", "never"}:
+        raise ValueError("cache must be 'use', 'refresh', or 'never'")
+
+
+def _validate_connection_direction(direction: str) -> None:
+    if direction not in {"plus", "minus", "both"}:
+        raise ValueError("direction must be 'plus', 'minus', or 'both'")
+
+
+def _read_cached_array(
+    store: Store,
+    dataset_id: str,
+    *,
+    variant_id: str,
+    schema: VariableSchema,
+    time: TimeRange,
+):
+    try:
+        record = store.dataset(dataset_id, layer="features", variant_id=variant_id)
+    except DatasetNotFoundError:
+        return None
+    if not _record_covers_time_range(record, time):
+        return None
+    frame = _filter_frame_by_time(record.scan(dataset_id=dataset_id).collect(), time)
+    return array_from_polars(frame, schema=schema, time_range=time)
+
+
+def _read_cached_lrs_array(
+    store: Store,
+    dataset_id: str,
+    *,
+    layer: str,
+    schema: VariableSchema,
+    time: TimeRange,
+):
+    try:
+        record = store.dataset(dataset_id, layer=layer)
+    except DatasetNotFoundError:
+        return None
+    if not _record_covers_time_range(record, time):
+        return None
+    manifest = record.manifest()
+    parameters = manifest.get("parameters") or {}
+    source_files = tuple(Path(path) for path in manifest.get("source_files") or ())
+    frame = _filter_frame_by_time(record.scan(dataset_id=dataset_id).collect(), time)
+    return lrs_array_from_polars(
+        frame,
+        schema=schema,
+        time_range=time,
+        files=source_files,
+        coordinates=parameters.get("coordinates") or {},
+        attrs=parameters.get("attrs") or {},
+    )
+
+
+def _read_cached_connection(
+    store: Store,
+    dataset_id: str,
+    *,
+    variant_id: str,
+    time: TimeRange,
+    radius_km: float,
+    direction: str,
+):
+    try:
+        record = store.dataset(dataset_id, layer="features", variant_id=variant_id)
+    except DatasetNotFoundError:
+        return None
+    if not _record_covers_time_range(record, time):
+        return None
+    frame = _filter_frame_by_time(record.scan(dataset_id=dataset_id).collect(), time)
+    from sopran.missions.kaguya.geometry import KaguyaMagneticConnectionData
+
+    return KaguyaMagneticConnectionData.from_polars(
+        frame,
+        time_range=time,
+        radius_km=radius_km,
+        direction=direction,  # type: ignore[arg-type]
+    )
+
+
+def _record_covers_time_range(record, time: TimeRange) -> bool:
+    coverage = record.manifest().get("time_coverage") or {}
+    return _coverage_contains_time_range(coverage, time)
+
+
+def _coverage_contains_time_range(coverage: dict[str, object], time: TimeRange) -> bool:
+    start = str(coverage.get("start") or "")
+    stop = str(coverage.get("stop") or "")
+    if not start or not stop:
+        return False
+    try:
+        covered = period(start, stop)
+    except (TypeError, ValueError):
+        return False
+    return covered.start <= time.start and covered.stop >= time.stop
+
+
+def _write_lrs_array_cache(
+    endpoint: LrsVariableEndpoint,
+    product,
+    data: KaguyaLrsData,
+    *,
+    time: TimeRange,
+) -> None:
+    array = product.to_xarray()
+    layout = "array" if len(tuple(array.dims)) > 1 else "long"
+    endpoint.instrument.mission.store.write_parquet_dataset(
+        dataset_id=endpoint.dataset_id,
+        layer=_lrs_cache_layer(endpoint.name),
+        mission="kaguya",
+        instrument="lrs",
+        product=endpoint.name,
+        schema=KAGUYA_LRS_SCHEMA,
+        time_coverage=time,
+        frame=product.to_polars(layout=layout, max_rows=None, allow_large=True),
+        source_files=tuple(str(path) for path in data.files),
+        source_datasets=("kaguya.lrs.raw",),
+        overwrite=True,
+        producer=f"sopran.kaguya.lrs.{endpoint.name}",
+        parameters={
+            "kind": endpoint.kind,
+            "coordinates": _lrs_cache_coordinates(array),
+            "attrs": _jsonable_metadata(dict(array.attrs)),
+        },
+    )
+
+
+def _lrs_cache_layer(name: str) -> str:
+    if name in {
+        "wfc_gain",
+        "wfc_ex_field",
+        "wfc_ey_field",
+        "wfc_ex_power_spectral_density",
+        "wfc_ey_power_spectral_density",
+        "wfc_xymode",
+        "wfc_fband",
+        "wfc_omode",
+    }:
+        return "features"
+    return "normalized"
+
+
+def _lrs_cache_coordinates(array) -> dict[str, object]:
+    if "frequency" not in getattr(array, "coords", {}):
+        return {}
+    coordinate = array.coords["frequency"]
+    metadata: dict[str, object] = {"frequency": coordinate.values.tolist()}
+    units = getattr(coordinate, "attrs", {}).get("units")
+    if units is not None:
+        metadata["frequency_units"] = str(units)
+    return metadata
+
+
+def _jsonable_metadata(value):
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _jsonable_metadata(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_jsonable_metadata(item) for item in value]
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        return _jsonable_metadata(tolist())
+    return str(value)
 
 
 def _missing_time_error(endpoint: str) -> ValueError:
@@ -1467,6 +2390,71 @@ def _kaguya_endpoint_example(endpoint: str) -> str:
 
 def _endpoint_path(endpoint: VariableEndpoint) -> str:
     return f"kg.{endpoint.instrument.name.lower()}.{endpoint.name}"
+
+
+def _endpoint_plot_metadata(
+    endpoint: VariableEndpoint,
+    loaded,
+    *,
+    download: DownloadMode | None,
+    missing: MissingMode | None,
+    cache: CacheMode | None = None,
+) -> dict[str, Any]:
+    resolved_download = (
+        endpoint.instrument.mission.download if download is None else download
+    )
+    metadata = {
+        "mission": "kaguya",
+        "instrument": endpoint.instrument.name,
+        "variable": endpoint.name,
+        "endpoint": _endpoint_path(endpoint),
+        "download": resolved_download,
+        "source": "darts-pds3",
+        "source_files": [str(path) for path in loaded.files],
+        "remote_files": endpoint.plan(loaded.time).remote_files,
+        "schema": endpoint.schema().to_metadata(),
+    }
+    if _instrument_load_accepts_missing(endpoint.instrument):
+        metadata["missing"] = missing or "empty"
+    if cache is not None:
+        metadata["cache"] = cache
+    return metadata
+
+
+def _instrument_load_accepts_missing(instrument: KaguyaInstrument) -> bool:
+    try:
+        return "missing" in signature(instrument.load).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+def _load_endpoint(
+    endpoint: VariableEndpoint,
+    time: TimeRange | None,
+    *,
+    download: DownloadMode | None,
+    missing: MissingMode | None,
+    cache: CacheMode | None,
+):
+    kwargs: dict[str, Any] = {"download": download, "missing": missing}
+    if cache is not None:
+        parameters = signature(endpoint.load).parameters
+        if "cache" not in parameters:
+            raise TypeError(f"{_endpoint_path(endpoint)} does not support cache")
+        _validate_cache_mode(cache)
+        kwargs["cache"] = cache
+    return endpoint.load(time, **kwargs)
+
+
+def _merge_metadata(
+    base: dict[str, Any],
+    extra: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not extra:
+        return base
+    merged = dict(base)
+    merged.update(extra)
+    return merged
 
 
 def _endpoint_plot_example(endpoint: VariableEndpoint) -> str:

@@ -32,6 +32,7 @@ summed = esa1.to_polars("counts", reduce_look="sum")
 ```
 
 `counts.to_xarray()` returns the dense `time x energy x look` array.
+The current `energy` coordinate is a channel index, not physical eV.
 `esa1.to_polars("counts")` keeps one row per time sample and stores `counts` as
 a `pl.Array` column. Request full expansion explicitly with `layout="long"`;
 for ordinary tabular output, reduce the look dimension first, for example with

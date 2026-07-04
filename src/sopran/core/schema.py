@@ -123,7 +123,7 @@ def _markdown_cell(value: str | None) -> str:
 def _available_names(data: Any) -> set[str]:
     if hasattr(data, "collect_schema"):
         return set(data.collect_schema().names())
-    if hasattr(data, "schema") and isinstance(getattr(data, "schema"), dict):
+    if hasattr(data, "schema") and isinstance(data.schema, dict):
         return set(data.schema)
     if hasattr(data, "columns"):
         return {str(column) for column in data.columns}
@@ -183,7 +183,7 @@ def _validate_dtypes(data: Any, variables: tuple[VariableSchema, ...]) -> None:
 def _dtype_for_name(data: Any, name: str) -> str | None:
     if hasattr(data, "collect_schema"):
         return str(data.collect_schema().get(name))
-    if hasattr(data, "schema") and isinstance(getattr(data, "schema"), dict):
+    if hasattr(data, "schema") and isinstance(data.schema, dict):
         dtype = data.schema.get(name)
         return str(dtype) if dtype is not None else None
     if hasattr(data, "__getitem__"):

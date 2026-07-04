@@ -10,7 +10,7 @@ from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import Store
-from sopran.core.time import TimeRange
+from sopran.core.time import TimeRange, _filter_polars_time
 
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/missions/artemis/"
@@ -492,11 +492,7 @@ def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
         )
 
     if "time" in frame.columns:
-        import polars as pl
-
-        frame = frame.filter(
-            (pl.col("time") >= time.start_iso) & (pl.col("time") < time.stop_iso)
-        )
+        frame = _filter_polars_time(frame, time)
 
     secondary_dim = schema.dims[1]
     rows = frame.sort(["time", secondary_dim]).to_dicts()
@@ -513,9 +509,19 @@ def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
     return xr.DataArray(
         values,
         dims=schema.dims,
-        coords={"time": times, secondary_dim: secondary_values},
+        coords={"time": _datetime64_values(times), secondary_dim: secondary_values},
         name=schema.name,
         attrs={"units": schema.units, "description": schema.description},
+    )
+
+
+def _datetime64_values(values: tuple[Any, ...]):
+    import pandas as pd
+
+    return (
+        pd.to_datetime(list(values), utc=True)
+        .tz_convert(None)
+        .to_numpy(dtype="datetime64[ns]")
     )
 
 

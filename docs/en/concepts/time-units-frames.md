@@ -37,6 +37,38 @@ features = (
 matrix = features.to_feature_matrix().select("sza", "wave_power")
 ```
 
+## Resample Like
+
+Use `resample_like` when one time series should be sampled on another
+instrument's actual timestamps. For `method="linear"`, `tolerance` applies to
+both bracketing source samples; interpolation across a larger gap returns
+missing values.
+Linear resampling does not extrapolate outside the source coverage. Times from
+pandas, polars, and xarray inputs are normalized as UTC `datetime64[ns]` before
+alignment. For DataFrame inputs, `linear` interpolates numeric columns only.
+Source timestamps must be unique. Duplicate pandas DataFrame column names are
+rejected to avoid ambiguous outputs. Polars `DataFrame` and `LazyFrame` inputs
+are both accepted.
+
+| method | Meaning |
+| --- | --- |
+| `nearest` | Source sample nearest to each target timestamp |
+| `previous` | Last source sample at or before the target timestamp |
+| `next` | First source sample at or after the target timestamp |
+| `linear` | Linear interpolation between source samples |
+
+```python
+esa1 = kg.esa1.counts.load(time)
+conn = kg.lmag.magnetic_connection.load(time, cache="use")
+conn_on_esa1 = conn.resample_like(esa1, method="nearest", tolerance="2s")
+
+altitude_on_esa1 = kg.orbit.altitude.load(time).resample_like(
+    esa1,
+    method="linear",
+    tolerance="10s",
+)
+```
+
 ## FrameContext
 
 ```python
@@ -54,6 +86,8 @@ Identity transforms record provenance without requiring SPICE. Non-identity
 `SELENE_M_SPACECRAFT`, `MOON_ME`, `SSE`, and `GSE`, pass the required time and
 frame kernels through `FrameContext(spice_kernels=...)`. Missing kernels are not
 guessed; SOPRAN raises `FrameTransformError`.
+`FrameContext.metadata()` separates `available_backends` visible in the Python
+environment from `implemented_backends` that SOPRAN can actually dispatch.
 
 ```python
 vectors_in_spacecraft = frames.transform_vectors(

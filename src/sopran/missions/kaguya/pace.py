@@ -3,14 +3,13 @@ from __future__ import annotations
 import gzip
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from sopran.missions.kaguya.sensors import normalize_sensor, normalize_sensors
-
 
 SENSOR_NAMES = {
     0: "ESA-S1",
@@ -420,7 +419,7 @@ def _decode_unix_time(yyyymmdd: int, hhmmss: int, time_resolution: int) -> float
             int(time_text[0:2]),
             int(time_text[2:4]),
             int(time_text[4:6]),
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
     except ValueError:
         return None
