@@ -31,7 +31,7 @@ class Region:
         object.__setattr__(
             self,
             "lon",
-            tuple(_convert_lon(value, lon_domain) for value in self.lon),
+            _convert_lon_pair(self.lon, lon_domain),
         )
         object.__setattr__(self, "lat", tuple(float(value) for value in self.lat))
 
@@ -53,7 +53,7 @@ class Region:
             return self
         return replace(
             self,
-            lon=tuple(_convert_lon(value, lon_domain) for value in self.lon),
+            lon=_convert_lon_pair(self.lon, lon_domain),
             lon_domain=lon_domain,
         )
 
@@ -86,6 +86,16 @@ def _convert_lon(value: float, lon_domain: LonDomain) -> float:
         converted = (value + 180) % 360 - 180
         return float(180 if converted == -180 and value > 0 else converted)
     raise ValueError("lon_domain must be '0_360', '-180_180', or 'minus180_180'")
+
+
+def _convert_lon_pair(
+    values: tuple[float, float],
+    lon_domain: LonDomain,
+) -> tuple[float, float]:
+    return (
+        _convert_lon(values[0], lon_domain),
+        _convert_lon(values[1], lon_domain),
+    )
 
 
 def _canonical_lon_domain(lon_domain: LonDomain) -> Literal["0_360", "-180_180"]:

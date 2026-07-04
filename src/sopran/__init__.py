@@ -1,5 +1,7 @@
 """Satellite Observation Package for Retrieval, Analysis, and Navigation."""
 
+from typing import Any
+
 from sopran.bodies import Moon
 from sopran.core import (
     AlignmentResult,
@@ -60,7 +62,7 @@ from sopran.missions.kaguya import Kaguya
 __version__ = "0.0.0"
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     if name in {"builtin_schemas", "schema_reference_markdown"}:
         from importlib import import_module
 

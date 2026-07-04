@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import numpy as np
 
@@ -121,7 +121,7 @@ def pitch_angles_deg(theta_deg: Any, phi_deg: Any, magnetic_field: Any) -> np.nd
     vy = np.sin(phi) * np.cos(theta)
     vz = np.sin(theta)
     dot = (vx * bvec[0] + vy * bvec[1] + vz * bvec[2]) / bnorm
-    return np.rad2deg(np.arccos(np.clip(dot, -1.0, 1.0)))
+    return cast(np.ndarray, np.rad2deg(np.arccos(np.clip(dot, -1.0, 1.0))))
 
 
 @dataclass(frozen=True)
@@ -201,7 +201,7 @@ def _record_angular_data(
         raise ValueError(
             f"PACE count record shape cannot be pitch-binned: {getattr(counts, 'shape', None)}"
         )
-    shape = tuple(int(item) for item in counts.shape)
+    shape = (int(counts.shape[0]), int(counts.shape[1]), int(counts.shape[2]))
     key = _angular_key(shape[1], shape[2])
     if key is None:
         raise ValueError(f"Unsupported PACE angular shape for pitch binning: {shape}")
@@ -246,7 +246,7 @@ def _calibration_grid(
     shape: tuple[int, int, int],
     sensor: int,
     calibration: PaceCalibration | None,
-):
+) -> Any:
     ram = int(header.get("svs_tbl", 0))
     key = _angular_key(shape[1], shape[2])
     fov = calibration.fov.get(sensor) if calibration is not None else None
@@ -301,7 +301,7 @@ def _fallback_fov_grid(
     raise ValueError("pitch_angle_spectrum requires PACE angle calibration")
 
 
-def _seq_or_default(info: dict[str, np.ndarray], key: str, ram: int, polar_count: int):
+def _seq_or_default(info: dict[str, np.ndarray], key: str, ram: int, polar_count: int) -> Any:
     ene_name = f"ene_sqno_{key}"
     pol_name = f"pol_sqno_{key}"
     if ene_name not in info or pol_name not in info:
@@ -330,7 +330,10 @@ def _domega(theta: np.ndarray, shape: tuple[int, int, int]) -> np.ndarray:
     dtheta = 90.0 / float(shape[1])
     dphi = 360.0 / float(shape[2])
     theta_rad = np.deg2rad(theta)
-    return 2.0 * np.deg2rad(dphi) * np.cos(theta_rad) * np.sin(0.5 * np.deg2rad(dtheta))
+    return cast(
+        np.ndarray,
+        2.0 * np.deg2rad(dphi) * np.cos(theta_rad) * np.sin(0.5 * np.deg2rad(dtheta)),
+    )
 
 
 def _flatten_angular(values: np.ndarray) -> np.ndarray:

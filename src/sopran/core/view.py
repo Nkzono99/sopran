@@ -4,12 +4,14 @@ import inspect
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 from sopran.core.plotting import PlotItem, PlotStack, line, lines, spectrogram, stack
 from sopran.core.time import TimeRange, day, period
 from sopran.frames import FrameContext
 from sopran.maps import Region
+
+DownloadMode = Literal["never", "missing", "always"]
 
 
 @dataclass(frozen=True)
@@ -63,9 +65,13 @@ class ViewContext:
             "download": self.download,
             "backend_policy": self.backend_policy,
             "backends": dict(self.backends),
-            "spice_kernels": [path.as_posix() for path in self.spice_kernels],
+            "spice_kernels": [path.as_posix() for path in self._spice_kernels],
             "time_scale": self.time_scale,
         }
+
+    @property
+    def _spice_kernels(self) -> tuple[Path, ...]:
+        return cast(tuple[Path, ...], self.spice_kernels)
 
 
 @dataclass(frozen=True)
@@ -93,22 +99,22 @@ class View:
         return self.context.cache
 
     @property
-    def kaguya(self):
+    def kaguya(self) -> Any:
         from sopran.missions.kaguya import Kaguya
 
         return BoundNode(
-            Kaguya(store=self.project.store, download=self.context.download),
+            Kaguya(store=self.project.store, download=_download_mode(self.context.download)),
             self,
         )
 
     @property
-    def artemis(self):
+    def artemis(self) -> Any:
         from sopran.missions.artemis import Artemis
 
         return BoundNode(Artemis(store=self.project.store), self)
 
     @property
-    def moon(self):
+    def moon(self) -> Any:
         from sopran.bodies import Moon
 
         return BoundMoon(Moon(), self)
@@ -153,7 +159,7 @@ class View:
 
     def frame_context(self) -> FrameContext:
         return FrameContext(
-            spice_kernels=self.context.spice_kernels,
+            spice_kernels=self.context._spice_kernels,
             time_scale=self.context.time_scale,
             default_backend=self.context.backends.get("frames"),
         )
@@ -178,43 +184,43 @@ class BoundNode:
         self._value = value
         self._view = view
 
-    def load(self, time: TimeRange | None = None, **kwargs):
+    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._call_with_time("load", time, kwargs)
 
-    def plan(self, time: TimeRange | None = None, **kwargs):
+    def plan(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._call_with_time("plan", time, kwargs)
 
-    def plot(self, time: TimeRange | None = None, **kwargs):
+    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._call_with_time("plot", time, kwargs)
 
-    def pipeline(self, time: TimeRange | None = None, **kwargs):
+    def pipeline(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._call_with_time("pipeline", time, kwargs)
 
-    def line(self, time: TimeRange | None = None, **kwargs):
+    def line(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         line_method = getattr(self._value, "line", None)
         if line_method is not None:
             return self._call_with_time("line", time, kwargs)
         return line(lambda: self.load(time).to_xarray(), **kwargs)
 
-    def lines(self, time: TimeRange | None = None, **kwargs):
+    def lines(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         lines_method = getattr(self._value, "lines", None)
         if lines_method is not None:
             return self._call_with_time("lines", time, kwargs)
         return lines(lambda: self.load(time).to_xarray(), **kwargs)
 
-    def spectrogram(self, time: TimeRange | None = None, **kwargs):
+    def spectrogram(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         spectrogram_method = getattr(self._value, "spectrogram", None)
         if spectrogram_method is not None:
             return self._call_with_time("spectrogram", time, kwargs)
         return spectrogram(lambda: self.load(time).to_xarray(), **kwargs)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._value, name)
         if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):
             return BoundNode(value, self._view)
         return value
 
-    def _call_with_time(self, name: str, time: TimeRange | None, kwargs: dict[str, Any]):
+    def _call_with_time(self, name: str, time: TimeRange | None, kwargs: dict[str, Any]) -> Any:
         method = getattr(self._value, name)
         call_kwargs = dict(kwargs)
         if (
@@ -234,10 +240,10 @@ class BoundMoon:
         self._moon = moon
         self._view = view
 
-    def map(self, product: str):
+    def map(self, product: str) -> Any:
         return BoundSurfaceEndpoint(self._moon.map(product), self._view)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._moon, name)
         if hasattr(value, "plan") and hasattr(value, "load"):
             return BoundSurfaceEndpoint(value, self._view)
@@ -249,22 +255,22 @@ class BoundSurfaceEndpoint:
         self._endpoint = endpoint
         self._view = view
 
-    def plan(self, **parameters):
+    def plan(self, **parameters: Any) -> Any:
         return self._endpoint.plan(
             **_surface_parameters_with_view(self._endpoint, self._view, parameters)
         )
 
-    def load(self, **parameters):
+    def load(self, **parameters: Any) -> Any:
         return self._endpoint.load(
             **_surface_parameters_with_view(self._endpoint, self._view, parameters)
         )
 
-    def compute(self, **parameters):
+    def compute(self, **parameters: Any) -> Any:
         return self._endpoint.compute(
             **_surface_parameters_with_view(self._endpoint, self._view, parameters)
         )
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._endpoint, name)
 
 
@@ -290,6 +296,14 @@ def _backend_mapping(value: str | Mapping[str, str] | None) -> dict[str, str]:
     if isinstance(value, str):
         return {"frames": value}
     return {str(key): str(item) for key, item in value.items()}
+
+
+def _download_mode(value: str | None) -> DownloadMode | None:
+    if value is None:
+        return None
+    if value not in ("never", "missing", "always"):
+        raise ValueError("download must be 'never', 'missing', or 'always'")
+    return cast(DownloadMode, value)
 
 
 def _time_metadata(time: TimeRange | None) -> dict[str, str] | None:

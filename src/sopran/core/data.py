@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
@@ -31,7 +31,7 @@ class SopranArray:
 
     @property
     def metadata(self) -> dict[str, Any]:
-        metadata = {
+        metadata: dict[str, Any] = {
             "type": type(self).__name__,
             "name": self.name,
             "time_range": {
@@ -69,7 +69,7 @@ class SopranArray:
         layout: PolarsLayout = "auto",
         max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
         allow_large: bool = False,
-    ):
+    ) -> Any:
         try:
             import numpy as np
             import polars as pl
@@ -96,7 +96,7 @@ class SopranArray:
         layout: PolarsLayout = "auto",
         max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
         allow_large: bool = False,
-    ):
+    ) -> Any:
         return self.to_polars(
             layout=layout,
             max_rows=max_rows,
@@ -124,11 +124,14 @@ class SopranArray:
         transform_array = getattr(context, "transform_array", None)
         if not callable(transform_array):
             raise TypeError("context must expose transform_array(array, target_frame, ...)")
-        return transform_array(
-            self,
-            frame,
-            source_frame=source_frame,
-            backend=backend,
+        return cast(
+            SopranArray,
+            transform_array(
+                self,
+                frame,
+                source_frame=source_frame,
+                backend=backend,
+            ),
         )
 
     def mean(self, *args: Any, **kwargs: Any) -> SopranArray:
@@ -151,12 +154,15 @@ class SopranArray:
     ) -> SopranArray:
         from sopran.core.resampling import resample_like
 
-        return resample_like(
-            self,
-            target,
-            method=method,  # type: ignore[arg-type]
-            tolerance=tolerance,
-            time=time,
+        return cast(
+            SopranArray,
+            resample_like(
+                self,
+                target,
+                method=method,  # type: ignore[arg-type]
+                tolerance=tolerance,
+                time=time,
+            ),
         )
 
     def peak_trace(
@@ -280,7 +286,7 @@ class SopranArray:
         status: str = "candidate",
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
-    ):
+    ) -> Any:
         product_name = product or self.name
         schema = InstrumentSchema(
             mission=mission,
@@ -450,7 +456,7 @@ class SopranArray:
             ),
         )
 
-    def line(self, *, x: str = "time", name: str | None = None):
+    def line(self, *, x: str = "time", name: str | None = None) -> Any:
         from sopran.core.plotting import line
 
         return line(self.to_xarray(), x=x, name=name or self.name)
@@ -462,7 +468,7 @@ class SopranArray:
         components: str | tuple[str, ...] | list[str] | None = None,
         component_dim: str = "component",
         name: str | None = None,
-    ):
+    ) -> Any:
         from sopran.core.plotting import lines
 
         return lines(
@@ -473,7 +479,7 @@ class SopranArray:
             name=name or self.name,
         )
 
-    def histogram(self, *, bins: int | str = 50, name: str | None = None):
+    def histogram(self, *, bins: int | str = 50, name: str | None = None) -> Any:
         from sopran.core.plotting import histogram
 
         return histogram(self.to_xarray(), bins=bins, name=name or self.name)
@@ -488,7 +494,7 @@ class SopranArray:
         reduction: str = "sum",
         log_color: bool = False,
         name: str | None = None,
-    ):
+    ) -> Any:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
@@ -516,7 +522,7 @@ class SopranArray:
         reduction: str = "sum",
         log_color: bool = False,
         name: str | None = None,
-    ):
+    ) -> Any:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
@@ -555,7 +561,7 @@ class SopranArray:
         mode: PlotMode = "auto",
         pitch: Any | None = None,
         energy: Any | None = None,
-    ):
+    ) -> Any:
         from sopran.core.plotting import stack
 
         quicklook_name = name or self.name
@@ -603,7 +609,7 @@ class SopranArray:
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
         log_color: bool = False,
-    ):
+    ) -> Any:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
@@ -814,7 +820,7 @@ def _resolve_polars_layout(values: Any, layout: PolarsLayout) -> Literal["array"
     raise ValueError("layout must be 'auto', 'array', or 'long'")
 
 
-def _data_array_to_array_polars(array: Any, name: str, np: Any, pl: Any):
+def _data_array_to_array_polars(array: Any, name: str, np: Any, pl: Any) -> Any:
     values = np.asarray(array.values)
     if values.ndim < 2:
         return _data_array_to_long_polars(array, name, np, pl)
@@ -835,7 +841,7 @@ def _data_array_to_array_polars(array: Any, name: str, np: Any, pl: Any):
     )
 
 
-def _data_array_to_long_polars(array: Any, name: str, np: Any, pl: Any):
+def _data_array_to_long_polars(array: Any, name: str, np: Any, pl: Any) -> Any:
     dims = tuple(array.dims)
     values = np.asarray(array.values)
     columns: dict[str, Any] = {}
@@ -852,7 +858,7 @@ def _data_array_to_long_polars(array: Any, name: str, np: Any, pl: Any):
     return pl.DataFrame(columns)
 
 
-def _polars_inner_dtype(values: Any, np: Any, pl: Any):
+def _polars_inner_dtype(values: Any, np: Any, pl: Any) -> Any:
     dtype = np.asarray(values).dtype
     if np.issubdtype(dtype, np.floating):
         return pl.Float32 if dtype == np.dtype("float32") else pl.Float64

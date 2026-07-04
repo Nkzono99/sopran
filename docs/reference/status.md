@@ -15,7 +15,7 @@
 | Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load | projection、reproject、shadow 計算 |
 | Rust backend | 未接続 | decode、binning、fit、batch shard 処理 |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
-| CI / 型検査 | pytest、compileall、schema docs、ruff。mypy は informational step | mypy error の解消と blocking 化 |
+| CI / 型検査 | pytest、compileall、schema docs、ruff、mypy を blocking step として実行 | 型境界の精度向上と strict 対象の拡大 |
 
 ## KAGUYA PACE
 
@@ -108,13 +108,12 @@
 
 - GitHub Actions の `ci` workflow
 - `pytest`、`compileall`、schema docs check、`ruff`
-- `mypy` 実行。現時点では既存の型 annotation debt が残るため `continue-on-error` の
-  informational step
+- `mypy` blocking 実行
 
 残っているもの:
 
-- `mypy` error の解消
-- type check の blocking CI 化
+- 動的 loader / plotting backend 境界の型精度向上
+- optional dependency ごとの型検査範囲整理
 - 長期 batch の監査 UI
 
 ## 可視化

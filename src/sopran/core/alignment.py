@@ -82,7 +82,7 @@ class TimeBins:
         regular = durations[0]
         return tuple(duration < regular for duration in durations)
 
-    def to_polars(self):
+    def to_polars(self) -> Any:
         import polars as pl
 
         return pl.DataFrame(
@@ -134,7 +134,7 @@ class FeatureMatrix:
     def shape(self) -> tuple[int, ...]:
         return tuple(self.values.shape)
 
-    def to_pandas(self, *, include_time: bool = False):
+    def to_pandas(self, *, include_time: bool = False) -> Any:
         import pandas as pd
 
         frame = pd.DataFrame(self.values, columns=list(self.columns))
@@ -142,7 +142,7 @@ class FeatureMatrix:
             frame.insert(0, "time", list(self.time))
         return frame
 
-    def to_polars(self, *, include_time: bool = False):
+    def to_polars(self, *, include_time: bool = False) -> Any:
         import polars as pl
 
         frame = pl.DataFrame(self.values, schema=list(self.columns), orient="row")
@@ -292,7 +292,7 @@ class AlignmentResult:
     quality_mask: bool = False
     feature_rules: tuple[dict[str, Any], ...] = ()
 
-    def to_polars(self, *, layout: TableLayout = "wide"):
+    def to_polars(self, *, layout: TableLayout = "wide") -> Any:
         import polars as pl
 
         if layout == "wide":
@@ -307,7 +307,7 @@ class AlignmentResult:
             )
         raise ValueError("layout must be 'wide' or 'long'")
 
-    def to_feature_frame(self, *, include_time: bool = False):
+    def to_feature_frame(self, *, include_time: bool = False) -> Any:
         columns = ("time", *self.columns) if include_time else self.columns
         return self.to_polars(layout="wide").select(list(columns))
 
@@ -349,7 +349,7 @@ class AlignmentResult:
         status: str = "candidate",
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
-    ):
+    ) -> Any:
         store, output_dataset_id, output_layer = _dataset_write_target(
             target,
             dataset_id,
@@ -465,19 +465,19 @@ def time_bins(
     if partial not in _PARTIAL_POLICIES:
         raise ValueError("partial must be 'error', 'keep', or 'drop'")
     step = _parse_duration(cadence)
-    edges = [time.start]
+    bin_edges: list[datetime] = [time.start]
     current = time.start
     while current < time.stop:
         next_edge = current + step
         if next_edge > time.stop:
             if partial == "keep":
-                edges.append(time.stop)
+                bin_edges.append(time.stop)
             elif partial == "error":
                 raise ValueError("cadence must divide the requested time range exactly")
             break
         current = next_edge
-        edges.append(current)
-    grid_stop = edges[-1]
+        bin_edges.append(current)
+    grid_stop = bin_edges[-1]
     grid_time = (
         TimeRange(time.start, grid_stop)
         if time.start < grid_stop < time.stop
@@ -485,7 +485,7 @@ def time_bins(
     )
     return TimeBins(
         time=grid_time,
-        edges=tuple(edges),
+        edges=tuple(bin_edges),
         label=label,
         closed=closed,
         partial=partial,

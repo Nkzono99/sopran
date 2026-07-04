@@ -16,7 +16,7 @@ pages can focus on their own task.
 | Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download, Tsunakawa SVM load | Projection, reprojection, shadow calculation |
 | Rust backend | Not connected | Decode, binning, fitting, batch shard work |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | Interactive HTML, datashader, long-span quicklooks |
-| CI / typing | pytest, compileall, schema docs, ruff. mypy runs as informational | Burn down mypy errors and make it blocking |
+| CI / typing | pytest, compileall, schema docs, ruff, and blocking mypy | Improve type precision at dynamic boundaries and expand strict coverage |
 
 ## Near-Term Priorities
 
@@ -33,10 +33,9 @@ Implemented:
 
 - GitHub Actions `ci` workflow
 - `pytest`, `compileall`, schema docs checks, and `ruff`
-- `mypy` execution as an informational `continue-on-error` step while existing
-  annotation debt remains
+- Blocking `mypy` execution
 
 Remaining:
 
-- Resolve current `mypy` errors
-- Make type checking a blocking CI step
+- Improve typing precision around dynamic loader and plotting backend boundaries
+- Refine type-checking scope by optional dependency

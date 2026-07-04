@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO, cast
 
 import numpy as np
 
@@ -349,7 +349,7 @@ def _as_paths(files: str | Path | Iterable[str | Path]) -> list[Path]:
     return paths
 
 
-def _open_binary(path: Path):
+def _open_binary(path: Path) -> Any:
     if path.suffix.lower() == ".gz":
         return gzip.open(path, "rb")
     return path.open("rb")
@@ -399,7 +399,9 @@ def _choose_endian(header_bytes: bytes) -> str:
 
 def _parse_header(header_bytes: bytes, endian: str) -> dict[str, Any]:
     values = np.frombuffer(header_bytes, dtype=f"{endian}u4", count=64)
-    header = {field: int(values[index]) for index, field in enumerate(HEADER_FIELDS)}
+    header: dict[str, Any] = {
+        field: int(values[index]) for index, field in enumerate(HEADER_FIELDS)
+    }
     header["time"] = _decode_unix_time(
         int(header["yyyymmdd"]),
         int(header["hhmmss"]),
@@ -511,7 +513,7 @@ def _load_numeric_table(path: Path, *, min_cols: int) -> np.ndarray:
     return table
 
 
-def _open_text(path: Path):
+def _open_text(path: Path) -> TextIO:
     if path.suffix.lower() == ".gz":
         return gzip.open(path, "rt")
     return path.open("r", encoding="utf-8")
@@ -526,7 +528,7 @@ def _ram_from_name(name: str, sensor: int) -> int:
 
 def _collapse_energy_counts(counts: np.ndarray) -> np.ndarray:
     energy_look = pace_count_energy_look(counts)
-    return energy_look.astype(np.uint64, copy=False).sum(axis=1)
+    return cast(np.ndarray, energy_look.astype(np.uint64, copy=False).sum(axis=1))
 
 
 def pace_count_energy_look(counts: np.ndarray) -> np.ndarray:

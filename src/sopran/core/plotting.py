@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import numpy as np
 
@@ -208,7 +208,7 @@ class PlotStack:
         backend: Literal["panel"] = "panel",
         context: Any | None = None,
         figsize: tuple[float, float] | None = None,
-    ):
+    ) -> Any:
         if backend != "panel":
             raise ValueError("PlotStack.explore() currently supports only panel")
 
@@ -474,7 +474,7 @@ def _histogram_values(item: PlotItem) -> np.ndarray:
     finite = flattened[np.isfinite(flattened)]
     if finite.size == 0:
         raise ValueError("Histogram plot has no finite numeric values")
-    return finite
+    return cast(np.ndarray, finite)
 
 
 def _color_norm(item: PlotItem) -> Any | None:
@@ -533,7 +533,7 @@ def _component_selection(
 
 def _coord(data: Any, name: str, *, axis: int) -> np.ndarray:
     if hasattr(data, "coords") and name in data.coords:
-        return np.asarray(data.coords[name].values)
+        return cast(np.ndarray, np.asarray(data.coords[name].values))
     return np.arange(_values(data).shape[axis])
 
 
@@ -581,17 +581,17 @@ def _metadata_value(value: Any) -> Any:
 
 def _context_metadata(context: Any) -> dict[str, Any]:
     if isinstance(context, Mapping):
-        return _metadata_value(context)
+        return cast(dict[str, Any], _metadata_value(context))
     metadata = getattr(context, "metadata", None)
     if callable(metadata):
         metadata = metadata()
     if isinstance(metadata, Mapping):
-        return _metadata_value(metadata)
+        return cast(dict[str, Any], _metadata_value(metadata))
     to_metadata = getattr(context, "to_metadata", None)
     if callable(to_metadata):
         metadata = to_metadata()
     if isinstance(metadata, Mapping):
-        return _metadata_value(metadata)
+        return cast(dict[str, Any], _metadata_value(metadata))
     raise TypeError("context must be a metadata mapping or expose metadata")
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from sopran.core.time import TimeRange
@@ -145,7 +145,7 @@ class Pipeline:
         frame: str | None = None,
         aggregation: dict[str, Any] | None = None,
     ) -> Pipeline:
-        parameters = {
+        parameters: dict[str, Any] = {
             "quicklook_name": name,
             "formats": tuple(formats),
             "y": y,
@@ -194,16 +194,16 @@ class Pipeline:
             output_layer=self.output_layer,
         )
 
-    def scan(self):
+    def scan(self) -> Any:
         scanner = getattr(self.context, "_scan_pipeline", None)
         if scanner is not None:
             return scanner(self)
         raise NotImplementedError("Pipeline.scan() backend is not implemented yet")
 
-    def collect(self):
+    def collect(self) -> Any:
         return self.scan().collect()
 
-    def stream(self, *, partition: PipelineStreamPartition = "all"):
+    def stream(self, *, partition: PipelineStreamPartition = "all") -> Any:
         streamer = getattr(self.context, "_stream_pipeline", None)
         if streamer is not None:
             yield from streamer(self, partition=partition)
@@ -272,14 +272,14 @@ class Pipeline:
             )
             if isinstance(result, PipelineResult) and not result.run_parameters:
                 return replace(result, run_parameters=run_parameters)
-            return result
+            return cast(PipelineResult, result)
         raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
 
-    def _with_stage(self, name: str, **parameters: Any) -> Pipeline:
+    def _with_stage(self, stage_name: str, **parameters: Any) -> Pipeline:
         return Pipeline(
             source=self.source,
             time=self.time,
-            stages=(*self.stages, PipelineStage(name, parameters)),
+            stages=(*self.stages, PipelineStage(stage_name, parameters)),
             output_dataset=self.output_dataset,
             output_layer=self.output_layer,
             output_target=self.output_target,
@@ -391,7 +391,7 @@ def _format_parameters(parameters: dict[str, Any]) -> str:
     return " " + " ".join(f"{key}={value!r}" for key, value in normalized.items())
 
 
-def _stream_frame_by_day(frame: Any):
+def _stream_frame_by_day(frame: Any) -> Any:
     import polars as pl
 
     if "time" not in frame.columns:

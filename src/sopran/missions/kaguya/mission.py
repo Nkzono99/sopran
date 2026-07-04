@@ -10,7 +10,7 @@ from importlib.resources import files
 from inspect import signature
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, cast
 from urllib.error import HTTPError
 
 from sopran.core import Store
@@ -169,6 +169,22 @@ fig = counts.plot()
         )
 
 
+class EndpointInstrument(Protocol):
+    mission: Kaguya
+    name: str
+
+    def guide(self, *, language: str = "ja") -> GuidePage: ...
+
+    def remote_files_for_period(
+        self,
+        time: TimeRange,
+        *args: Any,
+        **kwargs: Any,
+    ) -> list[str]: ...
+
+    def load(self, time: TimeRange, *args: Any, **kwargs: Any) -> Any: ...
+
+
 @dataclass(frozen=True)
 class KaguyaQuery:
     instrument: KaguyaInstrument
@@ -239,7 +255,7 @@ class LoadPlan:
 class VariableEndpoint:
     def __init__(
         self,
-        instrument: KaguyaInstrument,
+        instrument: EndpointInstrument,
         schema: VariableSchema,
         *,
         dataset_id: str,
@@ -308,7 +324,7 @@ fig = plot_result.fig
         *,
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         if missing is None:
@@ -324,8 +340,8 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         loaded = _load_endpoint(
             self,
             time,
@@ -357,7 +373,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import line
@@ -385,7 +401,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import lines
@@ -417,7 +433,7 @@ fig = plot_result.fig
         log_color: bool = False,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import spectrogram
@@ -506,7 +522,7 @@ class GeometryArrayEndpoint:
         schema: VariableSchema,
         *,
         dataset_id: str,
-        compute,
+        compute: Any,
         product: str,
     ) -> None:
         self.instrument = orbit
@@ -532,7 +548,7 @@ class GeometryArrayEndpoint:
         context: Any | None = None,
         backend: str | None = None,
         missing: MissingMode = "empty",
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.orbit.{self.name}")
         _validate_cache_mode(cache)
@@ -602,12 +618,12 @@ class GeometryArrayEndpoint:
 
 
 def _maybe_transform_geometry_array(
-    product,
+    product: Any,
     *,
     frame: str | None,
     context: Any | None,
     backend: str | None,
-):
+) -> Any:
     if frame is None:
         return product
     if frame == product.schema.frame:
@@ -700,7 +716,7 @@ class PaceInstrument(KaguyaInstrument):
             info=read_pace_info(info_files) if info_files else {},
         )
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         if name.startswith("__"):
             raise AttributeError(name)
         suggestion = _schema_variable_suggestion(name, schema=self.schema())
@@ -728,14 +744,14 @@ class PaceInstrument(KaguyaInstrument):
     def pipeline(self, time: TimeRange) -> Pipeline:
         return Pipeline(source=f"kaguya.{self.sensor.lower()}", time=time, context=self)
 
-    def _scan_pipeline(self, pipeline: Pipeline):
+    def _scan_pipeline(self, pipeline: Pipeline) -> Any:
         variable = _pipeline_variable(pipeline)
         dataset_id = pipeline.output_dataset or f"kaguya.{self.sensor.lower()}.{variable}"
         layer = pipeline.output_layer or _pipeline_source_layer(pipeline)
         lazy = self.mission.store.scan_dataset(dataset_id, layer=layer)
         return _filter_lazy_by_time(lazy, pipeline.time)
 
-    def _stream_pipeline(self, pipeline: Pipeline, *, partition: str):
+    def _stream_pipeline(self, pipeline: Pipeline, *, partition: str) -> Any:
         if partition == "all":
             yield self._scan_pipeline(pipeline).collect()
             return
@@ -761,12 +777,11 @@ class PaceInstrument(KaguyaInstrument):
         resume: bool = False,
         only_failed: bool = False,
         on_error: str = "fail",
-        download: str | None = None,
+        download: DownloadMode | None = None,
     ) -> PipelineResult:
         if pipeline.output_dataset is None or pipeline.output_layer is None:
             raise ValueError("Pipeline.write(dataset, layer=...) is required before run()")
-        download = self.mission.download if download is None else download
-        _validate_download_mode(download)
+        download = self.mission.download if download is None else _coerce_download_mode(download)
 
         started = perf_counter()
         started_at = _utc_now_iso()
@@ -841,11 +856,11 @@ class PaceInstrument(KaguyaInstrument):
                 run_id=run_id,
                 download=download,
             )
-            quicklooks = ()
+            replay_quicklooks: tuple[Any, ...] = ()
             if _pipeline_has_quicklook(pipeline):
-                data = self.load(pipeline.time, download=download)
-                quicklooks = _write_pipeline_quicklooks(
-                    data,
+                replay_data = self.load(pipeline.time, download=download)
+                replay_quicklooks = _write_pipeline_quicklooks(
+                    replay_data,
                     existing,
                     pipeline=pipeline,
                     variable=variable,
@@ -871,14 +886,14 @@ class PaceInstrument(KaguyaInstrument):
                 plan=pipeline.plan(),
                 status="complete",
                 message=f"Replayed {replayed_count} failed shard(s) for {pipeline.output_dataset}",
-                outputs=(existing, *quicklooks),
+                outputs=(existing, *replay_quicklooks),
                 run_id=run_id,
                 log_path=log_path,
             )
 
         variable = _pipeline_variable(pipeline)
         partition = _pipeline_partition(pipeline)
-        data = None
+        data: KaguyaPaceData | None = None
         try:
             if partition == "day":
                 output = _write_daily_partitioned_pipeline_output(
@@ -945,7 +960,7 @@ class PaceInstrument(KaguyaInstrument):
                 run_id=run_id,
                 log_path=log_path,
             )
-        quicklooks = ()
+        quicklooks: tuple[Any, ...] = ()
         if _pipeline_has_quicklook(pipeline):
             if data is None:
                 data = self.load(pipeline.time, download=download)
@@ -1030,7 +1045,7 @@ fig = plot_result.fig
 """,
         )
 
-    def schema(self):
+    def schema(self) -> Any:
         return kaguya_pace_schema(self.sensor)
 
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
@@ -1072,17 +1087,22 @@ fig = plot_result.fig
         )
 
 
-def _filter_lazy_by_time(lazy, time: TimeRange):
+def _filter_lazy_by_time(lazy: Any, time: TimeRange) -> Any:
     return _filter_polars_time(lazy, time)
 
 
-def _filter_frame_by_time(frame, time: TimeRange):
+def _filter_frame_by_time(frame: Any, time: TimeRange) -> Any:
     return _filter_polars_time(frame, time)
 
 
-def _validate_download_mode(download: str) -> None:
+def _validate_download_mode(download: str | None) -> None:
     if download not in ("never", "missing", "always"):
         raise ValueError("download must be 'never', 'missing', or 'always'")
+
+
+def _coerce_download_mode(download: str | None) -> DownloadMode:
+    _validate_download_mode(download)
+    return cast(DownloadMode, download)
 
 
 def _validate_missing_mode(missing: str) -> None:
@@ -1095,9 +1115,10 @@ def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
         if _truthy_env("SOPRAN_OFFLINE"):
             download = "never"
         else:
-            download = os.environ.get("SOPRAN_DOWNLOAD_MODE", "missing")
-    _validate_download_mode(download)
-    return download
+            download = _coerce_download_mode(
+                os.environ.get("SOPRAN_DOWNLOAD_MODE", "missing")
+            )
+    return _coerce_download_mode(download)
 
 
 def _missing_raw_files_message(instrument: Any, time: TimeRange) -> str:
@@ -1192,7 +1213,7 @@ def _lrs_kinds(kind: str) -> tuple[str, ...]:
 
 def _register_downloaded_raw_file(
     store: Store,
-    source,
+    source: Any,
     path: Path,
     *,
     remote_file: str,
@@ -1213,7 +1234,7 @@ def _register_downloaded_raw_file(
 
 def _register_downloaded_calibration_file(
     store: Store,
-    source,
+    source: Any,
     path: Path,
     *,
     remote_file: str,
@@ -1255,7 +1276,7 @@ def _load_endpoint_plot_array(
     y: str,
     reduce_dims: tuple[str, ...] | None,
     reduction: str,
-):
+) -> Any:
     array = _load_endpoint(
         endpoint,
         time,
@@ -1274,7 +1295,7 @@ def _load_endpoint_plot_array(
 
 def _write_pipeline_quicklooks(
     data: KaguyaPaceData,
-    output,
+    output: Any,
     *,
     pipeline: Pipeline,
     variable: str,
@@ -1323,7 +1344,7 @@ def _write_pipeline_quicklooks(
     return tuple(results)
 
 
-def _pipeline_plot_item(data: KaguyaPaceData, variable: str, *, y: str):
+def _pipeline_plot_item(data: KaguyaPaceData, variable: str, *, y: str) -> Any:
     array = getattr(data, variable)
     dims = array.schema.dims
     if "time" in dims and y in dims:
@@ -1387,7 +1408,7 @@ def _write_failed_pipeline_output(
     mode: str,
     run_id: str,
     download: str,
-):
+) -> Any:
     return store.register_dataset(
         dataset_id=str(pipeline.output_dataset),
         layer=str(pipeline.output_layer),
@@ -1423,8 +1444,8 @@ def _write_daily_partitioned_pipeline_output(
     variable: str,
     mode: str,
     run_id: str,
-    download: str,
-):
+    download: DownloadMode,
+) -> Any:
     if mode == "replace":
         raise NotImplementedError(
             "KAGUYA PACE partition='day' does not support mode='replace' yet"
@@ -1456,7 +1477,7 @@ def _write_daily_partitioned_pipeline_output(
 
 
 def _update_pipeline_dataset_provenance(
-    output,
+    output: Any,
     pipeline: Pipeline,
     *,
     variable: str,
@@ -1490,7 +1511,7 @@ def _pipeline_partition(pipeline: Pipeline) -> str | None:
     return None
 
 
-def _stream_pipeline_shards(instrument: PaceInstrument, pipeline: Pipeline):
+def _stream_pipeline_shards(instrument: PaceInstrument, pipeline: Pipeline) -> Any:
     import polars as pl
 
     variable = _pipeline_variable(pipeline)
@@ -1507,7 +1528,7 @@ def _stream_pipeline_shards(instrument: PaceInstrument, pipeline: Pipeline):
         )
 
 
-def _complete_pipeline_output(store: Store, pipeline: Pipeline):
+def _complete_pipeline_output(store: Store, pipeline: Pipeline) -> Any:
     try:
         output = store.dataset(str(pipeline.output_dataset), layer=str(pipeline.output_layer))
     except DatasetNotFoundError:
@@ -1519,13 +1540,13 @@ def _complete_pipeline_output(store: Store, pipeline: Pipeline):
     return output
 
 
-def _adopt_pipeline_output(pipeline: Pipeline, output) -> None:
+def _adopt_pipeline_output(pipeline: Pipeline, output: Any) -> None:
     adopter = getattr(pipeline.output_target, "adopt_dataset", None)
     if callable(adopter):
         adopter(output)
 
 
-def _failed_pipeline_output(store: Store, pipeline: Pipeline):
+def _failed_pipeline_output(store: Store, pipeline: Pipeline) -> Any:
     try:
         output = store.dataset(str(pipeline.output_dataset), layer=str(pipeline.output_layer))
     except DatasetNotFoundError:
@@ -1535,23 +1556,23 @@ def _failed_pipeline_output(store: Store, pipeline: Pipeline):
     return output
 
 
-def _catalog_is_complete(output) -> bool:
+def _catalog_is_complete(output: Any) -> bool:
     shards = output.shards()
     if not shards:
         return False
     return all(str(shard.get("status") or "") == "complete" for shard in shards)
 
 
-def _failed_shard_count(output) -> int:
+def _failed_shard_count(output: Any) -> int:
     return len(output.failed_shards())
 
 
 def _replay_failed_pipeline_shards(
     instrument: PaceInstrument,
-    output,
+    output: Any,
     *,
     variable: str,
-    download: str,
+    download: DownloadMode,
 ) -> int:
     replayed = 0
     for shard in output.failed_shards():
@@ -1610,13 +1631,13 @@ def _shard_time_range(shard: dict[str, object]) -> TimeRange:
     return period(start, stop)
 
 
-def _record_covers_time(output, pipeline: Pipeline) -> bool:
+def _record_covers_time(output: Any, pipeline: Pipeline) -> bool:
     coverage = output.manifest().get("time_coverage") or {}
     return _coverage_contains_time_range(coverage, pipeline.time)
 
 
 def _write_pipeline_log(
-    output,
+    output: Any,
     *,
     pipeline: Pipeline,
     run_id: str,
@@ -1631,7 +1652,10 @@ def _write_pipeline_log(
     download: str,
     errors: tuple[dict[str, str], ...] = (),
 ) -> Path:
-    shards = [_jsonable(row) for row in output.catalog().iter_rows(named=True)]
+    shards = [
+        cast(dict[str, Any], _jsonable(row))
+        for row in output.catalog().iter_rows(named=True)
+    ]
     row_count = sum(int(row.get("row_count") or 0) for row in shards)
     failed_shard_count = sum(
         1 for row in shards if str(row.get("status") or "") == "failed"
@@ -1677,7 +1701,7 @@ def _write_pipeline_log(
         "row_count": row_count,
         "shards": shards,
     }
-    path = output.root / "logs" / f"{run_id}.json"
+    path = cast(Path, output.root / "logs" / f"{run_id}.json")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
@@ -1932,7 +1956,7 @@ plot_result = spn.stack(item).plot()
 
 @dataclass(frozen=True)
 class LrsEndpointGroup:
-    def __init__(self, **endpoints) -> None:
+    def __init__(self, **endpoints: Any) -> None:
         for name, endpoint in endpoints.items():
             object.__setattr__(self, name, endpoint)
 
@@ -1965,7 +1989,7 @@ class LrsVariableEndpoint(VariableEndpoint):
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode = "use",
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         _validate_cache_mode(cache)
@@ -2027,7 +2051,7 @@ class LmagInstrument(KaguyaInstrument):
             ),
         )
 
-    def schema(self):
+    def schema(self) -> Any:
         return KAGUYA_LMAG_SCHEMA
 
     def guide(self, *, language: str = "ja") -> GuidePage:
@@ -2111,7 +2135,7 @@ class LmagConnectionEndpoint:
         self.name = "magnetic_connection"
         self.dataset_id = "kaguya.lmag.magnetic_connection"
 
-    def schema(self):
+    def schema(self) -> Any:
         return connection_schema()
 
     def info(self) -> InfoPage:
@@ -2135,7 +2159,7 @@ class LmagConnectionEndpoint:
         cache: CacheMode = "use",
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error("Kaguya.LMAG.magnetic_connection")
         _validate_cache_mode(cache)
@@ -2193,7 +2217,7 @@ class LmagConnectionEndpoint:
         cache: CacheMode = "use",
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
-    ):
+    ) -> Any:
         return self.load(
             time,
             radius_km=radius_km,
@@ -2201,7 +2225,7 @@ class LmagConnectionEndpoint:
             cache=cache,
             download=download,
             missing=missing,
-        ).plot(kind=kind)  # type: ignore[arg-type]
+        ).plot(kind=kind)
 
 
 def _validate_cache_mode(cache: str) -> None:
@@ -2221,7 +2245,7 @@ def _read_cached_array(
     variant_id: str,
     schema: VariableSchema,
     time: TimeRange,
-):
+) -> Any:
     try:
         record = store.dataset(dataset_id, layer="features", variant_id=variant_id)
     except DatasetNotFoundError:
@@ -2239,7 +2263,7 @@ def _read_cached_lrs_array(
     layer: str,
     schema: VariableSchema,
     time: TimeRange,
-):
+) -> Any:
     try:
         record = store.dataset(dataset_id, layer=layer)
     except DatasetNotFoundError:
@@ -2268,7 +2292,7 @@ def _read_cached_connection(
     time: TimeRange,
     radius_km: float,
     direction: str,
-):
+) -> Any:
     try:
         record = store.dataset(dataset_id, layer="features", variant_id=variant_id)
     except DatasetNotFoundError:
@@ -2286,7 +2310,7 @@ def _read_cached_connection(
     )
 
 
-def _record_covers_time_range(record, time: TimeRange) -> bool:
+def _record_covers_time_range(record: Any, time: TimeRange) -> bool:
     coverage = record.manifest().get("time_coverage") or {}
     return _coverage_contains_time_range(coverage, time)
 
@@ -2305,7 +2329,7 @@ def _coverage_contains_time_range(coverage: dict[str, object], time: TimeRange) 
 
 def _write_lrs_array_cache(
     endpoint: LrsVariableEndpoint,
-    product,
+    product: Any,
     data: KaguyaLrsData,
     *,
     time: TimeRange,
@@ -2348,7 +2372,7 @@ def _lrs_cache_layer(name: str) -> str:
     return "normalized"
 
 
-def _lrs_cache_coordinates(array) -> dict[str, object]:
+def _lrs_cache_coordinates(array: Any) -> dict[str, object]:
     if "frequency" not in getattr(array, "coords", {}):
         return {}
     coordinate = array.coords["frequency"]
@@ -2359,7 +2383,7 @@ def _lrs_cache_coordinates(array) -> dict[str, object]:
     return metadata
 
 
-def _jsonable_metadata(value):
+def _jsonable_metadata(value: Any) -> Any:
     if value is None or isinstance(value, str | int | float | bool):
         return value
     if isinstance(value, dict):
@@ -2395,7 +2419,7 @@ def _endpoint_path(endpoint: VariableEndpoint) -> str:
 
 def _endpoint_plot_metadata(
     endpoint: VariableEndpoint,
-    loaded,
+    loaded: Any,
     *,
     download: DownloadMode | None,
     missing: MissingMode | None,
@@ -2422,7 +2446,7 @@ def _endpoint_plot_metadata(
     return metadata
 
 
-def _instrument_load_accepts_missing(instrument: KaguyaInstrument) -> bool:
+def _instrument_load_accepts_missing(instrument: EndpointInstrument) -> bool:
     try:
         return "missing" in signature(instrument.load).parameters
     except (TypeError, ValueError):
@@ -2436,7 +2460,7 @@ def _load_endpoint(
     download: DownloadMode | None,
     missing: MissingMode | None,
     cache: CacheMode | None,
-):
+) -> Any:
     kwargs: dict[str, Any] = {"download": download, "missing": missing}
     if cache is not None:
         parameters = signature(endpoint.load).parameters
@@ -2469,8 +2493,12 @@ def _endpoint_plot_example(endpoint: VariableEndpoint) -> str:
     return f'item = {path}.line(time, x="{x}")'
 
 
-def _schema_variable_suggestion(name: str, *, schema=KAGUYA_ESA1_SCHEMA) -> str:
-    aliases = {
+def _schema_variable_suggestion(
+    name: str,
+    *,
+    schema: InstrumentSchema = KAGUYA_ESA1_SCHEMA,
+) -> str:
+    aliases: dict[str, str] = {
         alias: variable.name
         for variable in schema.variables
         for alias in variable.aliases

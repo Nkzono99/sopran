@@ -34,7 +34,7 @@ def test_ci_workflow_runs_core_verification_commands() -> None:
     )
     assert "python -m ruff check src tests" in workflow
     assert "Type check" in workflow
-    assert "continue-on-error: true" in workflow
+    assert "continue-on-error: true" not in workflow
     assert "python -m mypy src" in workflow
 
 

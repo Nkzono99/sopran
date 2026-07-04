@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from urllib.request import urlretrieve
 from uuid import uuid4
 
@@ -52,7 +53,7 @@ def _temporary_download_path(target: Path) -> Path:
     raise FileExistsError(f"Could not allocate temporary download path for {target}")
 
 
-def iter_days(start: object, stop: object | None = None):
+def iter_days(start: object, stop: object | None = None) -> Any:
     current = _as_date(start)
     final = _as_date(stop) if stop is not None else current
     while current <= final:
@@ -60,7 +61,7 @@ def iter_days(start: object, stop: object | None = None):
         current += timedelta(days=1)
 
 
-def iter_hours(start: object, stop: object | None = None, *, step_hours: int = 1):
+def iter_hours(start: object, stop: object | None = None, *, step_hours: int = 1) -> Any:
     if step_hours <= 0:
         raise ValueError("step_hours must be positive")
     current = _floor_hour(_as_datetime(start))

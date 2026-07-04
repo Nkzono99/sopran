@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from difflib import get_close_matches
 from importlib.resources import files
-from typing import Any
+from typing import Any, cast
 
 from sopran.core.data import SopranArray
 from sopran.core.errors import DatasetNotFoundError
@@ -164,7 +165,7 @@ plot_result = spn.stack(item).plot()
 """,
         )
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         if name.startswith("__"):
             raise AttributeError(name)
         raise _unknown_variable_error(
@@ -229,7 +230,7 @@ plot_result = spn.stack(item).plot()
 """,
         )
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         if name.startswith("__"):
             raise AttributeError(name)
         raise _unknown_variable_error(
@@ -267,7 +268,7 @@ class ArtemisVariableEndpoint:
         return self._schema
 
     def guide(self, *, language: str = "ja") -> GuidePage:
-        return self.instrument.guide(language=language)
+        return cast(GuidePage, self.instrument.guide(language=language))
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
@@ -309,7 +310,7 @@ plot_result = spn.stack(item).plot()
             time=time,
         )
 
-    def load(self, time: TimeRange | None = None):
+    def load(self, time: TimeRange | None = None) -> Any:
         if time is None:
             raise _missing_time_error(self)
         dataset_id = f"{self.instrument.dataset_prefix}.{self.name}"
@@ -337,7 +338,7 @@ plot_result = spn.stack(item).plot()
         *,
         x: str = "time",
         name: str | None = None,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(self)
         from sopran.core.plotting import line
@@ -356,7 +357,7 @@ plot_result = spn.stack(item).plot()
         components: str | tuple[str, ...] | list[str] | None = None,
         component_dim: str = "component",
         name: str | None = None,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(self)
         from sopran.core.plotting import lines
@@ -377,7 +378,7 @@ plot_result = spn.stack(item).plot()
         x: str = "time",
         name: str | None = None,
         log_color: bool = False,
-    ):
+    ) -> Any:
         if time is None:
             raise _missing_time_error(self)
         from sopran.core.plotting import spectrogram
@@ -474,7 +475,7 @@ def _missing_time_error(endpoint: ArtemisVariableEndpoint) -> ValueError:
     )
 
 
-def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
+def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange) -> Any:
     try:
         import numpy as np
         import xarray as xr
@@ -515,7 +516,7 @@ def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange):
     )
 
 
-def _datetime64_values(values: tuple[Any, ...]):
+def _datetime64_values(values: Sequence[Any]) -> Any:
     import pandas as pd
 
     return (
@@ -525,9 +526,9 @@ def _datetime64_values(values: tuple[Any, ...]):
     )
 
 
-def _unique(values) -> list[Any]:
-    seen = set()
-    output = []
+def _unique(values: Any) -> list[Any]:
+    seen: set[Any] = set()
+    output: list[Any] = []
     for value in values:
         if value not in seen:
             seen.add(value)

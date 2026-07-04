@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sopran.core.config import config_section, configured_path, read_user_config
 from sopran.core.errors import DatasetNotFoundError
@@ -37,17 +37,22 @@ class Store:
 
         env_root = os.environ.get("SOPRAN_DATA_ROOT")
         env_cache_root = os.environ.get("SOPRAN_CACHE_ROOT")
+        root: Path
         if self.root is not None:
             root = Path(self.root)
         elif env_root:
             root = Path(env_root)
         else:
-            root = configured_path(
+            root = cast(
+                Path,
+                configured_path(
                 config_base,
                 store_config.get("data_root"),
                 default=Path("sopran_data"),
+                ),
             )
 
+        cache_root: Path | None
         if self.cache_root is not None:
             cache_root = Path(self.cache_root)
         elif env_cache_root:
@@ -62,26 +67,34 @@ class Store:
         cache_path = Path(cache_root) if cache_root else Path(root) / "cache"
         object.__setattr__(self, "cache_root", cache_path)
 
+    @property
+    def _root(self) -> Path:
+        return cast(Path, self.root)
+
+    @property
+    def _cache_root(self) -> Path:
+        return cast(Path, self.cache_root)
+
     def raw_path(self, *parts: str) -> Path:
-        return self.root.joinpath("raw", *parts)
+        return self._root.joinpath("raw", *parts)
 
     def normalized_path(self, *parts: str) -> Path:
-        return self.root.joinpath("normalized", *parts)
+        return self._root.joinpath("normalized", *parts)
 
     def features_path(self, *parts: str) -> Path:
-        return self.root.joinpath("features", *parts)
+        return self._root.joinpath("features", *parts)
 
     def models_path(self, *parts: str) -> Path:
-        return self.root.joinpath("models", *parts)
+        return self._root.joinpath("models", *parts)
 
     def database_path(self, *parts: str) -> Path:
-        return self.root.joinpath("databases", *parts)
+        return self._root.joinpath("databases", *parts)
 
     def registry_path(self, *parts: str) -> Path:
-        return self.root.joinpath("registry", *parts)
+        return self._root.joinpath("registry", *parts)
 
     def raw_file(self, path: Path | str) -> RawFileRecord:
-        raw_file = _resolve_raw_file(self.root, path)
+        raw_file = _resolve_raw_file(self._root, path)
         manifest_path = raw_file.with_name(f"{raw_file.name}.sopran.json")
         if not raw_file.exists():
             raise FileNotFoundError(f"Raw file not found: {raw_file}")
@@ -100,12 +113,12 @@ class Store:
         download_url: str | None = None,
         acquired_at: str | None = None,
     ) -> RawFileRecord:
-        raw_file = _resolve_raw_file(self.root, path)
+        raw_file = _resolve_raw_file(self._root, path)
         if not raw_file.exists():
             raise FileNotFoundError(f"Raw file not found: {raw_file}")
         manifest_path = raw_file.with_name(f"{raw_file.name}.sopran.json")
         manifest = {
-            "path": raw_file.relative_to(self.root).as_posix(),
+            "path": raw_file.relative_to(self._root).as_posix(),
             "filename": raw_file.name,
             "mission": mission,
             "provider": provider,
@@ -119,10 +132,10 @@ class Store:
         _write_json(manifest_path, manifest)
         return RawFileRecord(path=raw_file, manifest_path=manifest_path)
 
-    def rebuild_raw_file_registry(self):
+    def rebuild_raw_file_registry(self) -> Any:
         path = self.registry_path("raw_files.parquet")
         path.parent.mkdir(parents=True, exist_ok=True)
-        frame = _raw_file_index_frame(_raw_file_index_rows(self.root))
+        frame = _raw_file_index_frame(_raw_file_index_rows(self._root))
         frame.write_parquet(path)
         return frame.sort("path")
 
@@ -137,7 +150,7 @@ class Store:
         acquired_after: str | None = None,
         acquired_before: str | None = None,
         refresh: bool = False,
-    ):
+    ) -> Any:
         import polars as pl
 
         index_path = self.registry_path("raw_files.parquet")
@@ -164,7 +177,7 @@ class Store:
             frame = frame.filter(pl.col("acquired_at") < acquired_before)
         return frame.sort("path")
 
-    def database(self, name: str, *, create: bool = False):
+    def database(self, name: str, *, create: bool = False) -> Any:
         from sopran.core.database import Database
 
         if not name:
@@ -250,7 +263,7 @@ class Store:
         partitioning: tuple[str, ...] = (),
     ) -> DatasetRecord:
         _validate_dataset_status(status)
-        source_files = _normalize_store_source_files(self.root, source_files)
+        source_files = _normalize_store_source_files(self._root, source_files)
         record = DatasetRecord(
             root=self.dataset_path(
                 dataset_id,
@@ -414,7 +427,7 @@ class Store:
         *,
         layer: str,
         variant_id: str | None = None,
-    ):
+    ) -> Any:
         record = DatasetRecord(
             root=self.dataset_path(
                 dataset_id,
@@ -465,10 +478,10 @@ class Store:
             return all(raw_file.verify_checksum() for raw_file in source_records)
         return True
 
-    def rebuild_registry(self):
+    def rebuild_registry(self) -> Any:
         path = self.registry_path("datasets.parquet")
         path.parent.mkdir(parents=True, exist_ok=True)
-        frame = _dataset_index_frame(_dataset_index_rows(self.root))
+        frame = _dataset_index_frame(_dataset_index_rows(self._root))
         frame.write_parquet(path)
         return frame.sort(["layer", "dataset_id"])
 
@@ -487,7 +500,7 @@ class Store:
         created_after: str | None = None,
         created_before: str | None = None,
         refresh: bool = False,
-    ):
+    ) -> Any:
         import polars as pl
 
         index_path = self.registry_path("datasets.parquet")
@@ -559,12 +572,12 @@ class DatasetRecord:
         return self.root / "catalog.parquet"
 
     def manifest(self) -> dict[str, Any]:
-        return json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(self.manifest_path.read_text(encoding="utf-8")))
 
     def schema(self) -> dict[str, Any]:
-        return json.loads(self.schema_path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(self.schema_path.read_text(encoding="utf-8")))
 
-    def catalog(self):
+    def catalog(self) -> Any:
         import polars as pl
 
         return pl.read_parquet(self.catalog_path)
@@ -653,7 +666,7 @@ class DatasetRecord:
             backup_target.unlink(missing_ok=True)
         return self
 
-    def scan(self, *, dataset_id: str | None = None):
+    def scan(self, *, dataset_id: str | None = None) -> Any:
         import polars as pl
 
         paths = [
@@ -701,7 +714,7 @@ class RawFileRecord:
     manifest_path: Path
 
     def manifest(self) -> dict[str, Any]:
-        return json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(self.manifest_path.read_text(encoding="utf-8")))
 
     def verify_checksum(self) -> bool:
         return self.manifest().get("checksum") == _sha256_file(self.path)
@@ -1195,7 +1208,7 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
     return tuple(rows)
 
 
-def _dataset_index_frame(rows: tuple[dict[str, Any], ...]):
+def _dataset_index_frame(rows: tuple[dict[str, Any], ...]) -> Any:
     import polars as pl
 
     schema = {
@@ -1243,7 +1256,7 @@ def _raw_file_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
     return tuple(rows)
 
 
-def _raw_file_index_frame(rows: tuple[dict[str, Any], ...]):
+def _raw_file_index_frame(rows: tuple[dict[str, Any], ...]) -> Any:
     import polars as pl
 
     schema = {

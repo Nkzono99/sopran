@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, SupportsFloat
 
 from sopran.core.data import (
     DEFAULT_MAX_POLARS_ROWS,
@@ -35,7 +35,7 @@ class KaguyaPaceData:
     missing_reason: str | None = None
 
     @cached_property
-    def instrument_schema(self):
+    def instrument_schema(self) -> Any:
         return kaguya_pace_schema(self.instrument)
 
     def info(self) -> InfoPage:
@@ -102,7 +102,7 @@ class KaguyaPaceData:
             return None
         return read_pace_pbf(self.files)
 
-    def to_xarray(self):
+    def to_xarray(self) -> Any:
         try:
             import numpy as np
             import xarray as xr
@@ -122,7 +122,7 @@ class KaguyaPaceData:
         layout: PolarsLayout = "auto",
         max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
         allow_large: bool = False,
-    ):
+    ) -> Any:
         try:
             import numpy as np
             import polars as pl
@@ -193,7 +193,7 @@ class KaguyaPaceData:
         layout: PolarsLayout = "auto",
         max_rows: int | None = DEFAULT_MAX_POLARS_ROWS,
         allow_large: bool = False,
-    ):
+    ) -> Any:
         return self.to_polars(
             variable,
             reduce_look=reduce_look,
@@ -271,7 +271,7 @@ class KaguyaPaceData:
             provenance=provenance,
         )
 
-    def _empty_xarray(self, np: Any, xr: Any):
+    def _empty_xarray(self, np: Any, xr: Any) -> Any:
         energy_flux_schema = self.instrument_schema.variable("energy_flux")
         counts_schema = self.instrument_schema.variable("counts")
         energy_schema = self.instrument_schema.variable("energy")
@@ -312,7 +312,7 @@ class KaguyaPaceData:
             attrs=attrs,
         )
 
-    def _pace_to_xarray(self, np: Any, xr: Any, pace: PaceData):
+    def _pace_to_xarray(self, np: Any, xr: Any, pace: PaceData) -> Any:
         energy_flux_schema = self.instrument_schema.variable("energy_flux")
         counts_schema = self.instrument_schema.variable("counts")
         energy_schema = self.instrument_schema.variable("energy")
@@ -385,13 +385,13 @@ class KaguyaPaceData:
         )
 
 
-def _counts_to_energy_look(counts: Any):
+def _counts_to_energy_look(counts: Any) -> Any:
     out = pace_count_energy_look(counts).astype(float, copy=True)
     out[out == 65535] = float("nan")
     return out
 
 
-def _stack_energy_look_rows(rows: list[Any], np: Any):
+def _stack_energy_look_rows(rows: list[Any], np: Any) -> Any:
     look_count = max(row.shape[1] for row in rows)
     if all(row.shape[1] == look_count for row in rows):
         return np.stack(rows)
@@ -410,7 +410,7 @@ def _pace_counts_sum_look_to_polars(
     *,
     max_rows: int | None,
     allow_large: bool,
-):
+) -> Any:
     rows = []
     time_values = []
     for record in pace.record_order:
@@ -483,9 +483,11 @@ def _resolve_kaguya_polars_layout(
     return layout
 
 
-def _header_time_to_datetime64(value: object, np: Any):
+def _header_time_to_datetime64(value: object, np: Any) -> Any:
     if value is None:
         return np.datetime64("NaT", "ns")
+    if not isinstance(value, (str, bytes, SupportsFloat)):
+        raise TypeError(f"header time must be numeric, got {value!r}")
     text = datetime.fromtimestamp(float(value), tz=UTC).replace(tzinfo=None).isoformat()
     return np.datetime64(text, "ns")
 
@@ -541,7 +543,7 @@ def _energy_flux_attrs(schema: Any, calibration: dict[str, object]) -> dict[str,
     }
 
 
-def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any):
+def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any) -> Any:
     dims = tuple(array.dims)
     values = np.asarray(array.values)
     if dims == ("time", "energy"):

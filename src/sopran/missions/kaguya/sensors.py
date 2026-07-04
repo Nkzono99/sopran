@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 SENSOR_ALIASES = {
     0: "ESA1",
     1: "ESA2",
@@ -32,7 +34,7 @@ def normalize_sensor(sensor: object) -> str:
         raise ValueError(f"Unknown KAGUYA sensor: {sensor!r}") from exc
 
 
-def normalize_sensors(sensors: object | None) -> list[str]:
+def normalize_sensors(sensors: Any) -> list[str]:
     if sensors is None:
         sensors = ["ESA1", "ESA2", "IMA", "IEA", "LMAG"]
     if isinstance(sensors, str | int):

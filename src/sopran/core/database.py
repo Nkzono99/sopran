@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema
@@ -22,7 +22,7 @@ class ProductRef:
     def name(self) -> str:
         return self.dataset_id.split(".")[-1]
 
-    def scan(self):
+    def scan(self) -> Any:
         if self.store is None:
             raise ValueError("ProductRef.scan() requires a Store-backed reference")
         return self.store.scan_dataset(self.dataset_id, layer=self.layer)
@@ -77,7 +77,7 @@ class ProductRef:
     def _record(self) -> DatasetRecord:
         if self.store is None:
             raise ValueError("ProductRef metadata requires a Store-backed reference")
-        return self.store.dataset(self.dataset_id, layer=self.layer)
+        return cast(DatasetRecord, self.store.dataset(self.dataset_id, layer=self.layer))
 
 
 @dataclass(frozen=True)
@@ -115,7 +115,7 @@ class Database:
         path = self.root / "database.json"
         if not path.exists():
             return {"name": self.name, "products": []}
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
 
     def products(self) -> tuple[ProductRef, ...]:
         return tuple(
@@ -139,14 +139,17 @@ class Database:
         product = self.product(name)
         self.root.mkdir(parents=True, exist_ok=True)
         self._write_metadata(product, description=description)
-        return self.store.register_dataset(
-            dataset_id=product.dataset_id,
-            layer=product.layer,
-            mission=self.name,
-            instrument=self.name,
-            product=name,
-            schema=schema,
-            time_coverage=None,
+        return cast(
+            DatasetRecord,
+            self.store.register_dataset(
+                dataset_id=product.dataset_id,
+                layer=product.layer,
+                mission=self.name,
+                instrument=self.name,
+                product=name,
+                schema=schema,
+                time_coverage=None,
+            ),
         )
 
     def adopt_dataset(

@@ -4,7 +4,7 @@ import gzip
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -116,14 +116,14 @@ class KaguyaLmagData:
     def to_pandas(self) -> pd.DataFrame:
         return self.frame.copy()
 
-    def to_polars(self):
+    def to_polars(self) -> Any:
         try:
             import polars as pl
         except ImportError as exc:
             raise RuntimeError("polars is required for to_polars()") from exc
         return pl.from_pandas(self.to_pandas())
 
-    def to_xarray(self):
+    def to_xarray(self) -> Any:
         try:
             import xarray as xr
         except ImportError as exc:
@@ -209,7 +209,7 @@ def _read_table(path: Path, names: list[str]) -> pd.DataFrame:
     raise ValueError(f"Unexpected KAGUYA LMAG column count in {path}: {frame.shape[1]}")
 
 
-def _open_text(path: Path):
+def _open_text(path: Path) -> Any:
     if path.suffix.lower() == ".gz":
         return gzip.open(path, "rt")
     return path.open("r", encoding="utf-8")
@@ -253,13 +253,13 @@ def _vector(frame: pd.DataFrame, prefix: str) -> np.ndarray:
 
 
 def _datetime64_from_unix(values: Any) -> np.ndarray:
-    return np.asarray(
-        [
-            np.datetime64(
-                pd.Timestamp(value, unit="s", tz="UTC").tz_convert(None).to_datetime64(),
-                "ns",
-            )
-            for value in values
-        ],
-        dtype="datetime64[ns]",
+    return cast(
+        np.ndarray,
+        np.asarray(
+            [
+                pd.Timestamp(value, unit="s", tz="UTC").tz_convert(None).to_datetime64()
+                for value in values
+            ],
+            dtype="datetime64[ns]",
+        ),
     )

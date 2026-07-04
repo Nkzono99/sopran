@@ -7,7 +7,7 @@ from sopran.core.store import Store
 from sopran.core.time import TimeRange
 
 
-def load(dataset_id: str, time: TimeRange, *, store: Store | None = None, **kwargs: Any):
+def load(dataset_id: str, time: TimeRange, *, store: Store | None = None, **kwargs: Any) -> Any:
     """Load a dataset by stable string ID.
 
     The object API remains the primary interface; this helper is for CLI, batch,

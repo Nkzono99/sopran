@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sopran.core.errors import FrameTransformError
 
@@ -66,11 +66,15 @@ class FrameContext:
     def metadata(self) -> dict[str, Any]:
         return {
             "time_scale": self.time_scale,
-            "spice_kernels": [path.as_posix() for path in self.spice_kernels],
+            "spice_kernels": [path.as_posix() for path in self._spice_kernels],
             "available_backends": _backend_versions(),
             "implemented_backends": _implemented_backend_versions(),
             "planned_backends": _planned_backend_versions(),
         }
+
+    @property
+    def _spice_kernels(self) -> tuple[Path, ...]:
+        return cast(tuple[Path, ...], self.spice_kernels)
 
     def plan(
         self,
@@ -89,7 +93,7 @@ class FrameContext:
             target_frame=target,
             backend=selected_backend,
             time_scale=self.time_scale,
-            spice_kernels=self.spice_kernels,
+            spice_kernels=self._spice_kernels,
             status=_transform_plan_status(source, target, selected_backend),
         )
 
@@ -100,7 +104,7 @@ class FrameContext:
         *,
         source_frame: str | None = None,
         backend: str | None = None,
-    ):
+    ) -> Any:
         from sopran.core.data import SopranArray
 
         if not isinstance(array, SopranArray):
@@ -166,7 +170,7 @@ def normalize_frame(frame: str) -> str:
     return _FRAME_ALIASES.get(normalized, normalized)
 
 
-def _identity_transform(array: Any, plan: FrameTransformPlan):
+def _identity_transform(array: Any, plan: FrameTransformPlan) -> Any:
     from sopran.core.data import SopranArray
 
     xr_array = array.to_xarray()
@@ -198,7 +202,7 @@ def _vector_array_transform(
     plan: FrameTransformPlan,
     *,
     backend: str | None,
-):
+) -> Any:
     from sopran.core.data import SopranArray
 
     if not isinstance(array, SopranArray):
@@ -211,7 +215,8 @@ def _vector_array_transform(
             f"{plan.source_frame} -> {plan.target_frame}"
         )
     values = getattr(xr_array, "values", None)
-    if values is None or getattr(values, "shape", ())[-1] != 3:
+    value_shape = tuple(getattr(values, "shape", ()))
+    if values is None or not value_shape or value_shape[-1] != 3:
         raise FrameTransformError(
             "Frame transform expects three vector components: "
             f"{plan.source_frame} -> {plan.target_frame}"
@@ -262,7 +267,7 @@ def _backend_versions() -> dict[str, str | None]:
 
 
 def _implemented_backend_versions() -> dict[str, str | None]:
-    versions = {"identity": "built-in"}
+    versions: dict[str, str | None] = {"identity": "built-in"}
     versions.update({name: _package_version(name) for name in _IMPLEMENTED_BACKENDS[1:]})
     return versions
 
@@ -314,7 +319,7 @@ def _vector_transform_times(times: Any, count: int) -> tuple[Any, ...]:
     return values
 
 
-def _transform_vectors_spice(vectors: Any, times: tuple[Any, ...], plan: FrameTransformPlan):
+def _transform_vectors_spice(vectors: Any, times: tuple[Any, ...], plan: FrameTransformPlan) -> Any:
     import numpy as np
 
     try:

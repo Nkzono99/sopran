@@ -7,7 +7,7 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 from sopran.bodies import Moon
 from sopran.core.config import config_section, configured_path, read_user_config
@@ -19,6 +19,8 @@ from sopran.core.view import View, ViewContext, ViewSelection, _backend_mapping,
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
+
+DownloadMode = Literal["never", "missing", "always"]
 
 
 @dataclass(frozen=True)
@@ -68,11 +70,14 @@ class Project:
                 default=Path.cwd(),
             )
         )
-        return cls(resolved_root, store=store, artifact_root=artifact_root)
+        return cls(cast(Path, resolved_root), store=store, artifact_root=artifact_root)
 
     @property
     def kaguya(self) -> Kaguya:
-        return Kaguya(store=self.store, download=self._merged_defaults().get("download"))
+        return Kaguya(
+            store=self.store,
+            download=_download_mode(self._merged_defaults().get("download")),
+        )
 
     @property
     def artemis(self) -> Artemis:
@@ -241,12 +246,13 @@ class Project:
         explicit = Path(artifact_root) if artifact_root is not None else None
         if explicit is not None:
             return explicit if explicit.is_absolute() else self.root / explicit
-        return _configured_path_by_precedence(
+        resolved = _configured_path_by_precedence(
             os.environ.get("SOPRAN_ARTIFACT_ROOT"),
             (self.root, project_config.get("artifact_root")),
             (user_config_path.parent, user_project_config.get("artifact_root")),
             default=self.root,
         )
+        return self.root if resolved is None else resolved
 
     def _merged_defaults(self) -> dict[str, Any]:
         config = self._read_config() if (self.root / "sopran.toml").exists() else {}
@@ -339,7 +345,7 @@ class Case:
         self.cache = bool(defaults.get("cache", False))
         self.region = region
         self.kaguya = CaseKaguya(
-            Kaguya(store=project.store, download=_optional_str(defaults.get("download"))),
+            Kaguya(store=project.store, download=_download_mode(defaults.get("download"))),
             self,
         )
         self.artemis = CaseMission(Artemis(store=project.store), self)
@@ -386,7 +392,7 @@ class CaseKaguya:
         self._mission = mission
         self._case = case
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._mission, name)
         if hasattr(value, "load"):
             return CaseInstrument(value, self._case)
@@ -394,11 +400,11 @@ class CaseKaguya:
 
 
 class CaseMission:
-    def __init__(self, mission, case: Case) -> None:
+    def __init__(self, mission: Any, case: Case) -> None:
         self._mission = mission
         self._case = case
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._mission, name)
         return CaseNode(value, self._case)
 
@@ -408,10 +414,10 @@ class CaseMoon:
         self._moon = moon
         self._case = case
 
-    def map(self, product: str):
+    def map(self, product: str) -> Any:
         return CaseSurfaceEndpoint(self._moon.map(product), self._case)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._moon, name)
         if hasattr(value, "plan") and hasattr(value, "load"):
             return CaseSurfaceEndpoint(value, self._case)
@@ -419,44 +425,44 @@ class CaseMoon:
 
 
 class CaseSurfaceEndpoint:
-    def __init__(self, endpoint, case: Case) -> None:
+    def __init__(self, endpoint: Any, case: Case) -> None:
         self._endpoint = endpoint
         self._case = case
 
-    def plan(self, **parameters):
+    def plan(self, **parameters: Any) -> Any:
         return self._endpoint.plan(
             **_surface_parameters_with_case(self._endpoint, self._case, parameters)
         )
 
-    def load(self, **parameters):
+    def load(self, **parameters: Any) -> Any:
         return self._endpoint.load(
             **_surface_parameters_with_case(self._endpoint, self._case, parameters)
         )
 
-    def compute(self, **parameters):
+    def compute(self, **parameters: Any) -> Any:
         return self._endpoint.compute(
             **_surface_parameters_with_case(self._endpoint, self._case, parameters)
         )
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._endpoint, name)
 
 
 class CaseNode:
-    def __init__(self, value, case: Case) -> None:
+    def __init__(self, value: Any, case: Case) -> None:
         self._value = value
         self._case = case
 
-    def load(self, time: TimeRange | None = None, **kwargs):
+    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._value.load(time or self._case.time, **kwargs)
 
-    def plan(self, time: TimeRange | None = None, **kwargs):
+    def plan(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._value.plan(time or self._case.time, **kwargs)
 
-    def plot(self, time: TimeRange | None = None, **kwargs):
+    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._value.plot(time or self._case.time, **kwargs)
 
-    def line(self, time: TimeRange | None = None, **kwargs):
+    def line(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         line_method = getattr(self._value, "line", None)
         if line_method is not None:
             return line_method(time or self._case.time, **kwargs)
@@ -464,7 +470,7 @@ class CaseNode:
 
         return line(lambda: self.load(time).to_xarray(), **kwargs)
 
-    def lines(self, time: TimeRange | None = None, **kwargs):
+    def lines(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         lines_method = getattr(self._value, "lines", None)
         if lines_method is not None:
             return lines_method(time or self._case.time, **kwargs)
@@ -472,7 +478,7 @@ class CaseNode:
 
         return lines(lambda: self.load(time).to_xarray(), **kwargs)
 
-    def spectrogram(self, time: TimeRange | None = None, **kwargs):
+    def spectrogram(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         spectrogram_method = getattr(self._value, "spectrogram", None)
         if spectrogram_method is not None:
             return spectrogram_method(time or self._case.time, **kwargs)
@@ -480,7 +486,7 @@ class CaseNode:
 
         return spectrogram(lambda: self.load(time).to_xarray(), **kwargs)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._value, name)
         if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):
             return CaseNode(value, self._case)
@@ -488,20 +494,20 @@ class CaseNode:
 
 
 class CaseInstrument:
-    def __init__(self, instrument, case: Case) -> None:
+    def __init__(self, instrument: Any, case: Case) -> None:
         self._instrument = instrument
         self._case = case
 
-    def load(self, time: TimeRange | None = None, **kwargs):
+    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._instrument.load(time or self._case.time, **kwargs)
 
-    def plan(self, time: TimeRange | None = None):
+    def plan(self, time: TimeRange | None = None) -> Any:
         return self._instrument.plan(time or self._case.time)
 
-    def pipeline(self, time: TimeRange | None = None):
+    def pipeline(self, time: TimeRange | None = None) -> Any:
         return self._instrument.pipeline(time or self._case.time)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         value = getattr(self._instrument, name)
         if hasattr(value, "load") and hasattr(value, "plan"):
             return CaseVariableEndpoint(value, self._case)
@@ -509,29 +515,29 @@ class CaseInstrument:
 
 
 class CaseVariableEndpoint:
-    def __init__(self, endpoint, case: Case) -> None:
+    def __init__(self, endpoint: Any, case: Case) -> None:
         self._endpoint = endpoint
         self._case = case
 
-    def load(self, time: TimeRange | None = None, **kwargs):
+    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._endpoint.load(time or self._case.time, **kwargs)
 
-    def plan(self, time: TimeRange | None = None):
+    def plan(self, time: TimeRange | None = None) -> Any:
         return self._endpoint.plan(time or self._case.time)
 
-    def plot(self, time: TimeRange | None = None, **kwargs):
+    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._endpoint.plot(time or self._case.time, **kwargs)
 
-    def line(self, time: TimeRange | None = None, **kwargs):
+    def line(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._endpoint.line(time or self._case.time, **kwargs)
 
-    def lines(self, time: TimeRange | None = None, **kwargs):
+    def lines(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._endpoint.lines(time or self._case.time, **kwargs)
 
-    def spectrogram(self, time: TimeRange | None = None, **kwargs):
+    def spectrogram(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
         return self._endpoint.spectrogram(time or self._case.time, **kwargs)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._endpoint, name)
 
 
@@ -547,17 +553,17 @@ def _case_region(
     if len(lon) != 2 or len(lat) != 2:
         raise ConfigError("case region lon and lat must each contain two values")
     return Region(
-        lon=lon,
-        lat=lat,
+        lon=(lon[0], lon[1]),
+        lat=(lat[0], lat[1]),
         body=str(region.get("body", "moon")),
-        lon_domain=region.get("lon_domain", "0_360"),
-        lon_direction=region.get("lon_direction", "east_positive"),
-        lat_type=region.get("lat_type", "planetocentric"),
+        lon_domain=cast(Any, region.get("lon_domain", "0_360")),
+        lon_direction=cast(Any, region.get("lon_direction", "east_positive")),
+        lat_type=cast(Any, region.get("lat_type", "planetocentric")),
     )
 
 
 def _surface_parameters_with_case(
-    endpoint,
+    endpoint: Any,
     case: Case,
     parameters: dict[str, Any],
 ) -> dict[str, Any]:
@@ -621,6 +627,15 @@ def _optional_str(value: object | None) -> str | None:
     return str(value)
 
 
+def _download_mode(value: object | None) -> DownloadMode | None:
+    if value is None:
+        return None
+    text = str(value)
+    if text not in ("never", "missing", "always"):
+        raise ConfigError("download must be 'never', 'missing', or 'always'")
+    return cast(DownloadMode, text)
+
+
 def _string_tuple(value: str | tuple[str, ...] | list[str]) -> tuple[str, ...]:
     if isinstance(value, str):
         return (value,)
@@ -648,11 +663,14 @@ def _case_toml_block(
     *,
     description: str | None,
 ) -> str:
+    time = view.time
+    if time is None:
+        raise ValueError("case TOML output requires a view with a time range")
     lines = [f"[cases.{_toml_key(name)}]"]
     if description:
         lines.append(f"description = {_toml_string(description)}")
-    lines.append(f"start = {_toml_string(view.time.start_iso)}")
-    lines.append(f"stop = {_toml_string(view.time.stop_iso)}")
+    lines.append(f"start = {_toml_string(time.start_iso)}")
+    lines.append(f"stop = {_toml_string(time.stop_iso)}")
     context_lines = _case_context_toml_lines(view.context)
     if context_lines:
         lines.extend(("", f"[cases.{_toml_key(name)}.context]", *context_lines))
@@ -684,7 +702,7 @@ def _case_context_toml_lines(context: ViewContext) -> list[str]:
     if context.spice_kernels:
         lines.append(
             "spice_kernels = "
-            + _toml_array([path.as_posix() for path in context.spice_kernels])
+            + _toml_array([path.as_posix() for path in context._spice_kernels])
         )
     if context.time_scale != "utc":
         lines.append(f"time_scale = {_toml_string(context.time_scale)}")
@@ -770,17 +788,17 @@ def _context_metadata(context: Any) -> dict[str, Any]:
 
 def _optional_metadata(value: Any) -> dict[str, Any] | None:
     if isinstance(value, Mapping):
-        return _metadata_value(value)
+        return cast(dict[str, Any], _metadata_value(value))
     metadata = getattr(value, "metadata", None)
     if callable(metadata):
         metadata = metadata()
     if isinstance(metadata, Mapping):
-        return _metadata_value(metadata)
+        return cast(dict[str, Any], _metadata_value(metadata))
     to_metadata = getattr(value, "to_metadata", None)
     if callable(to_metadata):
         metadata = to_metadata()
     if isinstance(metadata, Mapping):
-        return _metadata_value(metadata)
+        return cast(dict[str, Any], _metadata_value(metadata))
     return None
 
 

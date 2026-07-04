@@ -4,7 +4,7 @@ import shutil
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from sopran.core.errors import DatasetNotFoundError, DownloadError
@@ -688,7 +688,7 @@ def _metadata_value(value: Any) -> Any:
     return value
 
 
-def _format_list(values) -> str:
+def _format_list(values: Any) -> str:
     items = tuple(str(value) for value in values)
     return ", ".join(items) if items else "none"
 
@@ -957,7 +957,7 @@ def _coordinate_reference(parameters: dict[str, Any]) -> dict[str, Any]:
         return region
     dem = _metadata_value(parameters.get("dem"))
     if isinstance(dem, dict) and isinstance(dem.get("parameters"), dict):
-        return dem["parameters"]
+        return cast(dict[str, Any], dem["parameters"])
     return {}
 
 

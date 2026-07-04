@@ -108,7 +108,7 @@ class RasterLayer:
     def interp(self, *, lat: Any, lon: Any, method: str = "nearest") -> Any:
         return self.sample(lat=lat, lon=lon, method=method)
 
-    def to_xarray(self, *, name: str | None = None):
+    def to_xarray(self, *, name: str | None = None) -> Any:
         try:
             import xarray as xr
         except ImportError as exc:  # pragma: no cover - optional dependency
@@ -275,7 +275,7 @@ def read_tsunakawa_svm_npy(
     )
 
 
-def _import_rasterio():
+def _import_rasterio() -> Any:
     try:
         return importlib.import_module("rasterio")
     except ModuleNotFoundError as exc:
