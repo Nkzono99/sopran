@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any, Literal, cast
 
 import numpy as np
@@ -115,8 +117,16 @@ def pitch_angles_deg(theta_deg: Any, phi_deg: Any, magnetic_field: Any) -> np.nd
     bnorm = float(np.linalg.norm(bvec))
     if not np.isfinite(bnorm) or bnorm == 0.0:
         raise ValueError("magnetic_field must be a finite non-zero vector")
-    theta = np.deg2rad(np.asarray(theta_deg, dtype=float))
-    phi = np.deg2rad(np.asarray(phi_deg, dtype=float))
+    theta_array = np.asarray(theta_deg, dtype=float)
+    phi_array = np.asarray(phi_deg, dtype=float)
+    native = _native_module()
+    if native is not None and theta_array.ndim == 2 and phi_array.ndim == 2:
+        try:
+            return cast(np.ndarray, native.pitch_angles_deg(theta_array, phi_array, bvec))
+        except AttributeError:
+            pass
+    theta = np.deg2rad(theta_array)
+    phi = np.deg2rad(phi_array)
     vx = np.cos(phi) * np.cos(theta)
     vy = np.sin(phi) * np.cos(theta)
     vz = np.sin(theta)
@@ -354,6 +364,23 @@ def _bin_energy_pitch(
     value: str,
     min_look_bins: int,
 ) -> np.ndarray:
+    native = _native_module()
+    if native is not None and values.ndim == pitch_deg.ndim == detector_bins.ndim == 2:
+        try:
+            return cast(
+                np.ndarray,
+                native.bin_energy_pitch(
+                    values,
+                    pitch_deg,
+                    detector_bins,
+                    weights,
+                    edges,
+                    value,
+                    min_look_bins,
+                ),
+            )
+        except AttributeError:
+            pass
     out = np.full((values.shape[0], edges.size - 1), np.nan, dtype=float)
     valid_base = detector_bins == 1
     for bin_index in range(edges.size - 1):
@@ -382,6 +409,17 @@ def _bin_energy_pitch(
             good = enough & (finite_hits >= min_look_bins) & (denominator != 0.0)
             out[good, bin_index] = numerator[good] / denominator[good]
     return out
+
+
+@lru_cache(maxsize=1)
+def _native_module() -> Any | None:
+    for module_name in ("sopran._native", "sopran_native"):
+        try:
+            return importlib.import_module(module_name)
+        except ModuleNotFoundError as exc:
+            if exc.name != module_name:
+                raise
+    return None
 
 
 def _energy_row(energy: np.ndarray) -> np.ndarray:

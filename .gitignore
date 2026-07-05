@@ -12,6 +12,11 @@ build/
 dist/
 *.egg-info/
 target/
+src/sopran/_native*.dll
+src/sopran/_native*.dylib
+src/sopran/_native*.pyd
+src/sopran/_native*.so
+src/sopran/*.pdb
 
 data/
 datasets/

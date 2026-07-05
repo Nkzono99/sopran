@@ -38,6 +38,17 @@ def test_default_runtime_dependencies_stay_lightweight_for_editable_install() ->
     )
 
 
+def test_package_build_uses_maturin_for_integrated_native_extension() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+
+    assert pyproject["build-system"]["build-backend"] == "maturin"
+    assert pyproject["build-system"]["requires"] == ["maturin>=1.9,<2"]
+    assert pyproject["tool"]["maturin"]["manifest-path"] == "crates/sopran-native/Cargo.toml"
+    assert pyproject["tool"]["maturin"]["python-source"] == "src"
+    assert pyproject["tool"]["maturin"]["module-name"] == "sopran._native"
+    assert pyproject["tool"]["maturin"]["features"] == ["extension-module"]
+
+
 def test_optional_extras_include_space_map_and_viz_backends() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     optional_dependencies = pyproject["project"]["optional-dependencies"]

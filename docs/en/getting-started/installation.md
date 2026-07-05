@@ -8,6 +8,11 @@ cd sopran
 pip install -e .
 ```
 
+Source-checkout installs also build the Rust/PyO3 PACE decode extension as
+`sopran._native` inside the same wheel. This requires a Rust toolchain and, on
+Windows, MSVC build tools. Once binary wheels are published, normal users should
+not need a local Rust build for this extension.
+
 ## Extras
 
 The plain `pip install -e .` path installs only the minimal dependencies needed
@@ -27,11 +32,13 @@ failure-prone backends in a separate `native` extra.
 ## Windows Setup
 
 With Chocolatey, install Python and the native build toolchain from an
-administrator PowerShell. The `full` extra remains wheel-oriented on Python
-3.14 because the native backends are marker-gated there.
+administrator PowerShell. The Rust/PyO3 extension is built even for a plain
+install. The `full` extra remains wheel-oriented on Python 3.14 because the
+additional native backends are marker-gated there.
 
 ```powershell
 choco install -y python314
+choco install -y rust
 choco install -y visualstudio2022buildtools visualstudio2022-workload-vctools mingw
 refreshenv
 

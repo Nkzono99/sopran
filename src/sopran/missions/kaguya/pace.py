@@ -142,6 +142,7 @@ PBF_SPECS = {
 
 PbfSpec = tuple[tuple[str, str, tuple[int, ...]], ...]
 PaceBackend = Literal["auto", "python", "rust"]
+NATIVE_MODULE_NAMES = ("sopran._native", "sopran_native")
 
 
 @dataclass(frozen=True)
@@ -276,21 +277,35 @@ def _resolve_pace_backend(backend: PaceBackend | str | None) -> PaceBackend:
 
 
 def _read_pace_pbf_native(paths: list[Path]) -> PaceData:
-    native = importlib.import_module("sopran_native")
+    native = _import_pace_native()
     payload = cast(dict[str, Any], native.read_pace_pbf([str(path) for path in paths]))
     return _pace_data_from_native(payload, paths)
 
 
+def _import_pace_native() -> Any:
+    missing: ModuleNotFoundError | None = None
+    for module_name in NATIVE_MODULE_NAMES:
+        try:
+            return importlib.import_module(module_name)
+        except ModuleNotFoundError as exc:
+            if not _is_missing_native_module(exc):
+                raise
+            missing = exc
+    if missing is not None:
+        raise missing
+    raise ModuleNotFoundError("No SOPRAN native module names are configured")
+
+
 def _is_missing_native_module(exc: ModuleNotFoundError) -> bool:
-    return exc.name == "sopran_native" or (
-        exc.name is None and "sopran_native" in str(exc)
+    return exc.name in NATIVE_MODULE_NAMES or (
+        exc.name is None and any(module_name in str(exc) for module_name in NATIVE_MODULE_NAMES)
     )
 
 
 def _native_backend_missing_message() -> str:
     return (
-        "sopran_native is not installed. From crates/sopran-native, build it with "
-        "`python -m maturin develop --release --features extension-module`, "
+        "SOPRAN native module is not installed. Build it with "
+        "`python -m pip install -e .` or `python -m maturin develop --release`, "
         "or use backend='python'."
     )
 

@@ -1,6 +1,8 @@
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use flate2::read::GzDecoder;
-use pyo3::exceptions::PyRuntimeError;
+use ndarray::Array2;
+use numpy::{IntoPyArray, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList};
 use std::collections::BTreeMap;
@@ -71,9 +73,154 @@ fn read_pace_pbf<'py>(py: Python<'py>, files: Vec<String>) -> PyResult<Bound<'py
     decoded_to_py(py, decoded)
 }
 
+#[pyfunction]
+fn pitch_angles_deg<'py>(
+    py: Python<'py>,
+    theta_deg: PyReadonlyArray2<'py, f64>,
+    phi_deg: PyReadonlyArray2<'py, f64>,
+    magnetic_field: PyReadonlyArray1<'py, f64>,
+) -> PyResult<Bound<'py, numpy::PyArray2<f64>>> {
+    let theta = theta_deg.as_array();
+    let phi = phi_deg.as_array();
+    let magnetic = magnetic_field.as_array();
+    if theta.shape() != phi.shape() {
+        return Err(PyValueError::new_err(
+            "theta_deg and phi_deg must have the same shape",
+        ));
+    }
+    if magnetic.len() != 3 {
+        return Err(PyValueError::new_err("magnetic_field must have length 3"));
+    }
+    let bx = magnetic[0];
+    let by = magnetic[1];
+    let bz = magnetic[2];
+    let bnorm = (bx * bx + by * by + bz * bz).sqrt();
+    if !bnorm.is_finite() || bnorm == 0.0 {
+        return Err(PyValueError::new_err(
+            "magnetic_field must be a finite non-zero vector",
+        ));
+    }
+
+    let shape = theta.raw_dim();
+    let mut out = Vec::with_capacity(theta.len());
+    for (&theta_value, &phi_value) in theta.iter().zip(phi.iter()) {
+        let theta_rad = theta_value.to_radians();
+        let phi_rad = phi_value.to_radians();
+        let vx = phi_rad.cos() * theta_rad.cos();
+        let vy = phi_rad.sin() * theta_rad.cos();
+        let vz = theta_rad.sin();
+        let dot = ((vx * bx + vy * by + vz * bz) / bnorm).clamp(-1.0, 1.0);
+        out.push(dot.acos().to_degrees());
+    }
+    let array = Array2::from_shape_vec(shape, out)
+        .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
+    Ok(array.into_pyarray(py))
+}
+
+#[pyfunction]
+fn bin_energy_pitch<'py>(
+    py: Python<'py>,
+    values: PyReadonlyArray2<'py, f64>,
+    pitch_deg: PyReadonlyArray2<'py, f64>,
+    detector_bins: PyReadonlyArray2<'py, i64>,
+    weights: PyReadonlyArray2<'py, f64>,
+    edges: PyReadonlyArray1<'py, f64>,
+    value: &str,
+    min_look_bins: usize,
+) -> PyResult<Bound<'py, numpy::PyArray2<f64>>> {
+    let values = values.as_array();
+    let pitch_deg = pitch_deg.as_array();
+    let detector_bins = detector_bins.as_array();
+    let weights = weights.as_array();
+    let edges = edges.as_array();
+    if values.shape() != pitch_deg.shape()
+        || values.shape() != detector_bins.shape()
+        || values.shape() != weights.shape()
+    {
+        return Err(PyValueError::new_err(
+            "values, pitch_deg, detector_bins, and weights must have the same shape",
+        ));
+    }
+    if edges.len() < 2 {
+        return Err(PyValueError::new_err(
+            "edges must contain at least two values",
+        ));
+    }
+    if value != "counts" && value != "energy_flux" {
+        return Err(PyValueError::new_err(
+            "value must be 'counts' or 'energy_flux'",
+        ));
+    }
+
+    let energy_count = values.shape()[0];
+    let look_count = values.shape()[1];
+    let bin_count = edges.len() - 1;
+    let mut out = vec![f64::NAN; energy_count * bin_count];
+
+    for energy_index in 0..energy_count {
+        for bin_index in 0..bin_count {
+            let lower = edges[bin_index];
+            let upper = edges[bin_index + 1];
+            let is_last = bin_index == bin_count - 1;
+            let mut hits = 0_usize;
+            let mut finite_hits = 0_usize;
+            let mut summed = 0.0_f64;
+            let mut numerator = 0.0_f64;
+            let mut denominator = 0.0_f64;
+
+            for look_index in 0..look_count {
+                if detector_bins[[energy_index, look_index]] != 1 {
+                    continue;
+                }
+                let pitch = pitch_deg[[energy_index, look_index]];
+                let in_pitch = if is_last {
+                    pitch >= lower && pitch <= upper
+                } else {
+                    pitch >= lower && pitch < upper
+                };
+                if !in_pitch {
+                    continue;
+                }
+                hits += 1;
+                let sample = values[[energy_index, look_index]];
+                if value == "counts" {
+                    if sample.is_finite() {
+                        finite_hits += 1;
+                        summed += sample;
+                    }
+                } else {
+                    let weight = weights[[energy_index, look_index]];
+                    if sample.is_finite() && weight.is_finite() {
+                        finite_hits += 1;
+                        numerator += sample * weight;
+                        denominator += weight;
+                    }
+                }
+            }
+
+            if hits < min_look_bins || finite_hits < min_look_bins {
+                continue;
+            }
+            let output_index = energy_index * bin_count + bin_index;
+            if value == "counts" {
+                out[output_index] = summed;
+            } else if denominator != 0.0 {
+                out[output_index] = numerator / denominator;
+            }
+        }
+    }
+
+    let array = Array2::from_shape_vec((energy_count, bin_count), out)
+        .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
+    Ok(array.into_pyarray(py))
+}
+
 #[pymodule]
+#[pyo3(name = "_native")]
 fn sopran_native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(read_pace_pbf, module)?)?;
+    module.add_function(wrap_pyfunction!(pitch_angles_deg, module)?)?;
+    module.add_function(wrap_pyfunction!(bin_energy_pitch, module)?)?;
     Ok(())
 }
 

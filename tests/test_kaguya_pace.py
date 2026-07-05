@@ -25,6 +25,7 @@ from sopran.missions.kaguya import (
     read_pace_pbf,
 )
 from sopran.missions.kaguya import pace as pace_module
+from sopran.missions.kaguya import pitch as pitch_module
 from sopran.missions.kaguya.data import KaguyaESA1Data, KaguyaPaceData
 
 
@@ -107,7 +108,7 @@ def test_read_pace_pbf_rust_backend_uses_native_module(
     event = np.arange(16, dtype="<u4")
     counts = np.full((32, 4, 16), 2, dtype="<u2")
     trash = np.zeros((32, 4, 2), dtype="<u2")
-    native = types.ModuleType("sopran_native")
+    native = types.ModuleType("sopran._native")
 
     def read_native(files: list[str]) -> dict[str, object]:
         assert files == [str(path)]
@@ -148,8 +149,16 @@ def test_read_pace_pbf_rust_backend_uses_native_module(
             ],
         }
 
+    def import_native(name: str) -> types.ModuleType:
+        if name == "sopran._native":
+            return native
+        if name == "sopran_native":
+            raise AssertionError("integrated backend must prefer sopran._native")
+        raise ModuleNotFoundError(name=name)
+
     native.read_pace_pbf = read_native  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "sopran_native", native)
+    monkeypatch.setitem(sys.modules, "sopran._native", native)
+    monkeypatch.setattr(pace_module.importlib, "import_module", import_native)
 
     pace = read_pace_pbf(path, backend="rust")
 
@@ -177,7 +186,7 @@ def test_read_pace_pbf_rust_backend_matches_python(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    pytest.importorskip("sopran_native")
+    pytest.importorskip("sopran._native")
     path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
     _write_type01_pbf(path)
 
@@ -194,6 +203,135 @@ def test_read_pace_pbf_rust_backend_matches_python(
         assert rust_record.arrays.keys() == python_record.arrays.keys()
         for name in rust_record.arrays:
             np.testing.assert_array_equal(rust_record.arrays[name], python_record.arrays[name])
+
+
+def test_pitch_angles_deg_uses_native_module_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = np.full((2, 2), 42.0)
+
+    class Native:
+        def pitch_angles_deg(
+            self,
+            theta_deg: np.ndarray,
+            phi_deg: np.ndarray,
+            magnetic_field: np.ndarray,
+        ) -> np.ndarray:
+            assert theta_deg.shape == (2, 2)
+            assert phi_deg.shape == (2, 2)
+            assert magnetic_field.tolist() == [1.0, 0.0, 0.0]
+            return expected
+
+    monkeypatch.setattr(pitch_module, "_native_module", lambda: Native(), raising=False)
+
+    result = pitch_module.pitch_angles_deg(
+        np.zeros((2, 2)),
+        np.zeros((2, 2)),
+        np.array([1.0, 0.0, 0.0]),
+    )
+
+    assert result is expected
+
+
+def test_bin_energy_pitch_uses_native_module_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected = np.full((32, 2), 7.0)
+
+    class Native:
+        def bin_energy_pitch(
+            self,
+            values: np.ndarray,
+            pitch_deg: np.ndarray,
+            detector_bins: np.ndarray,
+            weights: np.ndarray,
+            edges: np.ndarray,
+            value: str,
+            min_look_bins: int,
+        ) -> np.ndarray:
+            assert values.shape == (32, 4)
+            assert pitch_deg.shape == (32, 4)
+            assert detector_bins.shape == (32, 4)
+            assert weights.shape == (32, 4)
+            assert edges.tolist() == [0.0, 90.0, 180.0]
+            assert value == "counts"
+            assert min_look_bins == 1
+            return expected
+
+    monkeypatch.setattr(pitch_module, "_native_module", lambda: Native(), raising=False)
+
+    result = pitch_module._bin_energy_pitch(
+        values=np.ones((32, 4)),
+        pitch_deg=np.zeros((32, 4)),
+        detector_bins=np.ones((32, 4), dtype=int),
+        weights=np.ones((32, 4)),
+        edges=np.array([0.0, 90.0, 180.0]),
+        value="counts",
+        min_look_bins=1,
+    )
+
+    assert result is expected
+
+
+def test_native_pitch_functions_match_python_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    native = pytest.importorskip("sopran._native")
+    rng = np.random.default_rng(42)
+    theta = rng.random((32, 64)) * 90.0 - 45.0
+    phi = rng.random((32, 64)) * 360.0
+    magnetic = np.array([1.0, 2.0, -0.5])
+    values = rng.random((32, 64))
+    values[0, 0] = np.nan
+    pitch = rng.random((32, 64)) * 180.0
+    detector = np.ones((32, 64), dtype=np.int64)
+    detector[:, ::7] = 0
+    weights = rng.random((32, 64))
+    edges = np.linspace(0.0, 180.0, 17)
+    monkeypatch.setattr(pitch_module, "_native_module", lambda: None)
+
+    expected_pitch = pitch_module.pitch_angles_deg(theta, phi, magnetic)
+    actual_pitch = native.pitch_angles_deg(theta, phi, magnetic)
+    expected_counts = pitch_module._bin_energy_pitch(
+        values=values,
+        pitch_deg=pitch,
+        detector_bins=detector,
+        weights=weights,
+        edges=edges,
+        value="counts",
+        min_look_bins=1,
+    )
+    actual_counts = native.bin_energy_pitch(
+        values,
+        pitch,
+        detector,
+        weights,
+        edges,
+        "counts",
+        1,
+    )
+    expected_flux = pitch_module._bin_energy_pitch(
+        values=values,
+        pitch_deg=pitch,
+        detector_bins=detector,
+        weights=weights,
+        edges=edges,
+        value="energy_flux",
+        min_look_bins=2,
+    )
+    actual_flux = native.bin_energy_pitch(
+        values,
+        pitch,
+        detector,
+        weights,
+        edges,
+        "energy_flux",
+        2,
+    )
+
+    np.testing.assert_allclose(actual_pitch, expected_pitch)
+    np.testing.assert_allclose(actual_counts, expected_counts)
+    np.testing.assert_allclose(actual_flux, expected_flux)
 
 
 def test_read_pace_pbf_type40_summarizes_ion_energy_counts(tmp_path: Path) -> None:

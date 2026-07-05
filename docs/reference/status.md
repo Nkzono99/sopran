@@ -6,7 +6,7 @@
 
 | 領域 | 現状 | 次の主作業 |
 | --- | --- | --- |
-| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode、ESA1 energy_flux 較正、Store 保存、pipeline、coverage、quicklook | 較正対象の拡張、内部 validation、look-angle |
+| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode、ESA1 energy_flux 較正、pitch angle native binning、Store 保存、pipeline、coverage、quicklook | 較正対象の拡張、内部 validation、look-angle |
 | KAGUYA LMAG/geometry | path planning、`MAG_TS*.dat` load、MOON_ME/GSE magnetic field、`|B|`、MOON_ME/GSE orbit geometry、radial distance、SZA、magnetic connection、Store cache | SPICE-backed Sun geometry、SPEDAS parity |
 | KAGUYA LRS | NPW/WFC CDF path planning、spectrum/gain/mode/PSD endpoint、Store cache | SPEDAS parity、実データでの数値検証 |
 | KAGUYA その他 | PACE/LMAG/LRS の一部を実装済み | instrument 固有の較正と実データ parity |
@@ -23,7 +23,8 @@
 
 - PACE ESA1/ESA2/IMA/IEA raw PBF discovery
 - local decode
-- optional Rust/PyO3 native decode backend (`read_pace_pbf(..., backend="rust")`)
+- Rust/PyO3 native decode backend (`read_pace_pbf(..., backend="rust")`)
+- Rust/PyO3 native pitch angle calculation and pitch-bin aggregation
 - ESA1 `energy_flux` の Python reference 較正 (`counts / (integ_t * gfactor * efficiency)`)
 - `xarray` / `polars` conversion
 - parquet Store 保存
@@ -39,12 +40,12 @@
 - look-angle 座標
 - package 内 synthetic / fixture validation の拡充
 
-Rust PACE backend は `sopran_native` PyO3 module として import されます。record 単位や
+Rust PACE backend は `sopran._native` PyO3 module として package に同梱されます。record 単位や
 配列単位の細かい往復は避け、`read_pace_pbf()` 1 回につき複数 file をまとめて decode してから
 Python の `PaceData` に戻します。既定の `backend="auto"` は native module が無い環境では
 Python reference に fallback します。
-開発環境では `crates/sopran-native` で
-`python -m maturin develop --release --features extension-module` を実行して native module を入れます。
+開発環境では repository root で `python -m pip install -e .` または
+`python -m maturin develop --release` を実行して native module を入れます。
 
 ## KAGUYA LMAG / geometry
 

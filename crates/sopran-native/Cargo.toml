@@ -10,6 +10,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 byteorder = "1.5"
 flate2 = "1.0"
+ndarray = "0.17"
+numpy = "0.29"
 pyo3 = "0.29"
 thiserror = "2.0"
 

@@ -7,7 +7,7 @@ pages can focus on their own task.
 
 | Area | Current state | Next work |
 | --- | --- | --- |
-| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, ESA1 energy_flux calibration, Store writes, pipeline, coverage, quicklook | Broader calibration, internal validation, look-angle metadata |
+| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, ESA1 energy_flux calibration, native pitch-angle binning, Store writes, pipeline, coverage, quicklook | Broader calibration, internal validation, look-angle metadata |
 | KAGUYA LMAG/geometry | Path planning, `MAG_TS*.dat` loading, MOON_ME/GSE magnetic field, `|B|`, MOON_ME/GSE orbit geometry, radial distance, SZA, magnetic connection, Store cache | SPICE-backed Sun geometry and SPEDAS parity |
 | KAGUYA LRS | NPW/WFC CDF path planning, spectra, gain/mode, PSD endpoints, and Store cache | SPEDAS parity and real-data numerical checks |
 | Other KAGUYA sensors | PACE/LMAG/LRS partial support | Instrument-specific calibration and real-data parity |
@@ -24,7 +24,8 @@ Implemented:
 
 - PACE ESA1/ESA2/IMA/IEA raw PBF discovery
 - Local decode
-- Optional Rust/PyO3 native decode backend (`read_pace_pbf(..., backend="rust")`)
+- Rust/PyO3 native decode backend (`read_pace_pbf(..., backend="rust")`)
+- Rust/PyO3 native pitch-angle calculation and pitch-bin aggregation
 - ESA1 `energy_flux` Python reference calibration with `counts / (integ_t * gfactor * efficiency)`
 - `xarray` / `polars` conversion
 - Parquet Store writes
@@ -53,14 +54,13 @@ Remaining:
 - Preserve energy-coordinate and look-angle metadata
 - Expand package-internal synthetic and fixture validation
 
-The Rust PACE backend is coarse-grained and imported as the `sopran_native`
+The Rust PACE backend is coarse-grained and bundled as the `sopran._native`
 PyO3 module. `read_pace_pbf()` decodes multi-file inputs in one native call
 instead of calling Rust per record or per array. The default `backend="auto"`
 falls back to the Python reference implementation when the native module is not
 installed.
-For development installs, run
-`python -m maturin develop --release --features extension-module` from
-`crates/sopran-native`.
+For development installs, run `python -m pip install -e .` or
+`python -m maturin develop --release` from the repository root.
 
 ## Near-Term Priorities
 
