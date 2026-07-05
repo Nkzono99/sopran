@@ -84,9 +84,7 @@ counts = esa1.to_polars("counts", reduce_look="sum")
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 
 pipe = (
-    kg.esa1.pipeline(time)
-    .decode()
-    .select_variables("counts")
+    kg.esa1.counts.pipeline(time)
     .quicklook("counts")
     .write("kaguya.esa1.counts", layer="normalized")
 )
@@ -96,17 +94,23 @@ pipe.run(mode="append")    # catalog に shard を追加
 manifest = store.dataset("kaguya.esa1.counts", layer="normalized").manifest()
 manifest["provenance"]["pipeline"]["stages"]
 
-lazy = kg.esa1.pipeline(time).from_normalized().select_variables("counts").scan()
+lazy = kg.esa1.counts.pipeline(time).from_normalized().scan()
 counts_frame = lazy.collect()
 
 stream = (
-    kg.esa1.pipeline(time)
+    kg.esa1.counts.pipeline(time)
     .from_normalized()
-    .select_variables("counts")
     .stream(partition="day")
 )
 for day_frame in stream:
     pass
+
+flux_record = (
+    kg.esa1.energy_flux.pipeline(time)
+    .calibrate(calibration="auto")
+    .write("kaguya.esa1.energy_flux", layer="normalized")
+    .run()
+)
 
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy"),

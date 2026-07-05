@@ -27,7 +27,7 @@ Implemented:
 - ESA1 `energy_flux` Python reference calibration with `counts / (integ_t * gfactor * efficiency)`
 - `xarray` / `polars` conversion
 - Parquet Store writes
-- Pipeline `calibrate("energy_flux")`
+- Endpoint pipeline `kg.esa1.energy_flux.pipeline(...).calibrate(...)`
 - Pipeline `run()` / `scan()` / `collect()`
 - Matplotlib quicklook
 

@@ -16,9 +16,9 @@
 - Modify: `tests/test_kaguya_pace.py`
 - Modify: `tests/test_kaguya_loading.py`
 
-- [ ] Write a RED test that `kg.esa1.energy_flux.pipeline(time).calibrate(calibration="auto").write(...).run()` writes calibrated energy flux.
-- [ ] Write a RED test that `kg.esa1.counts.pipeline(time).write(...).run()` writes counts without `select_variables("counts")`.
-- [ ] Write a RED test that `plan.source == "kaguya.esa1.energy_flux"` and `calibrate()` records `name == "energy_flux"`.
+- [x] Write a RED test that `kg.esa1.energy_flux.pipeline(time).calibrate(calibration="auto").write(...).run()` writes calibrated energy flux.
+- [x] Write a RED test that `kg.esa1.counts.pipeline(time).write(...).run()` writes counts without `select_variables("counts")`.
+- [x] Write a RED test that `plan.source == "kaguya.esa1.energy_flux"` and `calibrate()` records `name == "energy_flux"`.
 
 ## Task 2: Pipeline Defaults
 
@@ -26,11 +26,11 @@
 - Modify: `src/sopran/core/pipeline.py`
 - Modify: `src/sopran/missions/kaguya/mission.py`
 
-- [ ] Add `default_variable: str | None = None` to `Pipeline`.
-- [ ] Preserve `default_variable` in `_with_stage()` and `write()`.
-- [ ] Add `VariableEndpoint.pipeline(time)`.
-- [ ] Let `Pipeline.calibrate(name=None, **parameters)` use `default_variable`.
-- [ ] Let `_pipeline_variable()` fall back to `pipeline.default_variable`.
+- [x] Add `default_variable: str | None = None` to `Pipeline`.
+- [x] Preserve `default_variable` in `_with_stage()` and `write()`.
+- [x] Add `VariableEndpoint.pipeline(time)`.
+- [x] Let `Pipeline.calibrate(name=None, **parameters)` use `default_variable`.
+- [x] Let `_pipeline_variable()` fall back to `pipeline.default_variable`.
 
 ## Task 3: Docs and Verification
 
@@ -38,9 +38,8 @@
 - Modify: `docs/missions/kaguya/esa1.md`
 - Modify: `docs/en/missions/kaguya/esa1.md`
 
-- [ ] Update pipeline examples to use `kg.esa1.energy_flux.pipeline(time)` and `kg.esa1.counts.pipeline(time)`.
-- [ ] Run `python -m pytest -q`.
-- [ ] Run `python -m compileall src`.
-- [ ] Run `python -m ruff check .`.
-- [ ] Run `python -m mypy src`.
-
+- [x] Update pipeline examples to use `kg.esa1.energy_flux.pipeline(time)` and `kg.esa1.counts.pipeline(time)`.
+- [x] Run `python -m pytest -q`.
+- [x] Run `python -m compileall src`.
+- [x] Run `python -m ruff check .`.
+- [x] Run `python -m mypy src`.

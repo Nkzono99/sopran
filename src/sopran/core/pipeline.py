@@ -115,6 +115,7 @@ class Pipeline:
     output_layer: str | None = None
     output_target: Any = None
     context: Any = None
+    default_variable: str | None = None
 
     def download(self) -> Pipeline:
         return self._with_stage("download")
@@ -131,8 +132,11 @@ class Pipeline:
     def select_variables(self, *names: str) -> Pipeline:
         return self._with_stage("select_variables", names=names)
 
-    def calibrate(self, name: str, **parameters: Any) -> Pipeline:
-        return self._with_stage("calibrate", name=name, **parameters)
+    def calibrate(self, name: str | None = None, **parameters: Any) -> Pipeline:
+        resolved = name or self.default_variable
+        if resolved is None:
+            raise TypeError("Pipeline.calibrate() requires name=... for instrument pipelines")
+        return self._with_stage("calibrate", name=resolved, **parameters)
 
     def derive(self, name: str, **parameters: Any) -> Pipeline:
         return self._with_stage("derive", name=name, **parameters)
@@ -186,6 +190,7 @@ class Pipeline:
             output_layer=output_layer,
             output_target=None if isinstance(dataset, str) else dataset,
             context=self.context,
+            default_variable=self.default_variable,
         )
 
     def plan(self) -> PipelinePlan:
@@ -287,6 +292,7 @@ class Pipeline:
             output_layer=self.output_layer,
             output_target=self.output_target,
             context=self.context,
+            default_variable=self.default_variable,
         )
 
 

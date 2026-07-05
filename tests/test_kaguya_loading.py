@@ -934,6 +934,35 @@ def test_pipeline_scan_reads_stored_normalized_variable(tmp_path) -> None:
     ]
 
 
+def test_endpoint_pipeline_scan_reads_default_normalized_variable(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    time = spn.day("2008-01-01")
+    frame = pl.DataFrame(
+        {
+            "time": ["2008-01-01T00:00:08Z", "2008-01-02T00:00:08Z"],
+            "energy": [0, 0],
+            "counts": [64, 128],
+        }
+    )
+    store.write_parquet_dataset(
+        dataset_id="kaguya.esa1.counts",
+        layer="normalized",
+        mission="kaguya",
+        instrument="esa1",
+        product="counts",
+        schema=KAGUYA_ESA1_SCHEMA,
+        time_coverage=time,
+        frame=frame,
+    )
+    kg = spn.Kaguya(store=store)
+
+    lazy = kg.esa1.counts.pipeline(time).from_normalized().scan()
+
+    assert lazy.collect().to_dicts() == [
+        {"time": "2008-01-01T00:00:08Z", "energy": 0, "counts": 64}
+    ]
+
+
 def test_pipeline_scan_filters_datetime_time_column(tmp_path) -> None:
     store = Store(tmp_path / "store")
     time = spn.day("2008-01-01")

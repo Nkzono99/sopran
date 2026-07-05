@@ -318,6 +318,16 @@ fig = plot_result.fig
             remote_files=self.instrument.remote_files_for_period(time),
         )
 
+    def pipeline(self, time: TimeRange | None = None) -> Pipeline:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        return Pipeline(
+            source=self.dataset_id,
+            time=time,
+            context=self.instrument,
+            default_variable=self.name,
+        )
+
     def load(
         self,
         time: TimeRange | None = None,
@@ -2633,6 +2643,8 @@ def _pipeline_variable(pipeline: Pipeline) -> str:
             if len(names) != 1:
                 raise NotImplementedError("KAGUYA PACE pipeline run expects one selected variable")
             return str(names[0])
+    if pipeline.default_variable is not None:
+        return pipeline.default_variable
     if pipeline.output_dataset:
         return pipeline.output_dataset.split(".")[-1]
     return "counts"
@@ -2654,7 +2666,7 @@ def _pipeline_calibration(
         if variable != "energy_flux":
             raise ValueError(
                 "KAGUYA PACE calibrate('energy_flux') must be paired with "
-                "select_variables('energy_flux')"
+                "the energy_flux endpoint or select_variables('energy_flux')"
             )
         return cast(
             PaceCalibration | Literal["auto"] | None,
@@ -2663,7 +2675,9 @@ def _pipeline_calibration(
     if variable == "energy_flux":
         raise ValueError(
             "KAGUYA PACE pipeline writing energy_flux requires "
-            ".calibrate('energy_flux', calibration='auto') before select_variables()."
+            ".calibrate(calibration='auto') on kg.esa1.energy_flux.pipeline(...), "
+            "or .calibrate('energy_flux', calibration='auto') before "
+            "select_variables('energy_flux')."
         )
     return None
 

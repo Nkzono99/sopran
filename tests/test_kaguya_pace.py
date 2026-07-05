@@ -886,6 +886,79 @@ def test_kaguya_esa1_pipeline_writes_energy_flux_dataset(
     ]
 
 
+def test_kaguya_esa1_energy_flux_endpoint_pipeline_records_default_variable(
+    tmp_path: Path,
+) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    time = spn.day("2008-01-01")
+
+    pipe = kg.esa1.energy_flux.pipeline(time).calibrate(calibration="auto")
+    plan = pipe.write("kaguya.esa1.energy_flux", layer="normalized").plan()
+
+    assert plan.source == "kaguya.esa1.energy_flux"
+    assert plan.stage_names == ("calibrate", "write")
+    assert plan.stages[0].parameters == {
+        "name": "energy_flux",
+        "calibration": "auto",
+    }
+    assert pipe.default_variable == "energy_flux"
+
+
+def test_kaguya_esa1_counts_endpoint_pipeline_writes_counts_without_select(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store, download="never")
+
+    result = (
+        kg.esa1.counts.pipeline(spn.day("2008-01-01"))
+        .write("kaguya.esa1.counts", layer="normalized")
+        .run(download="never")
+    )
+
+    assert result.status == "complete"
+    frame = result.outputs[0].scan().collect()
+    assert frame.height == 2048
+    assert frame.select("counts").to_series().to_list()[0] == pytest.approx(1.0)
+    assert result.plan.source == "kaguya.esa1.counts"
+    assert result.plan.stage_names == ("write",)
+
+
+def test_kaguya_esa1_energy_flux_endpoint_pipeline_writes_calibrated_flux(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    shape = (8, 32, 4, 16)
+    calibration = PaceCalibration(info={0: {"gfactor_4x16": np.full(shape, 2.0)}})
+    kg = spn.Kaguya(store=store, download="never")
+    monkeypatch.setattr(kg.esa1, "load_calibration", lambda *, download=None: calibration)
+
+    result = (
+        kg.esa1.energy_flux.pipeline(spn.day("2008-01-01"))
+        .calibrate(calibration="auto")
+        .write("kaguya.esa1.energy_flux", layer="normalized")
+        .run(download="never")
+    )
+
+    assert result.status == "complete"
+    frame = result.outputs[0].scan().collect()
+    assert frame.height == 2048
+    assert frame.select("energy_flux").to_series().to_list()[0] == pytest.approx(
+        1.0 / (1.0 * 2.0 * 0.6)
+    )
+    assert result.plan.source == "kaguya.esa1.energy_flux"
+    assert result.plan.stage_names == ("calibrate", "write")
+
+
 def test_kaguya_esa1_pipeline_write_registers_database_product(
     tmp_path: Path,
 ) -> None:

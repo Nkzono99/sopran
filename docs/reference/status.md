@@ -26,7 +26,7 @@
 - ESA1 `energy_flux` の Python reference 較正 (`counts / (integ_t * gfactor * efficiency)`)
 - `xarray` / `polars` conversion
 - parquet Store 保存
-- pipeline `calibrate("energy_flux")`
+- endpoint pipeline `kg.esa1.energy_flux.pipeline(...).calibrate(...)`
 - pipeline `run()` / `scan()` / `collect()`
 - Matplotlib quicklook
 

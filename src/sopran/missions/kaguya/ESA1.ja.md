@@ -121,6 +121,12 @@ summed = esa1.to_polars("counts", reduce_look="sum")
 pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
 pas.plot()
 item = counts.spectrogram(y="energy", log_color=True)
+record = (
+    kg.esa1.energy_flux.pipeline(time)
+    .calibrate(calibration="auto")
+    .write("kaguya.esa1.energy_flux", layer="normalized")
+    .run()
+)
 ```
 
 `energy_flux` などの variable endpoint からもこの guide を参照します。

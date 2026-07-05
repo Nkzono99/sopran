@@ -25,9 +25,7 @@ frame = record.scan().collect()
 
 ```python
 pipe = (
-    kg.esa1.pipeline(spn.period("2008-01-01", "2008-01-03"))
-    .decode()
-    .select_variables("counts")
+    kg.esa1.counts.pipeline(spn.period("2008-01-01", "2008-01-03"))
     .write("kaguya.esa1.counts", layer="normalized", partition="day")
 )
 

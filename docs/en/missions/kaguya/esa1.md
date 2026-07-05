@@ -42,10 +42,8 @@ stack.quicklook("kaguya_esa1", root="reports")
 
 ```python
 record = (
-    kg.esa1.pipeline(spn.period("2008-01-01", "2008-01-03"))
-    .decode()
-    .calibrate("energy_flux", calibration="auto")
-    .select_variables("energy_flux")
+    kg.esa1.energy_flux.pipeline(spn.period("2008-01-01", "2008-01-03"))
+    .calibrate(calibration="auto")
     .write("kaguya.esa1.energy_flux", layer="normalized", partition="day")
     .run()
 )
@@ -55,9 +53,7 @@ Raw counts storage does not use the calibration stage.
 
 ```python
 record = (
-    kg.esa1.pipeline(spn.period("2008-01-01", "2008-01-03"))
-    .decode()
-    .select_variables("counts")
+    kg.esa1.counts.pipeline(spn.period("2008-01-01", "2008-01-03"))
     .write("kaguya.esa1.counts", layer="normalized", partition="day")
     .run()
 )

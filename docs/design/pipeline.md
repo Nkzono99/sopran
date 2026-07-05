@@ -16,15 +16,31 @@ stages.
 
 ## Naming Rules
 
-Variable names are endpoints in the object API:
+Variable names are endpoints in the object API and are also the preferred
+pipeline origin:
 
 ```python
 kg.esa1.energy_flux
+kg.esa1.energy_flux.pipeline(time)
 ```
 
-Pipeline should not use `.energy_flux()` as a primary stage name. Use
-`select_variables(...)` for stored variables and `derive(...)` for derived
-products.
+Pipeline should not use `.energy_flux()` as a primary stage name. Start from a
+variable endpoint for the common single-variable path, use
+`select_variables(...)` for instrument-level multi-variable or compatibility
+flows, and use `derive(...)` for derived products.
+
+Single-variable path:
+
+```python
+pipe = (
+    kg.esa1.energy_flux.pipeline(time)
+    .calibrate(calibration="auto")
+    .quicklook("esa1_energy_flux")
+    .write("kaguya.esa1.energy_flux", layer="normalized")
+)
+```
+
+Multi-variable instrument path:
 
 ```python
 pipe = (
@@ -62,13 +78,12 @@ output dataset `preview/` directory after parquet output succeeds.
 
 ```python
 (
-    kg.esa1.pipeline(time)
-    .decode()
-    .select_variables("counts")
+    kg.esa1.counts.pipeline(time)
     .quicklook("counts")
     .write("kaguya.esa1.counts", layer="normalized")
     .run()
 )
 ```
 
-The first implementation supports one selected variable and `backend="matplotlib"`.
+The first KAGUYA PACE implementation supports one selected variable and
+`backend="matplotlib"`.

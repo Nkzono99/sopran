@@ -9,11 +9,10 @@
 
 ```python
 pipe = (
-    kg.esa1.pipeline(time)
+    kg.esa1.counts.pipeline(time)
     .download()
     .decode()
     .normalize()
-    .select_variables("counts")
     .quicklook("counts", frame="SSE", aggregation={"mode": "native"})
     .write("kaguya.esa1.counts", layer="normalized")
 )
@@ -44,9 +43,8 @@ JSON にしやすい形で返します。
 
 ```python
 frame = (
-    kg.esa1.pipeline(time)
+    kg.esa1.counts.pipeline(time)
     .from_normalized()
-    .select_variables("counts")
     .collect()
 )
 ```

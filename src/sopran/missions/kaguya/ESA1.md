@@ -127,6 +127,12 @@ pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
 pas.plot()
 item = esa1.counts.spectrogram(y="energy", log_color=True)
 record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
+flux_record = (
+    kg.esa1.energy_flux.pipeline(spn.day("2008-01-01"))
+    .calibrate(calibration="auto")
+    .write("kaguya.esa1.energy_flux", layer="normalized")
+    .run()
+)
 ```
 
 ## Next Work
