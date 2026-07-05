@@ -14,6 +14,15 @@ from typing import Any, Literal, Protocol, cast
 from urllib.error import HTTPError
 
 from sopran.core import Store
+from sopran.core.coverage import (
+    coverage_bins,
+    coverage_dataset_id,
+    coverage_frame_from_xarray,
+    coverage_schema,
+    coverage_variant_id,
+    read_cached_coverage_frame,
+    validate_coverage_freq,
+)
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
@@ -332,6 +341,88 @@ fig = plot_result.fig
             context=self.instrument,
             default_variable=self.name,
         )
+
+    def coverage(
+        self,
+        time: TimeRange | None = None,
+        *,
+        freq: Literal["day", "month"] = "day",
+        cache: CacheMode = "use",
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
+        dataset_id: str | None = None,
+        layer: str = "features",
+    ) -> Any:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        validate_coverage_freq(freq)
+        _validate_cache_mode(cache)
+        resolved_dataset_id = dataset_id or coverage_dataset_id(self.dataset_id)
+        variant_id = coverage_variant_id(freq)
+        if cache == "use":
+            cached = read_cached_coverage_frame(
+                self.instrument.mission.store,
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+                time=time,
+            )
+            if cached is not None:
+                return cached
+
+        loaded = _load_endpoint_for_coverage(
+            self,
+            time,
+            download=download,
+            missing=missing,
+            calibration=calibration,
+        )
+        bins = coverage_bins(time, freq=freq)
+        expected = _expected_remote_file_counts(self.instrument, bins)
+        available = _available_source_file_counts(self.instrument, loaded.files, bins)
+        frame = coverage_frame_from_xarray(
+            loaded.to_xarray(),
+            time=time,
+            freq=freq,
+            source_dataset_id=self.dataset_id,
+            mission="kaguya",
+            instrument=self.instrument.name.lower(),
+            product=self.name,
+            expected_remote_files=expected,
+            available_source_files=available,
+        )
+        if cache != "never":
+            self.instrument.mission.store.write_parquet_dataset(
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+                variant={
+                    "freq": freq,
+                    "source_dataset": self.dataset_id,
+                },
+                mission="kaguya",
+                instrument=self.instrument.name.lower(),
+                product="coverage",
+                schema=coverage_schema(
+                    mission="kaguya",
+                    instrument=self.instrument.name.lower(),
+                ),
+                time_coverage=time,
+                frame=frame,
+                source_files=tuple(str(path) for path in loaded.files),
+                source_datasets=(self.dataset_id,),
+                overwrite=True,
+                producer="sopran.kaguya.coverage",
+                parameters={
+                    "coverage": {
+                        "freq": freq,
+                        "source_dataset": self.dataset_id,
+                        "metric": "finite_sample_count",
+                    },
+                },
+            )
+        return frame
 
     def load(
         self,
@@ -2670,6 +2761,62 @@ def _load_endpoint(
         _validate_cache_mode(cache)
         kwargs["cache"] = cache
     return endpoint.load(time, **kwargs)
+
+
+def _load_endpoint_for_coverage(
+    endpoint: VariableEndpoint,
+    time: TimeRange,
+    *,
+    download: DownloadMode | None,
+    missing: MissingMode | None,
+    calibration: PaceCalibration | Literal["auto"] | None,
+) -> Any:
+    if isinstance(endpoint.instrument, PaceInstrument):
+        kwargs: dict[str, Any] = {
+            "download": download,
+            "missing": missing or "empty",
+        }
+        if endpoint.name == "energy_flux":
+            kwargs["calibration"] = calibration
+        data = endpoint.instrument.load(time, **kwargs)
+        return getattr(data, endpoint.name)
+    return _load_endpoint(
+        endpoint,
+        time,
+        download=download,
+        missing=missing,
+        cache=None,
+        calibration=calibration,
+    )
+
+
+def _expected_remote_file_counts(
+    instrument: EndpointInstrument,
+    bins: tuple[Any, ...],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in bins:
+        time = TimeRange(item.start, item.stop)
+        counts[item.start_iso] = len(instrument.remote_files_for_period(time))
+    return counts
+
+
+def _available_source_file_counts(
+    instrument: EndpointInstrument,
+    files: tuple[Path, ...],
+    bins: tuple[Any, ...],
+) -> dict[str, int]:
+    source_files = tuple(path.as_posix().replace("\\", "/") for path in files)
+    counts: dict[str, int] = {}
+    for item in bins:
+        time = TimeRange(item.start, item.stop)
+        count = 0
+        for remote_file in instrument.remote_files_for_period(time):
+            remote = Path(remote_file).as_posix().replace("\\", "/")
+            if any(source.endswith(remote) for source in source_files):
+                count += 1
+        counts[item.start_iso] = count
+    return counts
 
 
 def _merge_metadata(

@@ -60,3 +60,24 @@ shards/           # parquet files
 | Scan parquet | `store.scan_dataset(dataset_id, layer=...)` |
 | Check shard checksums | `record.verify_checksums()` |
 | Inspect failed shards | `record.failed_shards()` |
+
+## Database Products And Event Catalogs
+
+User-defined tables and curated event lists live in the `databases` layer.
+Stable or hand-curated phenomena can use `event_catalog()`. `write_events()`
+stores rows with columns such as `time_start`, `time_stop`, `phenomenon`, and
+`detector`; `counts()` aggregates event rows by day or month.
+
+```python
+catalog = store.event_catalog("lunar_wake", create=True)
+catalog.write_events(events, time_coverage=spn.month("2008-02"), overwrite=True)
+monthly = catalog.counts(freq="month", by=("instrument",))
+```
+
+Use endpoint `coverage()` for data availability and finite sample counts. This
+is not an interpreted event catalog; it is an availability summary stored in
+the `features` layer.
+
+```python
+coverage = kg.esa1.energy_flux.coverage(time, freq="day", cache="use")
+```

@@ -7,7 +7,7 @@ pages can focus on their own task.
 
 | Area | Current state | Next work |
 | --- | --- | --- |
-| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, ESA1 energy_flux calibration, Store writes, pipeline, quicklook | Broader calibration, internal validation, look-angle metadata |
+| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, ESA1 energy_flux calibration, Store writes, pipeline, coverage, quicklook | Broader calibration, internal validation, look-angle metadata |
 | KAGUYA LMAG/geometry | Path planning, `MAG_TS*.dat` loading, MOON_ME/GSE magnetic field, `|B|`, MOON_ME/GSE orbit geometry, radial distance, SZA, magnetic connection, Store cache | SPICE-backed Sun geometry and SPEDAS parity |
 | KAGUYA LRS | NPW/WFC CDF path planning, spectra, gain/mode, PSD endpoints, and Store cache | SPEDAS parity and real-data numerical checks |
 | Other KAGUYA sensors | PACE/LMAG/LRS partial support | Instrument-specific calibration and real-data parity |
@@ -28,8 +28,23 @@ Implemented:
 - `xarray` / `polars` conversion
 - Parquet Store writes
 - Endpoint pipeline `kg.esa1.energy_flux.pipeline(...).calibrate(...)`
+- Endpoint coverage `kg.esa1.counts.coverage(..., freq="day"|"month")`
 - Pipeline `run()` / `scan()` / `collect()`
 - Matplotlib quicklook
+
+## Pipeline / Store
+
+Implemented:
+
+- Store manifests, schemas, catalogs, and checksums
+- Store cache for endpoint coverage summaries
+- `Store.event_catalog(...)` for curated event tables and daily/monthly counts
+
+Remaining:
+
+- Event detectors and coverage-normalized rates
+- Mission-independent generic backend
+- Provider-native streaming
 
 Remaining:
 

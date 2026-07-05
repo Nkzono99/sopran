@@ -65,6 +65,22 @@ conn_on_ima = conn.resample_like(ima, method="nearest", tolerance="2s")
 PACE、LMAG、LRS、および LMAG 由来の orbit / magnetic connection load は raw file
 が無い場合の挙動を `missing="empty" | "warn" | "error"` で選べます。
 
+各 endpoint は日別・月別の availability summary を `coverage()` で作れます。
+結果は `sample_count`、`finite_sample_count`、`sample_time_count`、
+`expected_remote_files`、`available_source_files` を持つ Polars DataFrame です。
+`cache="use"` では `features/<dataset>.coverage/variants/freq_<day|month>` に
+保存して再利用します。
+
+```python
+daily = kg.esa1.counts.coverage(time, freq="day", cache="use")
+monthly = kg.esa1.energy_flux.coverage(
+    spn.month("2008-02"),
+    freq="month",
+    calibration="auto",
+    cache="use",
+)
+```
+
 LRS endpoint も `cache="use"` / `"refresh"` / `"never"` を受け取ります。NPW と raw WFC
 は `normalized` layer、WFC gain / field / power spectral density / decoded mode は `features`
 layer に保存され、同じ時刻範囲を次に読むと CDF の再読を避けます。`refresh` は対象

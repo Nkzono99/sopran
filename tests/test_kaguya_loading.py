@@ -830,6 +830,124 @@ def test_kaguya_esa1_variable_load_without_time_uses_endpoint_examples(
     assert "kg.esa1.energy_flux.load(time)" not in message
 
 
+def test_kaguya_endpoint_coverage_summarizes_missing_data_by_day_and_caches(
+    tmp_path,
+) -> None:
+    store = Store(tmp_path / "store")
+    kg = spn.Kaguya(store=store, download="never")
+    time = spn.period("2008-02-01", "2008-02-03")
+
+    coverage = kg.esa1.counts.coverage(time, freq="day", cache="use")
+
+    assert coverage.select(
+        "bin_start",
+        "bin_stop",
+        "freq",
+        "source_dataset",
+        "sample_count",
+        "finite_sample_count",
+        "sample_time_count",
+        "expected_remote_files",
+        "available_source_files",
+    ).to_dicts() == [
+        {
+            "bin_start": "2008-02-01T00:00:00Z",
+            "bin_stop": "2008-02-02T00:00:00Z",
+            "freq": "day",
+            "source_dataset": "kaguya.esa1.counts",
+            "sample_count": 0,
+            "finite_sample_count": 0,
+            "sample_time_count": 0,
+            "expected_remote_files": 1,
+            "available_source_files": 0,
+        },
+        {
+            "bin_start": "2008-02-02T00:00:00Z",
+            "bin_stop": "2008-02-03T00:00:00Z",
+            "freq": "day",
+            "source_dataset": "kaguya.esa1.counts",
+            "sample_count": 0,
+            "finite_sample_count": 0,
+            "sample_time_count": 0,
+            "expected_remote_files": 1,
+            "available_source_files": 0,
+        },
+    ]
+
+    cached = store.dataset(
+        "kaguya.esa1.counts.coverage",
+        layer="features",
+        variant_id="freq_day",
+    )
+
+    assert cached.manifest()["parameters"]["coverage"] == {
+        "freq": "day",
+        "source_dataset": "kaguya.esa1.counts",
+        "metric": "finite_sample_count",
+    }
+
+
+def test_kaguya_endpoint_coverage_counts_finite_samples_from_loaded_counts(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    first_time = datetime(2008, 2, 1, 0, 0, tzinfo=UTC).timestamp()
+    second_time = datetime(2008, 2, 2, 0, 0, tzinfo=UTC).timestamp()
+    first_counts = np.ones((32, 4, 16), dtype=np.uint16)
+    second_counts = np.ones((32, 4, 16), dtype=np.uint16)
+    second_counts[0, :, :] = 65535
+    first = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": first_counts},
+    )
+    second = PaceRecord(
+        type=0x01,
+        index=1,
+        arrays={"cnt": second_counts},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=(
+            {"time": first_time, "data_quality": 0},
+            {"time": second_time, "data_quality": 0},
+        ),
+        records={0x01: (first, second)},
+        source_files=(),
+        record_order=(first, second),
+    )
+    time = spn.period("2008-02-01", "2008-02-03")
+    data = KaguyaESA1Data(time=time)
+    object.__setattr__(data, "pace", pace)
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
+    monkeypatch.setattr(kg.esa1, "load", lambda *args, **kwargs: data)
+
+    coverage = kg.esa1.counts.coverage(time, freq="day", cache="never")
+
+    assert coverage.select(
+        "bin_start",
+        "sample_count",
+        "finite_sample_count",
+        "sample_time_count",
+        "valid_fraction",
+    ).to_dicts() == [
+        {
+            "bin_start": "2008-02-01T00:00:00Z",
+            "sample_count": 2048,
+            "finite_sample_count": 2048,
+            "sample_time_count": 1,
+            "valid_fraction": 1.0,
+        },
+        {
+            "bin_start": "2008-02-02T00:00:00Z",
+            "sample_count": 2048,
+            "finite_sample_count": 1984,
+            "sample_time_count": 1,
+            "valid_fraction": 0.96875,
+        },
+    ]
+
+
 def test_kaguya_esa1_instrument_load_without_time_uses_instrument_examples(
     tmp_path,
 ) -> None:

@@ -67,6 +67,22 @@ PACE, LMAG, LRS, and LMAG-backed orbit / magnetic-connection loads accept
 `missing="empty"`, `"warn"`, or `"error"` to control behavior when raw files
 are absent.
 
+Each endpoint can build a daily or monthly availability summary with
+`coverage()`. The result is a Polars DataFrame with `sample_count`,
+`finite_sample_count`, `sample_time_count`, `expected_remote_files`, and
+`available_source_files`. With `cache="use"`, SOPRAN stores the summary under
+`features/<dataset>.coverage/variants/freq_<day|month>` and reuses it later.
+
+```python
+daily = kg.esa1.counts.coverage(time, freq="day", cache="use")
+monthly = kg.esa1.energy_flux.coverage(
+    spn.month("2008-02"),
+    freq="month",
+    calibration="auto",
+    cache="use",
+)
+```
+
 LRS endpoints also accept `cache="use"`, `"refresh"`, or `"never"`. NPW and raw
 WFC products are stored under the `normalized` layer; WFC gain, field, power
 spectral density, and decoded mode products are stored under `features`, so repeated
