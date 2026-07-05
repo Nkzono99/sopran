@@ -2204,33 +2204,35 @@ path は OS に依存しない POSIX-style string (`/` 区切り) とする。
 
 ### Rust backend contract
 
-Rust は Python の細かい内側関数としてではなく、大きめの stage として呼ぶ。
+Rust は Python の細かい内側関数としてではなく、大きめの decode / transform / shard
+stage として呼ぶ。利用者向け `load()` の hot path に入る処理は、subprocess ではなく
+PyO3 native module として import し、Python object model との境界を薄く保つ。
 v0.1 では Rust backend を必須にしない。まず Python reference implementation で API と
 golden test を固め、性能が必要な stage を v0.2 以降で Rust に差し替える。
 
 ```text
 v0.1  Python reference implementation
-v0.2  Rust CLI backend stage
-v0.3  PyO3 または CLI/PyO3 併用を再評価
+v0.2  PyO3 native backend stage
+v0.3  batch/shard backend 境界を必要に応じて追加
 ```
 
 Rust backend stage は次を満たす。
 
-- 入力 manifest / catalog / shard path を受け取る。
-- 出力 manifest / catalog / shard path を生成する。
-- JSON など安定した config を受け取る。
+- Python から 1 record / 1 array ごとに呼ばず、file group や shard など粗い単位を受け取る。
+- 入力 manifest / catalog / shard path、または file list と安定した config を受け取る。
+- Python がそのまま `Dataset` / `PaceData` / shard writer に戻せる structured payload を返す。
 - progress と error を machine-readable に返す。
 - 小さな golden dataset で Python reference または公式仕様と比較する。
 
-初期は CLI stage を優先する。
+初期は PyO3 module を優先する。
 
 ```python
-pipe.run(backend="python")
-pipe.run(backend="rust-cli")
+read_pace_pbf(files, backend="python")
+read_pace_pbf(files, backend="rust")
 ```
 
-Rust CLI は manifest/catalog と JSON config を入出力にし、Python API の object model に
-密結合しない。
+CLI は利用者向け load path の fallback にはしない。将来、独立した batch command が必要な場合だけ
+manifest/catalog と JSON config を入出力にする。
 
 ### Testing and validation
 

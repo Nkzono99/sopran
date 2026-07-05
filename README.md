@@ -233,7 +233,7 @@ src/sopran/
   analysis/
   plot/
 crates/
-  sopran-backend/
+  sopran-native/
 docs/
 tests/
 ```

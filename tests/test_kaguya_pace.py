@@ -3,6 +3,8 @@ from __future__ import annotations
 import gzip
 import json
 import re
+import sys
+import types
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -22,6 +24,7 @@ from sopran.missions.kaguya import (
     read_pace_info,
     read_pace_pbf,
 )
+from sopran.missions.kaguya import pace as pace_module
 from sopran.missions.kaguya.data import KaguyaESA1Data, KaguyaPaceData
 
 
@@ -82,13 +85,79 @@ def test_read_pace_pbf_auto_falls_back_to_python(
     path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
     _write_type01_pbf(path)
     monkeypatch.delenv("SOPRAN_PACE_BACKEND", raising=False)
-    monkeypatch.setenv("SOPRAN_BACKEND_EXE", str(tmp_path / "missing-backend.exe"))
+
+    def missing_native(paths: list[Path]) -> PaceData:
+        raise ModuleNotFoundError("No module named 'sopran_native'")
+
+    monkeypatch.setattr(pace_module, "_read_pace_pbf_native", missing_native, raising=False)
 
     auto = read_pace_pbf(path, backend="auto")
     python = read_pace_pbf(path, backend="python")
 
     assert auto.headers == python.headers
     assert pace_energy_counts(auto).tolist() == pace_energy_counts(python).tolist()
+
+
+def test_read_pace_pbf_rust_backend_uses_native_module(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
+    _write_type01_pbf(path)
+    event = np.arange(16, dtype="<u4")
+    counts = np.full((32, 4, 16), 2, dtype="<u2")
+    trash = np.zeros((32, 4, 2), dtype="<u2")
+    native = types.ModuleType("sopran_native")
+
+    def read_native(files: list[str]) -> dict[str, object]:
+        assert files == [str(path)]
+        return {
+            "sensor": 0,
+            "headers": [
+                {
+                    "sensor": 0,
+                    "type": 0x01,
+                    "time_resolution": 16000,
+                    "yyyymmdd": 20080101,
+                    "hhmmss": 0,
+                    "time": datetime(2008, 1, 1, 0, 0, 8, tzinfo=UTC).timestamp(),
+                }
+            ],
+            "records": [
+                {
+                    "type": 0x01,
+                    "index": 0,
+                    "arrays": {
+                        "event": {
+                            "dtype": "<u4",
+                            "shape": [16],
+                            "data": event.tobytes(),
+                        },
+                        "cnt": {
+                            "dtype": "<u2",
+                            "shape": [32, 4, 16],
+                            "data": counts.tobytes(),
+                        },
+                        "trash": {
+                            "dtype": "<u2",
+                            "shape": [32, 4, 2],
+                            "data": trash.tobytes(),
+                        },
+                    },
+                }
+            ],
+        }
+
+    native.read_pace_pbf = read_native  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "sopran_native", native)
+
+    pace = read_pace_pbf(path, backend="rust")
+
+    assert pace.sensor == 0
+    assert pace.headers[0]["type"] == 0x01
+    assert pace_energy_counts(pace).tolist() == [[128] * 32]
+    assert pace.record_order[0].arrays["cnt"].dtype == np.dtype("<u2")
+    np.testing.assert_array_equal(pace.record_order[0].arrays["event"], event)
 
 
 def test_read_pace_pbf_accepts_gzip_files(tmp_path: Path) -> None:
@@ -108,12 +177,9 @@ def test_read_pace_pbf_rust_backend_matches_python(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    backend = _sopran_backend_executable()
-    if backend is None:
-        pytest.skip("sopran-backend executable is not built")
+    pytest.importorskip("sopran_native")
     path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
     _write_type01_pbf(path)
-    monkeypatch.setenv("SOPRAN_BACKEND_EXE", str(backend))
 
     python = read_pace_pbf(path, backend="python")
     rust = read_pace_pbf(path, backend="rust")
@@ -1650,16 +1716,6 @@ def _write_type01_pbf_gzip(
     _write_type01_pbf(scratch_path, yyyymmdd=yyyymmdd, sensor=sensor)
     with scratch_path.open("rb") as source, gzip.open(gzip_path, "wb") as target:
         target.write(source.read())
-
-
-def _sopran_backend_executable() -> Path | None:
-    root = Path(__file__).resolve().parents[1]
-    for profile in ("debug", "release"):
-        for name in ("sopran-backend.exe", "sopran-backend"):
-            candidate = root / "target" / profile / name
-            if candidate.exists():
-                return candidate
-    return None
 
 
 def _write_type40_pbf(

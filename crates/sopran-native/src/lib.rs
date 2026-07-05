@@ -1,14 +1,12 @@
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
-use clap::{Parser, Subcommand};
 use flate2::read::GzDecoder;
-use ndarray::{ArrayD, IxDyn};
-use ndarray_npy::write_npy;
-use serde::Serialize;
-use serde_json::json;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::prelude::*;
+use pyo3::types::{PyBytes, PyDict, PyList};
 use std::collections::BTreeMap;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Endian {
@@ -29,10 +27,16 @@ struct FieldSpec {
     shape: Vec<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum HeaderValue {
+    Integer(u32),
+    Float(f64),
+}
+
 #[derive(Debug)]
 struct DecodedPace {
     sensor: i32,
-    headers: Vec<BTreeMap<String, serde_json::Value>>,
+    headers: Vec<BTreeMap<String, HeaderValue>>,
     records: Vec<DecodedRecord>,
 }
 
@@ -45,72 +49,105 @@ struct DecodedRecord {
 #[derive(Debug)]
 struct DecodedArray {
     dtype: DType,
+    endian: Endian,
     shape: Vec<usize>,
-    values: Vec<u32>,
+    bytes: Vec<u8>,
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum PaceError {
+enum PaceError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("JSON error: {0}")]
-    Json(#[from] serde_json::Error),
     #[error("{0}")]
     Message(String),
 }
 
-#[derive(Debug, Parser)]
-#[command(name = "sopran-backend")]
-#[command(about = "Native SOPRAN backend utilities")]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
+#[pyfunction]
+fn read_pace_pbf<'py>(py: Python<'py>, files: Vec<String>) -> PyResult<Bound<'py, PyDict>> {
+    let paths: Vec<PathBuf> = files.into_iter().map(PathBuf::from).collect();
+    let decoded = py
+        .detach(|| decode_files(&paths))
+        .map_err(pace_error_to_py)?;
+    decoded_to_py(py, decoded)
 }
 
-#[derive(Debug, Subcommand)]
-enum Command {
-    PaceDecode {
-        #[arg(long)]
-        output: PathBuf,
-        #[arg(required = true)]
-        files: Vec<PathBuf>,
-    },
+#[pymodule]
+fn sopran_native(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(read_pace_pbf, module)?)?;
+    Ok(())
 }
 
-#[derive(Debug, Serialize)]
-struct BundleManifest {
-    sensor: i32,
-    headers: Vec<BTreeMap<String, serde_json::Value>>,
-    records: Vec<RecordManifest>,
+fn pace_error_to_py(error: PaceError) -> PyErr {
+    PyRuntimeError::new_err(error.to_string())
 }
 
-#[derive(Debug, Serialize)]
-struct RecordManifest {
-    #[serde(rename = "type")]
-    record_type: u32,
-    index: usize,
-    arrays: BTreeMap<String, ArrayManifest>,
-}
+fn decoded_to_py<'py>(py: Python<'py>, decoded: DecodedPace) -> PyResult<Bound<'py, PyDict>> {
+    let out = PyDict::new(py);
+    out.set_item("sensor", decoded.sensor)?;
 
-#[derive(Debug, Serialize)]
-struct ArrayManifest {
-    path: String,
-    dtype: &'static str,
-    shape: Vec<usize>,
-}
-
-pub fn run() -> Result<(), PaceError> {
-    let cli = Cli::parse();
-    match cli.command {
-        Command::PaceDecode { output, files } => decode_files_to_dir(files, output),
+    let headers = PyList::empty(py);
+    for header in decoded.headers {
+        let header_dict = PyDict::new(py);
+        for (key, value) in header {
+            match value {
+                HeaderValue::Integer(value) => header_dict.set_item(key, value)?,
+                HeaderValue::Float(value) => header_dict.set_item(key, value)?,
+            }
+        }
+        headers.append(header_dict)?;
     }
+    out.set_item("headers", headers)?;
+
+    let records = PyList::empty(py);
+    for (index, record) in decoded.records.into_iter().enumerate() {
+        let record_dict = PyDict::new(py);
+        record_dict.set_item("type", record.record_type)?;
+        record_dict.set_item("index", index)?;
+        let arrays = PyDict::new(py);
+        for (name, array) in record.arrays {
+            let array_dict = PyDict::new(py);
+            array_dict.set_item("dtype", array.dtype.numpy_name(array.endian))?;
+            array_dict.set_item("shape", array.shape)?;
+            array_dict.set_item("data", PyBytes::new(py, &array.bytes))?;
+            arrays.set_item(name, array_dict)?;
+        }
+        record_dict.set_item("arrays", arrays)?;
+        records.append(record_dict)?;
+    }
+    out.set_item("records", records)?;
+
+    Ok(out)
 }
 
-fn choose_endian(_header: &[u8]) -> Endian {
+fn decode_files(files: &[PathBuf]) -> Result<DecodedPace, PaceError> {
+    let mut merged = DecodedPace {
+        sensor: -1,
+        headers: Vec::new(),
+        records: Vec::new(),
+    };
+
+    for path in files {
+        let bytes = read_file_bytes(path)?;
+        let source_name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("PACE PBF file");
+        let decoded = decode_pbf_bytes(&bytes, source_name)?;
+        if decoded.sensor >= 0 {
+            merged.sensor = decoded.sensor;
+        }
+        merged.headers.extend(decoded.headers);
+        merged.records.extend(decoded.records);
+    }
+
+    Ok(merged)
+}
+
+fn choose_endian(header: &[u8]) -> Endian {
     for endian in [Endian::Little, Endian::Big] {
-        let pbf_type = read_u32_at(_header, 3, endian).unwrap_or(0);
-        let yyyymmdd = read_u32_at(_header, 19, endian).unwrap_or(0);
-        let hhmmss = read_u32_at(_header, 20, endian).unwrap_or(u32::MAX);
+        let pbf_type = read_u32_at(header, 3, endian).unwrap_or(0);
+        let yyyymmdd = read_u32_at(header, 19, endian).unwrap_or(0);
+        let hhmmss = read_u32_at(header, 20, endian).unwrap_or(u32::MAX);
         if spec_for(pbf_type).is_some()
             && (20000101..=20300101).contains(&yyyymmdd)
             && hhmmss <= 235959
@@ -217,11 +254,14 @@ fn decode_pbf_bytes(bytes: &[u8], source_name: &str) -> Result<DecodedPace, Pace
         offset += 256;
         let endian = choose_endian(header_bytes);
         let header = parse_header(header_bytes, endian)?;
-        let record_type = header
-            .get("type")
-            .and_then(|value| value.as_u64())
-            .ok_or_else(|| PaceError::Message("PACE PBF header is missing type".to_string()))?
-            as u32;
+        let record_type = match header.get("type") {
+            Some(HeaderValue::Integer(value)) => *value,
+            _ => {
+                return Err(PaceError::Message(
+                    "PACE PBF header is missing type".to_string(),
+                ))
+            }
+        };
         let spec = spec_for(record_type).ok_or_else(|| {
             PaceError::Message(format!(
                 "Unsupported PACE PBF record type 0x{record_type:02X} in {source_name}"
@@ -235,10 +275,10 @@ fn decode_pbf_bytes(bytes: &[u8], source_name: &str) -> Result<DecodedPace, Pace
         }
         let arrays = read_payload(&bytes[offset..offset + size], &spec, endian)?;
         offset += size;
-        detected_sensor = header
-            .get("sensor")
-            .and_then(|value| value.as_i64())
-            .map(|value| value as i32);
+        detected_sensor = match header.get("sensor") {
+            Some(HeaderValue::Integer(value)) => Some(*value as i32),
+            _ => None,
+        };
         headers.push(header);
         records.push(DecodedRecord {
             record_type,
@@ -253,62 +293,7 @@ fn decode_pbf_bytes(bytes: &[u8], source_name: &str) -> Result<DecodedPace, Pace
     })
 }
 
-fn decode_files_to_dir(files: Vec<PathBuf>, output: PathBuf) -> Result<(), PaceError> {
-    fs::create_dir_all(&output)?;
-    let mut merged = DecodedPace {
-        sensor: -1,
-        headers: Vec::new(),
-        records: Vec::new(),
-    };
-
-    for path in files {
-        let bytes = read_file_bytes(&path)?;
-        let source_name = path
-            .file_name()
-            .and_then(|value| value.to_str())
-            .unwrap_or("PACE PBF file");
-        let decoded = decode_pbf_bytes(&bytes, source_name)?;
-        if decoded.sensor >= 0 {
-            merged.sensor = decoded.sensor;
-        }
-        merged.headers.extend(decoded.headers);
-        merged.records.extend(decoded.records);
-    }
-
-    let mut record_manifests = Vec::new();
-    for (index, record) in merged.records.iter().enumerate() {
-        let mut arrays = BTreeMap::new();
-        for (name, array) in &record.arrays {
-            let file_name = format!("record_{index:06}_{name}.npy");
-            let path = output.join(&file_name);
-            write_array_npy(&path, array)?;
-            arrays.insert(
-                name.clone(),
-                ArrayManifest {
-                    path: file_name,
-                    dtype: array.dtype.name(),
-                    shape: array.shape.clone(),
-                },
-            );
-        }
-        record_manifests.push(RecordManifest {
-            record_type: record.record_type,
-            index,
-            arrays,
-        });
-    }
-
-    let manifest = BundleManifest {
-        sensor: merged.sensor,
-        headers: merged.headers,
-        records: record_manifests,
-    };
-    let manifest_file = File::create(output.join("headers.json"))?;
-    serde_json::to_writer_pretty(manifest_file, &manifest)?;
-    Ok(())
-}
-
-fn read_file_bytes(path: &PathBuf) -> Result<Vec<u8>, PaceError> {
+fn read_file_bytes(path: &Path) -> Result<Vec<u8>, PaceError> {
     let file = File::open(path)?;
     let mut reader: Box<dyn Read> =
         if path.extension().and_then(|value| value.to_str()) == Some("gz") {
@@ -321,41 +306,25 @@ fn read_file_bytes(path: &PathBuf) -> Result<Vec<u8>, PaceError> {
     Ok(bytes)
 }
 
-fn write_array_npy(path: &PathBuf, array: &DecodedArray) -> Result<(), PaceError> {
-    match array.dtype {
-        DType::U2 => {
-            let values: Vec<u16> = array.values.iter().map(|value| *value as u16).collect();
-            let shaped = ArrayD::from_shape_vec(IxDyn(&array.shape), values)
-                .map_err(|error| PaceError::Message(error.to_string()))?;
-            write_npy(path, &shaped).map_err(|error| PaceError::Message(error.to_string()))?;
-        }
-        DType::U4 => {
-            let shaped = ArrayD::from_shape_vec(IxDyn(&array.shape), array.values.clone())
-                .map_err(|error| PaceError::Message(error.to_string()))?;
-            write_npy(path, &shaped).map_err(|error| PaceError::Message(error.to_string()))?;
-        }
-    }
-    Ok(())
-}
-
-fn parse_header(
-    header: &[u8],
-    endian: Endian,
-) -> Result<BTreeMap<String, serde_json::Value>, PaceError> {
+fn parse_header(header: &[u8], endian: Endian) -> Result<BTreeMap<String, HeaderValue>, PaceError> {
     let mut out = BTreeMap::new();
     for (index, name) in HEADER_FIELDS.iter().enumerate() {
         let value = read_u32_at(header, index, endian).ok_or_else(|| {
             PaceError::Message("PACE PBF record header must contain 64 u32 values".to_string())
         })?;
-        out.insert((*name).to_string(), json!(value));
+        out.insert((*name).to_string(), HeaderValue::Integer(value));
     }
-    if let (Some(date), Some(time), Some(resolution)) = (
-        out.get("yyyymmdd").and_then(|value| value.as_u64()),
-        out.get("hhmmss").and_then(|value| value.as_u64()),
-        out.get("time_resolution").and_then(|value| value.as_u64()),
+    if let (
+        Some(HeaderValue::Integer(date)),
+        Some(HeaderValue::Integer(time)),
+        Some(HeaderValue::Integer(resolution)),
+    ) = (
+        out.get("yyyymmdd"),
+        out.get("hhmmss"),
+        out.get("time_resolution"),
     ) {
-        if let Some(decoded) = decode_unix_time(date as u32, time as u32, resolution as u32) {
-            out.insert("time".to_string(), json!(decoded));
+        if let Some(decoded) = decode_unix_time(*date, *time, *resolution) {
+            out.insert("time".to_string(), HeaderValue::Float(decoded));
         }
     }
     Ok(out)
@@ -378,41 +347,18 @@ fn read_payload(
                 field.name
             )));
         }
-        let values = match field.dtype {
-            DType::U2 => read_u16_values(&payload[offset..end], endian),
-            DType::U4 => read_u32_values(&payload[offset..end], endian),
-        };
         arrays.insert(
             field.name.to_string(),
             DecodedArray {
                 dtype: field.dtype,
+                endian,
                 shape: field.shape.clone(),
-                values,
+                bytes: payload[offset..end].to_vec(),
             },
         );
         offset = end;
     }
     Ok(arrays)
-}
-
-fn read_u16_values(bytes: &[u8], endian: Endian) -> Vec<u32> {
-    bytes
-        .chunks_exact(2)
-        .map(|chunk| match endian {
-            Endian::Little => LittleEndian::read_u16(chunk) as u32,
-            Endian::Big => BigEndian::read_u16(chunk) as u32,
-        })
-        .collect()
-}
-
-fn read_u32_values(bytes: &[u8], endian: Endian) -> Vec<u32> {
-    bytes
-        .chunks_exact(4)
-        .map(|chunk| match endian {
-            Endian::Little => LittleEndian::read_u32(chunk),
-            Endian::Big => BigEndian::read_u32(chunk),
-        })
-        .collect()
 }
 
 fn field(name: &'static str, dtype: DType, shape: &[usize]) -> FieldSpec {
@@ -507,10 +453,12 @@ impl DType {
         }
     }
 
-    fn name(self) -> &'static str {
-        match self {
-            DType::U2 => "u2",
-            DType::U4 => "u4",
+    fn numpy_name(self, endian: Endian) -> &'static str {
+        match (endian, self) {
+            (Endian::Little, DType::U2) => "<u2",
+            (Endian::Little, DType::U4) => "<u4",
+            (Endian::Big, DType::U2) => ">u2",
+            (Endian::Big, DType::U4) => ">u4",
         }
     }
 }
@@ -592,14 +540,21 @@ mod tests {
 
         assert_eq!(decoded.headers.len(), 1);
         assert_eq!(decoded.records.len(), 1);
-        assert_eq!(decoded.headers[0]["type"], serde_json::json!(0x01));
-        assert_eq!(decoded.headers[0]["time"], serde_json::json!(1199145608.0));
+        assert_eq!(
+            decoded.headers[0].get("type"),
+            Some(&HeaderValue::Integer(0x01))
+        );
+        assert_eq!(
+            decoded.headers[0].get("time"),
+            Some(&HeaderValue::Float(1199145608.0))
+        );
         assert_eq!(decoded.records[0].record_type, 0x01);
         let counts = decoded.records[0].arrays.get("cnt").expect("cnt array");
         assert_eq!(counts.dtype, DType::U2);
+        assert_eq!(counts.endian, Endian::Little);
         assert_eq!(counts.shape, vec![32, 4, 16]);
-        assert_eq!(counts.values.len(), 32 * 4 * 16);
-        assert!(counts.values.iter().all(|value| *value == 1));
+        assert_eq!(counts.bytes.len(), 32 * 4 * 16 * 2);
+        assert!(counts.bytes.chunks_exact(2).all(|chunk| chunk == [1, 0]));
     }
 
     fn synthetic_type01_file() -> Vec<u8> {
@@ -608,13 +563,13 @@ mod tests {
         put_u32_le(&mut header, 0, 0);
         put_u32_le(&mut header, 3, 0x01);
         put_u32_le(&mut header, 5, 16000);
-        put_u32_le(&mut header, 6, 16000);
+        put_u32_le(&mut header, 6, 16);
         put_u32_le(&mut header, 19, 20080101);
         put_u32_le(&mut header, 20, 0);
         bytes.extend_from_slice(&header);
 
-        for _ in 0..16 {
-            bytes.extend_from_slice(&0_u32.to_le_bytes());
+        for value in 0_u32..16 {
+            bytes.extend_from_slice(&value.to_le_bytes());
         }
         for _ in 0..(32 * 4 * 16) {
             bytes.extend_from_slice(&1_u16.to_le_bytes());

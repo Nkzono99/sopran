@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import gzip
-import json
+import importlib
 import os
-import shutil
-import subprocess
-import tempfile
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -206,7 +203,18 @@ def read_pace_pbf(
     resolved_backend = _resolve_pace_backend(backend)
     paths = _as_paths(files)
     if resolved_backend == "rust":
-        return _read_pace_pbf_rust(paths)
+        try:
+            return _read_pace_pbf_native(paths)
+        except ModuleNotFoundError as exc:
+            if _is_missing_native_module(exc):
+                raise RuntimeError(_native_backend_missing_message()) from exc
+            raise
+    if resolved_backend == "auto":
+        try:
+            return _read_pace_pbf_native(paths)
+        except ModuleNotFoundError as exc:
+            if not _is_missing_native_module(exc):
+                raise
 
     headers: list[dict[str, Any]] = []
     records_by_type: dict[int, list[PaceRecord]] = {}
@@ -267,66 +275,35 @@ def _resolve_pace_backend(backend: PaceBackend | str | None) -> PaceBackend:
     return cast(PaceBackend, value)
 
 
-def _read_pace_pbf_rust(paths: list[Path]) -> PaceData:
-    executable = _resolve_sopran_backend_executable()
-    if executable is None:
-        raise RuntimeError(
-            "Rust PACE backend executable was not found. Build it with "
-            "`cargo build -p sopran-backend`, set SOPRAN_BACKEND_EXE, or use backend='python'."
-        )
-    with tempfile.TemporaryDirectory(prefix="sopran_pace_") as temp:
-        output = Path(temp)
-        command = [
-            str(executable),
-            "pace-decode",
-            "--output",
-            str(output),
-            *(str(path) for path in paths),
-        ]
-        result = subprocess.run(
-            command,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            message = result.stderr.strip() or result.stdout.strip() or "unknown Rust backend error"
-            raise RuntimeError(f"Rust PACE backend failed: {message}")
-        return _read_pace_rust_bundle(output, paths)
+def _read_pace_pbf_native(paths: list[Path]) -> PaceData:
+    native = importlib.import_module("sopran_native")
+    payload = cast(dict[str, Any], native.read_pace_pbf([str(path) for path in paths]))
+    return _pace_data_from_native(payload, paths)
 
 
-def _resolve_sopran_backend_executable() -> Path | None:
-    configured = os.environ.get("SOPRAN_BACKEND_EXE")
-    if configured:
-        path = Path(configured)
-        if not path.exists():
-            raise RuntimeError(f"SOPRAN_BACKEND_EXE does not exist: {path}")
-        return path
-
-    root = Path(__file__).resolve().parents[4]
-    for profile in ("debug", "release"):
-        for name in ("sopran-backend.exe", "sopran-backend"):
-            candidate = root / "target" / profile / name
-            if candidate.exists():
-                return candidate
-
-    discovered = shutil.which("sopran-backend")
-    return Path(discovered) if discovered else None
+def _is_missing_native_module(exc: ModuleNotFoundError) -> bool:
+    return exc.name == "sopran_native" or (
+        exc.name is None and "sopran_native" in str(exc)
+    )
 
 
-def _read_pace_rust_bundle(output: Path, paths: list[Path]) -> PaceData:
-    manifest_path = output / "headers.json"
-    if not manifest_path.exists():
-        raise RuntimeError(f"Rust PACE backend did not write manifest: {manifest_path}")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    headers = tuple(cast(dict[str, Any], header) for header in manifest.get("headers", ()))
+def _native_backend_missing_message() -> str:
+    return (
+        "sopran_native is not installed. From crates/sopran-native, build it with "
+        "`python -m maturin develop --release --features extension-module`, "
+        "or use backend='python'."
+    )
+
+
+def _pace_data_from_native(payload: dict[str, Any], paths: list[Path]) -> PaceData:
+    headers = tuple(cast(dict[str, Any], header) for header in payload.get("headers", ()))
     records_by_type: dict[int, list[PaceRecord]] = {}
     record_order: list[PaceRecord] = []
 
-    for item in manifest.get("records", ()):
+    for item in payload.get("records", ()):
         record_type = int(item["type"])
         arrays = {
-            str(name): np.load(output / str(array["path"]), allow_pickle=False)
+            str(name): _native_array_to_numpy(array)
             for name, array in dict(item.get("arrays") or {}).items()
         }
         record = PaceRecord(
@@ -337,7 +314,7 @@ def _read_pace_rust_bundle(output: Path, paths: list[Path]) -> PaceData:
         records_by_type.setdefault(record_type, []).append(record)
         record_order.append(record)
 
-    sensor = int(manifest.get("sensor", -1))
+    sensor = int(payload.get("sensor", -1))
     if sensor < 0:
         sensor = _detect_sensor(paths[0])
     return PaceData(
@@ -347,6 +324,15 @@ def _read_pace_rust_bundle(output: Path, paths: list[Path]) -> PaceData:
         source_files=tuple(paths),
         record_order=tuple(record_order),
     )
+
+
+def _native_array_to_numpy(value: object) -> np.ndarray:
+    if isinstance(value, np.ndarray):
+        return value
+    payload = cast(dict[str, Any], value)
+    dtype = np.dtype(str(payload["dtype"]))
+    shape = tuple(int(size) for size in payload["shape"])
+    return np.frombuffer(payload["data"], dtype=dtype).reshape(shape)
 
 
 def pace_energy_counts(pace: PaceData, *, record_type: int | None = None) -> np.ndarray:
