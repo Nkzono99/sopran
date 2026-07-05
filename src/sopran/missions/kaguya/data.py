@@ -239,6 +239,21 @@ class KaguyaPaceData:
     def pas(self, magnetic_field: Any, **kwargs: Any) -> SopranArray:
         return self.pitch_angle_spectrum(magnetic_field, **kwargs)
 
+    def to_energy_flux(self, *, efficiency: float = 0.6) -> SopranArray:
+        try:
+            import numpy as np
+            import xarray as xr
+        except ImportError as exc:
+            raise RuntimeError("xarray is required for to_energy_flux()") from exc
+
+        return SopranArray(
+            name="energy_flux",
+            time=self.time,
+            schema=self.instrument_schema.variable("energy_flux"),
+            files=self.files,
+            xr=self._energy_flux_array(np, xr, efficiency=efficiency, require=True),
+        )
+
     def write_parquet(
         self,
         store: Store,
@@ -335,7 +350,21 @@ class KaguyaPaceData:
             return self._empty_xarray(np, xr)
 
         counts = _stack_energy_look_rows(count_rows, np)
-        energy_flux = np.full(counts.shape, np.nan, dtype=float)
+        energy_flux = _energy_flux_from_rows(
+            pace,
+            headers,
+            count_rows,
+            self.calibration,
+            self.instrument,
+            np,
+            efficiency=0.6,
+        )
+        energy_flux_attrs = _energy_flux_attrs(
+            energy_flux_schema,
+            calibration,
+            applied=not np.isnan(energy_flux).all(),
+            efficiency=0.6,
+        )
         quality = np.array(
             [int(header.get("data_quality", 0)) for header in headers],
             dtype=np.uint32,
@@ -350,7 +379,7 @@ class KaguyaPaceData:
                 "energy_flux": (
                     energy_flux_schema.dims,
                     energy_flux,
-                    _energy_flux_attrs(energy_flux_schema, calibration),
+                    energy_flux_attrs,
                 ),
                 "counts": (
                     counts_schema.dims,
@@ -382,6 +411,67 @@ class KaguyaPaceData:
                 "stop": self.time.stop_iso,
                 "calibration": calibration,
             },
+        )
+
+    def _energy_flux_array(
+        self,
+        np: Any,
+        xr: Any,
+        *,
+        efficiency: float,
+        require: bool,
+    ) -> Any:
+        energy_flux_schema = self.instrument_schema.variable("energy_flux")
+        calibration = _calibration_metadata(self.calibration, self.instrument)
+        if self.pace is None:
+            if require:
+                raise ValueError(_missing_energy_flux_calibration_message(self.instrument))
+            return self._empty_xarray(np, xr)["energy_flux"]
+
+        count_rows = []
+        headers = []
+        for record in self.pace.record_order:
+            counts = record.arrays.get("cnt")
+            if counts is None:
+                continue
+            header = self.pace.headers[record.index]
+            if not _header_in_time_range(header, self.time):
+                continue
+            count_rows.append(_counts_to_energy_look(counts))
+            headers.append(header)
+
+        if not count_rows:
+            return self._empty_xarray(np, xr)["energy_flux"]
+
+        values = _energy_flux_from_rows(
+            self.pace,
+            headers,
+            count_rows,
+            self.calibration,
+            self.instrument,
+            np,
+            efficiency=efficiency,
+        )
+        if require and np.isnan(values).all():
+            raise ValueError(_missing_energy_flux_calibration_message(self.instrument))
+        time_values = np.array(
+            [_header_time_to_datetime64(header.get("time"), np) for header in headers],
+            dtype="datetime64[ns]",
+        )
+        return xr.DataArray(
+            values,
+            dims=energy_flux_schema.dims,
+            coords={
+                "time": time_values,
+                "energy": np.arange(values.shape[1]),
+                "look": np.arange(values.shape[2]),
+            },
+            attrs=_energy_flux_attrs(
+                energy_flux_schema,
+                calibration,
+                applied=not np.isnan(values).all(),
+                efficiency=efficiency,
+            ),
         )
 
 
@@ -521,7 +611,7 @@ def _calibration_metadata(
     return {
         "fov": coverage["fov"],
         "info": coverage["info"],
-        "status": "tables_loaded_not_applied" if has_any_table else "not_loaded",
+        "status": "tables_loaded" if has_any_table else "not_loaded",
     }
 
 
@@ -534,13 +624,89 @@ def _variable_attrs(schema: Any) -> dict[str, object]:
     return attrs
 
 
-def _energy_flux_attrs(schema: Any, calibration: dict[str, object]) -> dict[str, object]:
-    return {
+def _energy_flux_attrs(
+    schema: Any,
+    calibration: dict[str, object],
+    *,
+    applied: bool = False,
+    efficiency: float | None = None,
+) -> dict[str, object]:
+    status = "applied" if applied else calibration["status"]
+    attrs = {
         **_variable_attrs(schema),
-        "calibration": calibration["status"],
-        "calibration_status": calibration["status"],
-        "physical_validity": "placeholder",
+        "calibration": status,
+        "calibration_status": status,
+        "physical_validity": "calibrated" if applied else "placeholder",
     }
+    if efficiency is not None:
+        attrs["efficiency"] = efficiency
+        attrs["formula"] = "counts / (integ_t * gfactor * efficiency)"
+    return attrs
+
+
+def _energy_flux_from_rows(
+    pace: PaceData,
+    headers: list[dict[str, Any]],
+    count_rows: list[Any],
+    calibration: PaceCalibration | None,
+    instrument: str,
+    np: Any,
+    *,
+    efficiency: float,
+) -> Any:
+    counts = _stack_energy_look_rows(count_rows, np)
+    flux = np.full(counts.shape, np.nan, dtype=float)
+    info = None
+    if calibration is not None:
+        sensor_id = _pace_sensor_id(instrument)
+        info = calibration.info.get(sensor_id)
+    if info is None:
+        return flux
+
+    for index, header in enumerate(headers):
+        gfactor = _gfactor_energy_look(info, count_rows[index], header, np)
+        if gfactor is None:
+            continue
+        sampl_time = float(header.get("sampl_time", 0.0))
+        if sampl_time == 0:
+            continue
+        integ_t = 16.0 / sampl_time
+        with np.errstate(divide="ignore", invalid="ignore"):
+            value = count_rows[index] / (integ_t * gfactor * efficiency)
+        valid = np.isfinite(gfactor) & (gfactor > 0)
+        value[~valid] = np.nan
+        flux[index, :, : value.shape[1]] = value
+    return flux
+
+
+def _gfactor_energy_look(
+    info: dict[str, Any],
+    counts: Any,
+    header: dict[str, Any],
+    np: Any,
+) -> Any | None:
+    look_count = int(counts.shape[1])
+    if look_count == 64 and "gfactor_4x16" in info:
+        key = "gfactor_4x16"
+    elif look_count == 1024 and "gfactor_16x64" in info:
+        key = "gfactor_16x64"
+    else:
+        return None
+    table = info[key]
+    ram = min(int(header.get("svs_tbl", 0)), int(table.shape[0]) - 1)
+    return pace_count_energy_look(np.asarray(table[ram], dtype=float))
+
+
+def _pace_sensor_id(instrument: str) -> int:
+    return {"ESA1": 0, "ESA2": 1, "IMA": 2, "IEA": 3}[instrument.upper()]
+
+
+def _missing_energy_flux_calibration_message(instrument: str) -> str:
+    return (
+        f"KAGUYA {instrument} energy_flux requires PACE INFO calibration tables. "
+        "Load counts instead with kg.esa1.counts.load(time), or provide calibration "
+        "with kg.esa1.energy_flux.load(time, calibration='auto')."
+    )
 
 
 def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any) -> Any:

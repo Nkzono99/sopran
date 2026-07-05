@@ -131,6 +131,9 @@ class Pipeline:
     def select_variables(self, *names: str) -> Pipeline:
         return self._with_stage("select_variables", names=names)
 
+    def calibrate(self, name: str, **parameters: Any) -> Pipeline:
+        return self._with_stage("calibrate", name=name, **parameters)
+
     def derive(self, name: str, **parameters: Any) -> Pipeline:
         return self._with_stage("derive", name=name, **parameters)
 

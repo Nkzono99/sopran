@@ -9,10 +9,10 @@ The current reader handles local PACE PBF records and exposes raw counts as:
 
 - `counts`: raw count matrix with dimensions `time`, `energy`, `look`.
 - `quality`: record quality flag with dimension `time`.
-- `energy_flux`: placeholder with the same dimensions as `counts`; calibration
-  is not applied yet.
+- `energy_flux`: calibrated energy flux with the same dimensions as `counts`,
+  using PACE INFO g-factor tables.
 - `energy`: PACE ESA1 energy channel index; physical eV/bin-center calibration
-  is not applied yet.
+  is still limited.
 
 For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 `(energy=32, look=64)`. Use xarray/SOPRAN arrays as the primary dense
@@ -97,11 +97,17 @@ cal = PaceCalibration(
 cal.coverage("ESA1")
 ```
 
-This is only the table-loading boundary. Passing `calibration=cal` records the
-coverage metadata as `tables_loaded_not_applied`; applying those tables to
-produce physical `energy_flux`, calibrated energy coordinates, and all
-look-angle coordinates remains separate planned work. `pitch_angle_spectrum()`
-uses the calibration tables for the look directions needed by pitch binning.
+Passing `calibration=cal` lets SOPRAN compute `energy_flux` with
+`counts / (integ_t * gfactor * efficiency)`, where the default efficiency is
+0.6. The endpoint form can load tables automatically:
+
+```python
+flux = kg.esa1.energy_flux.load(time, calibration="auto")
+```
+
+`pitch_angle_spectrum()` uses the calibration tables for the look directions
+needed by pitch binning. Full look-angle coordinate preservation remains
+separate work.
 
 ## Examples
 
@@ -114,6 +120,7 @@ esa1 = kg.esa1.load(spn.day("2008-01-01"))
 
 esa1.info()
 ds = esa1.to_xarray()
+flux = kg.esa1.energy_flux.load(spn.day("2008-01-01"), calibration="auto")
 frame = esa1.to_polars("counts")
 summed = esa1.to_polars("counts", reduce_look="sum")
 pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
@@ -124,6 +131,6 @@ record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
 
 ## Next Work
 
-- Apply ESA1 calibration tables to energy/angle metadata and `energy_flux`.
-- Add SPEDAS parity tests for representative PBF record types.
+- Extend calibrated energy coordinates and look-angle metadata.
+- Add package-internal validation fixtures for representative PBF record types.
 - Preserve look-angle coordinates instead of integer placeholder bins.

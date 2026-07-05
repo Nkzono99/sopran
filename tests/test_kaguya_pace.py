@@ -253,6 +253,50 @@ def test_kaguya_pace_data_accepts_energy_axis_after_sensor_axis() -> None:
     assert frame["counts"].to_list() == [64] * 32
 
 
+def test_kaguya_esa1_to_energy_flux_uses_synthetic_gfactor() -> None:
+    sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    counts = np.zeros((32, 4, 16), dtype=np.uint16)
+    counts[0, 0, 0] = 10
+    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+    pace = PaceData(
+        sensor=0,
+        headers=(
+            {
+                "time": sample_time,
+                "type": 0x01,
+                "sensor": 0,
+                "data_quality": 0,
+                "sampl_time": 16,
+                "svs_tbl": 0,
+            },
+        ),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    shape = (8, 32, 4, 16)
+    info = {
+        "gfactor_4x16": np.full(shape, 2.0, dtype=float),
+        "ene_4x16": np.ones(shape, dtype=float),
+    }
+    data = KaguyaESA1Data(
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(info={0: info}),
+    )
+    object.__setattr__(data, "pace", pace)
+
+    flux = data.to_energy_flux()
+    array = flux.to_xarray()
+
+    assert flux.name == "energy_flux"
+    assert array.shape == (1, 32, 64)
+    assert array.values[0, 0, 0] == pytest.approx(10.0 / (1.0 * 2.0 * 0.6))
+    assert array.values[0, 0, 1] == pytest.approx(0.0)
+    assert array.attrs["physical_validity"] == "calibrated"
+    assert array.attrs["calibration_status"] == "applied"
+    assert array.attrs["efficiency"] == 0.6
+
+
 def test_kaguya_esa1_to_xarray_records_loaded_unapplied_calibration(
     tmp_path: Path,
 ) -> None:
@@ -275,20 +319,18 @@ def test_kaguya_esa1_to_xarray_records_loaded_unapplied_calibration(
     data = kg.esa1.load(spn.day("2008-01-01"), calibration=calibration)
     ds = data.to_xarray()
 
-    assert data.info().lines[-1] == (
-        "calibration: fov=False, info=True, status=tables_loaded_not_applied"
-    )
+    assert data.info().lines[-1] == "calibration: fov=False, info=True, status=tables_loaded"
     assert ds.attrs["calibration"] == {
         "fov": False,
         "info": True,
-        "status": "tables_loaded_not_applied",
+        "status": "tables_loaded",
     }
-    assert ds["energy_flux"].attrs["calibration"] == "tables_loaded_not_applied"
-    assert ds["energy_flux"].attrs["calibration_status"] == "tables_loaded_not_applied"
-    assert ds["energy_flux"].attrs["physical_validity"] == "placeholder"
+    assert ds["energy_flux"].attrs["calibration"] == "applied"
+    assert ds["energy_flux"].attrs["calibration_status"] == "applied"
+    assert ds["energy_flux"].attrs["physical_validity"] == "calibrated"
     assert ds["energy"].attrs["description"].startswith("PACE ESA1 energy channel index")
     assert "units" not in ds["energy"].attrs
-    assert np.isnan(ds["energy_flux"].to_numpy()).all()
+    assert ds["energy_flux"].to_numpy()[0, 0, 0] == pytest.approx(1.0 / 0.6)
 
 
 def test_kaguya_esa1_to_xarray_filters_records_to_requested_time_range(tmp_path: Path) -> None:
@@ -325,6 +367,51 @@ def test_kaguya_esa1_variable_endpoint_returns_loaded_data_array(tmp_path: Path)
     assert counts.to_xarray().shape == (1, 32, 64)
     assert counts.xr is counts.to_xarray()
     assert axes is not None
+
+
+def test_kaguya_esa1_energy_flux_endpoint_loads_calibrated_flux(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    shape = (8, 32, 4, 16)
+    calibration = PaceCalibration(info={0: {"gfactor_4x16": np.full(shape, 2.0)}})
+    kg = spn.Kaguya(store=store, download="never")
+    monkeypatch.setattr(kg.esa1, "load_calibration", lambda *, download=None: calibration)
+
+    flux = kg.esa1.energy_flux.load(
+        spn.day("2008-01-01"),
+        calibration="auto",
+        download="never",
+    )
+    array = flux.to_xarray()
+
+    assert flux.name == "energy_flux"
+    assert array.shape == (1, 32, 64)
+    assert array.values[0, 0, 0] == pytest.approx(1.0 / (1.0 * 2.0 * 0.6))
+    assert array.attrs["physical_validity"] == "calibrated"
+    assert array.attrs["calibration_status"] == "applied"
+
+
+def test_kaguya_esa1_energy_flux_endpoint_requires_calibration(tmp_path: Path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    kg = spn.Kaguya(store=store, download="never")
+
+    with pytest.raises(ValueError) as exc:
+        kg.esa1.energy_flux.load(spn.day("2008-01-01"), download="never")
+
+    message = str(exc.value)
+    assert "KAGUYA ESA1 energy_flux requires PACE INFO calibration tables" in message
+    assert "kg.esa1.counts.load(time)" in message
+    assert "calibration='auto'" in message
 
 
 def test_kaguya_esa1_variable_endpoint_can_plot_with_time(tmp_path: Path) -> None:
@@ -738,6 +825,65 @@ def test_kaguya_esa1_pipeline_run_writes_counts_dataset(tmp_path: Path) -> None:
     assert log["row_count"] == 2048
     assert log["shards"][0]["row_count"] == 2048
     assert log["elapsed_seconds"] >= 0
+
+
+def test_kaguya_esa1_pipeline_records_calibrate_stage(tmp_path: Path) -> None:
+    kg = spn.Kaguya(store=Store(tmp_path / "store"))
+    time = spn.day("2008-01-01")
+
+    pipe = (
+        kg.esa1.pipeline(time)
+        .decode()
+        .calibrate("energy_flux", calibration="auto")
+        .select_variables("energy_flux")
+    )
+    plan = pipe.plan()
+
+    assert plan.stage_names == ("decode", "calibrate", "select_variables")
+    assert plan.stages[1].parameters == {
+        "name": "energy_flux",
+        "calibration": "auto",
+    }
+
+
+def test_kaguya_esa1_pipeline_writes_energy_flux_dataset(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    shape = (8, 32, 4, 16)
+    calibration = PaceCalibration(info={0: {"gfactor_4x16": np.full(shape, 2.0)}})
+    kg = spn.Kaguya(store=store, download="never")
+    monkeypatch.setattr(kg.esa1, "load_calibration", lambda *, download=None: calibration)
+
+    result = (
+        kg.esa1.pipeline(spn.day("2008-01-01"))
+        .decode()
+        .calibrate("energy_flux", calibration="auto")
+        .select_variables("energy_flux")
+        .write("kaguya.esa1.energy_flux", layer="normalized")
+        .run(download="never")
+    )
+
+    assert result.status == "complete"
+    frame = result.outputs[0].scan().collect()
+    assert frame.height == 2048
+    assert frame.select("energy_flux").to_series().to_list()[0] == pytest.approx(
+        1.0 / (1.0 * 2.0 * 0.6)
+    )
+    manifest = result.outputs[0].manifest()
+    assert manifest["dataset_id"] == "kaguya.esa1.energy_flux"
+    assert manifest["provenance"]["variable"] == "energy_flux"
+    assert manifest["provenance"]["pipeline"]["stages"] == [
+        "decode",
+        "calibrate",
+        "select_variables",
+        "write",
+    ]
 
 
 def test_kaguya_esa1_pipeline_write_registers_database_product(

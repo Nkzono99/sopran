@@ -392,14 +392,13 @@ def test_kaguya_esa1_load_returns_typed_data_object_without_downloading(tmp_path
     time = spn.period("2008-02-01", "2008-02-02")
 
     esa1 = kg.esa1.load(time)
-    flux = kg.esa1.energy_flux.load(time)
 
     assert esa1.instrument == "ESA1"
     assert esa1.time == time
     assert esa1.energy_flux.name == "energy_flux"
     assert esa1.eflux is esa1.energy_flux
-    assert flux.name == "energy_flux"
-    assert flux.time == time
+    with pytest.raises(ValueError, match="energy_flux requires PACE INFO calibration"):
+        kg.esa1.energy_flux.load(time)
 
 
 def test_kaguya_esa1_load_missing_error_rejects_silent_empty_dataset(tmp_path) -> None:
@@ -1067,12 +1066,12 @@ stop = "2008-02-02T00:00:00"
     case = project.case("wake_20080201")
 
     esa1 = case.kaguya.esa1.load()
-    flux = case.kaguya.esa1.energy_flux.load()
     plan = case.kaguya.esa1.energy_flux.plan()
 
     assert esa1.time == case.time
-    assert flux.time == case.time
     assert plan.time == case.time
     assert plan.remote_files == [
         "sln-l-pace-3-pbf1-v3.0/20080201/data/IPACE_PBF1_080201_ESA1_V003.dat.gz"
     ]
+    with pytest.raises(ValueError, match="energy_flux requires PACE INFO calibration"):
+        case.kaguya.esa1.energy_flux.load()
