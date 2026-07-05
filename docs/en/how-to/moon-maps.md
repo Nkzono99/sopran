@@ -28,9 +28,8 @@ sza_plan = moon.sza.plan(
 )
 ```
 
-The SPICE backend that derives solar geometry from `time=` alone is not
-implemented yet. For computed products, pass `sun_vector=` or
-`subsolar_lon_lat=` explicitly.
+For `moon.sza.compute()`, solar geometry can be supplied with `sun_vector=`,
+`subsolar_lon_lat=`, or `time=` plus `spice_kernels=`.
 
 ## Download / Load DEM
 
@@ -85,8 +84,15 @@ shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
 ```
 
 This `shadow` product is a binary map where `sza > threshold_deg` is 1.
-DEM-horizon terrain-aware shadowing is still pending and is expected to be added
-behind a separate `method=`.
+Use `method="terrain_ray"` for DEM-horizon terrain-aware shadowing.
 
-Terrain-aware shadow and other remaining backend status is tracked in
-[Status](../reference/status.md).
+```python
+sza = moon.sza.compute(
+    like=dem,
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=("kernels/naif0012.tls", "kernels/de421.bsp", "kernels/moon_pa.bpc"),
+)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
+```
+
+Remaining map backend status is tracked in [Status](../reference/status.md).

@@ -16,9 +16,9 @@ provider-specific discovery, while `spn.Moon()` owns body-fixed DEM, Tsunakawa
 SVM, SZA, shadow, illumination, projection, and region semantics.
 
 DEM and Tsunakawa SVM can be loaded as rasters when source files are available.
-SZA can be computed from an explicit Sun vector or subsolar point. Illumination
-and shadow currently support SZA-threshold binary maps; terrain-aware DEM
-horizon shadowing is planned.
+SZA can be computed from an explicit Sun vector, subsolar point, or `time=` with
+SPICE kernels. Illumination supports SZA-threshold binary maps, and shadow
+supports both SZA-threshold and terrain-ray DEM horizon maps.
 """,
     "ja": """# Moon Maps
 
@@ -27,8 +27,9 @@ provider-specific discovery を担当し、`spn.Moon()` は月固定 DEM、Tsuna
 SZA、shadow、illumination、projection、region semantics を受け持ちます。
 
 source file が利用できる場合、DEM と Tsunakawa SVM は raster として読み込めます。
-SZA は明示的な Sun vector または subsolar point から計算できます。illumination と shadow は
-現時点では SZA 閾値による二値 map を返し、DEM horizon を使う terrain-aware shadow は今後追加します。
+SZA は明示的な Sun vector、subsolar point、または `time=` と SPICE kernel から計算できます。
+illumination は SZA 閾値による二値 map、shadow は SZA 閾値と terrain-ray DEM horizon map を
+返します。
 """,
 }
 
@@ -64,40 +65,39 @@ SVM product は Tsunakawa lunar magnetic anomaly surface vector map を表しま
         "en": """# Moon Shadow Map
 
 Shadow products must be computed from DEM terrain, solar position, body shape,
-and projection metadata. The current compute backend supports SZA-threshold
-binary shadow maps; terrain-aware DEM horizon shadowing is planned.
+and projection metadata. The compute backend supports SZA-threshold binary
+shadow maps and `method="terrain_ray"` DEM horizon shadowing.
 """,
         "ja": """# Moon Shadow Map
 
 Shadow product は DEM terrain、solar position、body shape、projection metadata から
-計算する必要があります。現在の compute backend は SZA 閾値による二値 shadow map を返し、
-DEM horizon を使う terrain-aware shadow は今後追加します。
+計算する必要があります。compute backend は SZA 閾値による二値 shadow map と
+`method="terrain_ray"` の DEM horizon shadowing を返します。
 """,
     },
     "illumination": {
         "en": """# Moon Illumination Map
 
 Illumination products currently support SZA-threshold binary maps. Solar
-incidence and visibility derived from DEM terrain and SPICE-backed geometry are
-planned.
+incidence and visibility derived from DEM terrain are planned.
 """,
         "ja": """# Moon Illumination Map
 
 Illumination product は現時点では SZA 閾値による二値 map を返します。DEM terrain と
-SPICE-backed solar geometry から導く solar incidence と visibility は今後追加します。
+solar geometry から導く local incidence と visibility は今後追加します。
 """,
     },
     "sza": {
         "en": """# Moon Solar Zenith Angle
 
 SZA products represent solar zenith angle on the lunar surface. The compute
-endpoint accepts `sun_vector=` or `subsolar_lon_lat=`. SPICE-backed computation
-from `time=` alone is planned.
+endpoint accepts `sun_vector=`, `subsolar_lon_lat=`, or `time=` with
+`spice_kernels=`.
 """,
         "ja": """# Moon Solar Zenith Angle
 
-SZA product は月面上の solar zenith angle を表します。compute endpoint は `sun_vector=` または
-`subsolar_lon_lat=` を受け取ります。`time=` だけからの SPICE-backed computation は今後追加します。
+SZA product は月面上の solar zenith angle を表します。compute endpoint は `sun_vector=`、
+`subsolar_lon_lat=`、または `spice_kernels=` 付きの `time=` を受け取ります。
 """,
     },
 }
@@ -181,11 +181,17 @@ dem_plan = moon.dem.plan(
     resolution="256ppd",
     projection="native",
 )
+dem = moon.dem.load(path="Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif", region=region)
 sza = moon.sza.compute(
     region=region,
-    subsolar_lon_lat=(0.0, 0.0),
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=(
+        "kernels/naif0012.tls",
+        "kernels/de421.bsp",
+        "kernels/moon_pa.bpc",
+    ),
 )
-shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
 ```
 """,
     )
@@ -222,8 +228,9 @@ import sopran as spn
 
 moon = spn.Moon()
 region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+dem = moon.dem.load(path="Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif", region=region)
 sza = moon.sza.compute(region=region, subsolar_lon_lat=(0.0, 0.0))
-shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
 ```
 """,
         ),
@@ -256,9 +263,22 @@ region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
 
 sza_plan = moon.sza.plan(
     region=region,
-    subsolar_lon_lat=(0.0, 0.0),
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=(
+        "kernels/naif0012.tls",
+        "kernels/de421.bsp",
+        "kernels/moon_pa.bpc",
+    ),
 )
-sza = moon.sza.compute(region=region, subsolar_lon_lat=(0.0, 0.0))
+sza = moon.sza.compute(
+    region=region,
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=(
+        "kernels/naif0012.tls",
+        "kernels/de421.bsp",
+        "kernels/moon_pa.bpc",
+    ),
+)
 ```
 """,
         ),

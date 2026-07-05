@@ -12,7 +12,7 @@
 | KAGUYA その他 | PACE/LMAG/LRS の一部を実装済み | instrument 固有の較正と実データ parity |
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
 | Frames | `FrameContext`、identity transform、SPICE vector 委譲 | SpacePy / Astropy backend |
-| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load、球面 SZA 計算、SZA 閾値 illumination/shadow | projection、reproject、SPICE 太陽位置、terrain-aware shadow |
+| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load、球面 SZA、SPICE 太陽位置、SZA 閾値 illumination/shadow、terrain-ray shadow | projection、reproject、finite-sun shadow、実データ検証 |
 | Rust backend | PACE PBF decode を PyO3 native module として任意 backend 接続 | binning、fit、batch shard 処理 |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
 | CI / 型検査 | pytest、compileall、schema docs、ruff、mypy を blocking step として実行 | 型境界の精度向上と strict 対象の拡大 |
@@ -93,13 +93,16 @@ Python reference に fallback します。
 - `moon.svm` から `moon.svm_tsunakawa2015` への既定 alias
 - 直接 URL が確認できない SVM source の手動取得 guide
 - `sun_vector` / `subsolar_lon_lat` による球面 SZA raster 計算
+- `time=` と `spice_kernels=` による SPICE Sun vector 解決
 - SZA 閾値による二値 illumination / shadow raster 計算
+- DEM horizon を追う `method="terrain_ray"` shadow raster 計算
 
 残っているもの:
 
 - projection / reproject / bilinear interpolation
-- `time=` からの SPICE 太陽位置
-- DEM と球/楕円体形状を考慮した terrain-aware shadow
+- finite-sun / penumbra shadow fraction
+- 大規模 DEM 向けの terrain-ray 高速化
+- 実 SPICE kernel と公開 DEM による数値検証
 
 ## Pipeline / Store
 
@@ -156,5 +159,5 @@ Python reference に fallback します。
 2. KAGUYA LRS/LMAG の実データ数値検証
 3. ARTEMIS raw discovery と CDF ingest
 4. SPICE / SpacePy を使う frame transform
-5. Moon projection/reproject と terrain-aware shadow
+5. Moon projection/reproject と terrain-ray の高速化・実データ検証
 6. PlotStack の interactive backend

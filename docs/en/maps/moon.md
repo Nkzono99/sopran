@@ -17,7 +17,7 @@ moon.schema()
 | `moon.svm` | `surface_vector_map`, `svm_tsunakawa2015` | Tsunakawa lunar magnetic anomaly SVM |
 | `moon.svm_tsunakawa2015` | `tsunakawa_svm2015` | Explicit Tsunakawa 2015 SVM |
 | `moon.sza` | `solar_zenith_angle` | Solar zenith angle |
-| `moon.shadow` | `shadow_map` | SZA-threshold shadow fraction; terrain-aware planned |
+| `moon.shadow` | `shadow_map` | SZA-threshold or terrain-ray shadow fraction |
 | `moon.illumination` | `illumination_map` | SZA-threshold illumination fraction |
 
 ## Select By Product Name
@@ -66,8 +66,8 @@ bt = svm.sample(lat=-0.5, lon=0.0)
 
 `moon.sza.compute()` computes a spherical solar-zenith-angle raster on an
 existing raster grid, or on axes supplied through `lon=` / `lat=` / `region=`.
-The SPICE-backed `time=`-only solar geometry backend is not implemented yet, so
-pass `sun_vector=` or `subsolar_lon_lat=` explicitly.
+Solar geometry can be supplied with `sun_vector=`, `subsolar_lon_lat=`, or
+`time=` plus `spice_kernels=`.
 
 ```python
 sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
@@ -76,8 +76,16 @@ shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
 ```
 
 `illumination` marks `sza <= threshold_deg` as 1, and `shadow` marks
-`sza > threshold_deg` as 1. This is a coarse day/night classification; DEM-based
-terrain-aware horizon shadowing is still pending.
+`sza > threshold_deg` as 1. Use `method="terrain_ray"` for DEM-horizon shadowing.
+
+```python
+sza = moon.sza.compute(
+    like=dem,
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=("kernels/naif0012.tls", "kernels/de421.bsp", "kernels/moon_pa.bpc"),
+)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
+```
 
 ## Plan Metadata
 

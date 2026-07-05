@@ -36,8 +36,8 @@ MOON_SURFACE_SCHEMA = InstrumentSchema(
             dtype="float64",
             frame="Moon body-fixed",
             description=(
-                "Shadow or shadow-fraction map; current compute backend supports "
-                "SZA-threshold classification, with terrain-aware shadow planned."
+                "Shadow or shadow-fraction map computed with SZA-threshold or "
+                "terrain-ray DEM horizon classification."
             ),
             aliases=("shadow_map", "shadow_fraction"),
         ),

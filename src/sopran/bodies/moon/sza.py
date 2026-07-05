@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 
+from sopran.core.errors import BackendError
 from sopran.maps.raster import RasterLayer
 
 
@@ -91,15 +94,77 @@ def sun_vector_from_parameters(
         vector = subsolar_vector(lon=lon, lat=lat)
         return vector, "subsolar_lon_lat", {"subsolar_lon_lat": [lon, lat]}
 
+    provided_sza = parameters.get("sza")
+    if isinstance(provided_sza, RasterLayer):
+        recovered = sun_vector_from_raster_metadata(provided_sza)
+        if recovered is not None:
+            return recovered
+
     if "time" in parameters:
-        raise NotImplementedError(
-            "SPICE-backed Moon.sza.compute(time=...) is not implemented yet. "
-            "Pass sun_vector= or subsolar_lon_lat= explicitly."
-        )
+        vector, metadata = spice_sun_vector_from_time(parameters)
+        return vector, "spice", metadata
     raise ValueError(
-        "Moon.sza.compute requires sun_vector= or subsolar_lon_lat= until "
-        "SPICE-backed time geometry is implemented."
+        "Moon.sza.compute requires sun_vector=, subsolar_lon_lat=, or time= "
+        "with SPICE kernels."
     )
+
+
+def sun_vector_from_raster_metadata(
+    layer: RasterLayer,
+) -> tuple[np.ndarray, str, dict[str, Any]] | None:
+    metadata = layer.metadata
+    geometry_source = str(metadata.get("geometry_source", "sza_metadata"))
+    if "sun_vector" in metadata:
+        vector = normalize_vector(np.asarray(metadata["sun_vector"], dtype=np.float64))
+        return vector, geometry_source, {"sun_vector": vector.tolist()}
+    subsolar = metadata.get("subsolar_lon_lat")
+    if subsolar is not None:
+        lon, lat = tuple(float(value) for value in subsolar)
+        return (
+            subsolar_vector(lon=lon, lat=lat),
+            geometry_source,
+            {"subsolar_lon_lat": [lon, lat]},
+        )
+    return None
+
+
+def spice_sun_vector_from_time(parameters: dict[str, Any]) -> tuple[np.ndarray, dict[str, Any]]:
+    try:
+        import spiceypy
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise BackendError(
+            "spiceypy is required for Moon.sza.compute(time=...). "
+            'Install the Moon optional dependencies with: pip install -e ".[moon]"'
+        ) from exc
+
+    time_value = parameters["time"]
+    frame = str(parameters.get("spice_frame", parameters.get("frame", "MOON_ME")))
+    target = str(parameters.get("spice_target", "SUN"))
+    observer = str(parameters.get("spice_observer", "MOON"))
+    abcorr = str(parameters.get("spice_abcorr", "LT+S"))
+    kernels = tuple(Path(path) for path in parameters.get("spice_kernels", ()))
+    try:
+        for kernel in kernels:
+            spiceypy.furnsh(str(kernel))
+        et = float(spiceypy.utc2et(_time_to_utc_string(time_value)))
+        position, light_time = spiceypy.spkpos(target, et, frame, abcorr, observer)
+    except Exception as exc:
+        raise BackendError(
+            "SPICE-backed Moon.sza.compute(time=...) failed. Provide compatible "
+            "leapsecond, planetary ephemeris, and Moon body-fixed frame kernels."
+        ) from exc
+
+    vector = normalize_vector(np.asarray(position, dtype=np.float64))
+    return vector, {
+        "time": str(time_value),
+        "sun_vector": vector.tolist(),
+        "spice_target": target,
+        "spice_observer": observer,
+        "spice_frame": frame,
+        "spice_abcorr": abcorr,
+        "spice_kernels": [path.as_posix() for path in kernels],
+        "spice_light_time_s": float(light_time),
+    }
 
 
 def subsolar_vector(*, lon: float, lat: float) -> np.ndarray:
@@ -124,6 +189,19 @@ def normalize_vector(vector: np.ndarray) -> np.ndarray:
     if not np.isfinite(norm) or norm == 0.0:
         raise ValueError("sun_vector must be finite and non-zero")
     return vector / norm
+
+
+def _time_to_utc_string(value: Any) -> str:
+    if isinstance(value, np.datetime64):
+        return np.datetime_as_string(value.astype("datetime64[ns]"), unit="ns") + " UTC"
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return dt.astimezone(UTC).replace(tzinfo=None).isoformat() + " UTC"
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
+        return timestamp.replace(tzinfo=None).isoformat() + " UTC"
+    text = str(value)
+    return text if text.upper().endswith("UTC") else f"{text} UTC"
 
 
 def grid_from_parameters(parameters: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:

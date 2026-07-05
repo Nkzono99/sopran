@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import types
 
 import numpy as np
 import pytest
@@ -66,6 +68,55 @@ def test_moon_sza_compute_from_sun_vector_on_like_grid() -> None:
     assert sza.metadata["geometry_source"] == "sun_vector"
 
 
+def test_moon_sza_compute_from_time_uses_spice_sun_vector(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    fake_spice = types.ModuleType("spiceypy")
+
+    def furnsh(path: str) -> None:
+        calls.append(("furnsh", path))
+
+    def utc2et(value: str) -> float:
+        calls.append(("utc2et", value))
+        return 123.0
+
+    def spkpos(target: str, et: float, frame: str, abcorr: str, observer: str):
+        calls.append(("spkpos", (target, et, frame, abcorr, observer)))
+        return np.array([1.0, 0.0, 0.0]), 0.0
+
+    fake_spice.furnsh = furnsh  # type: ignore[attr-defined]
+    fake_spice.utc2et = utc2et  # type: ignore[attr-defined]
+    fake_spice.spkpos = spkpos  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "spiceypy", fake_spice)
+
+    like = spn.RasterLayer(
+        [[0.0, 0.0]],
+        lon=[0.0, 90.0],
+        lat=[0.0],
+        product="dem",
+        variable="dem",
+        source="synthetic.dem",
+        units="m",
+    )
+
+    sza = spn.Moon().sza.compute(
+        like=like,
+        time="2008-02-01T12:00:00Z",
+        spice_kernels=("naif0012.tls", "moon_pa.bpc"),
+    )
+
+    np.testing.assert_allclose(sza.values, [[0.0, 90.0]], atol=1.0e-12)
+    assert sza.metadata["geometry_source"] == "spice"
+    assert sza.metadata["spice_frame"] == "MOON_ME"
+    assert sza.metadata["sun_vector"] == [1.0, 0.0, 0.0]
+    assert calls == [
+        ("furnsh", "naif0012.tls"),
+        ("furnsh", "moon_pa.bpc"),
+        ("utc2et", "2008-02-01T12:00:00Z UTC"),
+        ("spkpos", ("SUN", 123.0, "MOON_ME", "LT+S", "MOON")),
+    ]
+
+
 def test_moon_illumination_compute_thresholds_sza_layer() -> None:
     moon = spn.Moon()
     sza = spn.RasterLayer(
@@ -112,6 +163,53 @@ def test_moon_shadow_compute_thresholds_sza_layer() -> None:
     np.testing.assert_allclose(shadow.values, [[0.0, 0.0, 1.0, np.nan]], equal_nan=True)
     assert shadow.metadata["method"] == "sza_threshold"
     assert shadow.metadata["threshold_deg"] == 90.0
+
+
+def test_moon_shadow_compute_terrain_ray_casts_dem_horizon_shadow() -> None:
+    moon = spn.Moon()
+    dem = spn.RasterLayer(
+        [[0.0, 10_000.0, 0.0]],
+        lon=[0.0, 1.0, 2.0],
+        lat=[0.0],
+        product="dem",
+        variable="dem",
+        source="synthetic.dem",
+        units="m",
+    )
+
+    shadow = moon.shadow.compute(
+        method="terrain_ray",
+        dem=dem,
+        subsolar_lon_lat=(-80.0, 0.0),
+        max_steps=2,
+    )
+
+    assert shadow.product == "shadow"
+    assert shadow.variable == "shadow"
+    assert shadow.units == "fraction"
+    np.testing.assert_allclose(shadow.values, [[0.0, 0.0, 1.0]])
+    assert shadow.metadata["method"] == "terrain_ray"
+    assert shadow.metadata["dem"] == dem.spec.to_metadata()
+    assert shadow.metadata["sza"]["metadata"]["geometry_source"] == "subsolar_lon_lat"
+
+
+def test_moon_shadow_terrain_ray_reuses_sza_geometry_metadata() -> None:
+    moon = spn.Moon()
+    dem = spn.RasterLayer(
+        [[0.0, 10_000.0, 0.0]],
+        lon=[0.0, 1.0, 2.0],
+        lat=[0.0],
+        product="dem",
+        variable="dem",
+        source="synthetic.dem",
+        units="m",
+    )
+    sza = moon.sza.compute(like=dem, subsolar_lon_lat=(-80.0, 0.0))
+
+    shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza, max_steps=2)
+
+    np.testing.assert_allclose(shadow.values, [[0.0, 0.0, 1.0]])
+    assert shadow.metadata["geometry_source"] == "subsolar_lon_lat"
 
 
 def test_moon_svm_default_is_tsunakawa2015_endpoint() -> None:
@@ -491,7 +589,8 @@ def test_moon_surface_info_includes_schema_and_sources() -> None:
     assert "units: m" in dem_info
     assert "frame: Moon body-fixed" in dem_info
     assert "aliases: elevation, height" in dem_info
-    assert "sources: legacy.shadowmap_sza" in shadow_info
+    assert "computed.terrain_ray" in shadow_info
+    assert "legacy.shadowmap_sza" in shadow_info
     assert "aliases: shadow_map, shadow_fraction" in shadow_info
     assert "sources: computed.spice.sza" in sza_info
     assert "units: deg" in sza_info
@@ -667,7 +766,7 @@ def test_moon_surface_endpoints_expose_schema_objects() -> None:
     assert dem_schema.dims == ("lat", "lon")
     assert dem_schema.units == "m"
     assert dem_schema.frame == "Moon body-fixed"
-    assert "SZA-threshold" in shadow_schema.description
+    assert "terrain-ray" in shadow_schema.description
     assert sza_schema.units == "deg"
 
 
@@ -687,7 +786,7 @@ def test_moon_surface_examples_return_markdown_pages() -> None:
     assert "Moon Shadow Example" in shadow_example
     assert "moon.shadow.compute" in shadow_example
     assert "Moon Solar Zenith Angle Example" in sza_example
-    assert "subsolar_lon_lat" in sza_example
+    assert "spice_kernels" in sza_example
 
 
 def test_moon_surface_guides_can_switch_language() -> None:

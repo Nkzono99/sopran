@@ -14,7 +14,7 @@ SURFACE_SOURCES = {
         "svm_tsunakawa2015",
         "kaguya.lism.svm",
     ),
-    "shadow": ("legacy.shadowmap_sza",),
+    "shadow": ("computed.terrain_ray", "legacy.shadowmap_sza"),
     "illumination": (),
     "sza": ("computed.spice.sza",),
 }

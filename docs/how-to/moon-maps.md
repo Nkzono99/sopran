@@ -28,8 +28,8 @@ sza_plan = moon.sza.plan(
 )
 ```
 
-`time=` だけから太陽位置を解く SPICE backend はまだ未実装です。計算する場合は
-`sun_vector=` または `subsolar_lon_lat=` を明示します。
+`moon.sza.compute()` では `sun_vector=`、`subsolar_lon_lat=`、または `time=` と
+`spice_kernels=` で太陽位置を与えます。
 
 ## DEM を download / load する
 
@@ -83,7 +83,16 @@ shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
 ```
 
 この `shadow` は `sza > threshold_deg` を 1 にする二値 map です。DEM の horizon を使った
-terrain-aware shadow は未実装で、今後 `method=` を分けて追加する想定です。
+terrain-aware shadow は `method="terrain_ray"` で計算します。
+
+```python
+sza = moon.sza.compute(
+    like=dem,
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=("kernels/naif0012.tls", "kernels/de421.bsp", "kernels/moon_pa.bpc"),
+)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
+```
 
 ## 0/360 度境界
 
@@ -93,5 +102,4 @@ region.contains(355, 0)
 region.to_lon_domain("-180_180")
 ```
 
-terrain-aware shadow 計算など未実装 backend の現状は [実装状況](../reference/status.md)
-に集約しています。
+残りの map backend の現状は [実装状況](../reference/status.md) に集約しています。

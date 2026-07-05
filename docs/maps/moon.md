@@ -17,7 +17,7 @@ moon.schema()
 | `moon.svm` | `surface_vector_map`, `svm_tsunakawa2015` | Tsunakawa lunar magnetic anomaly SVM |
 | `moon.svm_tsunakawa2015` | `tsunakawa_svm2015` | 明示的な Tsunakawa 2015 SVM |
 | `moon.sza` | `solar_zenith_angle` | solar zenith angle |
-| `moon.shadow` | `shadow_map` | SZA-threshold shadow fraction; terrain-aware planned |
+| `moon.shadow` | `shadow_map` | SZA-threshold or terrain-ray shadow fraction |
 | `moon.illumination` | `illumination_map` | SZA-threshold illumination fraction |
 
 ## product を名前で選ぶ
@@ -59,8 +59,8 @@ bt = svm.sample(lat=-0.5, lon=0.0)
 ## SZA / illumination / shadow を計算する
 
 `moon.sza.compute()` は既存 raster と同じ grid、または `lon=` / `lat=` / `region=` から
-球面近似の solar zenith angle を計算します。現時点では `time=` だけから SPICE で太陽位置を
-解く backend は未実装なので、`sun_vector=` または `subsolar_lon_lat=` を明示します。
+球面近似の solar zenith angle を計算します。太陽位置は `sun_vector=`、
+`subsolar_lon_lat=`、または `time=` と `spice_kernels=` から与えます。
 
 ```python
 sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
@@ -69,8 +69,16 @@ shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
 ```
 
 `illumination` は `sza <= threshold_deg` を 1、`shadow` は `sza > threshold_deg` を 1 にする
-二値 raster です。これは日照/日陰の大まかな分類用で、DEM の地形 horizon を追う
-terrain-aware shadow は未実装です。
+二値 raster です。DEM の地形 horizon を追う場合は `method="terrain_ray"` を使います。
+
+```python
+sza = moon.sza.compute(
+    like=dem,
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=("kernels/naif0012.tls", "kernels/de421.bsp", "kernels/moon_pa.bpc"),
+)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
+```
 
 ## guide と example
 

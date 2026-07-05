@@ -13,7 +13,7 @@ pages can focus on their own task.
 | Other KAGUYA sensors | PACE/LMAG/LRS partial support | Instrument-specific calibration and real-data parity |
 | ARTEMIS | Object API and normalized parquet skeleton | CDAWeb/HAPI/CDF discovery and raw loader |
 | Frames | `FrameContext`, identity transform, and SPICE vector delegation | SpacePy / Astropy backend |
-| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download, Tsunakawa SVM load, spherical SZA, SZA-threshold illumination/shadow | Projection, reprojection, SPICE solar geometry, terrain-aware shadow |
+| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download, Tsunakawa SVM load, spherical SZA, SPICE solar geometry, SZA-threshold illumination/shadow, terrain-ray shadow | Projection, reprojection, finite-Sun shadow, real-data validation |
 | Rust backend | Optional PACE PBF decode connected through a PyO3 native module | Binning, fitting, batch shard work |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | Interactive HTML, datashader, long-span quicklooks |
 | CI / typing | pytest, compileall, schema docs, ruff, and blocking mypy | Improve type precision at dynamic boundaries and expand strict coverage |
@@ -75,13 +75,16 @@ Implemented:
 - Text / npy loading for the Tsunakawa SVM (`LunarSVM_000_02_v02.dat`)
 - Default alias from `moon.svm` to `moon.svm_tsunakawa2015`
 - Spherical SZA raster computation from `sun_vector` / `subsolar_lon_lat`
+- SPICE Sun-vector resolution from `time=` and `spice_kernels=`
 - Binary illumination / shadow raster computation from an SZA threshold
+- `method="terrain_ray"` shadow raster computation from a DEM horizon
 
 Remaining:
 
 - Projection / reprojection / bilinear interpolation
-- SPICE solar geometry from `time=`
-- DEM and spherical/ellipsoid terrain-aware shadowing
+- Finite-Sun / penumbra shadow fraction
+- Terrain-ray acceleration for large DEM rasters
+- Numerical validation with real SPICE kernels and public DEM files
 
 ## Near-Term Priorities
 
@@ -89,7 +92,7 @@ Remaining:
 2. KAGUYA LRS/LMAG real-data numerical checks.
 3. ARTEMIS raw discovery and CDF ingest.
 4. SpacePy / Astropy frame transforms.
-5. Moon projection/reprojection and terrain-aware shadow.
+5. Moon projection/reprojection and terrain-ray performance/real-data validation.
 6. PlotStack interactive backend.
 
 ## CI / Typing

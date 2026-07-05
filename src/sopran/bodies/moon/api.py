@@ -50,9 +50,9 @@ class Moon:
                 "dem: digital elevation model endpoint",
                 "svm: default Tsunakawa lunar magnetic anomaly SVM endpoint",
                 "svm_tsunakawa2015: explicit Tsunakawa SVM endpoint",
-                "shadow: SZA-threshold shadow map; terrain-aware backend planned",
-                "illumination: SZA-threshold illumination map; terrain-aware backend planned",
-                "sza: solar zenith angle compute endpoint",
+                "shadow: SZA-threshold and terrain-ray shadow map endpoint",
+                "illumination: SZA-threshold illumination map endpoint",
+                "sza: solar zenith angle endpoint with explicit or SPICE Sun geometry",
                 "schema: "
                 + format_list(variable.name for variable in self.schema().variables),
             ),

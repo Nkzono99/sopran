@@ -113,6 +113,6 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | dem | lat, lon | m | float64 | Moon body-fixed | elevation, height | Digital elevation model on a body-fixed lunar grid. |
 | svm | lat, lon | nT | float64 | Moon body-fixed | surface_vector_map, svm_tsunakawa2015, tsunakawa_svm2015, lunar_magnetic_anomaly | Tsunakawa lunar magnetic anomaly surface vector map. |
-| shadow | lat, lon | fraction | float64 | Moon body-fixed | shadow_map, shadow_fraction | Shadow or shadow-fraction map; current compute backend supports SZA-threshold classification, with terrain-aware shadow planned. |
+| shadow | lat, lon | fraction | float64 | Moon body-fixed | shadow_map, shadow_fraction | Shadow or shadow-fraction map computed with SZA-threshold or terrain-ray DEM horizon classification. |
 | illumination | lat, lon | fraction | float64 | Moon body-fixed | illumination_map, visibility | Illumination or visibility fraction derived from solar geometry. |
 | sza | lat, lon | deg | float64 | Moon body-fixed | solar_zenith_angle | Solar zenith angle on the lunar surface. |
