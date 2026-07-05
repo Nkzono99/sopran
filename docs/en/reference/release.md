@@ -15,12 +15,16 @@ long-lived API token.
 
 The `publish` workflow does the following.
 
-1. Checks that `src/sopran/__init__.py` `__version__` matches the tag without
-   the leading `v`.
-2. Builds the sdist and wheel with `python -m build`.
-3. Checks metadata and README rendering with `python -m twine check dist/*`.
-4. Passes the build artifact to the PyPI publish job.
-5. Uploads to PyPI with `pypa/gh-action-pypi-publish@release/v1`.
+1. Checks that `pyproject.toml` project version,
+   `src/sopran/__init__.py` `__version__`, and the tag without the leading `v`
+   all match.
+2. Builds the source distribution with `python -m build --sdist`.
+3. Builds Linux, Windows, and macOS CPython 3.11-3.14 wheels with
+   `cibuildwheel`.
+4. Runs an import smoke test for `sopran._native` in each wheel.
+5. Checks metadata and README rendering with `python -m twine check dist/*`.
+6. Passes the build artifacts to the PyPI publish job.
+7. Uploads to PyPI with `pypa/gh-action-pypi-publish@release/v1`.
 
 ## One-time PyPI Setup
 
@@ -43,10 +47,11 @@ invalid.
 
 ```powershell
 # 1. Bump the version
-# Set __version__ in src/sopran/__init__.py to a value such as 0.1.0
+# Set pyproject.toml version and src/sopran/__init__.py __version__
+# to the same value, such as 0.1.0
 
 # 2. Commit and tag
-git add src/sopran/__init__.py
+git add pyproject.toml src/sopran/__init__.py
 git commit -m "Release v0.1.0"
 git tag v0.1.0
 
@@ -55,15 +60,23 @@ git push origin main
 git push origin v0.1.0
 ```
 
-If `__version__ = "0.1.0"` does not match tag `v0.1.0`, the build job fails.
+If `version = "0.1.0"` in `pyproject.toml`, `__version__ = "0.1.0"`, and tag
+`v0.1.0` do not match, the build job fails.
 
 ## Local Checks
 
 Before tagging, run:
 
 ```powershell
-python -m build
+python -m build --sdist --wheel
 python -m twine check dist/*
+```
+
+To check platform wheel building locally for the current OS, run:
+
+```powershell
+python -m pip install "cibuildwheel>=2.23,<3"
+python -m cibuildwheel --output-dir wheelhouse
 ```
 
 For details, refer to the PyPI Trusted Publishing docs and the Python Packaging

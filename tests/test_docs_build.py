@@ -25,10 +25,15 @@ def test_mkdocs_build_includes_language_switcher_in_header(tmp_path: Path) -> No
             "--site-dir",
             str(site_dir),
         ],
-        check=True,
+        check=False,
         env=env,
         capture_output=True,
         text=True,
+    )
+    assert result.returncode == 0, (
+        "mkdocs build failed\n\n"
+        f"STDOUT:\n{result.stdout}\n\n"
+        f"STDERR:\n{result.stderr}"
     )
     assert "Warning from the Material for MkDocs team" not in result.stderr
     assert "MkDocs 2.0" not in result.stderr

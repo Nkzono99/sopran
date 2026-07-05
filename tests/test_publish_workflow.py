@@ -8,8 +8,14 @@ def test_publish_workflow_uses_pypi_trusted_publishing() -> None:
 
     assert "tags:" in workflow
     assert '- "v*"' in workflow
+    assert "workflow_dispatch:" in workflow
     assert "Check tag matches package version" in workflow
-    assert "python -m build" in workflow
+    assert "pyproject.toml" in workflow
+    assert "__version__" in workflow
+    assert "python -m build --sdist" in workflow
+    assert "python -m cibuildwheel --output-dir wheelhouse" in workflow
+    assert "CIBW_TEST_COMMAND" in workflow
+    assert "sopran._native" in workflow
     assert "python -m twine check dist/*" in workflow
     assert "actions/upload-artifact@v5" in workflow
     assert "actions/download-artifact@v6" in workflow
@@ -25,6 +31,7 @@ def test_ci_workflow_runs_core_verification_commands() -> None:
 
     assert "pull_request:" in workflow
     assert "branches:" in workflow
+    assert 'python -m pip install -e ".[dev,kaguya,moon,viz,docs]"' in workflow
     assert "python -m pytest -q" in workflow
     assert "python -m compileall src" in workflow
     assert "python -m sopran.schema_docs --check docs/reference/schemas.md" in workflow
