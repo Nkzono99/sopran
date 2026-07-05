@@ -40,14 +40,19 @@ for ordinary tabular output, reduce the look dimension first, for example with
 SPEDAS-compatible normalization; see `kg.esa1.guide()` for source notes and
 caveats.
 
-For an energy spectrum binned by pitch angle, load the calibration tables and
-call `pitch_angle_spectrum()`. `look` is an index; it becomes a direction only
-through the PACE angle calibration.
+For an energy spectrum binned by pitch angle, call `pitch_angle_spectrum()`.
+`look` is an index; it becomes a direction only through the PACE angle
+calibration. Calling from the `kg.esa1.energy_flux` endpoint loads the required
+PACE calibration tables, caches the result under the Store `features` layer,
+and returns the same `SopranArray`.
 
 ```python
-cal = kg.esa1.load_calibration()
-esa1 = kg.esa1.load(time, calibration=cal)
-pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+)
 ```
 
 ## 3. Plot
@@ -58,12 +63,25 @@ counts.quicklook("kaguya_esa1_counts", root="reports", y="energy", log_color=Tru
 pas.plot()
 pas.pitch_spectrogram(log_color=True)
 pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
+kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
+)
 ```
 
 `plot()` and `quicklook()` default to `mode="auto"`. `time x energy` arrays
 become energy spectrograms; `time x energy x pitch_angle` arrays become a
 two-panel pitch/time and energy/time overview. Use `plot(mode="raw")` when you
 want direct xarray plotting.
+
+`cache="use"` reads a Store variant created from the same arguments when it
+exists, otherwise it creates and stores one. `cache="refresh"` recomputes and
+overwrites it; `cache="never"` computes in memory only. Constant magnetic
+vectors and numeric arrays get automatic variant IDs. Pass `variant_id="..."`
+when an external magnetic-field product needs a stable cache identity.
 
 ## Download Policy
 

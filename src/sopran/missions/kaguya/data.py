@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import cached_property
@@ -11,11 +13,14 @@ from sopran.core.data import (
     PolarsLayout,
     SopranArray,
     _data_array_to_array_polars,
+    _metadata_with_operations,
     ensure_polars_row_limit,
 )
+from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import InfoPage
+from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import DatasetRecord, Store
-from sopran.core.time import TimeRange
+from sopran.core.time import TimeRange, _filter_polars_time, period
 from sopran.missions.kaguya.pace import (
     PaceCalibration,
     PaceData,
@@ -25,6 +30,8 @@ from sopran.missions.kaguya.pace import (
 from sopran.missions.kaguya.pitch import PitchAngleSpectrumOptions, build_pitch_angle_spectrum
 from sopran.missions.kaguya.schema import kaguya_pace_schema
 
+PitchCacheMode = Literal["use", "refresh", "never"]
+
 
 @dataclass(frozen=True)
 class KaguyaPaceData:
@@ -32,6 +39,7 @@ class KaguyaPaceData:
     files: tuple[Path, ...] = ()
     instrument: str = "ESA1"
     calibration: PaceCalibration | None = None
+    store: Store | None = None
     missing_reason: str | None = None
 
     @cached_property
@@ -212,6 +220,11 @@ class KaguyaPaceData:
         magnetic_frame: str | None = None,
         min_look_bins: int = 1,
         frame_context: Any | None = None,
+        cache: PitchCacheMode = "never",
+        store: Store | None = None,
+        variant_id: str | None = None,
+        dataset_id: str | None = None,
+        layer: str = "features",
     ) -> SopranArray:
         """Return PACE spectra binned by pitch angle.
 
@@ -220,7 +233,39 @@ class KaguyaPaceData:
         physical direction by itself.
         """
 
-        return build_pitch_angle_spectrum(
+        _validate_pitch_cache(cache)
+        target_store = store or self.store
+        resolved_dataset_id = dataset_id
+        resolved_variant_id = variant_id
+        if cache != "never":
+            if target_store is None:
+                raise TypeError("pitch_angle_spectrum(cache=...) requires store=...")
+            resolved_dataset_id = _pitch_angle_spectrum_dataset_id(
+                self.instrument,
+                value=value,
+                dataset_id=dataset_id,
+            )
+            resolved_variant_id = _pitch_angle_spectrum_variant_id(
+                value=value,
+                magnetic_field=magnetic_field,
+                pitch_bins=pitch_bins,
+                look_frame=look_frame,
+                magnetic_frame=magnetic_frame,
+                min_look_bins=min_look_bins,
+                variant_id=variant_id,
+            )
+            if cache == "use":
+                cached = _read_pitch_angle_spectrum_store(
+                    target_store,
+                    dataset_id=resolved_dataset_id,
+                    layer=layer,
+                    variant_id=resolved_variant_id,
+                    time=self.time,
+                )
+                if cached is not None:
+                    return cached
+
+        product = build_pitch_angle_spectrum(
             pace=self.pace,
             time=self.time,
             calibration=self.calibration,
@@ -235,6 +280,34 @@ class KaguyaPaceData:
             ),
             frame_context=frame_context,
         )
+        if cache != "never" and target_store is not None and self.missing_reason is None:
+            if resolved_dataset_id is None or resolved_variant_id is None:
+                raise RuntimeError("pitch_angle_spectrum cache target was not resolved")
+            exists = _pitch_angle_spectrum_store_exists(
+                target_store,
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=resolved_variant_id,
+            )
+            _write_pitch_angle_spectrum_store(
+                product,
+                target_store,
+                instrument=self.instrument,
+                value=value,
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=resolved_variant_id,
+                variant=_pitch_angle_spectrum_variant_metadata(
+                    magnetic_field=magnetic_field,
+                    pitch_bins=pitch_bins,
+                    look_frame=look_frame,
+                    magnetic_frame=magnetic_frame,
+                    min_look_bins=min_look_bins,
+                ),
+                overwrite=cache == "refresh",
+                append=cache == "use" and exists,
+            )
+        return product
 
     def pas(self, magnetic_field: Any, **kwargs: Any) -> SopranArray:
         return self.pitch_angle_spectrum(magnetic_field, **kwargs)
@@ -707,6 +780,287 @@ def _missing_energy_flux_calibration_message(instrument: str) -> str:
         "Load counts instead with kg.esa1.counts.load(time), or provide calibration "
         "with kg.esa1.energy_flux.load(time, calibration='auto')."
     )
+
+
+def _write_pitch_angle_spectrum_store(
+    product: SopranArray,
+    store: Store,
+    *,
+    instrument: str,
+    value: str,
+    dataset_id: str,
+    layer: str,
+    variant_id: str,
+    variant: dict[str, Any],
+    overwrite: bool,
+    append: bool,
+) -> DatasetRecord:
+    product_name = _pitch_angle_spectrum_product(value)
+    instrument_id = instrument.lower()
+    schema = InstrumentSchema(
+        mission="kaguya",
+        instrument=instrument_id,
+        variables=(product.schema,),
+    )
+    return store.write_parquet_dataset(
+        dataset_id=dataset_id,
+        layer=layer,
+        variant_id=variant_id,
+        variant=variant,
+        mission="kaguya",
+        instrument=instrument_id,
+        product=product_name,
+        schema=schema,
+        time_coverage=product.time,
+        frame=product.to_polars(layout="long", max_rows=None),
+        source_files=tuple(str(path) for path in product.files),
+        shard_path="shards/part-000.parquet",
+        overwrite=overwrite,
+        append=append,
+        source_datasets=(f"kaguya.{instrument_id}.{value}",),
+        producer="sopran.kaguya.pace.pitch_angle_spectrum",
+        parameters=_metadata_with_operations({}, product.operations),
+        status="candidate",
+    )
+
+
+def _read_pitch_angle_spectrum_store(
+    store: Store,
+    *,
+    dataset_id: str,
+    layer: str,
+    variant_id: str,
+    time: TimeRange,
+) -> SopranArray | None:
+    try:
+        record = store.dataset(dataset_id, layer=layer, variant_id=variant_id)
+    except DatasetNotFoundError:
+        return None
+    if not _record_covers_time(record, time):
+        return None
+    frame = _filter_polars_time(record.scan(dataset_id=dataset_id).collect(), time)
+    if frame.is_empty():
+        return None
+    return _pitch_angle_spectrum_from_polars(
+        frame,
+        manifest=record.manifest(),
+        time=time,
+    )
+
+
+def _pitch_angle_spectrum_store_exists(
+    store: Store,
+    *,
+    dataset_id: str,
+    layer: str,
+    variant_id: str,
+) -> bool:
+    try:
+        store.dataset(dataset_id, layer=layer, variant_id=variant_id)
+    except DatasetNotFoundError:
+        return False
+    return True
+
+
+def _pitch_angle_spectrum_from_polars(
+    frame: Any,
+    *,
+    manifest: dict[str, Any],
+    time: TimeRange,
+) -> SopranArray:
+    try:
+        import numpy as np
+        import xarray as xr
+    except ImportError as exc:
+        raise RuntimeError("xarray is required for cached pitch_angle_spectrum") from exc
+
+    value_column = "pitch_angle_spectrum"
+    required = {"time", "energy", "pitch_angle", value_column}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(
+            "Cached pitch_angle_spectrum must use long layout; "
+            f"missing {', '.join(sorted(missing))}"
+        )
+    times = frame.select("time").unique(maintain_order=True).to_series().to_list()
+    energies = frame.select("energy").unique(maintain_order=True).to_series().to_list()
+    pitches = frame.select("pitch_angle").unique(maintain_order=True).to_series().to_list()
+    values = np.full((len(times), len(energies), len(pitches)), np.nan, dtype=float)
+    time_index = {value: index for index, value in enumerate(times)}
+    energy_index = {value: index for index, value in enumerate(energies)}
+    pitch_index = {value: index for index, value in enumerate(pitches)}
+    for row in frame.select(["time", "energy", "pitch_angle", value_column]).iter_rows(
+        named=True
+    ):
+        values[
+            time_index[row["time"]],
+            energy_index[row["energy"]],
+            pitch_index[row["pitch_angle"]],
+        ] = row[value_column]
+
+    parameters = manifest.get("parameters") or {}
+    operations = tuple(parameters.get("operations") or ())
+    value = _pitch_angle_spectrum_value_from_operations(operations)
+    units = "count" if value == "counts" else "eV/(cm^2 s sr eV)"
+    array = xr.DataArray(
+        values,
+        dims=("time", "energy", "pitch_angle"),
+        coords={
+            "time": np.asarray(times, dtype="datetime64[ns]"),
+            "energy": np.asarray(energies),
+            "pitch_angle": np.asarray(pitches, dtype=float),
+        },
+        name=value_column,
+        attrs={"units": units, "value": value},
+    )
+    schema = VariableSchema(
+        name=value_column,
+        aliases=("pas",),
+        dims=("time", "energy", "pitch_angle"),
+        units=units,
+        description="KAGUYA PACE ESA1 energy spectrum binned by pitch angle.",
+    )
+    return SopranArray(
+        name=value_column,
+        time=time,
+        schema=schema,
+        files=tuple(Path(path) for path in manifest.get("source_files") or ()),
+        operations=operations,
+        xr=array,
+    )
+
+
+def _pitch_angle_spectrum_value_from_operations(
+    operations: tuple[dict[str, Any], ...],
+) -> str:
+    if operations:
+        parameters = operations[0].get("parameters") or {}
+        value = str(parameters.get("value") or "counts")
+        if value in {"counts", "energy_flux"}:
+            return value
+    return "counts"
+
+
+def _record_covers_time(record: DatasetRecord, time: TimeRange) -> bool:
+    coverage = record.manifest().get("time_coverage") or {}
+    start = str(coverage.get("start") or "")
+    stop = str(coverage.get("stop") or "")
+    if not start or not stop:
+        return False
+    try:
+        covered = period(start, stop)
+    except (TypeError, ValueError):
+        return False
+    return covered.start <= time.start and covered.stop >= time.stop
+
+
+def _pitch_angle_spectrum_dataset_id(
+    instrument: str,
+    *,
+    value: str,
+    dataset_id: str | None,
+) -> str:
+    if dataset_id is not None:
+        return dataset_id
+    return f"kaguya.{instrument.lower()}.{_pitch_angle_spectrum_product(value)}"
+
+
+def _pitch_angle_spectrum_variant_id(
+    *,
+    value: str,
+    magnetic_field: Any,
+    pitch_bins: Any,
+    look_frame: str,
+    magnetic_frame: str | None,
+    min_look_bins: int,
+    variant_id: str | None,
+) -> str:
+    if variant_id is not None:
+        return variant_id
+    payload = {
+        "value": value,
+        "magnetic_field": _cache_fingerprint(magnetic_field),
+        "pitch_bins": _cache_fingerprint(pitch_bins),
+        "look_frame": look_frame,
+        "magnetic_frame": magnetic_frame,
+        "min_look_bins": min_look_bins,
+    }
+    digest = hashlib.sha1(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:16]
+    return f"v1_{digest}"
+
+
+def _pitch_angle_spectrum_variant_metadata(
+    *,
+    magnetic_field: Any,
+    pitch_bins: Any,
+    look_frame: str,
+    magnetic_frame: str | None,
+    min_look_bins: int,
+) -> dict[str, Any]:
+    return {
+        "magnetic_field": _cache_fingerprint(magnetic_field),
+        "pitch_bins": _cache_fingerprint(pitch_bins),
+        "look_frame": look_frame,
+        "magnetic_frame": magnetic_frame,
+        "min_look_bins": min_look_bins,
+    }
+
+
+def _cache_fingerprint(value: Any) -> Any:
+    if isinstance(value, str | int | float | bool) or value is None:
+        return value
+    to_xarray = getattr(value, "to_xarray", None)
+    if callable(to_xarray):
+        array = to_xarray()
+        values = _numeric_array_fingerprint(array.values)
+        return {
+            "kind": type(value).__name__,
+            "name": getattr(value, "name", None),
+            "schema": getattr(getattr(value, "schema", None), "name", None),
+            "values": values,
+        }
+    try:
+        import numpy as np
+    except ImportError as exc:
+        raise RuntimeError("numpy is required for pitch-angle cache fingerprints") from exc
+    array = np.asarray(value)
+    if array.dtype.kind not in {"b", "i", "u", "f"}:
+        raise TypeError(
+            "pitch_angle_spectrum cache requires numeric pitch_bins and magnetic_field; "
+            "pass variant_id=... or cache='never' for custom objects"
+        )
+    return _numeric_array_fingerprint(array)
+
+
+def _numeric_array_fingerprint(array: Any) -> dict[str, Any]:
+    try:
+        import numpy as np
+    except ImportError as exc:
+        raise RuntimeError("numpy is required for pitch-angle cache fingerprints") from exc
+    values = np.asarray(array)
+    digest = hashlib.sha1(
+        values.astype(float, copy=False).tobytes()
+        + json.dumps(values.shape, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:16]
+    if values.size <= 16:
+        return {
+            "shape": list(values.shape),
+            "values": values.astype(float, copy=False).reshape(-1).tolist(),
+        }
+    return {"shape": list(values.shape), "sha1": digest}
+
+
+def _validate_pitch_cache(cache: str) -> None:
+    if cache not in {"use", "refresh", "never"}:
+        raise ValueError("cache must be 'use', 'refresh', or 'never'")
+
+
+def _pitch_angle_spectrum_product(value: str) -> str:
+    if value not in {"counts", "energy_flux"}:
+        raise ValueError("value must be 'counts' or 'energy_flux'")
+    return f"{value}_pitch_angle_spectrum"
 
 
 def _data_array_to_polars(array: Any, variable: str, np: Any, pl: Any) -> Any:

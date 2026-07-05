@@ -678,14 +678,166 @@ def test_kaguya_esa1_pitch_angle_spectrum_requires_angle_calibration() -> None:
         data.pitch_angle_spectrum(magnetic_field=np.array([1.0, 0.0, 0.0]))
 
 
-def test_kaguya_esa1_pitch_angle_spectrum_rejects_uncalibrated_energy_flux() -> None:
-    data = KaguyaESA1Data(time=spn.day("2008-01-01"))
+def test_kaguya_esa1_pitch_angle_spectrum_bins_energy_flux() -> None:
+    sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    counts = np.zeros((32, 4, 16), dtype=np.uint16)
+    counts[0, 0, 0] = 6
+    counts[0, 0, 8] = 12
+    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+    pace = PaceData(
+        sensor=0,
+        headers=(
+            {
+                "time": sample_time,
+                "type": 0x01,
+                "sensor": 0,
+                "svs_tbl": 0,
+                "sampl_time": 16,
+                "time_resolution": 16,
+                "data_quality": 0,
+            },
+        ),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    shape = (8, 32, 4, 16)
+    az16 = np.linspace(0.0, 360.0, 16, endpoint=False)
+    fov = {
+        "az16": az16,
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+    info = {
+        "gfactor_4x16": np.full(shape, 2.0, dtype=float),
+        "ene_4x16": np.broadcast_to(
+            np.arange(32, dtype=float)[None, :, None, None],
+            shape,
+        ).copy(),
+        "pol_4x16": np.zeros(shape, dtype=float),
+        "az_4x16": np.broadcast_to(az16[None, None, None, :], shape).copy(),
+    }
+    data = KaguyaESA1Data(
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(fov={0: fov}, info={0: info}),
+    )
+    object.__setattr__(data, "pace", pace)
 
-    with pytest.raises(ValueError, match="energy_flux calibration is not implemented"):
+    spectrum = data.pitch_angle_spectrum(
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        value="energy_flux",
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+    )
+    array = spectrum.to_xarray()
+
+    assert array.attrs["value"] == "energy_flux"
+    assert array.attrs["units"] == "eV/(cm^2 s sr eV)"
+    assert array.values[0, 0, 0] == pytest.approx(
+        6.0 / (1.0 * 2.0 * 0.6) / 28.0
+    )
+    assert array.values[0, 0, 1] == pytest.approx(
+        12.0 / (1.0 * 2.0 * 0.6) / 36.0
+    )
+
+
+def test_kaguya_esa1_pitch_angle_spectrum_energy_flux_requires_info() -> None:
+    sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=({"time": sample_time, "type": 0x01, "sensor": 0, "svs_tbl": 0},),
+        records={0x01: (record,)},
+        source_files=(),
+        record_order=(record,),
+    )
+    fov = {
+        "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+    data = KaguyaESA1Data(
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(fov={0: fov}),
+    )
+    object.__setattr__(data, "pace", pace)
+
+    with pytest.raises(ValueError, match="energy_flux requires PACE INFO calibration"):
         data.pitch_angle_spectrum(
             magnetic_field=np.array([1.0, 0.0, 0.0]),
             value="energy_flux",
         )
+
+
+def test_kaguya_esa1_energy_flux_endpoint_pitch_spectrogram_writes_feature_store(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    shape = (8, 32, 4, 16)
+    az16 = np.linspace(0.0, 360.0, 16, endpoint=False)
+    calibration = PaceCalibration(
+        info={
+            0: {
+                "gfactor_4x16": np.full(shape, 2.0, dtype=float),
+                "ene_4x16": np.broadcast_to(
+                    np.arange(32, dtype=float)[None, :, None, None],
+                    shape,
+                ).copy(),
+                "pol_4x16": np.zeros(shape, dtype=float),
+                "az_4x16": np.broadcast_to(az16[None, None, None, :], shape).copy(),
+            }
+        }
+    )
+    kg = spn.Kaguya(store=store, download="never")
+
+    item = kg.esa1.energy_flux.pitch_spectrogram(
+        spn.day("2008-01-01"),
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        calibration=calibration,
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+        cache="use",
+        variant_id="constant_bx_pitch2",
+        download="never",
+    )
+
+    assert item.y == "pitch_angle"
+    assert item.name == "pitch_angle_spectrum_pitch"
+    record = store.dataset(
+        "kaguya.esa1.energy_flux_pitch_angle_spectrum",
+        layer="features",
+        variant_id="constant_bx_pitch2",
+    )
+    manifest = record.manifest()
+    assert manifest["product"] == "energy_flux_pitch_angle_spectrum"
+    assert manifest["parameters"]["operations"][0]["parameters"]["value"] == "energy_flux"
+    frame = record.scan().collect()
+    assert {"time", "energy", "pitch_angle", "pitch_angle_spectrum"} <= set(
+        frame.columns
+    )
+    cached.unlink()
+
+    cached_item = kg.esa1.energy_flux.pitch_spectrogram(
+        spn.day("2008-01-01"),
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        calibration=None,
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+        cache="use",
+        variant_id="constant_bx_pitch2",
+        download="never",
+    )
+
+    assert cached_item.data.values.tolist() == item.data.values.tolist()
 
 
 def test_kaguya_esa1_pitch_angle_spectrum_keeps_all_fill_bins_nan() -> None:

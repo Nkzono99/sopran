@@ -19,7 +19,12 @@ from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange, _filter_polars_time, day, period
-from sopran.missions.kaguya.data import KaguyaPaceData
+from sopran.missions.kaguya.data import (
+    KaguyaPaceData,
+    _pitch_angle_spectrum_dataset_id,
+    _pitch_angle_spectrum_variant_id,
+    _read_pitch_angle_spectrum_store,
+)
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
     iter_hourly_public_paths,
@@ -477,6 +482,126 @@ fig = plot_result.fig
             y=y,
             name=name or self.name,
             log_color=log_color,
+        )
+
+    def pitch_angle_spectrum(
+        self,
+        time: TimeRange | None = None,
+        magnetic_field: Any | None = None,
+        *,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        pitch_bins: Any = "native",
+        look_frame: str = "SELENE_M_SPACECRAFT",
+        magnetic_frame: str | None = None,
+        min_look_bins: int = 1,
+        frame_context: Any | None = None,
+        cache: CacheMode = "use",
+        variant_id: str | None = None,
+        dataset_id: str | None = None,
+        layer: str = "features",
+    ) -> Any:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        if magnetic_field is None:
+            raise TypeError("pitch_angle_spectrum() requires magnetic_field=...")
+        if self.name not in {"counts", "energy_flux"}:
+            raise ValueError(
+                f"{_endpoint_path(self)} cannot be converted to pitch_angle_spectrum"
+            )
+        _validate_cache_mode(cache)
+        resolved_dataset_id = dataset_id
+        resolved_variant_id = variant_id
+        if cache != "never":
+            resolved_dataset_id = _pitch_angle_spectrum_dataset_id(
+                self.instrument.name,
+                value=self.name,
+                dataset_id=dataset_id,
+            )
+            resolved_variant_id = _pitch_angle_spectrum_variant_id(
+                value=self.name,
+                magnetic_field=magnetic_field,
+                pitch_bins=pitch_bins,
+                look_frame=look_frame,
+                magnetic_frame=magnetic_frame,
+                min_look_bins=min_look_bins,
+                variant_id=variant_id,
+            )
+            if cache == "use":
+                cached = _read_pitch_angle_spectrum_store(
+                    self.instrument.mission.store,
+                    dataset_id=resolved_dataset_id,
+                    layer=layer,
+                    variant_id=resolved_variant_id,
+                    time=time,
+                )
+                if cached is not None:
+                    return cached
+        data = self.instrument.load(
+            time,
+            calibration=calibration,
+            download=download,
+            missing=missing or "empty",
+        )
+        return data.pitch_angle_spectrum(
+            magnetic_field,
+            value=self.name,
+            pitch_bins=pitch_bins,
+            look_frame=look_frame,
+            magnetic_frame=magnetic_frame,
+            min_look_bins=min_look_bins,
+            frame_context=frame_context,
+            cache=cache,
+            store=self.instrument.mission.store,
+            variant_id=resolved_variant_id,
+            dataset_id=resolved_dataset_id,
+            layer=layer,
+        )
+
+    def pitch_spectrogram(
+        self,
+        time: TimeRange | None = None,
+        magnetic_field: Any | None = None,
+        *,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        pitch_bins: Any = "native",
+        look_frame: str = "SELENE_M_SPACECRAFT",
+        magnetic_frame: str | None = None,
+        min_look_bins: int = 1,
+        frame_context: Any | None = None,
+        cache: CacheMode = "use",
+        variant_id: str | None = None,
+        dataset_id: str | None = None,
+        layer: str = "features",
+        energy: Any | None = None,
+        reduction: str = "sum",
+        log_color: bool = False,
+        name: str | None = None,
+    ) -> Any:
+        spectrum = self.pitch_angle_spectrum(
+            time,
+            magnetic_field,
+            calibration=calibration,
+            download=download,
+            missing=missing,
+            pitch_bins=pitch_bins,
+            look_frame=look_frame,
+            magnetic_frame=magnetic_frame,
+            min_look_bins=min_look_bins,
+            frame_context=frame_context,
+            cache=cache,
+            variant_id=variant_id,
+            dataset_id=dataset_id,
+            layer=layer,
+        )
+        return spectrum.pitch_spectrogram(
+            energy=energy,
+            reduction=reduction,
+            log_color=log_color,
+            name=name,
         )
 
 
@@ -1127,6 +1252,7 @@ fig = plot_result.fig
             files=tuple(files),
             instrument=self.sensor,
             calibration=calibration,
+            store=self.mission.store,
             missing_reason=missing_reason,
         )
 

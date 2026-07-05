@@ -439,6 +439,32 @@ def test_loaded_array_pitch_and_energy_spectrogram_select_ranges() -> None:
     )
 
 
+def test_loaded_array_pitch_spectrogram_guides_look_arrays_to_pitch_binning() -> None:
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.arange(24, dtype=float).reshape(2, 3, 4),
+        dims=("time", "energy", "look"),
+        coords={
+            "time": times,
+            "energy": [10.0, 20.0, 30.0],
+            "look": [0, 1, 2, 3],
+        },
+        name="energy_flux",
+    )
+    loaded = SopranArray(
+        name="energy_flux",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(name="energy_flux", dims=("time", "energy", "look")),
+        xr=array,
+    )
+
+    with pytest.raises(ValueError, match="pitch_angle_spectrum"):
+        loaded.pitch_spectrogram()
+
+
 def test_loaded_array_plot_auto_returns_plot_result_for_pitch_angle_data() -> None:
     import matplotlib
 

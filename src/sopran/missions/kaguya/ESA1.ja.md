@@ -39,13 +39,23 @@ pas.to_xarray()
 pas.plot()
 pas.pitch_spectrogram(log_color=True)
 pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
+
+item = kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
+)
 ```
 
 `pitch_bins="native"` は 4x16 angular record では 16 bins、16x64 record では
 32 bins を使います。混在する日は大きい側に合わせます。frame が一致しない磁場を
 渡す場合は `spiceypy` と必要な SPICE kernel を設定した `FrameContext` が必要です。
 `pas.plot()` は既定の `mode="auto"` により pitch/time と energy/time の 2 panel
-overview を返します。
+overview を返します。endpoint から呼ぶ `pitch_angle_spectrum()` と
+`pitch_spectrogram()` は `cache="use" | "refresh" | "never"` を受け取り、`use` では
+同じ引数の Store variant がなければ作成して `features` layer に保存します。
 
 ## raw count の 65535
 
@@ -101,8 +111,9 @@ cal.coverage("ESA1")
 flux = kg.esa1.energy_flux.load(time, calibration="auto")
 ```
 
-`pitch_angle_spectrum()` は counts を pitch angle へ binning するために必要な範囲で
-calibration table を使います。energy 座標と look-angle 座標の全面的な保存は後続作業です。
+`pitch_angle_spectrum()` は counts または energy_flux を pitch angle へ binning するために
+必要な範囲で calibration table を使います。energy 座標と look-angle 座標の全面的な保存は
+後続作業です。
 
 ## 例
 

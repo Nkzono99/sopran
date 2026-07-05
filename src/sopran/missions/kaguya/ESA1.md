@@ -25,7 +25,7 @@ dimension first.
 
 `pitch_angle_spectrum()` maps PACE look bins back to calibrated `theta`, `phi`
 look directions, computes pitch angle against a magnetic-field vector, and
-returns a counts-based `time x energy x pitch_angle` array. The `look`
+returns a `time x energy x pitch_angle` array. The `look`
 coordinate is not a physical direction by itself; the FOV/INFO calibration
 tables are required.
 
@@ -43,6 +43,14 @@ pas.to_xarray()
 pas.plot()
 pas.pitch_spectrogram(log_color=True)
 pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
+
+item = kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
+)
 ```
 
 `pitch_bins="native"` uses 16 bins for 4x16 angular records and 32 bins for
@@ -50,7 +58,9 @@ pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 `SopranArray` in another frame requires a `FrameContext` with `spiceypy` and
 the needed SPICE kernels.
 `pas.plot()` uses the default `mode="auto"` and returns a two-panel pitch/time
-and energy/time overview.
+and energy/time overview. Endpoint-level `pitch_angle_spectrum()` and
+`pitch_spectrogram()` accept `cache="use" | "refresh" | "never"`; `use` creates
+and stores a matching `features` Store variant when one does not already exist.
 
 ## Raw Count 65535
 
@@ -105,8 +115,8 @@ Passing `calibration=cal` lets SOPRAN compute `energy_flux` with
 flux = kg.esa1.energy_flux.load(time, calibration="auto")
 ```
 
-`pitch_angle_spectrum()` uses the calibration tables for the look directions
-needed by pitch binning. Full look-angle coordinate preservation remains
+`pitch_angle_spectrum()` uses the calibration tables needed to bin counts or
+energy_flux by pitch angle. Full look-angle coordinate preservation remains
 separate work.
 
 ## Examples

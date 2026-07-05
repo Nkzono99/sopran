@@ -20,7 +20,7 @@ wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 | Instrument | Endpoint | Use |
 | --- | --- | --- |
 | `esa1` / `esa2` / `ima` / `iea` | `counts` | PACE raw counts |
-| `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | Uncalibrated differential energy-flux placeholder |
+| `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | Differential energy flux from PACE INFO tables |
 | `esa1` / `esa2` / `ima` / `iea` | `energy` | PACE energy channel index |
 | `esa1` / `esa2` / `ima` / `iea` | `quality` | Quality flags |
 | `lmag` | `magnetic_field` | Magnetic field in the Moon Mean Earth frame |
@@ -73,22 +73,25 @@ spectral density, and decoded mode products are stored under `features`, so repe
 loads over the same coverage can skip CDF decoding. `refresh` regenerates and
 overwrites the target dataset for the current time range.
 
-Derived arrays can be persisted with `SopranArray.write_parquet()`. Operation
-metadata is recorded under `parameters.operations` in the Store manifest.
+PACE pitch-angle products are handled from the endpoint with
+`cache="use"`, `"refresh"`, or `"never"`. `cache="use"` reads a matching Store
+variant when it exists; otherwise it creates one under the `features` layer.
+Operation metadata is recorded under `parameters.operations` in the Store manifest.
 
 ```python
-cal = kg.esa1.load_calibration(download="never")
-esa1_data = kg.esa1.load(time, calibration=cal)
-pas = esa1_data.pitch_angle_spectrum(
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(
+    time,
     magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
     pitch_bins=[0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0],
+    cache="use",
 )
-pas.write_parquet(
-    kg.store,
-    dataset_id="kaguya.esa1.pitch_angle_spectrum",
-    layer="features",
-    mission="kaguya",
-    instrument="esa1",
+item = kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
 )
 ```
 

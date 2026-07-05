@@ -41,13 +41,18 @@ summed = esa1.to_polars("counts", reduce_look="sum")
 PACE raw count の `65535` は欠測として NaN に変換されます。根拠と注意点は
 `kg.esa1.guide()` を参照してください。
 
-pitch angle ごとの energy spectrum が必要な場合は calibration table を読み込んでから
-`pitch_angle_spectrum()` を使います。`look` は index であり、方向そのものではありません。
+pitch angle ごとの energy spectrum が必要な場合は `pitch_angle_spectrum()` を使います。
+`look` は index であり、方向そのものではありません。`kg.esa1.energy_flux` endpoint
+から呼ぶと、必要な PACE calibration table を読み、結果を Store の `features` layer に
+cache してから同じ `SopranArray` として返します。
 
 ```python
-cal = kg.esa1.load_calibration()
-esa1 = kg.esa1.load(time, calibration=cal)
-pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+)
 ```
 
 ## 3. 図にする
@@ -58,12 +63,24 @@ counts.quicklook("kaguya_esa1_counts", root="reports", y="energy", log_color=Tru
 pas.plot()
 pas.pitch_spectrogram(log_color=True)
 pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
+kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
+)
 ```
 
 `plot()` と `quicklook()` は既定で `mode="auto"` です。`time x energy` の
 データは energy spectrogram、`time x energy x pitch_angle` のデータは
 pitch/time と energy/time の 2 panel overview を選びます。xarray の生の
 plot が必要な場合は `plot(mode="raw")` を使います。
+
+`cache="use"` は同じ引数から作った Store variant があれば読み、なければ作成して保存します。
+`cache="refresh"` は再計算して上書きし、`cache="never"` は保存せずその場で計算します。
+定数磁場や数値配列は自動で variant 化します。外部処理由来の磁場で cache key を固定したい場合は
+`variant_id="..."` を明示します。
 
 ## download policy
 

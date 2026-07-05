@@ -36,13 +36,8 @@ def build_pitch_angle_spectrum(
     frame_context: FrameContext | None = None,
 ) -> SopranArray:
     options = options or PitchAngleSpectrumOptions()
-    if options.value == "energy_flux":
-        raise ValueError(
-            "KAGUYA ESA1 energy_flux calibration is not implemented; "
-            "pitch_angle_spectrum currently supports value='counts' only."
-        )
-    if options.value != "counts":
-        raise ValueError("value must be 'counts'")
+    if options.value not in {"counts", "energy_flux"}:
+        raise ValueError("value must be 'counts' or 'energy_flux'")
     if options.min_look_bins <= 0:
         raise ValueError("min_look_bins must be positive")
     if pace is None:
@@ -54,6 +49,11 @@ def build_pitch_angle_spectrum(
         raise ValueError(
             "pitch_angle_spectrum requires PACE angle calibration. "
             "Load it with kg.esa1.load_calibration() and pass calibration=..."
+        )
+    if options.value == "energy_flux" and not _has_info_calibration(calibration, pace.sensor):
+        raise ValueError(
+            "KAGUYA ESA1 energy_flux requires PACE INFO calibration tables "
+            "for pitch_angle_spectrum."
         )
 
     edges = _pitch_edges(options.pitch_bins, records)
@@ -151,6 +151,10 @@ def _has_angle_calibration(calibration: PaceCalibration | None, sensor: int) -> 
     if calibration is None:
         return False
     return sensor in calibration.info or sensor in calibration.fov
+
+
+def _has_info_calibration(calibration: PaceCalibration | None, sensor: int) -> bool:
+    return calibration is not None and sensor in calibration.info
 
 
 def _pitch_edges(
