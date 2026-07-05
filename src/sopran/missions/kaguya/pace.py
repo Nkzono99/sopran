@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import gzip
+import json
+import os
+import shutil
+import subprocess
+import tempfile
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, TextIO, cast
+from typing import Any, Literal, TextIO, cast
 
 import numpy as np
 
@@ -139,6 +144,7 @@ PBF_SPECS = {
 }
 
 PbfSpec = tuple[tuple[str, str, tuple[int, ...]], ...]
+PaceBackend = Literal["auto", "python", "rust"]
 
 
 @dataclass(frozen=True)
@@ -190,10 +196,18 @@ class PaceCalibration:
         }
 
 
-def read_pace_pbf(files: str | Path | Iterable[str | Path]) -> PaceData:
+def read_pace_pbf(
+    files: str | Path | Iterable[str | Path],
+    *,
+    backend: PaceBackend | None = None,
+) -> PaceData:
     """Read KAGUYA PACE PBF binary records from one or more local files."""
 
+    resolved_backend = _resolve_pace_backend(backend)
     paths = _as_paths(files)
+    if resolved_backend == "rust":
+        return _read_pace_pbf_rust(paths)
+
     headers: list[dict[str, Any]] = []
     records_by_type: dict[int, list[PaceRecord]] = {}
     record_order: list[PaceRecord] = []
@@ -240,6 +254,95 @@ def read_pace_pbf(files: str | Path | Iterable[str | Path]) -> PaceData:
     return PaceData(
         sensor=detected_sensor,
         headers=tuple(headers),
+        records={key: tuple(value) for key, value in records_by_type.items()},
+        source_files=tuple(paths),
+        record_order=tuple(record_order),
+    )
+
+
+def _resolve_pace_backend(backend: PaceBackend | str | None) -> PaceBackend:
+    value = backend or os.environ.get("SOPRAN_PACE_BACKEND") or "auto"
+    if value not in {"auto", "python", "rust"}:
+        raise ValueError("backend must be 'auto', 'python', or 'rust'")
+    return cast(PaceBackend, value)
+
+
+def _read_pace_pbf_rust(paths: list[Path]) -> PaceData:
+    executable = _resolve_sopran_backend_executable()
+    if executable is None:
+        raise RuntimeError(
+            "Rust PACE backend executable was not found. Build it with "
+            "`cargo build -p sopran-backend`, set SOPRAN_BACKEND_EXE, or use backend='python'."
+        )
+    with tempfile.TemporaryDirectory(prefix="sopran_pace_") as temp:
+        output = Path(temp)
+        command = [
+            str(executable),
+            "pace-decode",
+            "--output",
+            str(output),
+            *(str(path) for path in paths),
+        ]
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            message = result.stderr.strip() or result.stdout.strip() or "unknown Rust backend error"
+            raise RuntimeError(f"Rust PACE backend failed: {message}")
+        return _read_pace_rust_bundle(output, paths)
+
+
+def _resolve_sopran_backend_executable() -> Path | None:
+    configured = os.environ.get("SOPRAN_BACKEND_EXE")
+    if configured:
+        path = Path(configured)
+        if not path.exists():
+            raise RuntimeError(f"SOPRAN_BACKEND_EXE does not exist: {path}")
+        return path
+
+    root = Path(__file__).resolve().parents[4]
+    for profile in ("debug", "release"):
+        for name in ("sopran-backend.exe", "sopran-backend"):
+            candidate = root / "target" / profile / name
+            if candidate.exists():
+                return candidate
+
+    discovered = shutil.which("sopran-backend")
+    return Path(discovered) if discovered else None
+
+
+def _read_pace_rust_bundle(output: Path, paths: list[Path]) -> PaceData:
+    manifest_path = output / "headers.json"
+    if not manifest_path.exists():
+        raise RuntimeError(f"Rust PACE backend did not write manifest: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    headers = tuple(cast(dict[str, Any], header) for header in manifest.get("headers", ()))
+    records_by_type: dict[int, list[PaceRecord]] = {}
+    record_order: list[PaceRecord] = []
+
+    for item in manifest.get("records", ()):
+        record_type = int(item["type"])
+        arrays = {
+            str(name): np.load(output / str(array["path"]), allow_pickle=False)
+            for name, array in dict(item.get("arrays") or {}).items()
+        }
+        record = PaceRecord(
+            type=record_type,
+            index=int(item["index"]),
+            arrays=arrays,
+        )
+        records_by_type.setdefault(record_type, []).append(record)
+        record_order.append(record)
+
+    sensor = int(manifest.get("sensor", -1))
+    if sensor < 0:
+        sensor = _detect_sensor(paths[0])
+    return PaceData(
+        sensor=sensor,
+        headers=headers,
         records={key: tuple(value) for key, value in records_by_type.items()},
         source_files=tuple(paths),
         record_order=tuple(record_order),

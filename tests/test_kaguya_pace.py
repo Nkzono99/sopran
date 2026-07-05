@@ -42,6 +42,55 @@ def test_read_pace_pbf_type01_summarizes_energy_counts(tmp_path: Path) -> None:
     assert np.all(counts == 64)
 
 
+def test_read_pace_pbf_accepts_python_backend(tmp_path: Path) -> None:
+    path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
+    _write_type01_pbf(path)
+
+    pace = read_pace_pbf(path, backend="python")
+
+    assert pace.sensor == 0
+    assert pace.headers[0]["type"] == 0x01
+    assert pace_energy_counts(pace).shape == (1, 32)
+
+
+def test_read_pace_pbf_rejects_unknown_backend(tmp_path: Path) -> None:
+    path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
+    _write_type01_pbf(path)
+
+    with pytest.raises(ValueError, match="backend"):
+        read_pace_pbf(path, backend="missing")
+
+
+def test_read_pace_pbf_uses_backend_environment_default(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
+    _write_type01_pbf(path)
+    monkeypatch.setenv("SOPRAN_PACE_BACKEND", "python")
+
+    pace = read_pace_pbf(path)
+
+    assert pace.headers[0]["type"] == 0x01
+    assert pace_energy_counts(pace).shape == (1, 32)
+
+
+def test_read_pace_pbf_auto_falls_back_to_python(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
+    _write_type01_pbf(path)
+    monkeypatch.delenv("SOPRAN_PACE_BACKEND", raising=False)
+    monkeypatch.setenv("SOPRAN_BACKEND_EXE", str(tmp_path / "missing-backend.exe"))
+
+    auto = read_pace_pbf(path, backend="auto")
+    python = read_pace_pbf(path, backend="python")
+
+    assert auto.headers == python.headers
+    assert pace_energy_counts(auto).tolist() == pace_energy_counts(python).tolist()
+
+
 def test_read_pace_pbf_accepts_gzip_files(tmp_path: Path) -> None:
     path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
     gz_path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat.gz"
@@ -53,6 +102,32 @@ def test_read_pace_pbf_accepts_gzip_files(tmp_path: Path) -> None:
 
     assert pace.source_files == (gz_path,)
     assert pace_energy_counts(pace).shape == (1, 32)
+
+
+def test_read_pace_pbf_rust_backend_matches_python(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = _sopran_backend_executable()
+    if backend is None:
+        pytest.skip("sopran-backend executable is not built")
+    path = tmp_path / "IPACE_PBF1_080101_ESA1_V003.dat"
+    _write_type01_pbf(path)
+    monkeypatch.setenv("SOPRAN_BACKEND_EXE", str(backend))
+
+    python = read_pace_pbf(path, backend="python")
+    rust = read_pace_pbf(path, backend="rust")
+
+    assert rust.sensor == python.sensor
+    assert rust.headers == python.headers
+    assert tuple(rust.records) == tuple(python.records)
+    assert len(rust.record_order) == len(python.record_order)
+    for rust_record, python_record in zip(rust.record_order, python.record_order, strict=True):
+        assert rust_record.type == python_record.type
+        assert rust_record.index == python_record.index
+        assert rust_record.arrays.keys() == python_record.arrays.keys()
+        for name in rust_record.arrays:
+            np.testing.assert_array_equal(rust_record.arrays[name], python_record.arrays[name])
 
 
 def test_read_pace_pbf_type40_summarizes_ion_energy_counts(tmp_path: Path) -> None:
@@ -1575,6 +1650,16 @@ def _write_type01_pbf_gzip(
     _write_type01_pbf(scratch_path, yyyymmdd=yyyymmdd, sensor=sensor)
     with scratch_path.open("rb") as source, gzip.open(gzip_path, "wb") as target:
         target.write(source.read())
+
+
+def _sopran_backend_executable() -> Path | None:
+    root = Path(__file__).resolve().parents[1]
+    for profile in ("debug", "release"):
+        for name in ("sopran-backend.exe", "sopran-backend"):
+            candidate = root / "target" / profile / name
+            if candidate.exists():
+                return candidate
+    return None
 
 
 def _write_type40_pbf(

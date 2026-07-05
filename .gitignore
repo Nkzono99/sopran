@@ -11,6 +11,7 @@ site/
 build/
 dist/
 *.egg-info/
+target/
 
 data/
 datasets/

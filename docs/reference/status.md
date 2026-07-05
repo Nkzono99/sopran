@@ -13,7 +13,7 @@
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
 | Frames | `FrameContext`、identity transform、SPICE vector 委譲 | SpacePy / Astropy backend |
 | Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load | projection、reproject、shadow 計算 |
-| Rust backend | 未接続 | decode、binning、fit、batch shard 処理 |
+| Rust backend | PACE PBF decode CLI を任意 backend として接続 | binning、fit、batch shard 処理 |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
 | CI / 型検査 | pytest、compileall、schema docs、ruff、mypy を blocking step として実行 | 型境界の精度向上と strict 対象の拡大 |
 
@@ -23,6 +23,7 @@
 
 - PACE ESA1/ESA2/IMA/IEA raw PBF discovery
 - local decode
+- optional Rust CLI decode backend (`read_pace_pbf(..., backend="rust")`)
 - ESA1 `energy_flux` の Python reference 較正 (`counts / (integ_t * gfactor * efficiency)`)
 - `xarray` / `polars` conversion
 - parquet Store 保存
@@ -37,6 +38,10 @@
 - energy coordinate / look-angle metadata の保存
 - look-angle 座標
 - package 内 synthetic / fixture validation の拡充
+
+Rust PACE backend は `read_pace_pbf()` 1 回につき CLI を 1 回だけ呼びます。record 単位や
+配列単位の細かい往復は避け、複数 file をまとめて decode してから Python の `PaceData`
+に戻します。既定の `backend="auto"` は Python reference に fallback します。
 
 ## KAGUYA LMAG / geometry
 

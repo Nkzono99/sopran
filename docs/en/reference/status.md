@@ -14,7 +14,7 @@ pages can focus on their own task.
 | ARTEMIS | Object API and normalized parquet skeleton | CDAWeb/HAPI/CDF discovery and raw loader |
 | Frames | `FrameContext`, identity transform, and SPICE vector delegation | SpacePy / Astropy backend |
 | Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download, Tsunakawa SVM load | Projection, reprojection, shadow calculation |
-| Rust backend | Not connected | Decode, binning, fitting, batch shard work |
+| Rust backend | Optional PACE PBF decode CLI connected | Binning, fitting, batch shard work |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | Interactive HTML, datashader, long-span quicklooks |
 | CI / typing | pytest, compileall, schema docs, ruff, and blocking mypy | Improve type precision at dynamic boundaries and expand strict coverage |
 
@@ -24,6 +24,7 @@ Implemented:
 
 - PACE ESA1/ESA2/IMA/IEA raw PBF discovery
 - Local decode
+- Optional Rust CLI decode backend (`read_pace_pbf(..., backend="rust")`)
 - ESA1 `energy_flux` Python reference calibration with `counts / (integ_t * gfactor * efficiency)`
 - `xarray` / `polars` conversion
 - Parquet Store writes
@@ -51,6 +52,11 @@ Remaining:
 - Extend energy_flux calibration to ESA2/IMA/IEA
 - Preserve energy-coordinate and look-angle metadata
 - Expand package-internal synthetic and fixture validation
+
+The Rust PACE backend is coarse-grained: `read_pace_pbf()` invokes the CLI once
+per decode call, including multi-file inputs. It does not call Rust per record
+or per array. The default `backend="auto"` continues to fall back to the Python
+reference implementation.
 
 ## Near-Term Priorities
 
