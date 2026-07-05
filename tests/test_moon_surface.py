@@ -9,6 +9,19 @@ import sopran as spn
 from sopran.core import BackendError, DownloadError
 
 
+def test_moon_surface_package_exposes_split_modules() -> None:
+    from sopran.bodies.moon import Moon, SurfaceEndpoint, SurfacePlan
+    from sopran.bodies.moon.schema import MOON_SURFACE_SCHEMA
+    from sopran.bodies.moon.svm import read_tsunakawa_svm_text
+
+    moon = Moon()
+
+    assert isinstance(moon.dem, SurfaceEndpoint)
+    assert SurfacePlan(body="moon", product="dem", parameters={}).body == "moon"
+    assert MOON_SURFACE_SCHEMA.variable("svm").name == "svm"
+    assert callable(read_tsunakawa_svm_text)
+
+
 def test_moon_svm_default_is_tsunakawa2015_endpoint() -> None:
     moon = spn.Moon()
 
@@ -233,7 +246,7 @@ def test_moon_svm_tsunakawa2015_loads_text_grid(tmp_path) -> None:
 
 
 def test_moon_dem_download_registers_raw_file(tmp_path, monkeypatch) -> None:
-    import sopran.bodies.moon as moon_module
+    import sopran.bodies.moon.loaders as moon_loaders
 
     store = spn.Store(tmp_path / "store")
     calls = []
@@ -243,7 +256,7 @@ def test_moon_dem_download_registers_raw_file(tmp_path, monkeypatch) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"downloaded")
 
-    monkeypatch.setattr(moon_module, "_download_file", fake_download_file)
+    monkeypatch.setattr(moon_loaders, "_download_file", fake_download_file)
 
     path = spn.Moon().dem.download(source="lro.lola.dem_118m", store=store)
 
@@ -263,7 +276,7 @@ def test_moon_dem_download_registers_raw_file(tmp_path, monkeypatch) -> None:
 
 
 def test_moon_download_file_removes_partial_file_on_failure(tmp_path, monkeypatch) -> None:
-    import sopran.bodies.moon as moon_module
+    import sopran.bodies.moon.loaders as moon_loaders
 
     class FakeResponse:
         def __enter__(self):
@@ -276,12 +289,12 @@ def test_moon_download_file_removes_partial_file_on_failure(tmp_path, monkeypatc
         output.write(b"partial")
         raise OSError("network interrupted")
 
-    monkeypatch.setattr(moon_module.urllib.request, "urlopen", lambda url: FakeResponse())
-    monkeypatch.setattr(moon_module.shutil, "copyfileobj", fake_copyfileobj)
+    monkeypatch.setattr(moon_loaders.urllib.request, "urlopen", lambda url: FakeResponse())
+    monkeypatch.setattr(moon_loaders.shutil, "copyfileobj", fake_copyfileobj)
     target = tmp_path / "moon" / "dem.tif"
 
     with pytest.raises(OSError, match="network interrupted"):
-        moon_module._download_file("https://example.invalid/dem.tif", target)
+        moon_loaders._download_file("https://example.invalid/dem.tif", target)
 
     assert not target.exists()
     assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
@@ -291,7 +304,7 @@ def test_moon_download_file_overwrite_failure_preserves_existing_file(
     tmp_path,
     monkeypatch,
 ) -> None:
-    import sopran.bodies.moon as moon_module
+    import sopran.bodies.moon.loaders as moon_loaders
 
     class FakeResponse:
         def __enter__(self):
@@ -304,14 +317,14 @@ def test_moon_download_file_overwrite_failure_preserves_existing_file(
         output.write(b"partial")
         raise OSError("network interrupted")
 
-    monkeypatch.setattr(moon_module.urllib.request, "urlopen", lambda url: FakeResponse())
-    monkeypatch.setattr(moon_module.shutil, "copyfileobj", fake_copyfileobj)
+    monkeypatch.setattr(moon_loaders.urllib.request, "urlopen", lambda url: FakeResponse())
+    monkeypatch.setattr(moon_loaders.shutil, "copyfileobj", fake_copyfileobj)
     target = tmp_path / "moon" / "dem.tif"
     target.parent.mkdir(parents=True)
     target.write_bytes(b"existing")
 
     with pytest.raises(OSError, match="network interrupted"):
-        moon_module._download_file(
+        moon_loaders._download_file(
             "https://example.invalid/dem.tif",
             target,
             overwrite=True,
