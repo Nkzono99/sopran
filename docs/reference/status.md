@@ -12,7 +12,7 @@
 | KAGUYA その他 | PACE/LMAG/LRS の一部を実装済み | instrument 固有の較正と実データ parity |
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
 | Frames | `FrameContext`、identity transform、SPICE vector 委譲 | SpacePy / Astropy backend |
-| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load | projection、reproject、shadow 計算 |
+| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download、Tsunakawa SVM load、球面 SZA 計算、SZA 閾値 illumination/shadow | projection、reproject、SPICE 太陽位置、terrain-aware shadow |
 | Rust backend | PACE PBF decode を PyO3 native module として任意 backend 接続 | binning、fit、batch shard 処理 |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | interactive HTML、datashader、長期 quicklook |
 | CI / 型検査 | pytest、compileall、schema docs、ruff、mypy を blocking step として実行 | 型境界の精度向上と strict 対象の拡大 |
@@ -92,11 +92,13 @@ Python reference に fallback します。
 - Tsunakawa SVM (`LunarSVM_000_02_v02.dat`) の text / npy load
 - `moon.svm` から `moon.svm_tsunakawa2015` への既定 alias
 - 直接 URL が確認できない SVM source の手動取得 guide
+- `sun_vector` / `subsolar_lon_lat` による球面 SZA raster 計算
+- SZA 閾値による二値 illumination / shadow raster 計算
 
 残っているもの:
 
 - projection / reproject / bilinear interpolation
-- SPICE 太陽位置
+- `time=` からの SPICE 太陽位置
 - DEM と球/楕円体形状を考慮した terrain-aware shadow
 
 ## Pipeline / Store

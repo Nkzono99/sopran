@@ -28,6 +28,10 @@ sza_plan = moon.sza.plan(
 )
 ```
 
+The SPICE backend that derives solar geometry from `time=` alone is not
+implemented yet. For computed products, pass `sun_vector=` or
+`subsolar_lon_lat=` explicitly.
+
 ## Download / Load DEM
 
 DEM GeoTIFF files are loaded through `rasterio`. If it is missing, install:
@@ -75,14 +79,14 @@ svm = moon.svm.load(store=store, download="never")
 ## Shadow
 
 ```python
-shadow_plan = moon.shadow.plan(
-    time="2008-02-01T12:00:00Z",
-    dem=dem_plan,
-    geometry_source="spice",
-)
-
-metadata = shadow_plan.to_metadata()
+sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
+illumination = moon.illumination.compute(sza=sza, threshold_deg=90.0)
+shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
 ```
+
+This `shadow` product is a binary map where `sza > threshold_deg` is 1.
+DEM-horizon terrain-aware shadowing is still pending and is expected to be added
+behind a separate `method=`.
 
 Terrain-aware shadow and other remaining backend status is tracked in
 [Status](../reference/status.md).

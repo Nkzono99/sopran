@@ -28,6 +28,9 @@ sza_plan = moon.sza.plan(
 )
 ```
 
+`time=` だけから太陽位置を解く SPICE backend はまだ未実装です。計算する場合は
+`sun_vector=` または `subsolar_lon_lat=` を明示します。
+
 ## DEM を download / load する
 
 DEM GeoTIFF は `rasterio` で読み込みます。未導入の場合は次で入れます。
@@ -74,14 +77,13 @@ svm = moon.svm.load(store=store, download="never")
 ## Shadow
 
 ```python
-shadow_plan = moon.shadow.plan(
-    time="2008-02-01T12:00:00Z",
-    dem=dem_plan,
-    geometry_source="spice",
-)
-
-metadata = shadow_plan.to_metadata()
+sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
+illumination = moon.illumination.compute(sza=sza, threshold_deg=90.0)
+shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
 ```
+
+この `shadow` は `sza > threshold_deg` を 1 にする二値 map です。DEM の horizon を使った
+terrain-aware shadow は未実装で、今後 `method=` を分けて追加する想定です。
 
 ## 0/360 度境界
 

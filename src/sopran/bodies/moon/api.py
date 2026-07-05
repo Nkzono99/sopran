@@ -50,9 +50,9 @@ class Moon:
                 "dem: digital elevation model endpoint",
                 "svm: default Tsunakawa lunar magnetic anomaly SVM endpoint",
                 "svm_tsunakawa2015: explicit Tsunakawa SVM endpoint",
-                "shadow: terrain-aware shadow map endpoint skeleton",
-                "illumination: terrain-aware illumination endpoint skeleton",
-                "sza: solar zenith angle planning endpoint skeleton",
+                "shadow: SZA-threshold shadow map; terrain-aware backend planned",
+                "illumination: SZA-threshold illumination map; terrain-aware backend planned",
+                "sza: solar zenith angle compute endpoint",
                 "schema: "
                 + format_list(variable.name for variable in self.schema().variables),
             ),
@@ -199,6 +199,18 @@ class SurfaceEndpoint:
     def load(self, **parameters: Any) -> RasterLayer:
         return cast(RasterLayer, loaders.load_surface_raster(self, **parameters))
 
-    def compute(self, **parameters: Any) -> None:
+    def compute(self, **parameters: Any) -> RasterLayer:
         plan = self.plan(**parameters)
+        if plan.product == "sza":
+            from .sza import compute_sza_layer
+
+            return compute_sza_layer(self, plan)
+        if plan.product == "illumination":
+            from .illumination import compute_illumination_layer
+
+            return compute_illumination_layer(self, plan)
+        if plan.product == "shadow":
+            from .shadow import compute_shadow_layer
+
+            return compute_shadow_layer(self, plan)
         raise NotImplementedError(f"Moon.{plan.product}.compute() is not implemented yet")

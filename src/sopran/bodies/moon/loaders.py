@@ -8,10 +8,10 @@ from uuid import uuid4
 
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.store import Store
-from sopran.maps.raster import read_geotiff
 
+from .dem import load_dem_raster
 from .models import SurfaceSource
-from .sources import SURFACE_SOURCE_INFO, canonical_source_id
+from .sources import canonical_source_id
 from .svm import read_tsunakawa_svm_npy, read_tsunakawa_svm_text
 
 
@@ -29,18 +29,7 @@ def load_surface_raster(endpoint: Any, **parameters: Any) -> Any:
             store=store,
             download=download,
         )
-        return read_geotiff(
-            data_path,
-            product="dem",
-            variable=endpoint.variable,
-            source=canonical_source_id(source),
-            units=endpoint.units or "m",
-            body=endpoint.body.name,
-            source_scale=optional_source_scale(source),
-            source_offset=optional_source_offset(source),
-            region=plan.parameters.get("region"),
-            metadata=plan.to_metadata()["parameters"],
-        )
+        return load_dem_raster(endpoint, plan, data_path)
     if endpoint.product == "svm":
         data_path = surface_data_path(
             endpoint=endpoint,
@@ -102,17 +91,6 @@ def coerce_store(store: Store | str | Path | None) -> Store:
     if isinstance(store, Store):
         return store
     return Store(store)
-
-
-def optional_source_scale(source: str | None) -> float | None:
-    info = SURFACE_SOURCE_INFO.get(canonical_source_id(source))
-    return info.scale if info is not None else None
-
-
-def optional_source_offset(source: str | None) -> float | None:
-    info = SURFACE_SOURCE_INFO.get(canonical_source_id(source))
-    return info.offset if info is not None else None
-
 
 def download_surface_source(
     source_info: SurfaceSource,

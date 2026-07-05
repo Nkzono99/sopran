@@ -17,8 +17,8 @@ moon.schema()
 | `moon.svm` | `surface_vector_map`, `svm_tsunakawa2015` | Tsunakawa lunar magnetic anomaly SVM |
 | `moon.svm_tsunakawa2015` | `tsunakawa_svm2015` | Explicit Tsunakawa 2015 SVM |
 | `moon.sza` | `solar_zenith_angle` | Solar zenith angle |
-| `moon.shadow` | `shadow_map` | Terrain-aware shadow fraction |
-| `moon.illumination` | `illumination_map` | Illumination fraction |
+| `moon.shadow` | `shadow_map` | SZA-threshold shadow fraction; terrain-aware planned |
+| `moon.illumination` | `illumination_map` | SZA-threshold illumination fraction |
 
 ## Select By Product Name
 
@@ -61,6 +61,23 @@ The original upstream URL is `http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_L
 svm = moon.svm_tsunakawa2015.load(path=r"C:/data/LunarSVM_000_02_v02.dat")
 bt = svm.sample(lat=-0.5, lon=0.0)
 ```
+
+## Compute SZA / Illumination / Shadow
+
+`moon.sza.compute()` computes a spherical solar-zenith-angle raster on an
+existing raster grid, or on axes supplied through `lon=` / `lat=` / `region=`.
+The SPICE-backed `time=`-only solar geometry backend is not implemented yet, so
+pass `sun_vector=` or `subsolar_lon_lat=` explicitly.
+
+```python
+sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
+illumination = moon.illumination.compute(sza=sza, threshold_deg=90.0)
+shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
+```
+
+`illumination` marks `sza <= threshold_deg` as 1, and `shadow` marks
+`sza > threshold_deg` as 1. This is a coarse day/night classification; DEM-based
+terrain-aware horizon shadowing is still pending.
 
 ## Plan Metadata
 

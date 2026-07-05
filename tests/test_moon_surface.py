@@ -11,6 +11,7 @@ from sopran.core import BackendError, DownloadError
 
 def test_moon_surface_package_exposes_split_modules() -> None:
     from sopran.bodies.moon import Moon, SurfaceEndpoint, SurfacePlan
+    from sopran.bodies.moon.dem import load_dem_raster
     from sopran.bodies.moon.schema import MOON_SURFACE_SCHEMA
     from sopran.bodies.moon.svm import read_tsunakawa_svm_text
 
@@ -19,7 +20,98 @@ def test_moon_surface_package_exposes_split_modules() -> None:
     assert isinstance(moon.dem, SurfaceEndpoint)
     assert SurfacePlan(body="moon", product="dem", parameters={}).body == "moon"
     assert MOON_SURFACE_SCHEMA.variable("svm").name == "svm"
+    assert callable(load_dem_raster)
     assert callable(read_tsunakawa_svm_text)
+
+
+def test_moon_sza_compute_from_subsolar_point_on_like_grid() -> None:
+    moon = spn.Moon()
+    like = spn.RasterLayer(
+        [[0.0, 0.0, 0.0]],
+        lon=[0.0, 90.0, 180.0],
+        lat=[0.0],
+        product="dem",
+        variable="dem",
+        source="synthetic.dem",
+        units="m",
+    )
+
+    sza = moon.sza.compute(like=like, subsolar_lon_lat=(0.0, 0.0))
+
+    assert sza.product == "sza"
+    assert sza.variable == "sza"
+    assert sza.units == "deg"
+    assert sza.lon.tolist() == [0.0, 90.0, 180.0]
+    assert sza.lat.tolist() == [0.0]
+    np.testing.assert_allclose(sza.values, [[0.0, 90.0, 180.0]], atol=1.0e-12)
+    assert sza.metadata["geometry_source"] == "subsolar_lon_lat"
+    assert sza.metadata["subsolar_lon_lat"] == [0.0, 0.0]
+
+
+def test_moon_sza_compute_from_sun_vector_on_like_grid() -> None:
+    moon = spn.Moon()
+    like = spn.RasterLayer(
+        [[0.0], [0.0], [0.0]],
+        lon=[90.0],
+        lat=[-90.0, 0.0, 90.0],
+        product="dem",
+        variable="dem",
+        source="synthetic.dem",
+        units="m",
+    )
+
+    sza = moon.sza.compute(like=like, sun_vector=(0.0, 1.0, 0.0))
+
+    np.testing.assert_allclose(sza.values[:, 0], [90.0, 0.0, 90.0], atol=1.0e-12)
+    assert sza.metadata["geometry_source"] == "sun_vector"
+
+
+def test_moon_illumination_compute_thresholds_sza_layer() -> None:
+    moon = spn.Moon()
+    sza = spn.RasterLayer(
+        [[0.0, 90.0, 100.0, np.nan]],
+        lon=[0.0, 1.0, 2.0, 3.0],
+        lat=[0.0],
+        product="sza",
+        variable="sza",
+        source="synthetic.sza",
+        units="deg",
+    )
+
+    illumination = moon.illumination.compute(sza=sza, threshold_deg=90.0)
+
+    assert illumination.product == "illumination"
+    assert illumination.variable == "illumination"
+    assert illumination.units == "fraction"
+    np.testing.assert_allclose(
+        illumination.values,
+        [[1.0, 1.0, 0.0, np.nan]],
+        equal_nan=True,
+    )
+    assert illumination.metadata["method"] == "sza_threshold"
+    assert illumination.metadata["threshold_deg"] == 90.0
+
+
+def test_moon_shadow_compute_thresholds_sza_layer() -> None:
+    moon = spn.Moon()
+    sza = spn.RasterLayer(
+        [[0.0, 90.0, 100.0, np.nan]],
+        lon=[0.0, 1.0, 2.0, 3.0],
+        lat=[0.0],
+        product="sza",
+        variable="sza",
+        source="synthetic.sza",
+        units="deg",
+    )
+
+    shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)
+
+    assert shadow.product == "shadow"
+    assert shadow.variable == "shadow"
+    assert shadow.units == "fraction"
+    np.testing.assert_allclose(shadow.values, [[0.0, 0.0, 1.0, np.nan]], equal_nan=True)
+    assert shadow.metadata["method"] == "sza_threshold"
+    assert shadow.metadata["threshold_deg"] == 90.0
 
 
 def test_moon_svm_default_is_tsunakawa2015_endpoint() -> None:
@@ -575,7 +667,7 @@ def test_moon_surface_endpoints_expose_schema_objects() -> None:
     assert dem_schema.dims == ("lat", "lon")
     assert dem_schema.units == "m"
     assert dem_schema.frame == "Moon body-fixed"
-    assert "terrain-aware" in shadow_schema.description
+    assert "SZA-threshold" in shadow_schema.description
     assert sza_schema.units == "deg"
 
 
@@ -593,9 +685,9 @@ def test_moon_surface_examples_return_markdown_pages() -> None:
     assert "Moon DEM Example" in dem_example
     assert "lro.lola.dem_118m" in dem_example
     assert "Moon Shadow Example" in shadow_example
-    assert "moon.shadow.plan" in shadow_example
+    assert "moon.shadow.compute" in shadow_example
     assert "Moon Solar Zenith Angle Example" in sza_example
-    assert "geometry_source" in sza_example
+    assert "subsolar_lon_lat" in sza_example
 
 
 def test_moon_surface_guides_can_switch_language() -> None:

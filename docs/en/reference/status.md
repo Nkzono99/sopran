@@ -13,7 +13,7 @@ pages can focus on their own task.
 | Other KAGUYA sensors | PACE/LMAG/LRS partial support | Instrument-specific calibration and real-data parity |
 | ARTEMIS | Object API and normalized parquet skeleton | CDAWeb/HAPI/CDF discovery and raw loader |
 | Frames | `FrameContext`, identity transform, and SPICE vector delegation | SpacePy / Astropy backend |
-| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download, Tsunakawa SVM load | Projection, reprojection, shadow calculation |
+| Moon maps | `Moon()`, `Region`, DEM GeoTIFF load/download, Tsunakawa SVM load, spherical SZA, SZA-threshold illumination/shadow | Projection, reprojection, SPICE solar geometry, terrain-aware shadow |
 | Rust backend | Optional PACE PBF decode connected through a PyO3 native module | Binning, fitting, batch shard work |
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | Interactive HTML, datashader, long-span quicklooks |
 | CI / typing | pytest, compileall, schema docs, ruff, and blocking mypy | Improve type precision at dynamic boundaries and expand strict coverage |
@@ -61,6 +61,27 @@ falls back to the Python reference implementation when the native module is not
 installed.
 For development installs, run `python -m pip install -e .` or
 `python -m maturin develop --release` from the repository root.
+
+## Maps / Moon
+
+Implemented:
+
+- `spn.Moon()`
+- `spn.Region`
+- Planning endpoints for DEM/SVM/SZA/shadow/illumination
+- Longitude-domain, projection, shape, and area-or-point metadata
+- DEM GeoTIFF loading through the `rasterio` backend
+- Source metadata and direct download paths for USGS LRO LOLA DEM 118m / SLDEM2015
+- Text / npy loading for the Tsunakawa SVM (`LunarSVM_000_02_v02.dat`)
+- Default alias from `moon.svm` to `moon.svm_tsunakawa2015`
+- Spherical SZA raster computation from `sun_vector` / `subsolar_lon_lat`
+- Binary illumination / shadow raster computation from an SZA threshold
+
+Remaining:
+
+- Projection / reprojection / bilinear interpolation
+- SPICE solar geometry from `time=`
+- DEM and spherical/ellipsoid terrain-aware shadowing
 
 ## Near-Term Priorities
 

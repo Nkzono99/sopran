@@ -55,6 +55,10 @@ class SurfaceSource:
 def metadata_value(value: Any) -> Any:
     if hasattr(value, "to_metadata"):
         return value.to_metadata()
+    spec = getattr(value, "spec", None)
+    spec_metadata = getattr(spec, "to_metadata", None)
+    if callable(spec_metadata):
+        return spec_metadata()
     if isinstance(value, dict):
         return {str(key): metadata_value(item) for key, item in value.items()}
     if isinstance(value, (tuple, list)):

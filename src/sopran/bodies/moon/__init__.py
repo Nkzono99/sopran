@@ -1,4 +1,5 @@
 from sopran.bodies.moon.api import Moon, SurfaceEndpoint
+from sopran.bodies.moon.dem import load_dem_raster
 from sopran.bodies.moon.models import SurfacePlan, SurfaceSource
 from sopran.bodies.moon.schema import MOON_SURFACE_SCHEMA
 
@@ -8,4 +9,5 @@ __all__ = [
     "SurfaceEndpoint",
     "SurfacePlan",
     "SurfaceSource",
+    "load_dem_raster",
 ]
