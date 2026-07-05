@@ -15,6 +15,7 @@ local raw cache 探索、PACE raw PBF decode、typed data object、parquet pipel
   gain、mode、power spectral density endpoint と endpoint 単位の Store cache。
 - `Store.raw_path("kaguya", "pds3")` 以下の local raw cache lookup と missing file の自動取得。
 - PACE FOV / INFO calibration table reader と `load_calibration()`。
+- ESA1 `energy_flux` の INFO g-factor table による較正。
 - PACE typed data object の `to_xarray()`, `to_polars()`, `write_parquet()`。
 - `sopran.stack()` 経由の最小 PlotStack 連携。
 

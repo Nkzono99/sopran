@@ -73,3 +73,22 @@ product = db.register_product(
 
 lazy = db.products()[0].scan()
 ```
+
+定説化した現象や手動 curated event は `event_catalog()` からも扱えます。
+`write_events()` は `time_start` / `time_stop` / `phenomenon` / `detector`
+などの列を持つ表を `databases` layer に保存し、`counts()` は日別・月別に
+event 数を集計します。
+
+```python
+catalog = store.event_catalog("lunar_wake", create=True)
+catalog.write_events(events, time_coverage=spn.month("2008-02"), overwrite=True)
+monthly = catalog.counts(freq="month", by=("instrument",))
+```
+
+観測データの有無や finite sample 数は event catalog ではなく、各 endpoint の
+`coverage()` で確認します。これは解釈済み event ではなく、Store の `features`
+layer に保存される availability summary です。
+
+```python
+coverage = kg.esa1.energy_flux.coverage(time, freq="day", cache="use")
+```

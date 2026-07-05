@@ -22,9 +22,8 @@ def _pace_spectrum_schema(sensor: str) -> InstrumentSchema:
                 dims=("time", "energy", "look"),
                 units="eV/(cm^2 s sr eV)",
                 description=(
-                    f"Uncalibrated placeholder for KAGUYA PACE {sensor} "
-                    f"differential {particle} energy flux; values are NaN until "
-                    "calibration is implemented."
+                    f"KAGUYA PACE {sensor} differential {particle} energy flux "
+                    "derived from counts with PACE INFO calibration tables."
                 ),
             ),
             VariableSchema(

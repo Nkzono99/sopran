@@ -7,7 +7,7 @@ pages can focus on their own task.
 
 | Area | Current state | Next work |
 | --- | --- | --- |
-| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, Store writes, pipeline, quicklook | Calibration, SPEDAS parity, look-angle metadata |
+| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, ESA1 energy_flux calibration, Store writes, pipeline, coverage, quicklook | Broader calibration, internal validation, look-angle metadata |
 | KAGUYA LMAG/geometry | Path planning, `MAG_TS*.dat` loading, MOON_ME/GSE magnetic field, `|B|`, MOON_ME/GSE orbit geometry, radial distance, SZA, magnetic connection, Store cache | SPICE-backed Sun geometry and SPEDAS parity |
 | KAGUYA LRS | NPW/WFC CDF path planning, spectra, gain/mode, PSD endpoints, and Store cache | SPEDAS parity and real-data numerical checks |
 | Other KAGUYA sensors | PACE/LMAG/LRS partial support | Instrument-specific calibration and real-data parity |
@@ -18,10 +18,44 @@ pages can focus on their own task.
 | PlotStack | Matplotlib line/spectrogram/histogram quicklook | Interactive HTML, datashader, long-span quicklooks |
 | CI / typing | pytest, compileall, schema docs, ruff, and blocking mypy | Improve type precision at dynamic boundaries and expand strict coverage |
 
+## KAGUYA PACE
+
+Implemented:
+
+- PACE ESA1/ESA2/IMA/IEA raw PBF discovery
+- Local decode
+- ESA1 `energy_flux` Python reference calibration with `counts / (integ_t * gfactor * efficiency)`
+- `xarray` / `polars` conversion
+- Parquet Store writes
+- Endpoint pipeline `kg.esa1.energy_flux.pipeline(...).calibrate(...)`
+- Endpoint coverage `kg.esa1.counts.coverage(..., freq="day"|"month")`
+- Pipeline `run()` / `scan()` / `collect()`
+- Matplotlib quicklook
+
+## Pipeline / Store
+
+Implemented:
+
+- Store manifests, schemas, catalogs, and checksums
+- Store cache for endpoint coverage summaries
+- `Store.event_catalog(...)` for curated event tables and daily/monthly counts
+
+Remaining:
+
+- Event detectors and coverage-normalized rates
+- Mission-independent generic backend
+- Provider-native streaming
+
+Remaining:
+
+- Extend energy_flux calibration to ESA2/IMA/IEA
+- Preserve energy-coordinate and look-angle metadata
+- Expand package-internal synthetic and fixture validation
+
 ## Near-Term Priorities
 
-1. KAGUYA PACE calibration and SPEDAS parity.
-2. KAGUYA LRS/LMAG parity tests and real-data numerical checks.
+1. KAGUYA PACE energy-coordinate/look-angle metadata and internal validation.
+2. KAGUYA LRS/LMAG real-data numerical checks.
 3. ARTEMIS raw discovery and CDF ingest.
 4. SpacePy / Astropy frame transforms.
 5. Moon projection/reprojection and terrain-aware shadow.

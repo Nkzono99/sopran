@@ -20,7 +20,7 @@ wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 | instrument | endpoint | 主な用途 |
 | --- | --- | --- |
 | `esa1` / `esa2` / `ima` / `iea` | `counts` | PACE raw counts |
-| `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | 未較正 differential energy-flux placeholder |
+| `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | PACE INFO table による differential energy flux |
 | `esa1` / `esa2` / `ima` / `iea` | `energy` | PACE energy channel index |
 | `esa1` / `esa2` / `ima` / `iea` | `quality` | quality flag |
 | `lmag` | `magnetic_field` | Moon Mean Earth frame の磁場 vector |
@@ -65,27 +65,45 @@ conn_on_ima = conn.resample_like(ima, method="nearest", tolerance="2s")
 PACE、LMAG、LRS、および LMAG 由来の orbit / magnetic connection load は raw file
 が無い場合の挙動を `missing="empty" | "warn" | "error"` で選べます。
 
+各 endpoint は日別・月別の availability summary を `coverage()` で作れます。
+結果は `sample_count`、`finite_sample_count`、`sample_time_count`、
+`expected_remote_files`、`available_source_files` を持つ Polars DataFrame です。
+`cache="use"` では `features/<dataset>.coverage/variants/freq_<day|month>` に
+保存して再利用します。
+
+```python
+daily = kg.esa1.counts.coverage(time, freq="day", cache="use")
+monthly = kg.esa1.energy_flux.coverage(
+    spn.month("2008-02"),
+    freq="month",
+    calibration="auto",
+    cache="use",
+)
+```
+
 LRS endpoint も `cache="use"` / `"refresh"` / `"never"` を受け取ります。NPW と raw WFC
 は `normalized` layer、WFC gain / field / power spectral density / decoded mode は `features`
 layer に保存され、同じ時刻範囲を次に読むと CDF の再読を避けます。`refresh` は対象
 dataset を現在の時刻範囲で再生成して上書きします。
 
-派生配列は `SopranArray.write_parquet()` で Store に保存できます。operation metadata は
-manifest の `parameters.operations` に残ります。
+PACE pitch-angle product は endpoint から `cache="use" | "refresh" | "never"` で扱います。
+`cache="use"` では同じ引数の Store variant があれば読み、なければ作成して `features`
+layer に保存します。operation metadata は manifest の `parameters.operations` に残ります。
 
 ```python
-cal = kg.esa1.load_calibration(download="never")
-esa1_data = kg.esa1.load(time, calibration=cal)
-pas = esa1_data.pitch_angle_spectrum(
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(
+    time,
     magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
     pitch_bins=[0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0],
+    cache="use",
 )
-pas.write_parquet(
-    kg.store,
-    dataset_id="kaguya.esa1.pitch_angle_spectrum",
-    layer="features",
-    mission="kaguya",
-    instrument="esa1",
+item = kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
 )
 ```
 

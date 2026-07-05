@@ -20,7 +20,7 @@ wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 | Instrument | Endpoint | Use |
 | --- | --- | --- |
 | `esa1` / `esa2` / `ima` / `iea` | `counts` | PACE raw counts |
-| `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | Uncalibrated differential energy-flux placeholder |
+| `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | Differential energy flux from PACE INFO tables |
 | `esa1` / `esa2` / `ima` / `iea` | `energy` | PACE energy channel index |
 | `esa1` / `esa2` / `ima` / `iea` | `quality` | Quality flags |
 | `lmag` | `magnetic_field` | Magnetic field in the Moon Mean Earth frame |
@@ -67,28 +67,47 @@ PACE, LMAG, LRS, and LMAG-backed orbit / magnetic-connection loads accept
 `missing="empty"`, `"warn"`, or `"error"` to control behavior when raw files
 are absent.
 
+Each endpoint can build a daily or monthly availability summary with
+`coverage()`. The result is a Polars DataFrame with `sample_count`,
+`finite_sample_count`, `sample_time_count`, `expected_remote_files`, and
+`available_source_files`. With `cache="use"`, SOPRAN stores the summary under
+`features/<dataset>.coverage/variants/freq_<day|month>` and reuses it later.
+
+```python
+daily = kg.esa1.counts.coverage(time, freq="day", cache="use")
+monthly = kg.esa1.energy_flux.coverage(
+    spn.month("2008-02"),
+    freq="month",
+    calibration="auto",
+    cache="use",
+)
+```
+
 LRS endpoints also accept `cache="use"`, `"refresh"`, or `"never"`. NPW and raw
 WFC products are stored under the `normalized` layer; WFC gain, field, power
 spectral density, and decoded mode products are stored under `features`, so repeated
 loads over the same coverage can skip CDF decoding. `refresh` regenerates and
 overwrites the target dataset for the current time range.
 
-Derived arrays can be persisted with `SopranArray.write_parquet()`. Operation
-metadata is recorded under `parameters.operations` in the Store manifest.
+PACE pitch-angle products are handled from the endpoint with
+`cache="use"`, `"refresh"`, or `"never"`. `cache="use"` reads a matching Store
+variant when it exists; otherwise it creates one under the `features` layer.
+Operation metadata is recorded under `parameters.operations` in the Store manifest.
 
 ```python
-cal = kg.esa1.load_calibration(download="never")
-esa1_data = kg.esa1.load(time, calibration=cal)
-pas = esa1_data.pitch_angle_spectrum(
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(
+    time,
     magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
     pitch_bins=[0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0],
+    cache="use",
 )
-pas.write_parquet(
-    kg.store,
-    dataset_id="kaguya.esa1.pitch_angle_spectrum",
-    layer="features",
-    mission="kaguya",
-    instrument="esa1",
+item = kg.esa1.energy_flux.pitch_spectrogram(
+    time,
+    magnetic_field=[1.0, 0.0, 0.0],
+    calibration="auto",
+    cache="use",
+    log_color=True,
 )
 ```
 

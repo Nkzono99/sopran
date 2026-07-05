@@ -9,11 +9,10 @@ source -> download -> decode -> normalize -> select -> quicklook -> write
 
 ```python
 pipe = (
-    kg.esa1.pipeline(time)
+    kg.esa1.counts.pipeline(time)
     .download()
     .decode()
     .normalize()
-    .select_variables("counts")
     .quicklook("counts", frame="SSE")
     .write("kaguya.esa1.counts", layer="normalized")
 )
@@ -40,9 +39,8 @@ print(result)
 
 ```python
 frame = (
-    kg.esa1.pipeline(time)
+    kg.esa1.counts.pipeline(time)
     .from_normalized()
-    .select_variables("counts")
     .collect()
 )
 ```

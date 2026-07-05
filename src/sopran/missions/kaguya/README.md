@@ -72,10 +72,10 @@ wfc.spectrogram(y="frequency", log_color=True)
 
 ## Current Limits
 
-PACE calibration tables can be read as `PaceCalibration`, but calibration from
-counts to physical energy flux is not implemented yet. PACE `energy_flux` is
-represented as NaN in decoded xarray output until the tables are applied and
-SPEDAS parity tests are ported.
+PACE calibration tables can be read as `PaceCalibration`. ESA1 counts can be
+converted to `energy_flux` with the INFO g-factor tables; the current
+calibration is package-internal Python reference code, and SPEDAS parity tests
+are still future work.
 
 ```python
 import sopran as spn
@@ -84,5 +84,11 @@ kg = spn.Kaguya()
 time = spn.day("2008-01-01")
 cal = kg.esa1.load_calibration(download="never")
 cal.coverage("ESA1")
-kg.esa1.load(time, calibration=cal).to_xarray().attrs["calibration"]
+kg.esa1.energy_flux.load(time, calibration=cal)
+record = (
+    kg.esa1.energy_flux.pipeline(time)
+    .calibrate(calibration="auto")
+    .write("kaguya.esa1.energy_flux", layer="normalized")
+    .run()
+)
 ```

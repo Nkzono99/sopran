@@ -187,6 +187,16 @@ class Store:
             database.create()
         return database
 
+    def event_catalog(self, name: str, *, create: bool = False) -> Any:
+        from sopran.core.events import EventCatalog
+
+        if not name:
+            raise ValueError("event catalog name must not be empty")
+        catalog = EventCatalog(name=name, root=self.database_path(name), store=self)
+        if create:
+            catalog.create()
+        return catalog
+
     def dataset_path(
         self,
         dataset_id: str,

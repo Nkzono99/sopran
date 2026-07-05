@@ -6,7 +6,7 @@
 
 | 領域 | 現状 | 次の主作業 |
 | --- | --- | --- |
-| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode、Store 保存、pipeline、quicklook | 較正、SPEDAS parity、look-angle |
+| KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode、ESA1 energy_flux 較正、Store 保存、pipeline、coverage、quicklook | 較正対象の拡張、内部 validation、look-angle |
 | KAGUYA LMAG/geometry | path planning、`MAG_TS*.dat` load、MOON_ME/GSE magnetic field、`|B|`、MOON_ME/GSE orbit geometry、radial distance、SZA、magnetic connection、Store cache | SPICE-backed Sun geometry、SPEDAS parity |
 | KAGUYA LRS | NPW/WFC CDF path planning、spectrum/gain/mode/PSD endpoint、Store cache | SPEDAS parity、実データでの数値検証 |
 | KAGUYA その他 | PACE/LMAG/LRS の一部を実装済み | instrument 固有の較正と実データ parity |
@@ -23,17 +23,20 @@
 
 - PACE ESA1/ESA2/IMA/IEA raw PBF discovery
 - local decode
+- ESA1 `energy_flux` の Python reference 較正 (`counts / (integ_t * gfactor * efficiency)`)
 - `xarray` / `polars` conversion
 - parquet Store 保存
+- endpoint pipeline `kg.esa1.energy_flux.pipeline(...).calibrate(...)`
+- endpoint coverage `kg.esa1.counts.coverage(..., freq="day"|"month")`
 - pipeline `run()` / `scan()` / `collect()`
 - Matplotlib quicklook
 
 残っているもの:
 
-- `energy_flux` の物理較正
-- FOV / INFO calibration table の本格適用
+- ESA2/IMA/IEA への energy_flux 較正拡張
+- energy coordinate / look-angle metadata の保存
 - look-angle 座標
-- SPEDAS/IDL との golden test
+- package 内 synthetic / fixture validation の拡充
 
 ## KAGUYA LMAG / geometry
 
@@ -92,12 +95,15 @@
 入っているもの:
 
 - Store manifest、schema、catalog、checksum
+- endpoint coverage summary の Store cache
+- `Store.event_catalog(...)` による curated event table と日別・月別 count
 - KAGUYA PACE backend
 - daily partition
 - failed shard status と resume の基礎
 
 残っているもの:
 
+- event detector と coverage-normalized rate
 - mission 非依存の generic backend
 - provider-native streaming
 - Rust stage 接続
@@ -135,8 +141,8 @@
 
 ## 直近の優先度
 
-1. KAGUYA PACE calibration / SPEDAS parity
-2. KAGUYA LRS/LMAG の parity test と実データ数値検証
+1. KAGUYA PACE energy coordinate / look-angle metadata と内部 validation
+2. KAGUYA LRS/LMAG の実データ数値検証
 3. ARTEMIS raw discovery と CDF ingest
 4. SPICE / SpacePy を使う frame transform
 5. Moon projection/reproject と terrain-aware shadow

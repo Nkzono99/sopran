@@ -19,6 +19,7 @@ from sopran.core.errors import (
     SchemaError,
     SopranError,
 )
+from sopran.core.events import EventCatalog
 from sopran.core.loaders import load
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
@@ -54,6 +55,7 @@ __all__ = [
     "DownloadError",
     "FrameTransformError",
     "FeatureMatrix",
+    "EventCatalog",
     "InstrumentSchema",
     "Pipeline",
     "PipelineError",

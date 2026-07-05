@@ -14,12 +14,26 @@ from typing import Any, Literal, Protocol, cast
 from urllib.error import HTTPError
 
 from sopran.core import Store
+from sopran.core.coverage import (
+    coverage_bins,
+    coverage_dataset_id,
+    coverage_frame_from_xarray,
+    coverage_schema,
+    coverage_variant_id,
+    read_cached_coverage_frame,
+    validate_coverage_freq,
+)
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.pipeline import Pipeline, PipelineResult
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange, _filter_polars_time, day, period
-from sopran.missions.kaguya.data import KaguyaPaceData
+from sopran.missions.kaguya.data import (
+    KaguyaPaceData,
+    _pitch_angle_spectrum_dataset_id,
+    _pitch_angle_spectrum_variant_id,
+    _read_pitch_angle_spectrum_store,
+)
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
     iter_hourly_public_paths,
@@ -318,19 +332,116 @@ fig = plot_result.fig
             remote_files=self.instrument.remote_files_for_period(time),
         )
 
+    def pipeline(self, time: TimeRange | None = None) -> Pipeline:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        return Pipeline(
+            source=self.dataset_id,
+            time=time,
+            context=self.instrument,
+            default_variable=self.name,
+        )
+
+    def coverage(
+        self,
+        time: TimeRange | None = None,
+        *,
+        freq: Literal["day", "month"] = "day",
+        cache: CacheMode = "use",
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
+        dataset_id: str | None = None,
+        layer: str = "features",
+    ) -> Any:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        validate_coverage_freq(freq)
+        _validate_cache_mode(cache)
+        resolved_dataset_id = dataset_id or coverage_dataset_id(self.dataset_id)
+        variant_id = coverage_variant_id(freq)
+        if cache == "use":
+            cached = read_cached_coverage_frame(
+                self.instrument.mission.store,
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+                time=time,
+            )
+            if cached is not None:
+                return cached
+
+        loaded = _load_endpoint_for_coverage(
+            self,
+            time,
+            download=download,
+            missing=missing,
+            calibration=calibration,
+        )
+        bins = coverage_bins(time, freq=freq)
+        expected = _expected_remote_file_counts(self.instrument, bins)
+        available = _available_source_file_counts(self.instrument, loaded.files, bins)
+        frame = coverage_frame_from_xarray(
+            loaded.to_xarray(),
+            time=time,
+            freq=freq,
+            source_dataset_id=self.dataset_id,
+            mission="kaguya",
+            instrument=self.instrument.name.lower(),
+            product=self.name,
+            expected_remote_files=expected,
+            available_source_files=available,
+        )
+        if cache != "never":
+            self.instrument.mission.store.write_parquet_dataset(
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=variant_id,
+                variant={
+                    "freq": freq,
+                    "source_dataset": self.dataset_id,
+                },
+                mission="kaguya",
+                instrument=self.instrument.name.lower(),
+                product="coverage",
+                schema=coverage_schema(
+                    mission="kaguya",
+                    instrument=self.instrument.name.lower(),
+                ),
+                time_coverage=time,
+                frame=frame,
+                source_files=tuple(str(path) for path in loaded.files),
+                source_datasets=(self.dataset_id,),
+                overwrite=True,
+                producer="sopran.kaguya.coverage",
+                parameters={
+                    "coverage": {
+                        "freq": freq,
+                        "source_dataset": self.dataset_id,
+                        "metric": "finite_sample_count",
+                    },
+                },
+            )
+        return frame
+
     def load(
         self,
         time: TimeRange | None = None,
         *,
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = None,
     ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
-        if missing is None:
-            data = self.instrument.load(time, download=download)
-        else:
-            data = self.instrument.load(time, download=download, missing=missing)
+        kwargs: dict[str, Any] = {"download": download}
+        if missing is not None:
+            kwargs["missing"] = missing
+        if self.name == "energy_flux":
+            kwargs["calibration"] = calibration
+        data = self.instrument.load(time, **kwargs)
+        if self.name == "energy_flux":
+            return data.to_energy_flux()
         return getattr(data, self.name)
 
     def plot(
@@ -340,6 +451,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = None,
         **kwargs: Any,
     ) -> Any:
         loaded = _load_endpoint(
@@ -348,6 +460,7 @@ fig = plot_result.fig
             download=download,
             missing=missing,
             cache=cache,
+            calibration=calibration,
         )
         kwargs.setdefault("dataset_id", self.dataset_id)
         kwargs.setdefault("time_range", loaded.time)
@@ -373,6 +486,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = None,
     ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -385,6 +499,7 @@ fig = plot_result.fig
                 download=download,
                 missing=missing,
                 cache=cache,
+                calibration=calibration,
             ).to_xarray(),
             x=x,
             name=name or self.name,
@@ -401,6 +516,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = None,
     ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -413,6 +529,7 @@ fig = plot_result.fig
                 download=download,
                 missing=missing,
                 cache=cache,
+                calibration=calibration,
             ).to_xarray(),
             x=x,
             components=components,
@@ -433,6 +550,7 @@ fig = plot_result.fig
         log_color: bool = False,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = None,
     ) -> Any:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -445,6 +563,7 @@ fig = plot_result.fig
                 download=download,
                 missing=missing,
                 cache=cache,
+                calibration=calibration,
                 x=x,
                 y=y,
                 reduce_dims=reduce_dims,
@@ -454,6 +573,126 @@ fig = plot_result.fig
             y=y,
             name=name or self.name,
             log_color=log_color,
+        )
+
+    def pitch_angle_spectrum(
+        self,
+        time: TimeRange | None = None,
+        magnetic_field: Any | None = None,
+        *,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        pitch_bins: Any = "native",
+        look_frame: str = "SELENE_M_SPACECRAFT",
+        magnetic_frame: str | None = None,
+        min_look_bins: int = 1,
+        frame_context: Any | None = None,
+        cache: CacheMode = "use",
+        variant_id: str | None = None,
+        dataset_id: str | None = None,
+        layer: str = "features",
+    ) -> Any:
+        if time is None:
+            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        if magnetic_field is None:
+            raise TypeError("pitch_angle_spectrum() requires magnetic_field=...")
+        if self.name not in {"counts", "energy_flux"}:
+            raise ValueError(
+                f"{_endpoint_path(self)} cannot be converted to pitch_angle_spectrum"
+            )
+        _validate_cache_mode(cache)
+        resolved_dataset_id = dataset_id
+        resolved_variant_id = variant_id
+        if cache != "never":
+            resolved_dataset_id = _pitch_angle_spectrum_dataset_id(
+                self.instrument.name,
+                value=self.name,
+                dataset_id=dataset_id,
+            )
+            resolved_variant_id = _pitch_angle_spectrum_variant_id(
+                value=self.name,
+                magnetic_field=magnetic_field,
+                pitch_bins=pitch_bins,
+                look_frame=look_frame,
+                magnetic_frame=magnetic_frame,
+                min_look_bins=min_look_bins,
+                variant_id=variant_id,
+            )
+            if cache == "use":
+                cached = _read_pitch_angle_spectrum_store(
+                    self.instrument.mission.store,
+                    dataset_id=resolved_dataset_id,
+                    layer=layer,
+                    variant_id=resolved_variant_id,
+                    time=time,
+                )
+                if cached is not None:
+                    return cached
+        data = self.instrument.load(
+            time,
+            calibration=calibration,
+            download=download,
+            missing=missing or "empty",
+        )
+        return data.pitch_angle_spectrum(
+            magnetic_field,
+            value=self.name,
+            pitch_bins=pitch_bins,
+            look_frame=look_frame,
+            magnetic_frame=magnetic_frame,
+            min_look_bins=min_look_bins,
+            frame_context=frame_context,
+            cache=cache,
+            store=self.instrument.mission.store,
+            variant_id=resolved_variant_id,
+            dataset_id=resolved_dataset_id,
+            layer=layer,
+        )
+
+    def pitch_spectrogram(
+        self,
+        time: TimeRange | None = None,
+        magnetic_field: Any | None = None,
+        *,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
+        download: DownloadMode | None = None,
+        missing: MissingMode | None = None,
+        pitch_bins: Any = "native",
+        look_frame: str = "SELENE_M_SPACECRAFT",
+        magnetic_frame: str | None = None,
+        min_look_bins: int = 1,
+        frame_context: Any | None = None,
+        cache: CacheMode = "use",
+        variant_id: str | None = None,
+        dataset_id: str | None = None,
+        layer: str = "features",
+        energy: Any | None = None,
+        reduction: str = "sum",
+        log_color: bool = False,
+        name: str | None = None,
+    ) -> Any:
+        spectrum = self.pitch_angle_spectrum(
+            time,
+            magnetic_field,
+            calibration=calibration,
+            download=download,
+            missing=missing,
+            pitch_bins=pitch_bins,
+            look_frame=look_frame,
+            magnetic_frame=magnetic_frame,
+            min_look_bins=min_look_bins,
+            frame_context=frame_context,
+            cache=cache,
+            variant_id=variant_id,
+            dataset_id=dataset_id,
+            layer=layer,
+        )
+        return spectrum.pitch_spectrogram(
+            energy=energy,
+            reduction=reduction,
+            log_color=log_color,
+            name=name,
         )
 
 
@@ -842,11 +1081,13 @@ class PaceInstrument(KaguyaInstrument):
                     log_path=log_path,
                 )
             variable = _pipeline_variable(pipeline)
+            calibration = _pipeline_calibration(pipeline, variable=variable)
             replayed_count = _replay_failed_pipeline_shards(
                 self,
                 existing,
                 variable=variable,
                 download=download,
+                calibration=calibration,
             )
             _update_pipeline_dataset_provenance(
                 existing,
@@ -858,7 +1099,12 @@ class PaceInstrument(KaguyaInstrument):
             )
             replay_quicklooks: tuple[Any, ...] = ()
             if _pipeline_has_quicklook(pipeline):
-                replay_data = self.load(pipeline.time, download=download)
+                replay_data = _load_pace_pipeline_data(
+                    self,
+                    pipeline.time,
+                    download=download,
+                    calibration=calibration,
+                )
                 replay_quicklooks = _write_pipeline_quicklooks(
                     replay_data,
                     existing,
@@ -892,6 +1138,7 @@ class PaceInstrument(KaguyaInstrument):
             )
 
         variable = _pipeline_variable(pipeline)
+        calibration = _pipeline_calibration(pipeline, variable=variable)
         partition = _pipeline_partition(pipeline)
         data: KaguyaPaceData | None = None
         try:
@@ -903,9 +1150,15 @@ class PaceInstrument(KaguyaInstrument):
                     mode=mode,
                     run_id=run_id,
                     download=download,
+                    calibration=calibration,
                 )
             else:
-                loaded = self.load(pipeline.time, download=download)
+                loaded = _load_pace_pipeline_data(
+                    self,
+                    pipeline.time,
+                    download=download,
+                    calibration=calibration,
+                )
                 _ensure_pipeline_input_files(loaded, self, pipeline.time)
                 data = loaded
                 output = data.write_parquet(
@@ -963,7 +1216,12 @@ class PaceInstrument(KaguyaInstrument):
         quicklooks: tuple[Any, ...] = ()
         if _pipeline_has_quicklook(pipeline):
             if data is None:
-                data = self.load(pipeline.time, download=download)
+                data = _load_pace_pipeline_data(
+                    self,
+                    pipeline.time,
+                    download=download,
+                    calibration=calibration,
+                )
                 _ensure_pipeline_input_files(data, self, pipeline.time)
             quicklooks = _write_pipeline_quicklooks(
                 data,
@@ -1061,13 +1319,15 @@ fig = plot_result.fig
         self,
         time: TimeRange | None = None,
         *,
-        calibration: PaceCalibration | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = None,
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
     ) -> KaguyaPaceData:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.name}")
         _validate_missing_mode(missing)
+        if calibration == "auto":
+            calibration = self.load_calibration(download=download)
         files: list[Path] = []
         for time_day in time.days():
             files.extend(self.select(time_day).files(download=download))
@@ -1083,6 +1343,7 @@ fig = plot_result.fig
             files=tuple(files),
             instrument=self.sensor,
             calibration=calibration,
+            store=self.mission.store,
             missing_reason=missing_reason,
         )
 
@@ -1272,6 +1533,7 @@ def _load_endpoint_plot_array(
     download: DownloadMode | None,
     missing: MissingMode | None,
     cache: CacheMode | None,
+    calibration: PaceCalibration | Literal["auto"] | None,
     x: str,
     y: str,
     reduce_dims: tuple[str, ...] | None,
@@ -1283,6 +1545,7 @@ def _load_endpoint_plot_array(
         download=download,
         missing=missing,
         cache=cache,
+        calibration=calibration,
     ).to_xarray()
     dims = getattr(array, "dims", ())
     dims_to_reduce = reduce_dims
@@ -1445,6 +1708,7 @@ def _write_daily_partitioned_pipeline_output(
     mode: str,
     run_id: str,
     download: DownloadMode,
+    calibration: PaceCalibration | Literal["auto"] | None,
 ) -> Any:
     if mode == "replace":
         raise NotImplementedError(
@@ -1453,7 +1717,12 @@ def _write_daily_partitioned_pipeline_output(
 
     output = None
     for index, chunk_time in enumerate(_daily_time_ranges(pipeline.time)):
-        data = instrument.load(chunk_time, download=download)
+        data = _load_pace_pipeline_data(
+            instrument,
+            chunk_time,
+            download=download,
+            calibration=calibration,
+        )
         _ensure_pipeline_input_files(data, instrument, chunk_time)
         output = data.write_parquet(
             instrument.mission.store,
@@ -1474,6 +1743,18 @@ def _write_daily_partitioned_pipeline_output(
     if output is None:
         raise ValueError("Pipeline time range did not produce any daily shard")
     return output
+
+
+def _load_pace_pipeline_data(
+    instrument: PaceInstrument,
+    time: TimeRange,
+    *,
+    download: DownloadMode,
+    calibration: PaceCalibration | Literal["auto"] | None,
+) -> KaguyaPaceData:
+    if calibration is None:
+        return instrument.load(time, download=download)
+    return instrument.load(time, download=download, calibration=calibration)
 
 
 def _update_pipeline_dataset_provenance(
@@ -1573,11 +1854,17 @@ def _replay_failed_pipeline_shards(
     *,
     variable: str,
     download: DownloadMode,
+    calibration: PaceCalibration | Literal["auto"] | None,
 ) -> int:
     replayed = 0
     for shard in output.failed_shards():
         shard_time = _shard_time_range(shard)
-        data = instrument.load(shard_time, download=download)
+        data = _load_pace_pipeline_data(
+            instrument,
+            shard_time,
+            download=download,
+            calibration=calibration,
+        )
         _ensure_pipeline_input_files(data, instrument, shard_time)
         output.replace_shard(
             str(shard["path"]),
@@ -1989,7 +2276,9 @@ class LrsVariableEndpoint(VariableEndpoint):
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode = "use",
+        calibration: PaceCalibration | Literal["auto"] | None = None,
     ) -> Any:
+        _ = calibration
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         _validate_cache_mode(cache)
@@ -2460,8 +2749,11 @@ def _load_endpoint(
     download: DownloadMode | None,
     missing: MissingMode | None,
     cache: CacheMode | None,
+    calibration: PaceCalibration | Literal["auto"] | None = None,
 ) -> Any:
     kwargs: dict[str, Any] = {"download": download, "missing": missing}
+    if endpoint.name == "energy_flux":
+        kwargs["calibration"] = calibration
     if cache is not None:
         parameters = signature(endpoint.load).parameters
         if "cache" not in parameters:
@@ -2469,6 +2761,62 @@ def _load_endpoint(
         _validate_cache_mode(cache)
         kwargs["cache"] = cache
     return endpoint.load(time, **kwargs)
+
+
+def _load_endpoint_for_coverage(
+    endpoint: VariableEndpoint,
+    time: TimeRange,
+    *,
+    download: DownloadMode | None,
+    missing: MissingMode | None,
+    calibration: PaceCalibration | Literal["auto"] | None,
+) -> Any:
+    if isinstance(endpoint.instrument, PaceInstrument):
+        kwargs: dict[str, Any] = {
+            "download": download,
+            "missing": missing or "empty",
+        }
+        if endpoint.name == "energy_flux":
+            kwargs["calibration"] = calibration
+        data = endpoint.instrument.load(time, **kwargs)
+        return getattr(data, endpoint.name)
+    return _load_endpoint(
+        endpoint,
+        time,
+        download=download,
+        missing=missing,
+        cache=None,
+        calibration=calibration,
+    )
+
+
+def _expected_remote_file_counts(
+    instrument: EndpointInstrument,
+    bins: tuple[Any, ...],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in bins:
+        time = TimeRange(item.start, item.stop)
+        counts[item.start_iso] = len(instrument.remote_files_for_period(time))
+    return counts
+
+
+def _available_source_file_counts(
+    instrument: EndpointInstrument,
+    files: tuple[Path, ...],
+    bins: tuple[Any, ...],
+) -> dict[str, int]:
+    source_files = tuple(path.as_posix().replace("\\", "/") for path in files)
+    counts: dict[str, int] = {}
+    for item in bins:
+        time = TimeRange(item.start, item.stop)
+        count = 0
+        for remote_file in instrument.remote_files_for_period(time):
+            remote = Path(remote_file).as_posix().replace("\\", "/")
+            if any(source.endswith(remote) for source in source_files):
+                count += 1
+        counts[item.start_iso] = count
+    return counts
 
 
 def _merge_metadata(
@@ -2568,9 +2916,43 @@ def _pipeline_variable(pipeline: Pipeline) -> str:
             if len(names) != 1:
                 raise NotImplementedError("KAGUYA PACE pipeline run expects one selected variable")
             return str(names[0])
+    if pipeline.default_variable is not None:
+        return pipeline.default_variable
     if pipeline.output_dataset:
         return pipeline.output_dataset.split(".")[-1]
     return "counts"
+
+
+def _pipeline_calibration(
+    pipeline: Pipeline,
+    *,
+    variable: str,
+) -> PaceCalibration | Literal["auto"] | None:
+    for stage in pipeline.stages:
+        if stage.name != "calibrate":
+            continue
+        name = str(stage.parameters.get("name", ""))
+        if name != "energy_flux":
+            raise NotImplementedError(
+                "KAGUYA PACE pipeline currently supports calibrate('energy_flux') only"
+            )
+        if variable != "energy_flux":
+            raise ValueError(
+                "KAGUYA PACE calibrate('energy_flux') must be paired with "
+                "the energy_flux endpoint or select_variables('energy_flux')"
+            )
+        return cast(
+            PaceCalibration | Literal["auto"] | None,
+            stage.parameters.get("calibration", "auto"),
+        )
+    if variable == "energy_flux":
+        raise ValueError(
+            "KAGUYA PACE pipeline writing energy_flux requires "
+            ".calibrate(calibration='auto') on kg.esa1.energy_flux.pipeline(...), "
+            "or .calibrate('energy_flux', calibration='auto') before "
+            "select_variables('energy_flux')."
+        )
+    return None
 
 
 def _pipeline_source_layer(pipeline: Pipeline) -> str:

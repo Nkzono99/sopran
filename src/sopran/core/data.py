@@ -498,6 +498,14 @@ class SopranArray:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
+        dims = set(_dims(array))
+        if pitch_dim not in dims and "look" in dims:
+            raise ValueError(
+                "pitch_spectrogram requires pitch_angle-binned data. "
+                "Convert PACE look bins first with pitch_angle_spectrum(...), "
+                "for example kg.esa1.energy_flux.pitch_angle_spectrum(time, "
+                "magnetic_field=...)."
+            )
         _require_dims(array, (x, pitch_dim), "pitch_spectrogram")
         if energy is not None:
             array = _select_coordinate_range(array, energy_dim, energy)
