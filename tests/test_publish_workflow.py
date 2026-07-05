@@ -15,7 +15,9 @@ def test_publish_workflow_uses_pypi_trusted_publishing() -> None:
     assert "python -m build --sdist" in workflow
     assert "python -m cibuildwheel --output-dir wheelhouse" in workflow
     assert "CIBW_TEST_COMMAND" in workflow
+    assert "CIBW_TEST_SKIP" in workflow
     assert "sopran._native" in workflow
+    assert "rustup target add x86_64-apple-darwin aarch64-apple-darwin" in workflow
     assert "python -m twine check dist/*" in workflow
     assert "actions/upload-artifact@v5" in workflow
     assert "actions/download-artifact@v6" in workflow
