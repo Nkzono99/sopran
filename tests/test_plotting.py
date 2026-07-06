@@ -577,6 +577,44 @@ def test_loaded_array_plot_uses_energy_spectrogram_labels_by_default() -> None:
     )
 
 
+def test_loaded_array_rejects_placeholder_energy_flux_visualization(tmp_path) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.full((2, 3), np.nan),
+        dims=("time", "energy"),
+        coords={"time": times, "energy": [10.0, 20.0, 30.0]},
+        name="energy_flux",
+        attrs={
+            "units": "eV/(cm^2 s sr eV)",
+            "physical_validity": "placeholder",
+            "calibration_status": "not_loaded",
+        },
+    )
+    loaded = SopranArray(
+        name="energy_flux",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="energy_flux",
+            dims=("time", "energy"),
+            units="eV/(cm^2 s sr eV)",
+        ),
+        xr=array,
+    )
+
+    with pytest.raises(ValueError, match="uncalibrated placeholder"):
+        loaded.plot()
+    with pytest.raises(ValueError, match="downloads enabled"):
+        loaded.spectrogram(y="energy")
+    with pytest.raises(ValueError, match="kg.esa1.energy_flux.plot"):
+        loaded.quicklook("energy_flux", root=tmp_path)
+
+
 def test_loaded_array_to_polars_uses_array_layout_for_dense_data_by_default() -> None:
     array = xr.DataArray(
         np.ones((2, 3, 4)),

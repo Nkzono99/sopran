@@ -434,7 +434,7 @@ fig = plot_result.fig
         *,
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
-        calibration: PaceCalibration | Literal["auto"] | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> SopranArray:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -455,7 +455,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-        calibration: PaceCalibration | Literal["auto"] | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
         **kwargs: Any,
     ) -> PlotResult | object | None:
         loaded = _load_endpoint(
@@ -490,7 +490,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-        calibration: PaceCalibration | Literal["auto"] | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> PlotItem:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -520,7 +520,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-        calibration: PaceCalibration | Literal["auto"] | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> PlotItem:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -554,7 +554,7 @@ fig = plot_result.fig
         log_color: bool = False,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
-        calibration: PaceCalibration | Literal["auto"] | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> PlotItem:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
@@ -1326,7 +1326,7 @@ fig = plot_result.fig
         self,
         time: TimeRange | None = None,
         *,
-        calibration: PaceCalibration | Literal["auto"] | None = None,
+        calibration: PaceCalibration | Literal["auto"] | None = "auto",
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
     ) -> KaguyaPaceData:

@@ -34,6 +34,14 @@ PitchCacheMode = Literal["use", "refresh", "never"]
 
 
 @dataclass(frozen=True)
+class _EnergyCoordinates:
+    values: Any
+    attrs: dict[str, object]
+    order: Any
+    channels: Any
+
+
+@dataclass(frozen=True)
 class KaguyaPaceData:
     time: TimeRange
     files: tuple[Path, ...] = ()
@@ -416,6 +424,13 @@ class KaguyaPaceData:
             header = pace.headers[record.index]
             if not _header_in_time_range(header, self.time):
                 continue
+            counts = _sequence_counts_if_calibrated(
+                counts,
+                header,
+                self.calibration,
+                self.instrument,
+                np,
+            )
             count_rows.append(_counts_to_energy_look(counts))
             headers.append(header)
 
@@ -423,6 +438,14 @@ class KaguyaPaceData:
             return self._empty_xarray(np, xr)
 
         counts = _stack_energy_look_rows(count_rows, np)
+        energy_coords = _energy_coordinates_for_rows(
+            headers,
+            count_rows,
+            self.calibration,
+            self.instrument,
+            energy_schema,
+            np,
+        )
         energy_flux = _energy_flux_from_rows(
             pace,
             headers,
@@ -438,6 +461,8 @@ class KaguyaPaceData:
             applied=not np.isnan(energy_flux).all(),
             efficiency=0.6,
         )
+        counts = counts[:, energy_coords.order, :]
+        energy_flux = energy_flux[:, energy_coords.order, :]
         quality = np.array(
             [int(header.get("data_quality", 0)) for header in headers],
             dtype=np.uint32,
@@ -469,8 +494,17 @@ class KaguyaPaceData:
                 "time": time_values,
                 "energy": (
                     "energy",
-                    np.arange(counts.shape[1]),
-                    _variable_attrs(energy_schema),
+                    energy_coords.values,
+                    energy_coords.attrs,
+                ),
+                "energy_channel": (
+                    "energy",
+                    energy_coords.channels,
+                    {
+                        "description": (
+                            "Raw PACE energy channel index before calibrated energy sorting."
+                        ),
+                    },
                 ),
                 "look": np.arange(counts.shape[2]),
             },
@@ -510,6 +544,13 @@ class KaguyaPaceData:
             header = self.pace.headers[record.index]
             if not _header_in_time_range(header, self.time):
                 continue
+            counts = _sequence_counts_if_calibrated(
+                counts,
+                header,
+                self.calibration,
+                self.instrument,
+                np,
+            )
             count_rows.append(_counts_to_energy_look(counts))
             headers.append(header)
 
@@ -531,12 +572,30 @@ class KaguyaPaceData:
             [_header_time_to_datetime64(header.get("time"), np) for header in headers],
             dtype="datetime64[ns]",
         )
+        energy_coords = _energy_coordinates_for_rows(
+            headers,
+            count_rows,
+            self.calibration,
+            self.instrument,
+            self.instrument_schema.variable("energy"),
+            np,
+        )
+        values = values[:, energy_coords.order, :]
         return xr.DataArray(
             values,
             dims=energy_flux_schema.dims,
             coords={
                 "time": time_values,
-                "energy": np.arange(values.shape[1]),
+                "energy": ("energy", energy_coords.values, energy_coords.attrs),
+                "energy_channel": (
+                    "energy",
+                    energy_coords.channels,
+                    {
+                        "description": (
+                            "Raw PACE energy channel index before calibrated energy sorting."
+                        ),
+                    },
+                ),
                 "look": np.arange(values.shape[2]),
             },
             attrs=_energy_flux_attrs(
@@ -717,6 +776,174 @@ def _energy_flux_attrs(
     return attrs
 
 
+def _energy_coordinates_for_rows(
+    headers: list[dict[str, Any]],
+    count_rows: list[Any],
+    calibration: PaceCalibration | None,
+    instrument: str,
+    energy_schema: Any,
+    np: Any,
+) -> _EnergyCoordinates:
+    energy_count = max((int(row.shape[0]) for row in count_rows), default=0)
+    default_values = np.arange(energy_count)
+    default = _EnergyCoordinates(
+        values=default_values,
+        attrs=_variable_attrs(energy_schema),
+        order=np.arange(energy_count),
+        channels=np.arange(energy_count),
+    )
+    if calibration is None:
+        return default
+    info = calibration.info.get(_pace_sensor_id(instrument))
+    if info is None:
+        return default
+
+    energy_rows = []
+    has_energy = False
+    max_look = max((int(row.shape[1]) for row in count_rows), default=0)
+    for header, row in zip(headers, count_rows, strict=True):
+        energy = _energy_center_energy_look(info, row, header, np)
+        energy_rows.append(energy)
+        has_energy = has_energy or energy is not None
+    if not has_energy:
+        return default
+
+    centers = np.full((len(count_rows), energy_count, max_look), np.nan, dtype=float)
+    for index, energy in enumerate(energy_rows):
+        if energy is None:
+            continue
+        centers[index, : energy.shape[0], : energy.shape[1]] = energy
+
+    axis = _representative_energy_axis(centers, np)
+    if not np.isfinite(axis).any():
+        return default
+    order = _energy_sort_order(axis, np)
+    return _EnergyCoordinates(
+        values=axis[order],
+        attrs=_calibrated_energy_attrs(energy_schema),
+        order=order,
+        channels=np.arange(energy_count)[order],
+    )
+
+
+def _representative_energy_axis(centers: Any, np: Any) -> Any:
+    axis = np.full(int(centers.shape[1]), np.nan, dtype=float)
+    for index in range(axis.size):
+        values = centers[:, index, :]
+        values = values[np.isfinite(values) & (values > 0)]
+        if values.size:
+            axis[index] = float(np.median(values))
+    return axis
+
+
+def _energy_sort_order(axis: Any, np: Any) -> Any:
+    finite_axis = np.where(np.isfinite(axis), axis, np.inf)
+    return np.lexsort((np.arange(axis.size), finite_axis))
+
+
+def _calibrated_energy_attrs(schema: Any) -> dict[str, object]:
+    description = str(schema.description)
+    prefix = description.split(" energy channel index", 1)[0]
+    if not prefix or prefix == description:
+        prefix = "PACE"
+    return {
+        "description": f"{prefix} energy center from PACE INFO calibration tables.",
+        "units": "eV",
+        "calibration": "PACE INFO",
+        "coordinate": "representative_median_energy_center",
+    }
+
+
+def _sequence_counts_if_calibrated(
+    counts: Any,
+    header: dict[str, Any],
+    calibration: PaceCalibration | None,
+    instrument: str,
+    np: Any,
+) -> Any:
+    if calibration is None or counts.ndim != 3 or counts.shape[0] != 32:
+        return counts
+    info = calibration.info.get(_pace_sensor_id(instrument))
+    if info is None:
+        return counts
+    key = _info_key_for_angular_shape(counts.shape, info, "gfactor")
+    if key is None:
+        key = _info_key_for_angular_shape(counts.shape, info, "ene")
+    if key is None:
+        return counts
+    table = info.get(f"gfactor_{key}")
+    if table is None:
+        table = info.get(f"ene_{key}")
+    if table is None:
+        return counts
+    ram = _ram_index(header, table)
+    enesq, polsq = _seq_or_default(info, key, ram, int(counts.shape[1]), np)
+    shape = (int(counts.shape[0]), int(counts.shape[1]), int(counts.shape[2]))
+    return _assign_by_sequence(shape, enesq, polsq, counts, np)
+
+
+def _info_key_for_angular_shape(
+    shape: tuple[int, ...],
+    info: dict[str, Any],
+    prefix: str,
+) -> str | None:
+    if len(shape) != 3:
+        return None
+    if tuple(int(value) for value in shape[1:]) == (4, 16) and f"{prefix}_4x16" in info:
+        return "4x16"
+    if tuple(int(value) for value in shape[1:]) == (16, 64) and f"{prefix}_16x64" in info:
+        return "16x64"
+    return None
+
+
+def _info_key_for_energy_look(
+    look_count: int,
+    info: dict[str, Any],
+    prefix: str,
+) -> str | None:
+    if look_count == 64 and f"{prefix}_4x16" in info:
+        return "4x16"
+    if look_count == 1024 and f"{prefix}_16x64" in info:
+        return "16x64"
+    return None
+
+
+def _ram_index(header: dict[str, Any], table: Any) -> int:
+    return min(int(header.get("svs_tbl", 0)), int(table.shape[0]) - 1)
+
+
+def _seq_or_default(
+    info: dict[str, Any],
+    key: str,
+    ram: int,
+    polar_count: int,
+    np: Any,
+) -> tuple[Any, Any]:
+    ene_name = f"ene_sqno_{key}"
+    pol_name = f"pol_sqno_{key}"
+    if ene_name not in info or pol_name not in info:
+        return np.arange(32), np.arange(polar_count)
+    enesq = np.asarray(info[ene_name][ram, :, 0, 0], dtype=int)
+    polsq = np.asarray(info[pol_name][ram, 0, :, 0], dtype=int)
+    if ram == 0:
+        enesq = np.arange(32)
+    return np.clip(enesq, 0, 31), np.clip(polsq, 0, polar_count - 1)
+
+
+def _assign_by_sequence(
+    shape: tuple[int, int, int],
+    enesq: Any,
+    polsq: Any,
+    values: Any,
+    np: Any,
+    *,
+    default: float = float("nan"),
+) -> Any:
+    out = np.full(shape, default, dtype=float)
+    out[np.ix_(enesq, polsq, np.arange(shape[2]))] = values
+    return out
+
+
 def _energy_flux_from_rows(
     pace: PaceData,
     headers: list[dict[str, Any]],
@@ -759,15 +986,48 @@ def _gfactor_energy_look(
     np: Any,
 ) -> Any | None:
     look_count = int(counts.shape[1])
-    if look_count == 64 and "gfactor_4x16" in info:
-        key = "gfactor_4x16"
-    elif look_count == 1024 and "gfactor_16x64" in info:
-        key = "gfactor_16x64"
-    else:
+    key = _info_key_for_energy_look(look_count, info, "gfactor")
+    if key is None:
         return None
-    table = info[key]
-    ram = min(int(header.get("svs_tbl", 0)), int(table.shape[0]) - 1)
-    return pace_count_energy_look(np.asarray(table[ram], dtype=float))
+    table = info[f"gfactor_{key}"]
+    ram = _ram_index(header, table)
+    values = np.asarray(table[ram], dtype=float)
+    enesq, polsq = _seq_or_default(info, key, ram, int(values.shape[1]), np)
+    shape = (int(values.shape[0]), int(values.shape[1]), int(values.shape[2]))
+    values = _assign_by_sequence(
+        shape,
+        enesq,
+        polsq,
+        values,
+        np,
+        default=0.0,
+    )
+    return pace_count_energy_look(values)
+
+
+def _energy_center_energy_look(
+    info: dict[str, Any],
+    counts: Any,
+    header: dict[str, Any],
+    np: Any,
+) -> Any | None:
+    look_count = int(counts.shape[1])
+    key = _info_key_for_energy_look(look_count, info, "ene")
+    if key is None:
+        return None
+    table = info[f"ene_{key}"]
+    ram = _ram_index(header, table)
+    values = np.asarray(table[ram], dtype=float) * 1000.0
+    enesq, polsq = _seq_or_default(info, key, ram, int(values.shape[1]), np)
+    shape = (int(values.shape[0]), int(values.shape[1]), int(values.shape[2]))
+    values = _assign_by_sequence(
+        shape,
+        enesq,
+        polsq,
+        values,
+        np,
+    )
+    return pace_count_energy_look(values)
 
 
 def _pace_sensor_id(instrument: str) -> int:
@@ -777,8 +1037,8 @@ def _pace_sensor_id(instrument: str) -> int:
 def _missing_energy_flux_calibration_message(instrument: str) -> str:
     return (
         f"KAGUYA {instrument} energy_flux requires PACE INFO calibration tables. "
-        "Load counts instead with kg.esa1.counts.load(time), or provide calibration "
-        "with kg.esa1.energy_flux.load(time, calibration='auto')."
+        "Load counts instead with kg.esa1.counts.load(time), enable calibration downloads "
+        "with kg.esa1.energy_flux.load(time, download='missing'), or pass a PaceCalibration."
     )
 
 

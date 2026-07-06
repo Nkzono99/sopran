@@ -37,8 +37,8 @@ def _pace_spectrum_schema(sensor: str) -> InstrumentSchema:
                 dims=("energy",),
                 units=None,
                 description=(
-                    f"PACE {sensor} energy channel index. Physical eV calibration "
-                    "is not applied."
+                    f"PACE {sensor} energy channel index by default; calibrated loads "
+                    "replace it with PACE INFO energy centers in eV."
                 ),
             ),
             VariableSchema(

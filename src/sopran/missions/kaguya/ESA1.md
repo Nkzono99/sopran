@@ -11,8 +11,8 @@ The current reader handles local PACE PBF records and exposes raw counts as:
 - `quality`: record quality flag with dimension `time`.
 - `energy_flux`: calibrated energy flux with the same dimensions as `counts`,
   using PACE INFO g-factor tables.
-- `energy`: PACE ESA1 energy channel index; physical eV/bin-center calibration
-  is still limited.
+- `energy`: channel index for uncalibrated loads; calibrated loads use PACE INFO
+  energy centers in eV and keep the original channel as `energy_channel`.
 
 For PBF type `0x01`, SOPRAN maps the record count array from `(32, 4, 16)` to
 `(energy=32, look=64)`. Use xarray/SOPRAN arrays as the primary dense
@@ -32,8 +32,7 @@ tables are required.
 ```python
 kg = spn.Kaguya()
 time = spn.day("2008-01-01")
-cal = kg.esa1.load_calibration()
-esa1 = kg.esa1.load(time, calibration=cal)
+esa1 = kg.esa1.load(time)
 
 pas = esa1.pitch_angle_spectrum(
     magnetic_field=[1.0, 0.0, 0.0],
@@ -47,7 +46,6 @@ pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 item = kg.esa1.energy_flux.pitch_spectrogram(
     time,
     magnetic_field=[1.0, 0.0, 0.0],
-    calibration="auto",
     cache="use",
     log_color=True,
 )
@@ -107,12 +105,12 @@ cal = PaceCalibration(
 cal.coverage("ESA1")
 ```
 
-Passing `calibration=cal` lets SOPRAN compute `energy_flux` with
-`counts / (integ_t * gfactor * efficiency)`, where the default efficiency is
-0.6. The endpoint form can load tables automatically:
+SOPRAN computes `energy_flux` with `counts / (integ_t * gfactor * efficiency)`,
+where the default efficiency is 0.6. The endpoint form loads tables
+automatically:
 
 ```python
-flux = kg.esa1.energy_flux.load(time, calibration="auto")
+flux = kg.esa1.energy_flux.load(time)
 ```
 
 `pitch_angle_spectrum()` uses the calibration tables needed to bin counts or
@@ -130,7 +128,7 @@ esa1 = kg.esa1.load(spn.day("2008-01-01"))
 
 esa1.info()
 ds = esa1.to_xarray()
-flux = kg.esa1.energy_flux.load(spn.day("2008-01-01"), calibration="auto")
+flux = kg.esa1.energy_flux.load(spn.day("2008-01-01"))
 frame = esa1.to_polars("counts")
 summed = esa1.to_polars("counts", reduce_look="sum")
 pas = esa1.pitch_angle_spectrum([1.0, 0.0, 0.0])

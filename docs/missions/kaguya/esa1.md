@@ -8,7 +8,7 @@ kg = spn.Kaguya(store=store)
 time = spn.day("2008-01-01")
 
 counts = kg.esa1.counts.load(time)
-flux = kg.esa1.energy_flux.load(time, calibration="auto")
+flux = kg.esa1.energy_flux.load(time)
 counts.to_xarray()
 counts.to_polars()
 ```
@@ -22,9 +22,9 @@ counts.to_polars()
 | `kg.esa1.quality` | `time` | flag panel、mask、alignment |
 
 `energy_flux` は `counts / (integ_t * gfactor * efficiency)` を使う Python reference
-実装です。既定の `efficiency` は 0.6 です。INFO table が無い場合は
-`kg.esa1.energy_flux.load(...)` は明示エラーになります。`energy` 座標は現時点では
-channel index で、物理 eV calibration はまだ限定的です。
+実装です。既定の `efficiency` は 0.6 です。INFO table は既定で自動ロードされます。
+INFO table が無い場合は `kg.esa1.energy_flux.load(...)` は明示エラーになります。
+`energy` 座標は現時点では channel index で、物理 eV calibration はまだ限定的です。
 raw file が無い場合の挙動は `missing="empty" | "warn" | "error"` で選びます。
 
 ## quicklook
@@ -34,7 +34,7 @@ raw file が無い場合の挙動は `missing="empty" | "warn" | "error"` で選
 `energy_flux [eV/(cm^2 s sr eV)]` のように単位付きの値ラベルが出ます。
 
 ```python
-kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+kg.esa1.energy_flux.plot(time, log_color=True)
 ```
 
 複数 panel を残す場合は `stack()` を使います。

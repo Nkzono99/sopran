@@ -10,7 +10,12 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 from sopran.bodies import Moon
-from sopran.core.config import config_section, configured_path, read_user_config
+from sopran.core.config import (
+    config_section,
+    configured_path,
+    current_session_config,
+    read_user_config,
+)
 from sopran.core.errors import ConfigError
 from sopran.core.plotting import PlotItem, PlotStack, stack
 from sopran.core.store import Store
@@ -65,8 +70,9 @@ class Project:
         if root is not None:
             resolved_root = Path(root)
         else:
+            session_config = current_session_config()
             discovered_root = _discover_project_root(Path.cwd())
-            resolved_root = discovered_root or configured_path(
+            resolved_root = session_config.project_root or discovered_root or configured_path(
                 user_config_path.parent,
                 project_config.get("root"),
                 default=Path.cwd(),
@@ -223,15 +229,18 @@ class Project:
     def _configured_store(self) -> Store:
         config = self._read_config() if (self.root / "sopran.toml").exists() else {}
         user_config, user_config_path = read_user_config()
+        session_config = current_session_config()
         store_config = config_section(config, "store")
         user_store_config = config_section(user_config, "store")
         root = _configured_path_by_precedence(
+            session_config.store_root,
             os.environ.get("SOPRAN_DATA_ROOT"),
             (self.root, store_config.get("data_root")),
             (user_config_path.parent, user_store_config.get("data_root")),
             default=self.root / "data",
         )
         cache_root = _configured_path_by_precedence(
+            session_config.cache_root,
             os.environ.get("SOPRAN_CACHE_ROOT"),
             (self.root, store_config.get("cache_root")),
             (user_config_path.parent, user_store_config.get("cache_root")),
@@ -242,12 +251,14 @@ class Project:
     def _configured_artifact_root(self, artifact_root: Path | str | None) -> Path:
         config = self._read_config() if (self.root / "sopran.toml").exists() else {}
         user_config, user_config_path = read_user_config()
+        session_config = current_session_config()
         project_config = config_section(config, "project")
         user_project_config = config_section(user_config, "project")
         explicit = Path(artifact_root) if artifact_root is not None else None
         if explicit is not None:
             return explicit if explicit.is_absolute() else self.root / explicit
         resolved = _configured_path_by_precedence(
+            session_config.artifact_root,
             os.environ.get("SOPRAN_ARTIFACT_ROOT"),
             (self.root, project_config.get("artifact_root")),
             (user_config_path.parent, user_project_config.get("artifact_root")),
@@ -261,6 +272,7 @@ class Project:
         return {
             **config_section(user_config, "defaults"),
             **config_section(config, "defaults"),
+            **current_session_config().defaults(),
         }
 
     def _merged_backends(self) -> dict[str, str]:
@@ -269,6 +281,7 @@ class Project:
         backends = {
             **config_section(user_config, "backends"),
             **config_section(config, "backends"),
+            **current_session_config().backends,
         }
         return {str(key): str(value) for key, value in backends.items()}
 
@@ -280,6 +293,7 @@ class Project:
         defaults = {
             **config_section(read_user_config()[0], "defaults"),
             **project_defaults,
+            **current_session_config().defaults(),
         }
         case_context = case_config.get("context", {})
         if case_context is not None and not isinstance(case_context, Mapping):
@@ -620,12 +634,15 @@ def _configured_path(
 
 
 def _configured_path_by_precedence(
+    session_value: Path | str | None,
     env_value: str | None,
     project_value: tuple[Path, object | None],
     user_value: tuple[Path, object | None],
     *,
     default: Path | None,
 ) -> Path | None:
+    if session_value is not None:
+        return Path(session_value)
     if env_value:
         return Path(env_value)
     project_base, project_path = project_value

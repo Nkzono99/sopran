@@ -227,14 +227,14 @@ def test_kaguya_esa1_energy_flux_endpoint_exposes_schema_info_and_plan(tmp_path)
     ]
 
 
-def test_kaguya_esa1_energy_schema_marks_channel_index_not_physical_ev(tmp_path) -> None:
+def test_kaguya_esa1_energy_schema_describes_calibrated_energy_centers(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"))
 
     schema = kg.esa1.energy.schema()
 
     assert schema.units is None
     assert "channel index" in schema.description
-    assert "Physical eV calibration is not applied" in schema.description
+    assert "PACE INFO energy centers in eV" in schema.description
 
 
 def test_kaguya_spectrogram_endpoint_preserves_log_color_option(tmp_path) -> None:

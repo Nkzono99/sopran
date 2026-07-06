@@ -61,6 +61,8 @@ from sopran.maps import RasterLayer, RasterSpec, Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
 
+from . import config as config
+
 if TYPE_CHECKING:
     artemis: Artemis
     kaguya: Kaguya
@@ -85,6 +87,7 @@ __all__ = [
     "Artemis",
     "BackendError",
     "ConfigError",
+    "config",
     "Database",
     "DatasetNotFoundError",
     "DecodeError",

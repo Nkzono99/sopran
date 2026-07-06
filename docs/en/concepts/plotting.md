@@ -20,7 +20,7 @@ For spectrograms, the x-axis is `time`, the y-axis is `energy` or
 the value name and units, for example `energy_flux [eV/(cm^2 s sr eV)]`.
 
 ```python
-kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+kg.esa1.energy_flux.plot(time, log_color=True)
 ```
 
 ## Multi-Panel Plot

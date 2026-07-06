@@ -8,7 +8,7 @@ kg = spn.Kaguya(store=store)
 time = spn.day("2008-01-01")
 
 counts = kg.esa1.counts.load(time)
-flux = kg.esa1.energy_flux.load(time, calibration="auto")
+flux = kg.esa1.energy_flux.load(time)
 counts.to_xarray()
 counts.to_polars()
 ```
@@ -23,10 +23,11 @@ counts.to_polars()
 
 `energy_flux` uses the Python reference formula
 `counts / (integ_t * gfactor * efficiency)`, with default `efficiency=0.6`.
-If INFO calibration tables are unavailable,
-`kg.esa1.energy_flux.load(...)` raises an actionable error. The `energy`
-coordinate is currently still mostly a channel index. Use `missing="empty"`,
-`"warn"`, or `"error"` to control behavior when raw files are unavailable.
+INFO calibration tables are loaded automatically by default. If they are
+unavailable, `kg.esa1.energy_flux.load(...)` raises an actionable error. The
+`energy` coordinate is currently still mostly a channel index. Use
+`missing="empty"`, `"warn"`, or `"error"` to control behavior when raw files are
+unavailable.
 
 ## Quicklook
 
@@ -35,7 +36,7 @@ Use `plot()` as the shortest path for a single energy-flux view. The x-axis is
 shows a value label such as `energy_flux [eV/(cm^2 s sr eV)]`.
 
 ```python
-kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+kg.esa1.energy_flux.plot(time, log_color=True)
 ```
 
 Use `stack()` when saving multiple panels.

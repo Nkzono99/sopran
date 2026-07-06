@@ -12,7 +12,12 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
-from sopran.core.config import config_section, configured_path, read_user_config
+from sopran.core.config import (
+    config_section,
+    configured_path,
+    current_session_config,
+    read_user_config,
+)
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema, VariableSchema, validate_schema
 from sopran.core.time import TimeRange, period
@@ -34,12 +39,15 @@ class Store:
         user_config, user_config_path = read_user_config()
         store_config = config_section(user_config, "store")
         config_base = user_config_path.parent
+        session_config = current_session_config()
 
         env_root = os.environ.get("SOPRAN_DATA_ROOT")
         env_cache_root = os.environ.get("SOPRAN_CACHE_ROOT")
         root: Path
         if self.root is not None:
             root = Path(self.root)
+        elif session_config.store_root is not None:
+            root = session_config.store_root
         elif env_root:
             root = Path(env_root)
         else:
@@ -55,6 +63,8 @@ class Store:
         cache_root: Path | None
         if self.cache_root is not None:
             cache_root = Path(self.cache_root)
+        elif session_config.cache_root is not None:
+            cache_root = session_config.cache_root
         elif env_cache_root:
             cache_root = Path(env_cache_root)
         else:

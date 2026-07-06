@@ -9,7 +9,7 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE ESA1 differential electron energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw ESA1 counts. |
-| energy | energy |  |  |  |  | PACE ESA1 energy channel index. Physical eV calibration is not applied. |
+| energy | energy |  |  |  |  | PACE ESA1 energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
 | quality | time |  |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / esa2
@@ -18,7 +18,7 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE ESA2 differential electron energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw ESA2 counts. |
-| energy | energy |  |  |  |  | PACE ESA2 energy channel index. Physical eV calibration is not applied. |
+| energy | energy |  |  |  |  | PACE ESA2 energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
 | quality | time |  |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / ima
@@ -27,7 +27,7 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE IMA differential ion energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw IMA counts. |
-| energy | energy |  |  |  |  | PACE IMA energy channel index. Physical eV calibration is not applied. |
+| energy | energy |  |  |  |  | PACE IMA energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
 | quality | time |  |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / iea
@@ -36,7 +36,7 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE IEA differential ion energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw IEA counts. |
-| energy | energy |  |  |  |  | PACE IEA energy channel index. Physical eV calibration is not applied. |
+| energy | energy |  |  |  |  | PACE IEA energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
 | quality | time |  |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / lmag

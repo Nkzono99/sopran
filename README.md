@@ -15,11 +15,12 @@ project/user configuration and do not require constructing mission objects.
 ```python
 import sopran as spn
 
+spn.config.use(store="F:/sopran_data", download="never")
 time = spn.day("2008-02-01")
 
 counts = spn.kaguya.esa1.counts.load(time)
-plot = spn.kaguya.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
-quicklook = spn.kaguya.esa1.energy_flux.load(time, calibration="auto").quicklook(
+plot = spn.kaguya.esa1.energy_flux.plot(time, log_color=True)
+quicklook = spn.kaguya.esa1.energy_flux.load(time).quicklook(
     "esa1_energy_flux",
     root="reports",
 )
@@ -70,6 +71,7 @@ counts = kg.esa1.counts.load(time)
 | Layer | Use it for |
 | --- | --- |
 | `spn.kaguya`, `spn.artemis`, `spn.moon` | Notebook-friendly shortcuts using default config |
+| `spn.config.use(...)` | Session defaults for shortcuts and `Store()` |
 | `spn.view(...)` | Temporary analysis context: time, region, frame, cache, backends |
 | `spn.Project(...)` / `project.case(...)` | Workspace, artifacts, named reproducible cases |
 | `spn.Kaguya(...)`, `spn.Artemis(...)`, `spn.Moon()` | Explicit low-level mission/body objects |
@@ -78,8 +80,21 @@ counts = kg.esa1.counts.load(time)
 
 ## Configuration
 
-SOPRAN resolves configuration from explicit arguments, environment variables,
-the nearest parent `sopran.toml`, user global config, and package defaults.
+SOPRAN resolves configuration from explicit arguments, session config,
+environment variables, the nearest parent `sopran.toml`, user global config,
+and package defaults.
+
+For notebooks, set process-local defaults once:
+
+```python
+spn.config.use(store="F:/sopran_data", download="never")
+
+with spn.config.using(store="F:/other_data"):
+    spn.kaguya.esa1.counts.load(time)
+```
+
+`spn.Store("F:/sopran_data")` only creates a store object. It does not change
+the store used by `spn.kaguya`; use `spn.config.use(store=...)` for that.
 
 User global config is read from the OS user config directory, or from the
 legacy `~/.sopran/config.toml` when that exists and the platform path does not.

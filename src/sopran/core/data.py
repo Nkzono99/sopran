@@ -341,6 +341,7 @@ class SopranArray:
         reduction: str = "sum",
         **kwargs: Any,
     ) -> PlotResult | object | None:
+        self._raise_if_placeholder_visualization()
         if mode == "raw":
             if self.xr is not None and hasattr(self.xr, "plot"):
                 return cast(object, self.xr.plot(*args, **kwargs))
@@ -387,6 +388,7 @@ class SopranArray:
         reduction: str = "sum",
         name: str | None = None,
     ) -> tuple[PlotItem, ...]:
+        self._raise_if_placeholder_visualization()
         if mode == "raw":
             raise ValueError("mode='raw' is only supported by SopranArray.plot()")
         if mode == "line":
@@ -462,6 +464,7 @@ class SopranArray:
     def line(self, *, x: str = "time", name: str | None = None) -> PlotItem:
         from sopran.core.plotting import line
 
+        self._raise_if_placeholder_visualization()
         return line(self.to_xarray(), x=x, name=name or self.name)
 
     def lines(
@@ -474,6 +477,7 @@ class SopranArray:
     ) -> PlotItem:
         from sopran.core.plotting import lines
 
+        self._raise_if_placeholder_visualization()
         return lines(
             self.to_xarray(),
             x=x,
@@ -485,6 +489,7 @@ class SopranArray:
     def histogram(self, *, bins: int | str = 50, name: str | None = None) -> PlotItem:
         from sopran.core.plotting import histogram
 
+        self._raise_if_placeholder_visualization()
         return histogram(self.to_xarray(), bins=bins, name=name or self.name)
 
     def pitch_spectrogram(
@@ -500,6 +505,7 @@ class SopranArray:
     ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
+        self._raise_if_placeholder_visualization()
         array = self.to_xarray()
         dims = set(_dims(array))
         if pitch_dim not in dims and "look" in dims:
@@ -537,6 +543,7 @@ class SopranArray:
     ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
+        self._raise_if_placeholder_visualization()
         array = self.to_xarray()
         _require_dims(array, (x, energy_dim), "energy_spectrogram")
         if pitch is not None:
@@ -577,6 +584,7 @@ class SopranArray:
     ) -> QuicklookResult:
         from sopran.core.plotting import stack
 
+        self._raise_if_placeholder_visualization()
         quicklook_name = name or self.name
         items = (
             (
@@ -625,6 +633,7 @@ class SopranArray:
     ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
+        self._raise_if_placeholder_visualization()
         array = self.to_xarray()
         if reduce_dims is None and hasattr(array, "dims"):
             reduce_dims = tuple(dim for dim in array.dims if dim not in {x, y})
@@ -657,6 +666,19 @@ class SopranArray:
             files=self.files,
             operations=operations,
             xr=array,
+        )
+
+    def _raise_if_placeholder_visualization(self) -> None:
+        attrs = getattr(self.to_xarray(), "attrs", {})
+        if str(attrs.get("physical_validity", "")) != "placeholder":
+            return
+        calibration_status = attrs.get("calibration_status", "unknown")
+        raise ValueError(
+            f"{self.name} is an uncalibrated placeholder "
+            f"(calibration_status={calibration_status!r}) and cannot be plotted. "
+            "Use the calibrated endpoint instead, for example "
+            "kg.esa1.energy_flux.plot(time) or kg.esa1.energy_flux.load(time), "
+            "with downloads enabled if the calibration tables are not local."
         )
 
 

@@ -1,6 +1,7 @@
 # 設定
 
-SOPRAN は、明示引数、環境変数、project config、user global config の順に設定を解決します。
+SOPRAN は、明示引数、session config、環境変数、project config、
+user global config の順に設定を解決します。
 `spn.view(...)` と `spn.kaguya` / `spn.moon` などの shortcut は、現在ディレクトリから
 親方向に最初に見つかる `sopran.toml` を project config として使います。
 
@@ -35,16 +36,41 @@ lon_domain = "0_360"
 
 | 設定 | 優先順位 |
 | --- | --- |
-| Project root | 明示引数 > 親方向に見つかった `sopran.toml` > user global `[project].root` > current directory |
-| Store root | 明示引数 > 環境変数 > project `[store]` > user global `[store]` > default |
-| artifact root | 明示引数 > `SOPRAN_ARTIFACT_ROOT` > project `[project]` > user global `[project]` > project root |
-| defaults | project `[defaults]` > user global `[defaults]` > package default |
-| backend | 明示 override > project `[backends]` > user global `[backends]` > `auto` |
+| Project root | 明示引数 > session config > 親方向に見つかった `sopran.toml` > user global `[project].root` > current directory |
+| Store root | 明示引数 > session config > 環境変数 > project `[store]` > user global `[store]` > default |
+| artifact root | 明示引数 > session config > `SOPRAN_ARTIFACT_ROOT` > project `[project]` > user global `[project]` > project root |
+| defaults | 明示 override > session config > project `[defaults]` > user global `[defaults]` > package default |
+| backend | 明示 override > session config > project `[backends]` > user global `[backends]` > `auto` |
 | case region | `[cases.<name>.region]` > `[defaults.region]` |
 
 通常の解析では backend を指定する必要はありません。`auto` のままにすると、座標変換なら
 frame pair に応じて `spiceypy` や `spacepy` などが選ばれます。backend を固定したい解析だけ
 `project.view(..., backend={"frames": "spiceypy"})` のように override します。
+
+## session config
+
+notebook で `spn.kaguya` や `spn.Store()` の既定値を一時的に変えたい場合は
+`spn.config.use(...)` を使います。これは Python process 内だけに効き、設定ファイルは
+書き換えません。
+
+```python
+import sopran as spn
+
+spn.config.use(store="F:/sopran_data", download="never")
+
+time = spn.day("2008-02-01")
+spn.kaguya.esa1.energy_flux.plot(time, log_color=True)
+
+with spn.config.using(store="F:/other_data"):
+    spn.kaguya.esa1.counts.load(time)
+```
+
+`spn.Store("F:/sopran_data")` は Store object を作るだけで、`spn.kaguya` の既定
+store は変更しません。永続化したい場合は `spn.config.save_user(...)` を使います。
+
+```python
+spn.config.save_user(store="F:/sopran_data", download="missing")
+```
 
 ## user global config
 

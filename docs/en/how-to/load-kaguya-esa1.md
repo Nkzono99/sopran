@@ -50,7 +50,6 @@ and returns the same `SopranArray`.
 pas = kg.esa1.energy_flux.pitch_angle_spectrum(
     time,
     magnetic_field=[1.0, 0.0, 0.0],
-    calibration="auto",
     cache="use",
 )
 ```
@@ -66,7 +65,6 @@ pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 kg.esa1.energy_flux.pitch_spectrogram(
     time,
     magnetic_field=[1.0, 0.0, 0.0],
-    calibration="auto",
     cache="use",
     log_color=True,
 )

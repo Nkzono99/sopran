@@ -35,7 +35,7 @@ value such as `energy_flux` or `counts`. The colorbar includes the value name
 and units when available.
 
 ```python
-view.kaguya.esa1.energy_flux.plot(calibration="auto", log_color=True)
+view.kaguya.esa1.energy_flux.plot(log_color=True)
 ```
 
 Use `spectrogram()` and `line()` with `stack()` when comparing multiple panels.

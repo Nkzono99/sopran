@@ -34,7 +34,7 @@ counts = esa1.to_polars("counts", reduce_look="sum")
 値名と単位が表示されます。
 
 ```python
-view.kaguya.esa1.energy_flux.plot(calibration="auto", log_color=True)
+view.kaguya.esa1.energy_flux.plot(log_color=True)
 ```
 
 複数 panel を並べるときは `spectrogram()` と `line()` を `stack()` に渡します。

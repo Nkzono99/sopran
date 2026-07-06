@@ -21,7 +21,7 @@ wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 | --- | --- | --- |
 | `esa1` / `esa2` / `ima` / `iea` | `counts` | PACE raw counts |
 | `esa1` / `esa2` / `ima` / `iea` | `energy_flux` | Differential energy flux from PACE INFO tables |
-| `esa1` / `esa2` / `ima` / `iea` | `energy` | PACE energy channel index |
+| `esa1` / `esa2` / `ima` / `iea` | `energy` | PACE energy channel index before calibration; PACE INFO energy center (eV) for calibrated loads |
 | `esa1` / `esa2` / `ima` / `iea` | `quality` | Quality flags |
 | `lmag` | `magnetic_field` | Magnetic field in the Moon Mean Earth frame |
 | `lmag` | `magnetic_field_gse` | Magnetic field in the GSE frame |
@@ -78,7 +78,6 @@ daily = kg.esa1.counts.coverage(time, freq="day", cache="use")
 monthly = kg.esa1.energy_flux.coverage(
     spn.month("2008-02"),
     freq="month",
-    calibration="auto",
     cache="use",
 )
 ```
@@ -98,14 +97,12 @@ Operation metadata is recorded under `parameters.operations` in the Store manife
 pas = kg.esa1.energy_flux.pitch_angle_spectrum(
     time,
     magnetic_field=[1.0, 0.0, 0.0],
-    calibration="auto",
     pitch_bins=[0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0],
     cache="use",
 )
 item = kg.esa1.energy_flux.pitch_spectrogram(
     time,
     magnetic_field=[1.0, 0.0, 0.0],
-    calibration="auto",
     cache="use",
     log_color=True,
 )

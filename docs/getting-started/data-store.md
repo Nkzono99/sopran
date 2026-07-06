@@ -7,6 +7,15 @@ root の下で管理します。
 store = spn.Store("F:/sopran_data")
 ```
 
+この書き方は Store object を作るだけで、`spn.kaguya` などの shortcut が使う
+既定 store は変わりません。notebook session 全体の既定 store を変える場合は
+`spn.config.use(...)` を使います。
+
+```python
+spn.config.use(store="F:/sopran_data")
+spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
+```
+
 ## 既定 root
 
 個人環境の既定保存先は環境変数で固定できます。
@@ -19,8 +28,9 @@ $env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
 | 作り方 | data root | cache root |
 | --- | --- | --- |
 | `spn.Store("F:/data")` | `F:/data` | `F:/data/cache` |
+| `spn.config.use(store="F:/data")` + `spn.Store()` | `F:/data` | `F:/data/cache` |
 | `spn.Store()` + env | `SOPRAN_DATA_ROOT` | `SOPRAN_CACHE_ROOT` |
-| `spn.Project(...)` | env > `[store].data_root` > `project/data` | env > `[store].cache_root` > `<data root>/cache` |
+| `spn.Project(...)` | session > env > `[store].data_root` > `project/data` | session > env > `[store].cache_root` > `<data root>/cache` |
 
 ## レイヤ
 
