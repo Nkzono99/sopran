@@ -329,6 +329,14 @@ def _surface_parameters_with_view(
         and view.time is not None
     ):
         normalized["time"] = view.time.start_iso
+    if (
+        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
+        and "spice_kernels" not in normalized
+        and view.context._spice_kernels
+    ):
+        normalized["spice_kernels"] = tuple(
+            path.as_posix() for path in view.context._spice_kernels
+        )
     return normalized
 
 

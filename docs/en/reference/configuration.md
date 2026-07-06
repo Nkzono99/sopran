@@ -2,7 +2,9 @@
 
 SOPRAN resolves configuration from explicit arguments, environment variables,
 project config, user global config, and package defaults. An analysis workspace
-can define `sopran.toml`.
+can define `sopran.toml`. `spn.view(...)` and shortcuts such as `spn.kaguya`
+and `spn.moon` discover the nearest parent `sopran.toml` from the current
+directory.
 
 ```toml
 [project]
@@ -35,6 +37,7 @@ lon_domain = "0_360"
 
 | Setting | Priority |
 | --- | --- |
+| Project root | Explicit argument > nearest parent `sopran.toml` > user global `[project].root` > current directory |
 | Store root | Explicit argument > environment variable > project `[store]` > user global `[store]` > default |
 | Artifact root | Explicit argument > `SOPRAN_ARTIFACT_ROOT` > project `[project]` > user global `[project]` > project root |
 | Defaults | project `[defaults]` > user global `[defaults]` > package default |
@@ -47,8 +50,9 @@ only when a study needs it.
 
 ## User Global Config
 
-When no project directory is used, `spn.view(...)`, `spn.Store()`, and
-`spn.Kaguya()` read user global config. Set `SOPRAN_CONFIG` to choose the path.
+When no project directory is used, `spn.view(...)`, `spn.kaguya`, `spn.moon`,
+`spn.Store()`, and `spn.Kaguya()` read user global config. Set `SOPRAN_CONFIG`
+to choose the path.
 Without it, SOPRAN uses the platform user config directory. If
 `~/.sopran/config.toml` exists and the platform path does not, SOPRAN reads that
 legacy path.
@@ -73,6 +77,8 @@ import sopran as spn
 
 view = spn.view(time=spn.day("2008-02-01"))
 view.kaguya.esa1.counts.plot()
+
+counts = spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
 ```
 
 ## Environment Variables

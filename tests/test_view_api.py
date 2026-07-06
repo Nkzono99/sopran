@@ -116,6 +116,77 @@ plot = "matplotlib"
     assert view.context.backends["frames"] == "spiceypy"
 
 
+def test_project_default_discovers_parent_sopran_toml(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    notebook_dir = project_root / "notebooks"
+    notebook_dir.mkdir(parents=True)
+    (project_root / "sopran.toml").write_text(
+        """
+[store]
+data_root = "data"
+cache_root = "cache"
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(notebook_dir)
+    monkeypatch.setenv("SOPRAN_CONFIG", str(tmp_path / "missing-user-config.toml"))
+    monkeypatch.delenv("SOPRAN_DATA_ROOT", raising=False)
+    monkeypatch.delenv("SOPRAN_CACHE_ROOT", raising=False)
+
+    project = spn.Project.default()
+
+    assert project.root == project_root
+    assert project.store.root == project_root / "data"
+    assert project.store.cache_root == project_root / "cache"
+
+
+def test_top_level_shortcuts_use_default_project_context(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    notebook_dir = project_root / "notebooks"
+    notebook_dir.mkdir(parents=True)
+    (project_root / "sopran.toml").write_text(
+        """
+[store]
+data_root = "data"
+
+[defaults]
+download = "never"
+spice_kernels = ["kernels/naif0012.tls", "kernels/de421.bsp"]
+
+[defaults.region]
+body = "moon"
+lon = [120, 160]
+lat = [-45, -10]
+lon_domain = "0_360"
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(notebook_dir)
+    monkeypatch.setenv("SOPRAN_CONFIG", str(tmp_path / "missing-user-config.toml"))
+    monkeypatch.delenv("SOPRAN_DATA_ROOT", raising=False)
+    monkeypatch.delenv("SOPRAN_CACHE_ROOT", raising=False)
+
+    plan = spn.kaguya.esa1.counts.plan(spn.day("2008-02-01"))
+    sza_plan = spn.moon.sza.plan()
+
+    assert plan.dataset_id == "kaguya.esa1.counts"
+    assert sza_plan.parameters["region"] == spn.Region(
+        lon=(120.0, 160.0),
+        lat=(-45.0, -10.0),
+        body="moon",
+    )
+    assert sza_plan.parameters["spice_kernels"] == (
+        "kernels/naif0012.tls",
+        "kernels/de421.bsp",
+    )
+
+
 def test_project_save_case_persists_view_as_named_analysis_context(tmp_path) -> None:
     project_root = tmp_path / "project"
     project = spn.Project(project_root, store=spn.Store(tmp_path / "store"))

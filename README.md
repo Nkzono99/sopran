@@ -2,263 +2,184 @@
 
 Satellite Observation Package for Retrieval, Analysis, and Navigation.
 
-`SOPRAN` は、衛星観測データの取得、読み込み、解析、可視化、座標変換を Python から
-扱うためのライブラリとして作る予定のリポジトリです。まずは KAGUYA/SELENE や
-ARTEMIS など、月周辺の衛星データ解析を主対象にします。
+SOPRAN is a Python-first package for retrieving, normalizing, storing,
+analyzing, and visualizing lunar and planetary spacecraft observations. The
+first target missions are KAGUYA/SELENE and ARTEMIS, with Moon surface maps
+provided through a body-first API.
 
-## 目標
+## Quick Start
 
-- ミッションごとに異なるデータ形式や測定器を、共通した使い方で扱えるようにする。
-- IDL/SPEDAS で使ってきた解析スクリプトを pure Python + Rust の実装へ移植する。
-- Python から読みやすい API を提供しつつ、重い decode、binning、fit、大量 batch 処理は
-  Rust backend へ分離する。
-- 解析作業で増えた一時コードを、そのまま積み上げず、reader、product、workflow、
-  analysis primitive として整理する。
-
-## 初期スコープ
-
-- KAGUYA/SELENE の public data reader と product builder
-- ARTEMIS の基本 reader と時系列 product
-- SPEDAS/tplot に近い軽量な時系列データモデル
-- dataset root / local cache / metadata の共通 resolver
-- SPICE を使った時刻・座標系補助
-- DEM/SVM などの天体固有 map product、投影、経度表現、region query
-- DEM と太陽位置に基づく shadow / illumination product
-- Rust による重い処理の backend 化
-
-## 依存関係
-
-SOPRAN の標準 dependencies は、top-level API の import に必要な最小構成に寄せています。
-KAGUYA/ARTEMIS、SPICE、SpacePy、MAP/DEM/SVM、Matplotlib/HoloViz 系の backend は
-用途別 extras で入れます。
-
-```text
-pip install -e .
-pip install -e ".[full]"
-pip install -e ".[dev]"
-```
-
-optional extras は `kaguya`, `artemis`, `moon`, `viz`, `geospace`, `full`, `native`,
-`docs`, `dev` に分けます。Windows / Python 3.14 では `full` から `aacgmv2`, `apexpy`,
-`cartopy`, `geoviews` を marker で外し、source build を試す場合は `native` を明示して
-`pip install -e ".[full,native]"` を使います。Windows の定型セットアップは
-`docs/getting-started/installation.md` にまとめます。
-
-## Documentation
-
-公開ドキュメントは MkDocs Material で `docs/` からビルドします。GitHub Pages は
-`.github/workflows/docs.yml` で `main` への push 時に build/deploy する構成です。
-
-```text
-pip install mkdocs mkdocs-material "mkdocstrings[python]" pymdown-extensions numpy
-set PYTHONPATH=src
-mkdocs serve
-```
-
-`pip install -e ".[docs]"` も定義しています。docs だけを編集する場合は上の軽量 install でも
-十分です。
-
-設計ドラフトは `docs/design/` に集約しています。安定した利用者向け説明は `docs/concepts/`,
-`docs/how-to/`, `docs/reference/` を優先します。
-
-## 現在動く最小 API
-
-KAGUYA ESA1 については、public PBF file discovery、ローカル raw PBF decode、
-`xarray`/`polars` 変換、parquet 保存、Pipeline scan/run、最小 PlotStack までの縦切りを
-実装し始めています。ARTEMIS FGM は normalized parquet が Store にある場合の load skeleton を
-用意しています。
+For day-to-day notebooks, use the top-level shortcuts. They read the default
+project/user configuration and do not require constructing mission objects.
 
 ```python
 import sopran as spn
 
-store = spn.Store("F:/sopran_data")
-kg = spn.Kaguya(store=store)
-time = spn.day("2008-01-01")
+time = spn.day("2008-02-01")
 
-kg.esa1.energy_flux.info()
-kg.esa1.energy_flux.plan(time)
-
-esa1 = kg.esa1.load(time)
-ds = esa1.to_xarray()
-counts = esa1.to_polars("counts", reduce_look="sum")
-record = esa1.write_parquet(store, variable="counts", reduce_look="sum")
-
-pipe = (
-    kg.esa1.counts.pipeline(time)
-    .quicklook("counts")
-    .write("kaguya.esa1.counts", layer="normalized")
-)
-pipe.run()                 # existing shard があれば失敗
-pipe.run(mode="replace")   # 明示置換
-pipe.run(mode="append")    # catalog に shard を追加
-manifest = store.dataset("kaguya.esa1.counts", layer="normalized").manifest()
-manifest["provenance"]["pipeline"]["stages"]
-
-lazy = kg.esa1.counts.pipeline(time).from_normalized().scan()
-counts_frame = lazy.collect()
-
-stream = (
-    kg.esa1.counts.pipeline(time)
-    .from_normalized()
-    .stream(partition="day")
-)
-for day_frame in stream:
-    pass
-
-flux_record = (
-    kg.esa1.energy_flux.pipeline(time)
-    .calibrate(calibration="auto")
-    .write("kaguya.esa1.energy_flux", layer="normalized")
-    .run()
-)
-
-stack = spn.stack(
-    kg.esa1.counts.load(time).spectrogram(y="energy"),
-    kg.esa1.quality.load(time).line(),
-)
-fig = stack.plot(backend="matplotlib")
-quicklook = stack.quicklook("esa1_counts", root="reports", backend="matplotlib")
-
-bins = spn.time_bins(time, cadence="10s", partial="keep")
-features = spn.align(
-    kg.esa1.quality.load(time),
-    grid=bins,
-    method="nearest",
-    tolerance="5s",
-).to_polars()
-
-# sza, wave_power, density, and quality_flag are loaded xarray-like products.
-ml_features = (
-    spn.SampleTable(bins)
-    .add(sza, method="nearest", tolerance="5s")
-    .add(wave_power, method="max")
-    .add(density, method="median")
-    .collect(join="inner", quality_mask=quality_flag)
-    .to_polars()
-)
+counts = spn.kaguya.esa1.counts.load(time)
+flux = spn.kaguya.esa1.energy_flux.load(time)
+quicklook = flux.quicklook("esa1_energy_flux", root="reports", y="energy")
 ```
 
-`time x component` の vector product は `magnetic_field_x` のような wide columns に展開します。
-観測量ごとに対応づけ方法を変える場合は `SampleTable` を使います。現在の reducer は
-`nearest`, `center`, `mean`, `max`, `median`, `first`, `last` です。
-`join="outer"` は全binを残し、`join="inner"` は欠損featureを含むbinを落とします。
-`fill=-1.0` のように指定すると、`outer` で残した欠損featureを明示値で埋められます。
-`quality_mask=<1D time series>` はbin内でcenterに近いmask値が0/False/欠損のbinを落とします。
-`partial="keep"` はcadenceで割り切れない末尾binを残し、`partial="drop"` は捨てます。
-`to_polars(layout="long")` は `time`, `feature`, `value` 形式のtableを返します。
-`metadata()` はgridやreducer条件を返し、保存時のmanifest材料にできます。
-`spn.align(...).write_parquet("features.parquet")` または
-`spn.SampleTable(...).collect().write_parquet("features.parquet")` で feature table を保存できます。
-
-未取得の KAGUYA public raw file は既定で `download="missing"` として取得します。
-明示的に local file だけを使う場合は `spn.Kaguya(store=store, download="never")`、
-または `SOPRAN_OFFLINE=1` を使います。raw file は
-`Store.raw_path("kaguya", "pds3")` 以下に public provider path を保って置きます。
-たとえば ESA1 の 2008-01-01 は次の配置を探索・保存します。
-
-```text
-F:/sopran_data/raw/kaguya/pds3/
-  sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz
-```
-
-保存済み dataset は `Store.datasets(refresh=True)` で `registry/datasets.parquet` に索引化し、
-layer や mission で絞り込めます。
+When several operations share a time range, region, frame, download policy, or
+SPICE kernels, bind them with a `View`.
 
 ```python
-index = store.datasets(refresh=True)
-kaguya_features = store.datasets(layer="features", mission="kaguya")
+view = spn.view(
+    time=spn.day("2008-02-01"),
+    region=spn.Region(lon=(120, 160), lat=(-45, -10), body="moon"),
+    frame="SSE",
+)
+
+counts = view.kaguya.esa1.counts.load()
+sza = view.moon.sza.compute(subsolar_lon_lat=(0.0, 0.0))
 ```
 
-`kg.esa1.energy_flux` は実データではなく endpoint です。属性アクセスだけでは I/O を起こさず、
-実データ取得は `.load(time)`、計算は `.compute(...)`、描画は `.plot(...)` を実行点にします。
-
-解析プロジェクトでは case に時間範囲や既定 frame を持たせます。
+For reproducible studies, save the same context as a project case.
 
 ```python
-prj = spn.Project("projects/lunar_wake")
-case = prj.case("wake_20080201")
-
-counts = case.kaguya.esa1.counts.load()
-artemis_b_plan = case.artemis.p1.fgm.magnetic_field.plan()
-moon_dem_plan = case.moon.dem.plan(source="lro.lola.dem_118m")
-moon_sza_plan = case.moon.sza.plan()
+project = spn.Project("projects/lunar_wake")
+case = project.case("wake_20080201")
 
 stack = case.stack(
-    counts.spectrogram(y="energy"),
-    case.kaguya.esa1.quality.load().line(),
+    case.kaguya.esa1.energy_flux.spectrogram(y="energy", log_color=True),
+    case.kaguya.esa1.quality.line(),
 )
-stack.plot()
-
-artifact = prj.save(case.kaguya.esa1.quality.load(), "interim/kaguya_esa1_quality_wake")
+stack.quicklook("wake_overview", root="reports", context=case)
 ```
 
-月面 DEM/SVM/SZA/shadow/illumination は mission ではなく body-first API を主導線にします。
+Use explicit mission objects only when you need to override store/source state
+directly.
 
 ```python
-moon = spn.Moon()
-region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
-
-dem_plan = moon.dem.plan(source="lro.lola.dem_118m", region=region, resolution="256ppd")
-svm_plan = moon.svm_tsunakawa2015.plan(region=region)
-sza_plan = moon.sza.plan(time="2008-02-01T12:00:00", region=region)
-shadow_plan = moon.shadow.plan(time="2008-02-01T12:00:00", dem=dem_plan)
+store = spn.Store("F:/sopran_data")
+kg = spn.Kaguya(store=store, download="never")
+counts = kg.esa1.counts.load(time)
 ```
 
-ユーザー定義の database product は Store 配下に metadata と空 dataset として登録できます。
+## API Layers
 
-```python
-db = store.database("lunar_wake", create=True)
-product = db.register_product(
-    name="event_table",
-    schema=kg.esa1.schema(),
-    description="hand-curated lunar wake events",
-)
+| Layer | Use it for |
+| --- | --- |
+| `spn.kaguya`, `spn.artemis`, `spn.moon` | Notebook-friendly shortcuts using default config |
+| `spn.view(...)` | Temporary analysis context: time, region, frame, cache, backends |
+| `spn.Project(...)` / `project.case(...)` | Workspace, artifacts, named reproducible cases |
+| `spn.Kaguya(...)`, `spn.Artemis(...)`, `spn.Moon()` | Explicit low-level mission/body objects |
+| `spn.Store(...)` | Raw files, normalized parquet, features, models, event/database products |
+| `spn.stack(...)` | SPEDAS/tplot-like stacked quicklooks |
 
-pipe.write(db.product("event_table", description="event table generated by pipeline"))
-events = db.product("event_table").scan()
+## Configuration
+
+SOPRAN resolves configuration from explicit arguments, environment variables,
+the nearest parent `sopran.toml`, user global config, and package defaults.
+
+User global config is read from the OS user config directory, or from the
+legacy `~/.sopran/config.toml` when that exists and the platform path does not.
+Set `SOPRAN_CONFIG` to choose a specific file.
+
+```toml
+[store]
+data_root = "F:/sopran_data"
+cache_root = "F:/sopran_cache"
+
+[defaults]
+download = "missing"
+cache = true
+spice_kernels = ["kernels/naif0012.tls", "kernels/de421.bsp", "kernels/moon_pa.bpc"]
+
+[backends]
+frames = "spiceypy"
+plot = "matplotlib"
 ```
 
-## 予定ディレクトリ
+Project workspaces can define their own `sopran.toml`. `spn.view(...)` and the
+top-level shortcuts discover it from the current directory upward.
 
-```text
-src/sopran/
-  core/
-  missions/
-    kaguya/
-    artemis/
-  bodies/
-    moon/
-  maps/
-  frames/
-  analysis/
-  plot/
-crates/
-  sopran-native/
-docs/
-tests/
+```toml
+[defaults]
+frame = "SSE"
+cache = true
+
+[defaults.region]
+body = "moon"
+lon = [120, 160]
+lat = [-45, -10]
+lon_domain = "0_360"
+
+[cases.wake_20080201]
+start = "2008-02-01T00:00:00"
+stop = "2008-02-02T00:00:00"
 ```
 
-ユーザーの解析 workspace は repository 内部の package とは分けて、`projects/lunar_wake/` のように
-管理します。
+## Current Scope
 
-## 旧リポジトリ
+Implemented vertical slices include:
 
-以前の作業リポジトリは `F:\idl\lunarsat` にあります。そこには KAGUYA 解析、dataset
-layout、Rust backend の試行錯誤が含まれていますが、このリポジトリでは設計を整理し直して
-作り直します。
+- KAGUYA PACE raw discovery/decode, ESA1 `energy_flux`, pitch-angle products,
+  coverage summaries, pipeline writes, and quicklooks
+- KAGUYA LMAG/LRS readers and cached derived geometry/products
+- ARTEMIS object API with normalized parquet readers
+- Moon DEM/SVM loading, SZA computation, SPICE Sun geometry, and terrain-ray
+  shadow maps
+- Store manifests, schema/catalog metadata, event catalogs, PlotStack, and
+  feature-table helpers
+- Optional Rust/PyO3 backend for heavier PACE decode and pitch-angle work
+
+Detailed status is tracked in `docs/reference/status.md`.
+
+## Install
+
+```powershell
+python -m pip install -e .
+python -m pip install -e ".[dev]"
+```
+
+Optional extras are split by area: `kaguya`, `artemis`, `moon`, `viz`,
+`geospace`, `native`, `docs`, and `full`.
+
+```powershell
+python -m pip install -e ".[moon,viz]"
+python -m pip install -e ".[full]"
+```
+
+## Documentation
+
+MkDocs sources live under `docs/`.
+
+```powershell
+python -m pip install -e ".[docs]"
+set PYTHONPATH=src
+mkdocs serve
+```
+
+Start with:
+
+- `docs/getting-started/installation.md`
+- `docs/getting-started/first-analysis.md`
+- `docs/concepts/project-case.md`
+- `docs/reference/configuration.md`
+- `docs/reference/status.md`
+
+## Development
+
+Common checks:
+
+```powershell
+python -m pytest -q
+python -m compileall src
+python -m ruff check src tests
+python -m mypy src
+cargo fmt --check
+cargo test
+```
+
+The old exploratory repository is at `F:\idl\lunarsat` and is read-only
+reference material for this rewrite.
 
 ## License
 
 SOPRAN original code and documentation are licensed under Apache-2.0.
 
-SPEDAS/PySPEDAS-derived ports must retain their upstream notices. The current
-policy is documented in `THIRD_PARTY_NOTICES.md`: MIT-licensed SPEDAS routines
-can be ported with attribution, while GPL/NASA-OSA external components should
-not be copied into the Apache-2.0 core without a separate license review.
-
-## 開発状況
-
-現在は KAGUYA ESA1 の local PBF decode、xarray/polars 変換、parquet 保存、Pipeline run/scan、
-PlotStack、Project/Case、Moon DEM/SVM raster load、ARTEMIS FGM normalized store load skeleton を
-実装し始めています。
-詳細設計は `docs/design/` に分けます。
+SPEDAS/PySPEDAS-derived ports must retain upstream notices. The current policy
+is documented in `THIRD_PARTY_NOTICES.md`.

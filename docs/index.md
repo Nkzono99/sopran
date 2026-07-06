@@ -4,22 +4,25 @@ SOPRAN は **Satellite Observation Package for Retrieval, Analysis, and
 Navigation** の略です。月・惑星圏の衛星データを Python から取得、変換、
 保存、可視化するためのライブラリとして整備しています。
 
-最初に目指す利用感は、ミッションや観測機器をオブジェクトとしてたどり、
+主導線は、`spn.kaguya` / `spn.moon` のような shortcut でデータツリーをたどり、
 解析時には `View` に期間や領域を束ねる形です。
 
 ```python
 import sopran as spn
 
-view = spn.view(time=spn.day("2008-01-01"), frame="SSE")
-counts = view.kaguya.esa1.counts.load()
+counts = spn.kaguya.esa1.counts.load(spn.day("2008-01-01"))
 counts.quicklook("kaguya_esa1_counts", root="reports", y="energy")
+
+view = spn.view(time=spn.day("2008-01-01"), frame="SSE")
+flux = view.kaguya.esa1.energy_flux.load()
 ```
 
 ## 入口
 
 | 入口 | 役割 |
 | --- | --- |
-| `Kaguya()` / `Artemis()` | ミッション、探査機、観測機器をたどる |
+| `spn.kaguya` / `spn.artemis` / `spn.moon` | default config を使う普段使いの shortcut |
+| `Kaguya()` / `Artemis()` / `Moon()` | Store や source を明示する低レベル object |
 | `Store()` | raw、normalized parquet、features、database を管理する |
 | `Project()` | 使用する `Store`、成果物、project 設定をまとめる |
 | `View()` / `spn.view()` | time、region、frame などの一時解析コンテキストを束ねる |

@@ -61,15 +61,16 @@ class Project:
     ) -> Project:
         user_config, user_config_path = read_user_config()
         project_config = config_section(user_config, "project")
-        resolved_root = (
-            Path(root)
-            if root is not None
-            else configured_path(
+        resolved_root: Path | None
+        if root is not None:
+            resolved_root = Path(root)
+        else:
+            discovered_root = _discover_project_root(Path.cwd())
+            resolved_root = discovered_root or configured_path(
                 user_config_path.parent,
                 project_config.get("root"),
                 default=Path.cwd(),
             )
-        )
         return cls(cast(Path, resolved_root), store=store, artifact_root=artifact_root)
 
     @property
@@ -575,7 +576,22 @@ def _surface_parameters_with_case(
         and "time" not in normalized
     ):
         normalized["time"] = case.time.start_iso
+    if (
+        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
+        and "spice_kernels" not in normalized
+        and case.defaults.get("spice_kernels")
+    ):
+        normalized["spice_kernels"] = tuple(str(path) for path in case.defaults["spice_kernels"])
     return normalized
+
+
+def _discover_project_root(start: Path) -> Path | None:
+    current = start.resolve()
+    candidates = (current, *current.parents)
+    for candidate in candidates:
+        if (candidate / "sopran.toml").exists():
+            return candidate
+    return None
 
 
 def _project_child_path(root: Path, name: str | Path, *, suffix: str) -> Path:

@@ -68,6 +68,8 @@ def __getattr__(name: str) -> Any:
         from importlib import import_module
 
         return getattr(import_module("sopran.schema_docs"), name)
+    if name in {"kaguya", "artemis", "moon"}:
+        return getattr(Project.default().view(), name)
     raise AttributeError(f"module 'sopran' has no attribute {name!r}")
 
 __all__ = [
@@ -88,6 +90,9 @@ __all__ = [
     "FeatureMatrix",
     "InstrumentSchema",
     "Kaguya",
+    "artemis",
+    "kaguya",
+    "moon",
     "Moon",
     "PlotArtifact",
     "PlotItem",

@@ -1,7 +1,8 @@
 # 設定
 
 SOPRAN は、明示引数、環境変数、project config、user global config の順に設定を解決します。
-解析 workspace には `sopran.toml` を置けます。
+`spn.view(...)` と `spn.kaguya` / `spn.moon` などの shortcut は、現在ディレクトリから
+親方向に最初に見つかる `sopran.toml` を project config として使います。
 
 ```toml
 [project]
@@ -34,6 +35,7 @@ lon_domain = "0_360"
 
 | 設定 | 優先順位 |
 | --- | --- |
+| Project root | 明示引数 > 親方向に見つかった `sopran.toml` > user global `[project].root` > current directory |
 | Store root | 明示引数 > 環境変数 > project `[store]` > user global `[store]` > default |
 | artifact root | 明示引数 > `SOPRAN_ARTIFACT_ROOT` > project `[project]` > user global `[project]` > project root |
 | defaults | project `[defaults]` > user global `[defaults]` > package default |
@@ -46,8 +48,9 @@ frame pair に応じて `spiceypy` や `spacepy` などが選ばれます。back
 
 ## user global config
 
-project directory を作らずに使う場合、`spn.view(...)`、`spn.Store()`、`spn.Kaguya()` は
-user global config を参照します。設定ファイルの場所は `SOPRAN_CONFIG` で明示できます。
+project directory を作らずに使う場合、`spn.view(...)`、`spn.kaguya`、`spn.moon`、
+`spn.Store()`、`spn.Kaguya()` は user global config を参照します。
+設定ファイルの場所は `SOPRAN_CONFIG` で明示できます。
 未指定の場合は OS 標準の user config directory を使います。既存の
 `~/.sopran/config.toml` があり、標準 path に config がない場合は legacy path として読みます。
 
@@ -71,6 +74,8 @@ import sopran as spn
 
 view = spn.view(time=spn.day("2008-02-01"))
 view.kaguya.esa1.counts.plot()
+
+counts = spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
 ```
 
 ## 環境変数
