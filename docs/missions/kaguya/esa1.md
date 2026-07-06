@@ -24,7 +24,8 @@ counts.to_polars()
 `energy_flux` は `counts / (integ_t * gfactor * efficiency)` を使う Python reference
 実装です。既定の `efficiency` は 0.6 です。INFO table は既定で自動ロードされます。
 INFO table が無い場合は `kg.esa1.energy_flux.load(...)` は明示エラーになります。
-`energy` 座標は現時点では channel index で、物理 eV calibration はまだ限定的です。
+`energy` 座標は INFO table 由来の eV center になり、元の channel は `energy_channel`
+に残ります。
 raw file が無い場合の挙動は `missing="empty" | "warn" | "error"` で選びます。
 
 ## quicklook
@@ -34,8 +35,12 @@ raw file が無い場合の挙動は `missing="empty" | "warn" | "error"` で選
 `energy_flux [eV/(cm^2 s sr eV)]` のように単位付きの値ラベルが出ます。
 
 ```python
-kg.esa1.energy_flux.plot(time, log_color=True)
+kg.esa1.energy_flux.plot(time)
+kg.esa1.energy_flux.plot(time, ylim=(10.0, 10000.0), vmin=1.0e6, vmax=1.0e9)
 ```
+
+`energy_flux.plot()` は既定で energy 軸と color scale を log 表示にします。
+必要なら `yscale="linear"`、`log_color=False` で抑制できます。
 
 複数 panel を残す場合は `stack()` を使います。
 

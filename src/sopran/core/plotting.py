@@ -36,6 +36,10 @@ class PlotItem:
     y_label: str | None = None
     value_label: str | None = None
     log_color: bool = False
+    yscale: str | None = None
+    ylim: tuple[float, float] | None = None
+    vmin: float | None = None
+    vmax: float | None = None
     bins: int | str | None = None
     overlays: tuple[PlotOverlay, ...] = ()
 
@@ -165,6 +169,10 @@ class PlotStack:
                 colorbar = fig.colorbar(mesh, ax=axis)
                 colorbar.set_label(spectrogram_data.value_label)
                 axis.set_ylabel(spectrogram_data.y_label)
+                if item.yscale is not None:
+                    axis.set_yscale(item.yscale)
+                if item.ylim is not None:
+                    axis.set_ylim(item.ylim)
                 last_x_label = spectrogram_data.x_label
                 panel_metadata = _panel_metadata_for(
                     item,
@@ -368,6 +376,14 @@ def _panel_metadata_for(
         panel["x_label"] = x_label or item.x_label or item.x
         panel["y_label"] = y_label or item.y_label or item.y
         panel["colorbar_label"] = colorbar_label or value_label or item.value_label or item.name
+        if item.yscale is not None:
+            panel["yscale"] = item.yscale
+        if item.ylim is not None:
+            panel["ylim"] = list(item.ylim)
+        if item.vmin is not None:
+            panel["vmin"] = item.vmin
+        if item.vmax is not None:
+            panel["vmax"] = item.vmax
     if item.kind == "histogram":
         panel["bins"] = item.bins
     if item.overlays:
@@ -419,6 +435,10 @@ def spectrogram(
     y_label: str | None = None,
     value_label: str | None = None,
     log_color: bool = False,
+    yscale: str | None = None,
+    ylim: tuple[float, float] | None = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
 ) -> PlotItem:
     return PlotItem(
         kind="spectrogram",
@@ -430,6 +450,10 @@ def spectrogram(
         y_label=y_label,
         value_label=value_label,
         log_color=log_color,
+        yscale=yscale,
+        ylim=ylim,
+        vmin=vmin,
+        vmax=vmax,
     )
 
 
@@ -528,11 +552,19 @@ def _histogram_values(item: PlotItem) -> np.ndarray:
 
 
 def _color_norm(item: PlotItem) -> Any | None:
-    if not item.log_color:
-        return None
-    from matplotlib.colors import LogNorm
+    if item.log_color:
+        from matplotlib.colors import LogNorm
 
-    return LogNorm()
+        if item.vmin is not None and item.vmin <= 0:
+            raise ValueError("log_color=True requires vmin to be positive")
+        if item.vmax is not None and item.vmax <= 0:
+            raise ValueError("log_color=True requires vmax to be positive")
+        return LogNorm(vmin=item.vmin, vmax=item.vmax)
+    if item.vmin is None and item.vmax is None:
+        return None
+    from matplotlib.colors import Normalize
+
+    return Normalize(vmin=item.vmin, vmax=item.vmax)
 
 
 def _values(data: Any) -> np.ndarray:

@@ -180,6 +180,48 @@ def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     assert isinstance(result.axes[0].collections[0].norm, LogNorm)
 
 
+def test_plot_stack_spectrogram_supports_axis_and_color_limits() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib.colors import LogNorm
+
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    energy = np.array([10.0, 100.0, 1000.0])
+    energy_flux = xr.DataArray(
+        np.array([[1.0, 10.0, 100.0], [2.0, 20.0, 200.0]]),
+        dims=("time", "energy"),
+        coords={"time": times, "energy": ("energy", energy, {"units": "eV"})},
+        name="energy_flux",
+    )
+
+    result = spn.stack(
+        spn.spectrogram(
+            energy_flux,
+            y="energy",
+            log_color=True,
+            yscale="log",
+            ylim=(20.0, 800.0),
+            vmin=2.0,
+            vmax=100.0,
+        )
+    ).plot()
+    norm = result.axes[0].collections[0].norm
+
+    assert result.axes[0].get_yscale() == "log"
+    assert result.axes[0].get_ylim() == pytest.approx((20.0, 800.0))
+    assert isinstance(norm, LogNorm)
+    assert norm.vmin == pytest.approx(2.0)
+    assert norm.vmax == pytest.approx(100.0)
+    assert result.metadata["panels"][0]["yscale"] == "log"
+    assert result.metadata["panels"][0]["ylim"] == [20.0, 800.0]
+    assert result.metadata["panels"][0]["vmin"] == 2.0
+    assert result.metadata["panels"][0]["vmax"] == 100.0
+
+
 def test_spectrogram_labels_y_axis_and_colorbar_from_data_metadata() -> None:
     import matplotlib
 

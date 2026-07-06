@@ -25,9 +25,9 @@ counts.to_polars()
 `counts / (integ_t * gfactor * efficiency)`, with default `efficiency=0.6`.
 INFO calibration tables are loaded automatically by default. If they are
 unavailable, `kg.esa1.energy_flux.load(...)` raises an actionable error. The
-`energy` coordinate is currently still mostly a channel index. Use
-`missing="empty"`, `"warn"`, or `"error"` to control behavior when raw files are
-unavailable.
+`energy` coordinate is the INFO-table energy center in eV, and the original
+channel is preserved as `energy_channel`. Use `missing="empty"`, `"warn"`, or
+`"error"` to control behavior when raw files are unavailable.
 
 ## Quicklook
 
@@ -36,8 +36,12 @@ Use `plot()` as the shortest path for a single energy-flux view. The x-axis is
 shows a value label such as `energy_flux [eV/(cm^2 s sr eV)]`.
 
 ```python
-kg.esa1.energy_flux.plot(time, log_color=True)
+kg.esa1.energy_flux.plot(time)
+kg.esa1.energy_flux.plot(time, ylim=(10.0, 10000.0), vmin=1.0e6, vmax=1.0e9)
 ```
+
+`energy_flux.plot()` uses a log energy axis and log color scale by default.
+Pass `yscale="linear"` or `log_color=False` to override those defaults.
 
 Use `stack()` when saving multiple panels.
 

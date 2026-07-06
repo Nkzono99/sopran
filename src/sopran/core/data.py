@@ -338,6 +338,10 @@ class SopranArray:
         pitch: Any | None = None,
         energy: Any | None = None,
         log_color: bool = False,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         reduction: str = "sum",
         **kwargs: Any,
     ) -> PlotResult | object | None:
@@ -362,6 +366,10 @@ class SopranArray:
                 pitch=pitch,
                 energy=energy,
                 log_color=log_color,
+                yscale=yscale,
+                ylim=ylim,
+                vmin=vmin,
+                vmax=vmax,
                 reduction=reduction,
             )
         ).plot(
@@ -385,6 +393,10 @@ class SopranArray:
         pitch: Any | None = None,
         energy: Any | None = None,
         log_color: bool = False,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         reduction: str = "sum",
         name: str | None = None,
     ) -> tuple[PlotItem, ...]:
@@ -403,6 +415,10 @@ class SopranArray:
                     name=name,
                     reduction=reduction,
                     log_color=log_color,
+                    yscale=yscale,
+                    ylim=ylim,
+                    vmin=vmin,
+                    vmax=vmax,
                 ),
             )
         if mode == "pitch":
@@ -412,6 +428,10 @@ class SopranArray:
                     energy=energy,
                     reduction=reduction,
                     log_color=log_color,
+                    yscale=yscale,
+                    ylim=ylim,
+                    vmin=vmin,
+                    vmax=vmax,
                     name=name,
                 ),
             )
@@ -422,6 +442,10 @@ class SopranArray:
                     pitch=pitch,
                     reduction=reduction,
                     log_color=log_color,
+                    yscale=yscale,
+                    ylim=ylim,
+                    vmin=vmin,
+                    vmax=vmax,
                     name=name,
                 ),
             )
@@ -439,6 +463,10 @@ class SopranArray:
                     energy=energy,
                     reduction=reduction,
                     log_color=log_color,
+                    yscale=yscale,
+                    ylim=ylim,
+                    vmin=vmin,
+                    vmax=vmax,
                     name=name or f"{self.name}_pitch",
                 ),
                 self.energy_spectrogram(
@@ -446,6 +474,10 @@ class SopranArray:
                     pitch=pitch,
                     reduction=reduction,
                     log_color=log_color,
+                    yscale=yscale,
+                    ylim=ylim,
+                    vmin=vmin,
+                    vmax=vmax,
                     name=name or f"{self.name}_energy",
                 ),
             )
@@ -458,6 +490,10 @@ class SopranArray:
                 name=name,
                 reduction=reduction,
                 log_color=log_color,
+                yscale=yscale,
+                ylim=ylim,
+                vmin=vmin,
+                vmax=vmax,
             ),
         )
 
@@ -501,6 +537,10 @@ class SopranArray:
         energy: Any | None = None,
         reduction: str = "sum",
         log_color: bool = False,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         name: str | None = None,
     ) -> PlotItem:
         from sopran.core.plotting import spectrogram
@@ -528,6 +568,10 @@ class SopranArray:
             name=name or f"{self.name}_pitch",
             value_label=_label_with_units(self.name, self.schema.units),
             log_color=log_color,
+            yscale=yscale,
+            ylim=ylim,
+            vmin=vmin,
+            vmax=vmax,
         )
 
     def energy_spectrogram(
@@ -539,6 +583,10 @@ class SopranArray:
         pitch: Any | None = None,
         reduction: str = "sum",
         log_color: bool = False,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         name: str | None = None,
     ) -> PlotItem:
         from sopran.core.plotting import spectrogram
@@ -558,6 +606,10 @@ class SopranArray:
             name=name or f"{self.name}_energy",
             value_label=_label_with_units(self.name, self.schema.units),
             log_color=log_color,
+            yscale=yscale,
+            ylim=ylim,
+            vmin=vmin,
+            vmax=vmax,
         )
 
     def quicklook(
@@ -570,6 +622,10 @@ class SopranArray:
         x: str = "time",
         y: str | None = None,
         log_color: bool = False,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
         frame: str | None = None,
@@ -592,6 +648,10 @@ class SopranArray:
                     x=x,
                     y=y,
                     log_color=log_color,
+                    yscale=yscale,
+                    ylim=ylim,
+                    vmin=vmin,
+                    vmax=vmax,
                     reduce_dims=reduce_dims,
                     reduction=reduction,
                 ),
@@ -603,6 +663,10 @@ class SopranArray:
                 pitch=pitch,
                 energy=energy,
                 log_color=log_color,
+                yscale=yscale,
+                ylim=ylim,
+                vmin=vmin,
+                vmax=vmax,
                 reduction=reduction,
             )
         )
@@ -630,6 +694,10 @@ class SopranArray:
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
         log_color: bool = False,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
     ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
@@ -647,6 +715,10 @@ class SopranArray:
             name=resolved_name,
             value_label=_label_with_units(resolved_name, self.schema.units),
             log_color=log_color,
+            yscale=yscale,
+            ylim=ylim,
+            vmin=vmin,
+            vmax=vmax,
         )
 
     def _with_xarray(

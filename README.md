@@ -19,7 +19,7 @@ spn.config.use(store="F:/sopran_data", download="never")
 time = spn.day("2008-02-01")
 
 counts = spn.kaguya.esa1.counts.load(time)
-plot = spn.kaguya.esa1.energy_flux.plot(time, log_color=True)
+plot = spn.kaguya.esa1.energy_flux.plot(time)
 quicklook = spn.kaguya.esa1.energy_flux.load(time).quicklook(
     "esa1_energy_flux",
     root="reports",
@@ -28,7 +28,9 @@ quicklook = spn.kaguya.esa1.energy_flux.load(time).quicklook(
 
 For spectrum-like products, `plot()` defaults to a spectrogram: time on x,
 energy or pitch angle on y, and the product value on color. The colorbar label
-includes the product name and units when available.
+includes the product name and units when available. KAGUYA PACE `energy_flux`
+uses log energy and log color by default; pass `ylim=...`, `vmin=...`, or
+`vmax=...` to control the visible range.
 
 When several operations share a time range, region, frame, download policy, or
 SPICE kernels, bind them with a `View`.
@@ -51,7 +53,7 @@ project = spn.Project("projects/lunar_wake")
 case = project.case("wake_20080201")
 
 stack = case.stack(
-    case.kaguya.esa1.energy_flux.spectrogram(y="energy", log_color=True),
+    case.kaguya.esa1.energy_flux.spectrogram(y="energy"),
     case.kaguya.esa1.quality.line(),
 )
 stack.quicklook("wake_overview", root="reports", context=case)

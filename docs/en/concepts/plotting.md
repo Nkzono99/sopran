@@ -20,8 +20,18 @@ For spectrograms, the x-axis is `time`, the y-axis is `energy` or
 the value name and units, for example `energy_flux [eV/(cm^2 s sr eV)]`.
 
 ```python
-kg.esa1.energy_flux.plot(time, log_color=True)
+kg.esa1.energy_flux.plot(time)
+kg.esa1.energy_flux.plot(
+    time,
+    ylim=(10.0, 10000.0),
+    vmin=1.0e6,
+    vmax=1.0e9,
+)
 ```
+
+KAGUYA PACE `energy_flux.plot()` uses a log energy axis and log color scale by
+default. Generic spectrograms also accept `yscale="log"`, `ylim=(low, high)`,
+`log_color=True`, `vmin=...`, and `vmax=...`.
 
 ## Multi-Panel Plot
 

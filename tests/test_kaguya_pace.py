@@ -751,6 +751,48 @@ def test_kaguya_esa1_load_auto_calibrates_loaded_energy_flux(
     assert flux.plot() is not None
 
 
+def test_kaguya_esa1_energy_flux_plot_defaults_to_log_energy_and_color(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from matplotlib.colors import LogNorm
+
+    store = Store(tmp_path / "store")
+    remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
+    cached = store.raw_path("kaguya", "pds3") / remote_file
+    cached.parent.mkdir(parents=True)
+    _write_type01_pbf_gzip(cached, tmp_path / "scratch.dat")
+    shape = (8, 32, 4, 16)
+    energy_kev = np.linspace(0.1, 3.2, 32)
+    calibration = PaceCalibration(
+        info={
+            0: {
+                "gfactor_4x16": np.full(shape, 2.0),
+                "ene_4x16": np.broadcast_to(
+                    energy_kev[None, :, None, None],
+                    shape,
+                ).copy(),
+            }
+        }
+    )
+    kg = spn.Kaguya(store=store, download="never")
+    monkeypatch.setattr(kg.esa1, "load_calibration", lambda *, download=None: calibration)
+
+    result = kg.esa1.energy_flux.plot(
+        spn.day("2008-01-01"),
+        calibration="auto",
+        download="never",
+    )
+
+    assert result.axes[0].get_yscale() == "log"
+    assert isinstance(result.axes[0].collections[0].norm, LogNorm)
+    assert result.metadata["panels"][0]["yscale"] == "log"
+    assert result.metadata["panels"][0]["log_color"] is True
+
+
 def test_kaguya_esa1_energy_flux_endpoint_requires_calibration(tmp_path: Path) -> None:
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"

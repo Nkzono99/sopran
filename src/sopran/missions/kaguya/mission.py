@@ -466,6 +466,9 @@ fig = plot_result.fig
             cache=cache,
             calibration=calibration,
         )
+        if self.name == "energy_flux":
+            kwargs.setdefault("log_color", True)
+            kwargs.setdefault("yscale", "log")
         kwargs.setdefault("dataset_id", self.dataset_id)
         kwargs.setdefault("time_range", loaded.time)
         kwargs.setdefault("frame", self._schema.frame)
@@ -551,7 +554,11 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
-        log_color: bool = False,
+        log_color: bool | None = None,
+        yscale: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        vmin: float | None = None,
+        vmax: float | None = None,
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = "auto",
@@ -576,7 +583,11 @@ fig = plot_result.fig
             x=x,
             y=y,
             name=name or self.name,
-            log_color=log_color,
+            log_color=bool(log_color if log_color is not None else self.name == "energy_flux"),
+            yscale=yscale or ("log" if self.name == "energy_flux" else None),
+            ylim=ylim,
+            vmin=vmin,
+            vmax=vmax,
         )
 
     def pitch_angle_spectrum(
