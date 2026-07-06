@@ -45,7 +45,7 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
     assert plan.items == ("counts", "quality")
     assert isinstance(result, spn.PlotResult)
     assert result.backend == "matplotlib"
-    assert len(result.fig.axes) == 2
+    assert len(result.fig.axes) == 3
     assert len(result.axes) == 2
     assert result.metadata["panel_count"] == 2
     assert result.metadata["items"] == ["counts", "quality"]
@@ -57,6 +57,10 @@ def test_plot_stack_plans_and_plots_xarray_line_and_spectrogram() -> None:
             "x": "time",
             "y": "energy",
             "log_color": False,
+            "value": "counts",
+            "x_label": "time",
+            "y_label": "energy",
+            "colorbar_label": "counts",
         },
         {
             "name": "quality",
@@ -174,6 +178,37 @@ def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     result = spn.stack(spn.spectrogram(counts, y="energy", log_color=True)).plot()
 
     assert isinstance(result.axes[0].collections[0].norm, LogNorm)
+
+
+def test_spectrogram_labels_y_axis_and_colorbar_from_data_metadata() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    energy_flux = xr.DataArray(
+        np.ones((2, 3)),
+        dims=("time", "energy"),
+        coords={
+            "time": times,
+            "energy": ("energy", [10.0, 20.0, 30.0], {"units": "eV"}),
+        },
+        name="energy_flux",
+        attrs={"units": "eV/(cm^2 s sr eV)"},
+    )
+
+    result = spn.stack(spn.spectrogram(energy_flux, y="energy")).plot()
+
+    assert result.axes[0].get_xlabel() == "time"
+    assert result.axes[0].get_ylabel() == "energy [eV]"
+    assert result.fig.axes[-1].get_ylabel() == "energy_flux [eV/(cm^2 s sr eV)]"
+    assert result.metadata["panels"][0]["value"] == "energy_flux"
+    assert (
+        result.metadata["panels"][0]["colorbar_label"]
+        == "energy_flux [eV/(cm^2 s sr eV)]"
+    )
 
 
 def test_spectrogram_overlay_draws_loaded_peak_trace() -> None:
@@ -501,6 +536,45 @@ def test_loaded_array_plot_auto_returns_plot_result_for_pitch_angle_data() -> No
         "pitch_angle",
         "energy",
     ]
+
+
+def test_loaded_array_plot_uses_energy_spectrogram_labels_by_default() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    array = xr.DataArray(
+        np.ones((2, 3)),
+        dims=("time", "energy"),
+        coords={
+            "time": times,
+            "energy": ("energy", [10.0, 20.0, 30.0], {"units": "eV"}),
+        },
+        name="energy_flux",
+    )
+    loaded = SopranArray(
+        name="energy_flux",
+        time=spn.period("2008-01-01", "2008-01-02"),
+        schema=spn.VariableSchema(
+            name="energy_flux",
+            dims=("time", "energy"),
+            units="eV/(cm^2 s sr eV)",
+        ),
+        xr=array,
+    )
+
+    result = loaded.plot(log_color=True)
+
+    assert result.metadata["panel_kinds"] == ["spectrogram"]
+    assert result.axes[0].get_xlabel() == "time"
+    assert result.axes[0].get_ylabel() == "energy [eV]"
+    assert result.fig.axes[-1].get_ylabel() == "energy_flux [eV/(cm^2 s sr eV)]"
+    assert result.metadata["panels"][0]["colorbar_label"] == (
+        "energy_flux [eV/(cm^2 s sr eV)]"
+    )
 
 
 def test_loaded_array_to_polars_uses_array_layout_for_dense_data_by_default() -> None:
@@ -909,6 +983,10 @@ def test_loaded_array_quicklook_can_write_spectrogram_metadata(tmp_path) -> None
             "x": "time",
             "y": "energy",
             "log_color": True,
+            "value": "counts",
+            "x_label": "time",
+            "y_label": "energy",
+            "colorbar_label": "counts",
         }
     ]
 

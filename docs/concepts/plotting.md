@@ -15,6 +15,12 @@ counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
 1D は line、2D の `time x energy` は spectrogram、3D の
 `time x energy x pitch_angle` は pitch/time と energy/time の 2 panel overview に
 します。低レベルの xarray plot を直接呼びたい場合は `plot(mode="raw")` を使います。
+spectrogram では横軸が `time`、縦軸が `energy` や `pitch_angle`、色が product の値です。
+colorbar label には `energy_flux [eV/(cm^2 s sr eV)]` のように値名と単位が出ます。
+
+```python
+kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+```
 
 ## multi-panel plot
 

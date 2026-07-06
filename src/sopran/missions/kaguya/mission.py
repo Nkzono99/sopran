@@ -10,7 +10,7 @@ from importlib.resources import files
 from inspect import signature
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 from urllib.error import HTTPError
 
 from sopran.core import Store
@@ -81,6 +81,10 @@ from sopran.missions.kaguya.schema import (
 )
 from sopran.missions.kaguya.sensors import normalize_sensor
 
+if TYPE_CHECKING:
+    from sopran.core.data import SopranArray
+    from sopran.core.plotting import PlotItem, PlotResult
+
 DownloadMode = Literal["never", "missing", "always"]
 MissingMode = Literal["empty", "warn", "error"]
 CacheMode = Literal["use", "refresh", "never"]
@@ -116,13 +120,13 @@ class Kaguya:
                 fallback_roots=tuple(Path(root) for root in fallback_roots),
             )
         self.source = source
-        self.esa1 = PaceInstrument(self, "ESA1")
-        self.esa2 = PaceInstrument(self, "ESA2")
-        self.ima = PaceInstrument(self, "IMA")
-        self.iea = PaceInstrument(self, "IEA")
-        self.lmag = LmagInstrument(self)
-        self.lrs = LrsInstrument(self)
-        self.orbit = OrbitInstrument(self)
+        self.esa1: PaceInstrument = PaceInstrument(self, "ESA1")
+        self.esa2: PaceInstrument = PaceInstrument(self, "ESA2")
+        self.ima: PaceInstrument = PaceInstrument(self, "IMA")
+        self.iea: PaceInstrument = PaceInstrument(self, "IEA")
+        self.lmag: LmagInstrument = LmagInstrument(self)
+        self.lrs: LrsInstrument = LrsInstrument(self)
+        self.orbit: OrbitInstrument = OrbitInstrument(self)
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -431,7 +435,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = None,
-    ) -> Any:
+    ) -> SopranArray:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         kwargs: dict[str, Any] = {"download": download}
@@ -441,8 +445,8 @@ fig = plot_result.fig
             kwargs["calibration"] = calibration
         data = self.instrument.load(time, **kwargs)
         if self.name == "energy_flux":
-            return data.to_energy_flux()
-        return getattr(data, self.name)
+            return cast("SopranArray", data.to_energy_flux())
+        return cast("SopranArray", getattr(data, self.name))
 
     def plot(
         self,
@@ -453,7 +457,7 @@ fig = plot_result.fig
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> PlotResult | object | None:
         loaded = _load_endpoint(
             self,
             time,
@@ -475,7 +479,7 @@ fig = plot_result.fig
             ),
             kwargs.pop("metadata", None),
         )
-        return loaded.plot(**kwargs)
+        return cast("PlotResult | object | None", loaded.plot(**kwargs))
 
     def line(
         self,
@@ -487,7 +491,7 @@ fig = plot_result.fig
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import line
@@ -517,7 +521,7 @@ fig = plot_result.fig
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import lines
@@ -551,7 +555,7 @@ fig = plot_result.fig
         missing: MissingMode | None = None,
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         if time is None:
             raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
         from sopran.core.plotting import spectrogram
@@ -671,7 +675,7 @@ fig = plot_result.fig
         reduction: str = "sum",
         log_color: bool = False,
         name: str | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         spectrum = self.pitch_angle_spectrum(
             time,
             magnetic_field,
@@ -688,11 +692,14 @@ fig = plot_result.fig
             dataset_id=dataset_id,
             layer=layer,
         )
-        return spectrum.pitch_spectrogram(
-            energy=energy,
-            reduction=reduction,
-            log_color=log_color,
-            name=name,
+        return cast(
+            "PlotItem",
+            spectrum.pitch_spectrogram(
+                energy=energy,
+                reduction=reduction,
+                log_color=log_color,
+                name=name,
+            ),
         )
 
 
@@ -894,11 +901,11 @@ class PaceInstrument(KaguyaInstrument):
         self.sensor = normalize_sensor(sensor)
         self.version = version
         super().__init__(mission, self.sensor)
-        self.energy_flux = self._variable("energy_flux")
-        self.eflux = self.energy_flux
-        self.counts = self._variable("counts")
-        self.energy = self._variable("energy")
-        self.quality = self._variable("quality")
+        self.energy_flux: VariableEndpoint = self._variable("energy_flux")
+        self.eflux: VariableEndpoint = self.energy_flux
+        self.counts: VariableEndpoint = self._variable("counts")
+        self.energy: VariableEndpoint = self._variable("energy")
+        self.quality: VariableEndpoint = self._variable("quality")
 
     def _variable(self, name: str) -> VariableEndpoint:
         return VariableEndpoint(

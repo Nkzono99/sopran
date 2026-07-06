@@ -30,6 +30,16 @@ coordinate is currently still mostly a channel index. Use `missing="empty"`,
 
 ## Quicklook
 
+Use `plot()` as the shortest path for a single energy-flux view. The x-axis is
+`time`, the y-axis is `energy`, color carries `energy_flux`, and the colorbar
+shows a value label such as `energy_flux [eV/(cm^2 s sr eV)]`.
+
+```python
+kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+```
+
+Use `stack()` when saving multiple panels.
+
 ```python
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),

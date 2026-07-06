@@ -7,6 +7,7 @@ from sopran.core.alignment import (
     align,
     time_bins,
 )
+from sopran.core.data import SopranArray
 from sopran.core.database import Database, ProductRef
 from sopran.core.errors import (
     BackendError,
@@ -72,6 +73,7 @@ __all__ = [
     "ResampleLikeMethod",
     "SampleSpec",
     "SampleTable",
+    "SopranArray",
     "Store",
     "ProductRef",
     "SchemaError",

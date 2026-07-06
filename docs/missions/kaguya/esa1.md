@@ -29,6 +29,16 @@ raw file が無い場合の挙動は `missing="empty" | "warn" | "error"` で選
 
 ## quicklook
 
+まず単体の energy flux を見る場合は `plot()` が最短です。横軸は `time`、縦軸は
+`energy`、色が `energy_flux` で、colorbar には
+`energy_flux [eV/(cm^2 s sr eV)]` のように単位付きの値ラベルが出ます。
+
+```python
+kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+```
+
+複数 panel を残す場合は `stack()` を使います。
+
 ```python
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),

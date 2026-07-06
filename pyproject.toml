@@ -165,6 +165,7 @@ include = [
   { path = "THIRD_PARTY_NOTICES.md", format = "sdist" },
   { path = "docs/**/*", format = "sdist" },
   { path = "mkdocs.yml", format = "sdist" },
+  { path = "src/sopran/py.typed", format = "wheel" },
 ]
 
 [tool.pytest.ini_options]

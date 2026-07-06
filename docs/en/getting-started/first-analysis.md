@@ -29,6 +29,17 @@ counts = esa1.to_polars("counts", reduce_look="sum")
 
 ## Plot Together
 
+For spectrum-like products, `plot()` is the first quick view. The x-axis is
+`time`, the y-axis is `energy` or `pitch_angle`, and color carries the product
+value such as `energy_flux` or `counts`. The colorbar includes the value name
+and units when available.
+
+```python
+view.kaguya.esa1.energy_flux.plot(calibration="auto", log_color=True)
+```
+
+Use `spectrogram()` and `line()` with `stack()` when comparing multiple panels.
+
 ```python
 stack = spn.stack(
     view.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),

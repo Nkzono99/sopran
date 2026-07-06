@@ -15,6 +15,13 @@ counts.quicklook("counts_spectrum", root="reports", y="energy", log_color=True)
 1D arrays become line plots, 2D `time x energy` arrays become spectrograms, and
 3D `time x energy x pitch_angle` arrays become a two-panel pitch/time and
 energy/time overview. Use `plot(mode="raw")` for direct xarray plotting.
+For spectrograms, the x-axis is `time`, the y-axis is `energy` or
+`pitch_angle`, and color carries the product value. The colorbar label shows
+the value name and units, for example `energy_flux [eV/(cm^2 s sr eV)]`.
+
+```python
+kg.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+```
 
 ## Multi-Panel Plot
 

@@ -18,9 +18,16 @@ import sopran as spn
 time = spn.day("2008-02-01")
 
 counts = spn.kaguya.esa1.counts.load(time)
-flux = spn.kaguya.esa1.energy_flux.load(time)
-quicklook = flux.quicklook("esa1_energy_flux", root="reports", y="energy")
+plot = spn.kaguya.esa1.energy_flux.plot(time, calibration="auto", log_color=True)
+quicklook = spn.kaguya.esa1.energy_flux.load(time, calibration="auto").quicklook(
+    "esa1_energy_flux",
+    root="reports",
+)
 ```
+
+For spectrum-like products, `plot()` defaults to a spectrogram: time on x,
+energy or pitch angle on y, and the product value on color. The colorbar label
+includes the product name and units when available.
 
 When several operations share a time range, region, frame, download policy, or
 SPICE kernels, bind them with a `View`.

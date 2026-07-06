@@ -32,6 +32,9 @@ class PlotItem:
     name: str
     x: str = "time"
     y: str | None = None
+    x_label: str | None = None
+    y_label: str | None = None
+    value_label: str | None = None
     log_color: bool = False
     bins: int | str | None = None
     overlays: tuple[PlotOverlay, ...] = ()
@@ -141,32 +144,48 @@ class PlotStack:
         )
         axes = axes_grid[:, 0]
 
+        rendered_panels: list[dict[str, Any]] = []
+        last_x_label = "time"
         for axis, item in zip(axes, self.items, strict=True):
             if item.kind == "line":
                 x_values, y_values = _line_xy(item)
                 axis.plot(x_values, y_values)
+                axis.set_ylabel(item.value_label or item.name)
+                last_x_label = item.x_label or item.x
+                panel_metadata = _panel_metadata_for(item)
             elif item.kind == "spectrogram":
-                x_values, y_values, z_values = _spectrogram_xyz(item)
-                axis.pcolormesh(
-                    x_values,
-                    y_values,
-                    z_values.T,
+                spectrogram_data = _spectrogram_data(item)
+                mesh = axis.pcolormesh(
+                    spectrogram_data.x_values,
+                    spectrogram_data.y_values,
+                    spectrogram_data.z_values.T,
                     norm=_color_norm(item),
                     shading="auto",
+                )
+                colorbar = fig.colorbar(mesh, ax=axis)
+                colorbar.set_label(spectrogram_data.value_label)
+                axis.set_ylabel(spectrogram_data.y_label)
+                last_x_label = spectrogram_data.x_label
+                panel_metadata = _panel_metadata_for(
+                    item,
+                    x_label=spectrogram_data.x_label,
+                    y_label=spectrogram_data.y_label,
+                    value_label=spectrogram_data.value_label,
+                    colorbar_label=spectrogram_data.value_label,
                 )
             elif item.kind == "histogram":
                 values = _histogram_values(item)
                 axis.hist(values, bins=item.bins or 50)
                 axis.set_xlabel(item.name)
                 axis.set_ylabel("count")
+                panel_metadata = _panel_metadata_for(item)
             else:
                 raise ValueError(f"Unsupported plot item kind: {item.kind}")
             _draw_overlays(axis, item)
-            if item.kind != "histogram":
-                axis.set_ylabel(item.name)
+            rendered_panels.append(panel_metadata)
 
         if all(item.kind != "histogram" for item in self.items):
-            axes[-1].set_xlabel("time")
+            axes[-1].set_xlabel(last_x_label)
         fig.autofmt_xdate()
         fig.tight_layout()
         plan = self.plan()
@@ -175,7 +194,7 @@ class PlotStack:
             "panel_count": plan.panel_count,
             "items": list(plan.items),
             "panel_kinds": _panel_kinds(self.items),
-            "panels": _panel_metadata(self.items),
+            "panels": rendered_panels,
             "time_axis": _time_axis_metadata(self.items),
         }
         if dataset_id is not None:
@@ -250,7 +269,17 @@ class PlotStack:
         target_root.mkdir(parents=True, exist_ok=True)
         if backend != "matplotlib":
             raise ValueError("PlotStack.quicklook() currently supports only matplotlib")
-        plot_result = self.plot(backend=backend, figsize=figsize, configure=configure)
+        plot_result = self.plot(
+            backend=backend,
+            dataset_id=dataset_id,
+            time_range=time_range,
+            frame=frame,
+            aggregation=aggregation,
+            metadata=metadata,
+            context=context,
+            figsize=figsize,
+            configure=configure,
+        )
         fig = plot_result.fig
         plan = self.plan()
         artifacts = tuple(
@@ -258,30 +287,15 @@ class PlotStack:
             for format_name in formats
         )
         payload = {
+            **plot_result.metadata,
             "name": name,
             "backend": backend,
             "panel_count": plan.panel_count,
             "items": list(plan.items),
             "panel_kinds": _panel_kinds(self.items),
-            "panels": _panel_metadata(self.items),
-            "time_axis": _time_axis_metadata(self.items),
             "artifacts": [artifact.path.name for artifact in artifacts],
             "artifact_formats": [artifact.format for artifact in artifacts],
         }
-        if dataset_id is not None:
-            payload["dataset_id"] = dataset_id
-        if time_range is not None:
-            payload["time_range"] = _time_range_metadata(time_range)
-        if frame is not None:
-            payload["frame"] = frame
-        if aggregation is not None:
-            payload["aggregation"] = _metadata_value(aggregation)
-        if metadata:
-            payload["metadata"] = _metadata_value(metadata)
-        if context is not None:
-            payload["context"] = _context_metadata(context)
-        if configure is not None:
-            payload["customized"] = True
         for artifact in artifacts:
             if artifact.format == "png":
                 fig.savefig(artifact.path)
@@ -331,28 +345,41 @@ def _panel_kinds(items: tuple[PlotItem, ...]) -> list[str]:
 
 
 def _panel_metadata(items: tuple[PlotItem, ...]) -> list[dict[str, Any]]:
-    panels: list[dict[str, Any]] = []
-    for item in items:
-        panel: dict[str, Any] = {
-            "name": item.name,
-            "kind": item.kind,
-            "x": item.x,
-            "y": item.y,
-            "log_color": item.log_color,
-        }
-        if item.kind == "histogram":
-            panel["bins"] = item.bins
-        if item.overlays:
-            panel["overlays"] = [
-                {
-                    "name": overlay.name,
-                    "kind": overlay.kind,
-                    "x": overlay.x,
-                }
-                for overlay in item.overlays
-            ]
-        panels.append(panel)
-    return panels
+    return [_panel_metadata_for(item) for item in items]
+
+
+def _panel_metadata_for(
+    item: PlotItem,
+    *,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    value_label: str | None = None,
+    colorbar_label: str | None = None,
+) -> dict[str, Any]:
+    panel: dict[str, Any] = {
+        "name": item.name,
+        "kind": item.kind,
+        "x": item.x,
+        "y": item.y,
+        "log_color": item.log_color,
+    }
+    if item.kind == "spectrogram":
+        panel["value"] = item.name
+        panel["x_label"] = x_label or item.x_label or item.x
+        panel["y_label"] = y_label or item.y_label or item.y
+        panel["colorbar_label"] = colorbar_label or value_label or item.value_label or item.name
+    if item.kind == "histogram":
+        panel["bins"] = item.bins
+    if item.overlays:
+        panel["overlays"] = [
+            {
+                "name": overlay.name,
+                "kind": overlay.kind,
+                "x": overlay.x,
+            }
+            for overlay in item.overlays
+        ]
+    return panel
 
 
 def line(data: Any, *, x: str = "time", name: str | None = None) -> PlotItem:
@@ -388,6 +415,9 @@ def spectrogram(
     y: str,
     x: str = "time",
     name: str | None = None,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    value_label: str | None = None,
     log_color: bool = False,
 ) -> PlotItem:
     return PlotItem(
@@ -396,6 +426,9 @@ def spectrogram(
         name=name or _data_name(data),
         x=x,
         y=y,
+        x_label=x_label,
+        y_label=y_label,
+        value_label=value_label,
         log_color=log_color,
     )
 
@@ -451,7 +484,17 @@ def _line_xy_data(data: Any, *, x: str) -> tuple[np.ndarray, np.ndarray]:
     return _coord(materialized, x, axis=0), values
 
 
-def _spectrogram_xyz(item: PlotItem) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+@dataclass(frozen=True)
+class _SpectrogramData:
+    x_values: np.ndarray
+    y_values: np.ndarray
+    z_values: np.ndarray
+    x_label: str
+    y_label: str
+    value_label: str
+
+
+def _spectrogram_data(item: PlotItem) -> _SpectrogramData:
     if item.y is None:
         raise ValueError("Spectrogram plot requires a y coordinate name")
 
@@ -462,7 +505,14 @@ def _spectrogram_xyz(item: PlotItem) -> tuple[np.ndarray, np.ndarray, np.ndarray
     values = _values(data)
     if values.ndim != 2:
         raise ValueError(f"Spectrogram plot expects 2D data, got shape {values.shape}")
-    return _coord(data, item.x, axis=0), _coord(data, item.y, axis=1), values
+    return _SpectrogramData(
+        x_values=_coord(data, item.x, axis=0),
+        y_values=_coord(data, item.y, axis=1),
+        z_values=values,
+        x_label=item.x_label or _coordinate_label(data, item.x),
+        y_label=item.y_label or _coordinate_label(data, item.y),
+        value_label=item.value_label or _value_label(data, item.name),
+    )
 
 
 def _histogram_values(item: PlotItem) -> np.ndarray:
@@ -535,6 +585,24 @@ def _coord(data: Any, name: str, *, axis: int) -> np.ndarray:
     if hasattr(data, "coords") and name in data.coords:
         return cast(np.ndarray, np.asarray(data.coords[name].values))
     return np.arange(_values(data).shape[axis])
+
+
+def _coordinate_label(data: Any, name: str) -> str:
+    units = None
+    if hasattr(data, "coords") and name in data.coords:
+        units = getattr(data.coords[name], "attrs", {}).get("units")
+    return _label_with_units(name, units)
+
+
+def _value_label(data: Any, name: str) -> str:
+    units = getattr(data, "attrs", {}).get("units") if hasattr(data, "attrs") else None
+    return _label_with_units(name, units)
+
+
+def _label_with_units(name: str, units: Any | None) -> str:
+    if units is None or str(units) == "":
+        return name
+    return f"{name} [{units}]"
 
 
 def _html_quicklook(*, name: str, fig: Any, metadata: dict[str, Any]) -> str:

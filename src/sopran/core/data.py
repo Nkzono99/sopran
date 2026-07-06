@@ -3,11 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange
+
+if TYPE_CHECKING:
+    from sopran.core.plotting import PlotItem, PlotResult, QuicklookResult
 
 DEFAULT_MAX_POLARS_ROWS = 10_000_000
 PolarsLayout = Literal["auto", "array", "long"]
@@ -337,10 +340,10 @@ class SopranArray:
         log_color: bool = False,
         reduction: str = "sum",
         **kwargs: Any,
-    ) -> Any:
+    ) -> PlotResult | object | None:
         if mode == "raw":
             if self.xr is not None and hasattr(self.xr, "plot"):
-                return self.xr.plot(*args, **kwargs)
+                return cast(object, self.xr.plot(*args, **kwargs))
             return None
         if args or kwargs:
             raise TypeError(
@@ -383,7 +386,7 @@ class SopranArray:
         log_color: bool = False,
         reduction: str = "sum",
         name: str | None = None,
-    ) -> tuple[Any, ...]:
+    ) -> tuple[PlotItem, ...]:
         if mode == "raw":
             raise ValueError("mode='raw' is only supported by SopranArray.plot()")
         if mode == "line":
@@ -456,7 +459,7 @@ class SopranArray:
             ),
         )
 
-    def line(self, *, x: str = "time", name: str | None = None) -> Any:
+    def line(self, *, x: str = "time", name: str | None = None) -> PlotItem:
         from sopran.core.plotting import line
 
         return line(self.to_xarray(), x=x, name=name or self.name)
@@ -468,7 +471,7 @@ class SopranArray:
         components: str | tuple[str, ...] | list[str] | None = None,
         component_dim: str = "component",
         name: str | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         from sopran.core.plotting import lines
 
         return lines(
@@ -479,7 +482,7 @@ class SopranArray:
             name=name or self.name,
         )
 
-    def histogram(self, *, bins: int | str = 50, name: str | None = None) -> Any:
+    def histogram(self, *, bins: int | str = 50, name: str | None = None) -> PlotItem:
         from sopran.core.plotting import histogram
 
         return histogram(self.to_xarray(), bins=bins, name=name or self.name)
@@ -494,7 +497,7 @@ class SopranArray:
         reduction: str = "sum",
         log_color: bool = False,
         name: str | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
@@ -517,6 +520,7 @@ class SopranArray:
             x=x,
             y=pitch_dim,
             name=name or f"{self.name}_pitch",
+            value_label=_label_with_units(self.name, self.schema.units),
             log_color=log_color,
         )
 
@@ -530,7 +534,7 @@ class SopranArray:
         reduction: str = "sum",
         log_color: bool = False,
         name: str | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
@@ -545,6 +549,7 @@ class SopranArray:
             x=x,
             y=energy_dim,
             name=name or f"{self.name}_energy",
+            value_label=_label_with_units(self.name, self.schema.units),
             log_color=log_color,
         )
 
@@ -569,7 +574,7 @@ class SopranArray:
         mode: PlotMode = "auto",
         pitch: Any | None = None,
         energy: Any | None = None,
-    ) -> Any:
+    ) -> QuicklookResult:
         from sopran.core.plotting import stack
 
         quicklook_name = name or self.name
@@ -617,7 +622,7 @@ class SopranArray:
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
         log_color: bool = False,
-    ) -> Any:
+    ) -> PlotItem:
         from sopran.core.plotting import spectrogram
 
         array = self.to_xarray()
@@ -625,7 +630,15 @@ class SopranArray:
             reduce_dims = tuple(dim for dim in array.dims if dim not in {x, y})
         if reduce_dims:
             array = getattr(array, reduction)(reduce_dims)
-        return spectrogram(array, x=x, y=y, name=name or self.name, log_color=log_color)
+        resolved_name = name or self.name
+        return spectrogram(
+            array,
+            x=x,
+            y=y,
+            name=resolved_name,
+            value_label=_label_with_units(resolved_name, self.schema.units),
+            log_color=log_color,
+        )
 
     def _with_xarray(
         self,
@@ -737,6 +750,12 @@ def _coord_units(array: Any, dim: str) -> str | None:
         if units is not None:
             return str(units)
     return None
+
+
+def _label_with_units(name: str, units: str | None) -> str:
+    if units is None or units == "":
+        return name
+    return f"{name} [{units}]"
 
 
 def _peak_indices(

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from difflib import get_close_matches
 from importlib.resources import files
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sopran.core.data import SopranArray
 from sopran.core.errors import DatasetNotFoundError
@@ -12,6 +12,9 @@ from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, _filter_polars_time
+
+if TYPE_CHECKING:
+    from sopran.core.plotting import PlotItem
 
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/missions/artemis/"
@@ -47,8 +50,8 @@ class Artemis:
 
     def __init__(self, *, store: Store | None = None) -> None:
         self.store = store or Store()
-        self.p1 = ArtemisProbe(self, "p1")
-        self.p2 = ArtemisProbe(self, "p2")
+        self.p1: ArtemisProbe = ArtemisProbe(self, "p1")
+        self.p2: ArtemisProbe = ArtemisProbe(self, "p2")
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -92,8 +95,8 @@ class ArtemisProbe:
     def __init__(self, mission: Artemis, probe: str) -> None:
         self.mission = mission
         self.probe = probe
-        self.fgm = ArtemisFgmInstrument(self)
-        self.esa = ArtemisEsaInstrument(self)
+        self.fgm: ArtemisFgmInstrument = ArtemisFgmInstrument(self)
+        self.esa: ArtemisEsaInstrument = ArtemisEsaInstrument(self)
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -117,11 +120,11 @@ class ArtemisProbe:
 class ArtemisFgmInstrument:
     def __init__(self, probe: ArtemisProbe) -> None:
         self.probe = probe
-        self.magnetic_field = ArtemisVariableEndpoint(
+        self.magnetic_field: ArtemisVariableEndpoint = ArtemisVariableEndpoint(
             instrument=self,
             schema=ARTEMIS_MAGNETIC_FIELD,
         )
-        self.b = self.magnetic_field
+        self.b: ArtemisVariableEndpoint = self.magnetic_field
 
     @property
     def instrument_id(self) -> str:
@@ -179,11 +182,11 @@ plot_result = spn.stack(item).plot()
 class ArtemisEsaInstrument:
     def __init__(self, probe: ArtemisProbe) -> None:
         self.probe = probe
-        self.ion_energy_flux = ArtemisVariableEndpoint(
+        self.ion_energy_flux: ArtemisVariableEndpoint = ArtemisVariableEndpoint(
             instrument=self,
             schema=ARTEMIS_ION_ENERGY_FLUX,
         )
-        self.ion_eflux = self.ion_energy_flux
+        self.ion_eflux: ArtemisVariableEndpoint = self.ion_energy_flux
 
     @property
     def instrument_id(self) -> str:
@@ -310,7 +313,7 @@ plot_result = spn.stack(item).plot()
             time=time,
         )
 
-    def load(self, time: TimeRange | None = None) -> Any:
+    def load(self, time: TimeRange | None = None) -> SopranArray:
         if time is None:
             raise _missing_time_error(self)
         dataset_id = f"{self.instrument.dataset_prefix}.{self.name}"
@@ -338,7 +341,7 @@ plot_result = spn.stack(item).plot()
         *,
         x: str = "time",
         name: str | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         if time is None:
             raise _missing_time_error(self)
         from sopran.core.plotting import line
@@ -357,7 +360,7 @@ plot_result = spn.stack(item).plot()
         components: str | tuple[str, ...] | list[str] | None = None,
         component_dim: str = "component",
         name: str | None = None,
-    ) -> Any:
+    ) -> PlotItem:
         if time is None:
             raise _missing_time_error(self)
         from sopran.core.plotting import lines
@@ -378,7 +381,7 @@ plot_result = spn.stack(item).plot()
         x: str = "time",
         name: str | None = None,
         log_color: bool = False,
-    ) -> Any:
+    ) -> PlotItem:
         if time is None:
             raise _missing_time_error(self)
         from sopran.core.plotting import spectrogram

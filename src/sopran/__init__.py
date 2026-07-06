@@ -1,6 +1,6 @@
 """Satellite Observation Package for Retrieval, Analysis, and Navigation."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sopran.bodies import Moon
 from sopran.core import (
@@ -30,6 +30,7 @@ from sopran.core import (
     SampleSpec,
     SampleTable,
     SchemaError,
+    SopranArray,
     SopranError,
     Store,
     TimeBins,
@@ -59,6 +60,11 @@ from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
 from sopran.maps import RasterLayer, RasterSpec, Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
+
+if TYPE_CHECKING:
+    artemis: Artemis
+    kaguya: Kaguya
+    moon: Moon
 
 __version__ = "0.0.0"
 
@@ -111,6 +117,7 @@ __all__ = [
     "SampleSpec",
     "SampleTable",
     "SchemaError",
+    "SopranArray",
     "SopranError",
     "Store",
     "TimeRange",

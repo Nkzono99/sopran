@@ -29,6 +29,16 @@ counts = esa1.to_polars("counts", reduce_look="sum")
 
 ## 並べて見る
 
+スペクトル状の product は `plot()` でまず確認できます。横軸は `time`、縦軸は
+`energy` や `pitch_angle`、色が `energy_flux` や `counts` などの値です。colorbar には
+値名と単位が表示されます。
+
+```python
+view.kaguya.esa1.energy_flux.plot(calibration="auto", log_color=True)
+```
+
+複数 panel を並べるときは `spectrogram()` と `line()` を `stack()` に渡します。
+
 ```python
 stack = spn.stack(
     view.kaguya.esa1.counts.spectrogram(y="energy", log_color=True),
