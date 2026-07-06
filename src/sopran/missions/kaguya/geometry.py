@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -12,7 +12,7 @@ import numpy as np
 from sopran.core.data import SopranArray
 from sopran.core.errors import BackendError
 from sopran.core.schema import VariableSchema
-from sopran.core.time import TimeRange
+from sopran.core.time import TimeRange, spice_utc_string
 from sopran.missions.kaguya.schema import (
     KAGUYA_LMAG_CONNECTION_SCHEMA,
     KAGUYA_ORBIT_SCHEMA,
@@ -920,16 +920,7 @@ def _normalize_vector(vector: np.ndarray) -> np.ndarray:
 
 
 def _time_to_utc_string(value: Any) -> str:
-    if isinstance(value, np.datetime64):
-        return np.datetime_as_string(value.astype("datetime64[ns]"), unit="ns") + " UTC"
-    if isinstance(value, datetime):
-        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        return dt.astimezone(UTC).replace(tzinfo=None).isoformat() + " UTC"
-    if isinstance(value, (int, float, np.integer, np.floating)):
-        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
-        return timestamp.replace(tzinfo=None).isoformat() + " UTC"
-    text = str(value)
-    return text if text.upper().endswith("UTC") else f"{text} UTC"
+    return spice_utc_string(value)
 
 
 def _target_time_range(target: Any, *, fallback: TimeRange, time: str = "time") -> TimeRange:

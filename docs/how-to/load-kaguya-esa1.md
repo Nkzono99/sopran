@@ -54,6 +54,19 @@ pas = kg.esa1.energy_flux.pitch_angle_spectrum(
 )
 ```
 
+energy や pitch angle の bin 幅をあとから粗くしたい場合は `rebin()` を使います。
+`bins` は edge の配列で、返り値は同じ `SopranArray` です。
+
+```python
+coarse_counts = counts.rebin(axis="energy", bins=[0, 4, 8, 16, 32])
+coarse_pas = pas.rebin(
+    bins={
+        "energy": [10, 100, 1000, 10000],
+        "pitch_angle": [0, 30, 60, 90, 120, 150, 180],
+    }
+)
+```
+
 ## 3. 図にする
 
 ```python

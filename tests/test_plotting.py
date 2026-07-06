@@ -157,6 +157,39 @@ def test_plot_stack_records_shared_native_time_axis_metadata() -> None:
     }
 
 
+def test_plot_stack_accepts_plot_results_as_items() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    times = np.array(
+        ["2008-01-01T00:00:00", "2008-01-01T00:01:00"],
+        dtype="datetime64[ns]",
+    )
+    first = xr.DataArray(
+        np.array([1.0, 2.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="first",
+    )
+    second = xr.DataArray(
+        np.array([3.0, 4.0]),
+        dims=("time",),
+        coords={"time": times},
+        name="second",
+    )
+    first_result = spn.stack(spn.line(first)).plot()
+    second_result = spn.stack(spn.line(second)).plot()
+
+    result = spn.stack(first_result, second_result).plot()
+
+    assert result.metadata["items"] == ["first", "second"]
+    assert result.metadata["panel_count"] == 2
+    assert len(result.axes) == 2
+    first_result.fig.clf()
+    second_result.fig.clf()
+    result.fig.clf()
+
+
 def test_plot_stack_spectrogram_supports_log_color_scale() -> None:
     import matplotlib
 

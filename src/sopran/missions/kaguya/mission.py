@@ -80,6 +80,7 @@ from sopran.missions.kaguya.schema import (
     kaguya_pace_schema,
 )
 from sopran.missions.kaguya.sensors import normalize_sensor
+from sopran.missions.kaguya.spice import moon_me_spice_kernels
 
 if TYPE_CHECKING:
     from sopran.core.data import SopranArray
@@ -813,6 +814,18 @@ class GeometryArrayEndpoint:
         if time is None:
             raise _missing_time_error(f"Kaguya.orbit.{self.name}")
         _validate_cache_mode(cache)
+        resolved_download = (
+            self.instrument.mission.download
+            if download is None
+            else _coerce_download_mode(download)
+        )
+        spice_kernels = _default_sza_spice_kernels(
+            self,
+            sun_vector=sun_vector,
+            spice_kernels=spice_kernels,
+            context=context,
+            download=resolved_download,
+        )
         variant_id = orbit_variant_id(
             self.name,
             radius_km=radius_km,
@@ -869,7 +882,17 @@ class GeometryArrayEndpoint:
                 schema=KAGUYA_ORBIT_SCHEMA,
                 time_coverage=time,
                 frame=product.to_polars(),
-                source_files=tuple(str(path) for path in data.files),
+                source_files=tuple(
+                    str(path)
+                    for path in (
+                        *data.files,
+                        *_spice_kernel_source_files(
+                            self.name,
+                            sun_vector=sun_vector,
+                            spice_kernels=spice_kernels,
+                        ),
+                    )
+                ),
                 source_datasets=("kaguya.lmag",),
                 overwrite=True,
                 producer=f"sopran.kaguya.orbit.{self.name}",
@@ -917,6 +940,34 @@ class GeometryArrayEndpoint:
         kwargs.setdefault("time_range", product.time)
         kwargs.setdefault("frame", self._schema.frame)
         return product.plot(**kwargs)
+
+
+def _default_sza_spice_kernels(
+    endpoint: GeometryArrayEndpoint,
+    *,
+    sun_vector: Any | None,
+    spice_kernels: tuple[str | Path, ...],
+    context: Any | None,
+    download: DownloadMode,
+) -> tuple[str | Path, ...]:
+    if endpoint.name != "sza" or sun_vector is not None or spice_kernels:
+        return spice_kernels
+    if getattr(context, "_spice_kernels", ()):
+        return spice_kernels
+    if download == "never":
+        return spice_kernels
+    return moon_me_spice_kernels(endpoint.instrument.mission.store, download=download)
+
+
+def _spice_kernel_source_files(
+    name: str,
+    *,
+    sun_vector: Any | None,
+    spice_kernels: tuple[str | Path, ...],
+) -> tuple[Path, ...]:
+    if name != "sza" or sun_vector is not None:
+        return ()
+    return tuple(Path(path) for path in spice_kernels)
 
 
 def _maybe_transform_geometry_array(

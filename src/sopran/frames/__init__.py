@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
 from sopran.core.errors import FrameTransformError
+from sopran.core.time import spice_utc_string
 
 _FRAME_ALIASES = {
     "GSE": "GSE",
@@ -347,18 +347,7 @@ def _transform_vectors_spice(vectors: Any, times: tuple[Any, ...], plan: FrameTr
 
 
 def _time_to_utc_string(value: Any) -> str:
-    import numpy as np
-
-    if isinstance(value, np.datetime64):
-        return np.datetime_as_string(value.astype("datetime64[ns]"), unit="ns") + " UTC"
-    if isinstance(value, datetime):
-        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        return dt.astimezone(UTC).replace(tzinfo=None).isoformat() + " UTC"
-    if isinstance(value, (int, float, np.integer, np.floating)):
-        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
-        return timestamp.replace(tzinfo=None).isoformat() + " UTC"
-    text = str(value)
-    return text if text.upper().endswith("UTC") else f"{text} UTC"
+    return spice_utc_string(value)
 
 
 __all__ = [

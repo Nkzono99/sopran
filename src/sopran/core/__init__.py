@@ -7,7 +7,7 @@ from sopran.core.alignment import (
     align,
     time_bins,
 )
-from sopran.core.data import SopranArray
+from sopran.core.data import SopranArray, rebin
 from sopran.core.database import Database, ProductRef
 from sopran.core.errors import (
     BackendError,
@@ -92,6 +92,7 @@ __all__ = [
     "lines",
     "month",
     "period",
+    "rebin",
     "resample_like",
     "spectrogram",
     "stack",

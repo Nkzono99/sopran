@@ -33,6 +33,27 @@ KAGUYA PACE `energy_flux.plot()` uses a log energy axis and log color scale by
 default. Generic spectrograms also accept `yscale="log"`, `ylim=(low, high)`,
 `log_color=True`, `vmin=...`, and `vmax=...`.
 
+## Rebin Before Plotting
+
+`SopranArray.rebin(axis=..., bins=...)` aggregates any numeric coordinate axis
+onto requested bin edges. The same API works for energy spectra, pitch-angle
+spectra, frequency spectra, and map lon/lat axes. The default reduction is
+`sum`; use `reduction="mean"` for flux-like quantities that should be averaged.
+
+```python
+flux = kg.esa1.energy_flux.load(time)
+coarse = flux.rebin(axis="energy", bins=[10, 30, 100, 300, 1000], reduction="mean")
+coarse.plot(log_color=True)
+
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(time, magnetic_field=[1, 0, 0])
+pas.rebin(
+    bins={
+        "energy": [10, 100, 1000, 10000],
+        "pitch_angle": [0, 30, 60, 90, 120, 150, 180],
+    }
+).plot()
+```
+
 ## Multi-Panel Plot
 
 ```python
@@ -45,6 +66,18 @@ stack = spn.stack(
 
 plot_result = stack.plot(backend="matplotlib")
 plot_result.fig
+```
+
+Already rendered `plot()` results can also be passed to `spn.stack()`. This is
+useful in notebooks when exploring endpoints first and turning them into panels
+afterward.
+
+```python
+stack = spn.stack(
+    spn.kaguya.esa1.energy_flux.plot(time, calibration="auto"),
+    spn.kaguya.orbit.sza.plot(time),
+)
+stack.plot()
 ```
 
 ## Overlay Spectrum Peaks

@@ -68,6 +68,27 @@ def year(value: int | str) -> TimeRange:
     return TimeRange(start, datetime(start.year + 1, 1, 1, tzinfo=UTC))
 
 
+def spice_utc_string(value: object) -> str:
+    """Return a UTC timestamp string accepted by SPICE ``utc2et``."""
+
+    import numpy as np
+
+    if isinstance(value, np.datetime64):
+        if np.isnat(value):
+            raise ValueError("NaT cannot be converted to a SPICE UTC timestamp")
+        text = np.datetime_as_string(value.astype("datetime64[us]"), unit="us")
+        return _format_spice_utc_text(text)
+    if isinstance(value, datetime):
+        return _format_spice_utc_datetime(value)
+    if isinstance(value, date):
+        timestamp = datetime.combine(value, datetime_time.min, tzinfo=UTC)
+        return _format_spice_utc_datetime(timestamp)
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
+        return _format_spice_utc_datetime(timestamp)
+    return _format_spice_utc_string(str(value))
+
+
 def _parse_datetime(value: object) -> datetime:
     if isinstance(value, datetime):
         return _as_utc_datetime(value)
@@ -94,6 +115,37 @@ def _format_utc(value: datetime) -> str:
     timespec = "microseconds" if normalized.microsecond else "seconds"
     text = normalized.isoformat(timespec=timespec)
     return f"{text}Z"
+
+
+def _format_spice_utc_datetime(value: datetime) -> str:
+    normalized = _as_utc_datetime(value).replace(tzinfo=None)
+    return _format_spice_utc_text(normalized.isoformat(timespec="microseconds"))
+
+
+def _format_spice_utc_string(value: str) -> str:
+    text = value.strip()
+    if not text:
+        raise ValueError("Empty time value cannot be converted to a SPICE UTC timestamp")
+    parse_candidate = text
+    upper = parse_candidate.upper()
+    if upper.endswith("UTC"):
+        parse_candidate = parse_candidate[:-3].strip()
+    try:
+        return _format_spice_utc_datetime(_parse_datetime(parse_candidate))
+    except (TypeError, ValueError):
+        normalized = text.replace("T", " ", 1)
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1]
+        if normalized.upper().endswith("UTC"):
+            normalized = normalized[:-3].strip()
+        return f"{normalized} UTC"
+
+
+def _format_spice_utc_text(value: str) -> str:
+    text = value.replace("T", " ", 1)
+    if text.endswith(".000000"):
+        text = text[:-7]
+    return f"{text} UTC"
 
 
 def _filter_polars_time(frame_or_lazy: Any, time: TimeRange, *, column: str = "time") -> Any:

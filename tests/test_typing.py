@@ -62,6 +62,7 @@ def test_primary_mission_tree_attributes_have_source_annotations() -> None:
 def test_main_plotting_api_return_annotations_are_concrete() -> None:
     targets = (
         SopranArray.plot,
+        SopranArray.rebin,
         SopranArray.spectrogram,
         SopranArray.quicklook,
         KaguyaVariableEndpoint.plot,

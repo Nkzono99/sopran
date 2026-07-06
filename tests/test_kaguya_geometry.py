@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import sys
+import types
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -11,6 +14,7 @@ import xarray as xr
 import sopran as spn
 from sopran import Store
 from sopran.missions.kaguya import geometry as geometry_module
+from sopran.missions.kaguya import spice as kaguya_spice
 from sopran.missions.kaguya.geometry import (
     KaguyaMagneticConnectionData,
     lmag_magnetic_connection,
@@ -118,6 +122,100 @@ def test_kaguya_orbit_sza_uses_spice_sun_vector_when_omitted(
     )
 
 
+def test_kaguya_orbit_sza_downloads_default_spice_kernels_when_missing(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    _write_lmag_file(store)
+    kg = spn.Kaguya(store=store, download="missing")
+    time = spn.day("2008-01-01")
+    downloads: list[tuple[str, str, bool]] = []
+
+    def fake_download_file(url: str, target, *, overwrite: bool = False) -> None:
+        downloads.append((url, target.relative_to(store.root).as_posix(), overwrite))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"kernel")
+
+    def fake_spice_sun_vectors_moon_me(times, *, context, backend, spice_kernels):
+        assert context is None
+        assert backend is None
+        assert tuple(Path(path).name for path in spice_kernels) == (
+            "naif0012.tls",
+            "moon_080317.tf",
+            "moon_assoc_me.tf",
+            "pck00010.tpc",
+            "moon_pa_de421_1900-2050.bpc",
+            "de421.bsp",
+        )
+        assert all(Path(path).exists() for path in spice_kernels)
+        return np.broadcast_to(np.array([1.0, 0.0, 0.0]), (len(times), 3)).copy()
+
+    monkeypatch.setattr(kaguya_spice, "_download_file", fake_download_file)
+    monkeypatch.setattr(
+        geometry_module,
+        "spice_sun_vectors_moon_me",
+        fake_spice_sun_vectors_moon_me,
+    )
+
+    sza = kg.orbit.sza.load(time, cache="never")
+
+    assert sza.to_xarray().attrs["sun_source"] == "spice"
+    assert [Path(path).name for _url, path, _overwrite in downloads] == [
+        "naif0012.tls",
+        "moon_080317.tf",
+        "moon_assoc_me.tf",
+        "pck00010.tpc",
+        "moon_pa_de421_1900-2050.bpc",
+        "de421.bsp",
+    ]
+    assert all(overwrite is False for _url, _path, overwrite in downloads)
+    raw_files = store.raw_files(mission="spice", provider="naif-generic-kernels")
+    assert raw_files.height == len(downloads)
+
+
+def test_kaguya_orbit_sza_spice_time_strings_are_spice_compatible(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    fake_spice = types.ModuleType("spiceypy")
+
+    def utc2et(value: str) -> float:
+        timestamp = value.removesuffix(" UTC")
+        if "T" in timestamp or ".123456789" in timestamp:
+            raise ValueError(f"not SPICE-compatible: {value}")
+        calls.append(value)
+        return 123.0
+
+    def spkpos(
+        target: str,
+        et: float,
+        frame: str,
+        abcorr: str,
+        observer: str,
+    ):
+        assert (target, et, frame, abcorr, observer) == (
+            "SUN",
+            123.0,
+            "MOON_ME",
+            "LT+S",
+            "MOON",
+        )
+        return np.array([1.0, 0.0, 0.0]), 0.0
+
+    fake_spice.furnsh = lambda _path: None  # type: ignore[attr-defined]
+    fake_spice.utc2et = utc2et  # type: ignore[attr-defined]
+    fake_spice.spkpos = spkpos  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "spiceypy", fake_spice)
+
+    vectors = geometry_module.spice_sun_vectors_moon_me(
+        np.asarray(["2008-01-01T00:00:08.123456789"], dtype="datetime64[ns]"),
+    )
+
+    assert calls == ["2008-01-01 00:00:08.123456 UTC"]
+    np.testing.assert_allclose(vectors, np.asarray([[1.0, 0.0, 0.0]]))
+
+
 def test_kaguya_orbit_sza_plot_and_shortcut_use_spice_sun_vector(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
@@ -196,7 +294,11 @@ def test_top_level_kaguya_orbit_sza_plot_uses_project_default(
         fake_spice_sun_vectors_moon_me,
     )
 
-    result = spn.kaguya.orbit.sza.plot(spn.day("2008-01-01"), cache="never")
+    result = spn.kaguya.orbit.sza.plot(
+        spn.day("2008-01-01"),
+        cache="never",
+        download="never",
+    )
 
     assert result.metadata["dataset_id"] == "kaguya.orbit.sza"
     assert result.axes[0].get_ylabel() == "sza"

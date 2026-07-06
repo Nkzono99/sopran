@@ -32,6 +32,27 @@ KAGUYA PACE `energy_flux.plot()` は既定で energy 軸と color scale を log 
 汎用の spectrogram でも `yscale="log"`、`ylim=(low, high)`、`log_color=True`、
 `vmin=...`、`vmax=...` を指定できます。
 
+## 再ビン化してから見る
+
+`SopranArray.rebin(axis=..., bins=...)` は、数値座標を持つ任意の軸を指定した
+bin edge で再集計します。energy spectrum、pitch angle spectrum、frequency spectrum、
+map の lon/lat などで同じ API を使えます。既定の集計は `sum` で、flux など平均したい
+量では `reduction="mean"` を指定します。
+
+```python
+flux = kg.esa1.energy_flux.load(time)
+coarse = flux.rebin(axis="energy", bins=[10, 30, 100, 300, 1000], reduction="mean")
+coarse.plot(log_color=True)
+
+pas = kg.esa1.energy_flux.pitch_angle_spectrum(time, magnetic_field=[1, 0, 0])
+pas.rebin(
+    bins={
+        "energy": [10, 100, 1000, 10000],
+        "pitch_angle": [0, 30, 60, 90, 120, 150, 180],
+    }
+).plot()
+```
+
 ## multi-panel plot
 
 ```python
@@ -44,6 +65,17 @@ stack = spn.stack(
 
 plot_result = stack.plot(backend="matplotlib")
 plot_result.fig
+```
+
+`plot()` 済みの結果も `spn.stack()` に渡せます。notebook で endpoint を直接試しながら
+後から panel 化したい場合に使えます。
+
+```python
+stack = spn.stack(
+    spn.kaguya.esa1.energy_flux.plot(time, calibration="auto"),
+    spn.kaguya.orbit.sza.plot(time),
+)
+stack.plot()
 ```
 
 ## spectrum peak を重ねる

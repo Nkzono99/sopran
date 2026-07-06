@@ -95,6 +95,7 @@ class PlotResult:
     fig: Any
     axes: tuple[Any, ...]
     backend: str
+    items: tuple[PlotItem, ...] = ()
     artifacts: tuple[PlotArtifact, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -223,6 +224,7 @@ class PlotStack:
             fig=fig,
             axes=tuple(axes),
             backend=backend,
+            items=self.items,
             metadata=metadata_payload,
         )
         if configure is not None:
@@ -327,8 +329,23 @@ class PlotStack:
         )
 
 
-def stack(*items: PlotItem) -> PlotStack:
-    return PlotStack(items=tuple(items))
+def stack(*items: PlotItem | PlotResult) -> PlotStack:
+    return PlotStack(items=tuple(_stack_plot_items(items)))
+
+
+def _stack_plot_items(items: tuple[PlotItem | PlotResult, ...]) -> tuple[PlotItem, ...]:
+    flattened: list[PlotItem] = []
+    for item in items:
+        if isinstance(item, PlotItem):
+            flattened.append(item)
+            continue
+        if isinstance(item, PlotResult):
+            if not item.items:
+                raise ValueError("PlotResult cannot be stacked because it has no PlotItem metadata")
+            flattened.extend(item.items)
+            continue
+        raise TypeError("spn.stack() expects PlotItem or PlotResult values")
+    return tuple(flattened)
 
 
 def _time_axis_metadata(items: tuple[PlotItem, ...]) -> dict[str, Any]:

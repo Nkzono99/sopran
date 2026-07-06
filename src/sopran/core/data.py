@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 DEFAULT_MAX_POLARS_ROWS = 10_000_000
 PolarsLayout = Literal["auto", "array", "long"]
 PlotMode = Literal["auto", "line", "spectrogram", "pitch", "energy", "raw"]
+RebinReduction = Literal["sum", "mean", "median", "min", "max", "count"]
 
 
 @dataclass(frozen=True)
@@ -145,6 +147,37 @@ class SopranArray:
             parent=self,
             resampler=self.to_xarray().resample(*args, **kwargs),
             parameters={str(key): value for key, value in kwargs.items()},
+        )
+
+    def rebin(
+        self,
+        axis: str | None = None,
+        bins: Any | None = None,
+        *,
+        reduction: RebinReduction = "sum",
+    ) -> SopranArray:
+        if axis is None and isinstance(bins, Mapping):
+            result = self
+            for mapped_axis, mapped_bins in bins.items():
+                result = result.rebin(str(mapped_axis), mapped_bins, reduction=reduction)
+            return result
+        if axis is None:
+            raise TypeError("rebin() requires axis=... unless bins is an axis-to-bins mapping")
+        return self._with_xarray(
+            _rebin_xarray(
+                self.to_xarray(),
+                axis=axis,
+                bins=bins,
+                reduction=reduction,
+            ),
+            operation={
+                "operation": "rebin",
+                "parameters": {
+                    "axis": str(axis),
+                    "bins": _bin_edges_list(bins),
+                    "reduction": reduction,
+                },
+            },
         )
 
     def resample_like(
@@ -754,6 +787,25 @@ class SopranArray:
         )
 
 
+def rebin(
+    data: Any,
+    axis: str | None = None,
+    bins: Any | None = None,
+    *,
+    reduction: RebinReduction = "sum",
+) -> Any:
+    if isinstance(data, SopranArray):
+        return data.rebin(axis=axis, bins=bins, reduction=reduction)
+    if axis is None and isinstance(bins, Mapping):
+        result = data
+        for mapped_axis, mapped_bins in bins.items():
+            result = rebin(result, axis=str(mapped_axis), bins=mapped_bins, reduction=reduction)
+        return result
+    if axis is None:
+        raise TypeError("rebin() requires axis=... unless bins is an axis-to-bins mapping")
+    return _rebin_xarray(data, axis=axis, bins=bins, reduction=reduction)
+
+
 @dataclass(frozen=True)
 class SopranArrayResampler:
     parent: SopranArray
@@ -915,6 +967,142 @@ def _reduce_xarray(array: Any, dims: tuple[str, ...], reduction: str) -> Any:
     if not callable(reducer):
         raise ValueError(f"Unsupported reduction: {reduction}")
     return reducer(dims)
+
+
+def _rebin_xarray(
+    array: Any,
+    *,
+    axis: str,
+    bins: Any,
+    reduction: RebinReduction,
+) -> Any:
+    import numpy as np
+    import xarray as xr
+
+    edges = _validate_bin_edges(bins, np)
+    dims = _dims(array)
+    if axis not in dims:
+        raise ValueError(f"rebin axis has no {axis!r} dimension")
+    axis_index = dims.index(axis)
+    coordinates = _rebin_coord_values(array, axis, np)
+    if coordinates.shape[0] != int(array.shape[axis_index]):
+        raise ValueError(
+            f"rebin coordinate {axis!r} length {coordinates.shape[0]} does not match "
+            f"axis length {array.shape[axis_index]}"
+        )
+
+    values = np.asarray(array.values)
+    moved = np.moveaxis(values, axis_index, -1)
+    rebinned_moved = np.empty((*moved.shape[:-1], edges.size - 1), dtype=float)
+    for index, (left, right) in enumerate(zip(edges[:-1], edges[1:], strict=True)):
+        if index == edges.size - 2:
+            mask = (coordinates >= left) & (coordinates <= right)
+        else:
+            mask = (coordinates >= left) & (coordinates < right)
+        rebinned_moved[..., index] = _reduce_rebin_values(
+            moved[..., mask],
+            reduction=reduction,
+            np=np,
+        )
+    rebinned_values = np.moveaxis(rebinned_moved, -1, axis_index)
+    coords = _rebin_coords(array, axis=axis, edges=edges, np=np)
+    attrs = dict(getattr(array, "attrs", {}))
+    attrs["rebin_axis"] = axis
+    attrs["rebin_reduction"] = reduction
+    return xr.DataArray(
+        rebinned_values,
+        dims=dims,
+        coords=coords,
+        name=getattr(array, "name", None),
+        attrs=attrs,
+    )
+
+
+def _validate_bin_edges(bins: Any, np: Any) -> Any:
+    if bins is None:
+        raise TypeError("rebin() requires bins=...")
+    try:
+        edges = np.asarray(bins, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("rebin bins must be numeric") from exc
+    if edges.ndim != 1 or edges.size < 2:
+        raise ValueError("rebin bins must be a one-dimensional sequence with at least 2 edges")
+    if not np.isfinite(edges).all():
+        raise ValueError("rebin bins must be finite")
+    if not np.all(np.diff(edges) > 0):
+        raise ValueError("rebin bins must be strictly increasing")
+    return edges
+
+
+def _bin_edges_list(bins: Any) -> list[float]:
+    import numpy as np
+
+    return [float(value) for value in _validate_bin_edges(bins, np)]
+
+
+def _rebin_coord_values(array: Any, axis: str, np: Any) -> Any:
+    if hasattr(array, "coords") and axis in array.coords:
+        raw_values = array.coords[axis].values
+    else:
+        raw_values = np.arange(array.shape[_dims(array).index(axis)])
+    try:
+        return np.asarray(raw_values, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"rebin requires numeric coordinate values for {axis}") from exc
+
+
+def _reduce_rebin_values(values: Any, *, reduction: RebinReduction, np: Any) -> Any:
+    if values.shape[-1] == 0:
+        if reduction == "count":
+            return np.zeros(values.shape[:-1], dtype=float)
+        return np.full(values.shape[:-1], np.nan, dtype=float)
+    finite = np.isfinite(values)
+    if reduction == "count":
+        return np.sum(finite, axis=-1).astype(float)
+    any_finite = np.any(finite, axis=-1)
+    if reduction == "sum":
+        reduced = np.nansum(values, axis=-1)
+    elif reduction == "mean":
+        with np.errstate(invalid="ignore"):
+            reduced = np.nanmean(values, axis=-1)
+    elif reduction == "median":
+        with np.errstate(invalid="ignore"):
+            reduced = np.nanmedian(values, axis=-1)
+    elif reduction == "min":
+        with np.errstate(invalid="ignore"):
+            reduced = np.nanmin(values, axis=-1)
+    elif reduction == "max":
+        with np.errstate(invalid="ignore"):
+            reduced = np.nanmax(values, axis=-1)
+    else:
+        raise ValueError(f"Unsupported rebin reduction: {reduction}")
+    return np.where(any_finite, reduced, np.nan)
+
+
+def _rebin_coords(array: Any, *, axis: str, edges: Any, np: Any) -> dict[str, Any]:
+    centers = (edges[:-1] + edges[1:]) / 2.0
+    coords: dict[str, Any] = {}
+    for coord_name, coord in getattr(array, "coords", {}).items():
+        if coord_name == axis:
+            continue
+        coord_dims = tuple(str(dim) for dim in getattr(coord, "dims", ()))
+        if axis in coord_dims:
+            continue
+        coords[str(coord_name)] = coord
+    axis_attrs = _coord_attrs(array, axis)
+    axis_attrs["bin_edges"] = [float(edge) for edge in edges]
+    coords[axis] = (axis, centers, axis_attrs)
+    edge_attrs = _coord_attrs(array, axis)
+    edge_attrs["description"] = f"{axis} rebin edge"
+    coords[f"{axis}_bin_left"] = (axis, edges[:-1], dict(edge_attrs))
+    coords[f"{axis}_bin_right"] = (axis, edges[1:], dict(edge_attrs))
+    return coords
+
+
+def _coord_attrs(array: Any, axis: str) -> dict[str, Any]:
+    if hasattr(array, "coords") and axis in array.coords:
+        return dict(getattr(array.coords[axis], "attrs", {}))
+    return {}
 
 
 def ensure_polars_row_limit(

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import sys
+import types
+
+import numpy as np
 import pytest
 
 import sopran as spn
@@ -122,3 +126,43 @@ def test_frame_context_non_identity_vector_transform_reports_spice_setup() -> No
             source_frame="SELENE_M_SPACECRAFT",
             target_frame="MOON_ME",
         )
+
+
+def test_frame_context_spice_transform_uses_spice_compatible_utc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, object]] = []
+    fake_spice = types.ModuleType("spiceypy")
+
+    def furnsh(path: str) -> None:
+        calls.append(("furnsh", path))
+
+    def utc2et(value: str) -> float:
+        timestamp = value.removesuffix(" UTC")
+        if "T" in timestamp or ".123456789" in timestamp:
+            raise ValueError(f"not SPICE-compatible: {value}")
+        calls.append(("utc2et", value))
+        return 123.0
+
+    def pxform(source_frame: str, target_frame: str, et: float):
+        calls.append(("pxform", (source_frame, target_frame, et)))
+        return np.eye(3)
+
+    fake_spice.furnsh = furnsh  # type: ignore[attr-defined]
+    fake_spice.utc2et = utc2et  # type: ignore[attr-defined]
+    fake_spice.pxform = pxform  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "spiceypy", fake_spice)
+
+    transformed = spn.FrameContext(spice_kernels=("naif0012.tls",)).transform_vectors(
+        np.asarray([[1.0, 2.0, 3.0]]),
+        times=np.asarray(["2008-01-01T00:00:08.123456789"], dtype="datetime64[ns]"),
+        source_frame="SELENE_M_SPACECRAFT",
+        target_frame="MOON_ME",
+    )
+
+    np.testing.assert_allclose(transformed, np.asarray([[1.0, 2.0, 3.0]]))
+    assert calls == [
+        ("furnsh", "naif0012.tls"),
+        ("utc2et", "2008-01-01 00:00:08.123456 UTC"),
+        ("pxform", ("SELENE_M_SPACECRAFT", "MOON_ME", 123.0)),
+    ]

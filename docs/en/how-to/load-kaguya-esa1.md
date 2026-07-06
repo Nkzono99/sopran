@@ -54,6 +54,19 @@ pas = kg.esa1.energy_flux.pitch_angle_spectrum(
 )
 ```
 
+Use `rebin()` when you want coarser energy or pitch-angle bins after loading.
+`bins` are bin edges, and the result remains a `SopranArray`.
+
+```python
+coarse_counts = counts.rebin(axis="energy", bins=[0, 4, 8, 16, 32])
+coarse_pas = pas.rebin(
+    bins={
+        "energy": [10, 100, 1000, 10000],
+        "pitch_angle": [0, 30, 60, 90, 120, 150, 180],
+    }
+)
+```
+
 ## 3. Plot
 
 ```python

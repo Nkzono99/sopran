@@ -112,7 +112,7 @@ def test_moon_sza_compute_from_time_uses_spice_sun_vector(monkeypatch) -> None:
     assert calls == [
         ("furnsh", "naif0012.tls"),
         ("furnsh", "moon_pa.bpc"),
-        ("utc2et", "2008-02-01T12:00:00Z UTC"),
+        ("utc2et", "2008-02-01 12:00:00 UTC"),
         ("spkpos", ("SUN", 123.0, "MOON_ME", "LT+S", "MOON")),
     ]
 

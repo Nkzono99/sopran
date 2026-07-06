@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 
 from sopran.core.errors import BackendError
+from sopran.core.time import spice_utc_string
 from sopran.maps.raster import RasterLayer
 
 
@@ -192,16 +192,7 @@ def normalize_vector(vector: np.ndarray) -> np.ndarray:
 
 
 def _time_to_utc_string(value: Any) -> str:
-    if isinstance(value, np.datetime64):
-        return np.datetime_as_string(value.astype("datetime64[ns]"), unit="ns") + " UTC"
-    if isinstance(value, datetime):
-        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-        return dt.astimezone(UTC).replace(tzinfo=None).isoformat() + " UTC"
-    if isinstance(value, (int, float, np.integer, np.floating)):
-        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
-        return timestamp.replace(tzinfo=None).isoformat() + " UTC"
-    text = str(value)
-    return text if text.upper().endswith("UTC") else f"{text} UTC"
+    return spice_utc_string(value)
 
 
 def grid_from_parameters(parameters: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
