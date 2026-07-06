@@ -54,7 +54,8 @@ radius = kg.orbit.radial_distance.load(time, cache="use")
 item = kg.lmag.magnetic_field.lines(time, components="xyz")
 
 conn = kg.lmag.magnetic_connection.load(time, cache="use")
-sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+sza = kg.orbit.sza.load(time, cache="use")
+sza.plot()
 conn.plot(kind="footpoint")
 conn.plot(kind="incidence")
 

@@ -10,6 +10,7 @@ import xarray as xr
 
 import sopran as spn
 from sopran import Store
+from sopran.missions.kaguya import geometry as geometry_module
 from sopran.missions.kaguya.geometry import (
     KaguyaMagneticConnectionData,
     lmag_magnetic_connection,
@@ -68,14 +69,11 @@ def test_kaguya_orbit_geometry_loads_from_lmag_native_time(tmp_path) -> None:
     )
 
 
-def test_kaguya_orbit_sza_requires_sun_vector_and_computes_spherical_angle(tmp_path) -> None:
+def test_kaguya_orbit_sza_computes_spherical_angle_from_sun_vector(tmp_path) -> None:
     store = Store(tmp_path / "store")
     _write_lmag_file(store)
     kg = spn.Kaguya(store=store, download="never")
     time = spn.day("2008-01-01")
-
-    with pytest.raises(ValueError, match="sun_vector"):
-        kg.orbit.sza.load(time, cache="never")
 
     sza = kg.orbit.sza.load(time, cache="never", sun_vector=(1.0, 0.0, 0.0))
 
@@ -86,6 +84,123 @@ def test_kaguya_orbit_sza_requires_sun_vector_and_computes_spherical_angle(tmp_p
         np.asarray([0.0, 90.0, 0.0]),
         atol=1e-9,
     )
+
+
+def test_kaguya_orbit_sza_uses_spice_sun_vector_when_omitted(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = Store(tmp_path / "store")
+    _write_lmag_file(store)
+    kg = spn.Kaguya(store=store, download="never")
+    time = spn.day("2008-01-01")
+
+    def fake_spice_sun_vectors_moon_me(times, *, context, backend, spice_kernels):
+        assert np.asarray(times).shape == (3,)
+        assert context is None
+        assert backend is None
+        assert spice_kernels == ()
+        return np.broadcast_to(np.array([1.0, 0.0, 0.0]), (3, 3)).copy()
+
+    monkeypatch.setattr(
+        geometry_module,
+        "spice_sun_vectors_moon_me",
+        fake_spice_sun_vectors_moon_me,
+    )
+
+    sza = kg.orbit.sza.load(time, cache="never")
+
+    assert sza.to_xarray().attrs["sun_source"] == "spice"
+    np.testing.assert_allclose(
+        sza.to_xarray().values,
+        np.asarray([0.0, 90.0, 0.0]),
+        atol=1e-9,
+    )
+
+
+def test_kaguya_orbit_sza_plot_and_shortcut_use_spice_sun_vector(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    store = Store(tmp_path / "store")
+    _write_lmag_file(store)
+    kg = spn.Kaguya(store=store, download="never")
+
+    def fake_spice_sun_vectors_moon_me(times, *, context, backend, spice_kernels):
+        return np.broadcast_to(np.array([1.0, 0.0, 0.0]), (len(times), 3)).copy()
+
+    monkeypatch.setattr(
+        geometry_module,
+        "spice_sun_vectors_moon_me",
+        fake_spice_sun_vectors_moon_me,
+    )
+
+    assert kg.sza is kg.orbit.sza
+    orbit_result = kg.orbit.sza.plot(spn.day("2008-01-01"), cache="never")
+    shortcut_result = kg.sza.plot(spn.day("2008-01-01"), cache="never")
+
+    assert orbit_result.metadata["dataset_id"] == "kaguya.orbit.sza"
+    assert shortcut_result.metadata["dataset_id"] == "kaguya.orbit.sza"
+    assert orbit_result.axes[0].get_ylabel() == "sza"
+
+
+def test_kaguya_view_orbit_sza_passes_context_spice_kernels(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = spn.Project(tmp_path / "project")
+    _write_lmag_file(project.store)
+    kernel = tmp_path / "moon.tm"
+    view = project.view(time=spn.day("2008-01-01"), spice_kernels=(kernel,))
+
+    def fake_spice_sun_vectors_moon_me(times, *, context, backend, spice_kernels):
+        assert context is view.context
+        assert backend is None
+        assert spice_kernels == (kernel.as_posix(),)
+        return np.broadcast_to(np.array([1.0, 0.0, 0.0]), (len(times), 3)).copy()
+
+    monkeypatch.setattr(
+        geometry_module,
+        "spice_sun_vectors_moon_me",
+        fake_spice_sun_vectors_moon_me,
+    )
+
+    sza = view.kaguya.orbit.sza.load(cache="never")
+
+    assert sza.name == "sza"
+
+
+def test_top_level_kaguya_orbit_sza_plot_uses_project_default(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    project = spn.Project(tmp_path / "project")
+    _write_lmag_file(project.store)
+    monkeypatch.setattr(spn.Project, "default", staticmethod(lambda **_: project))
+
+    def fake_spice_sun_vectors_moon_me(times, *, context, backend, spice_kernels):
+        assert context is not None
+        assert backend is None
+        assert spice_kernels == ()
+        return np.broadcast_to(np.array([1.0, 0.0, 0.0]), (len(times), 3)).copy()
+
+    monkeypatch.setattr(
+        geometry_module,
+        "spice_sun_vectors_moon_me",
+        fake_spice_sun_vectors_moon_me,
+    )
+
+    result = spn.kaguya.orbit.sza.plot(spn.day("2008-01-01"), cache="never")
+
+    assert result.metadata["dataset_id"] == "kaguya.orbit.sza"
+    assert result.axes[0].get_ylabel() == "sza"
+    result.fig.clf()
 
 
 def test_kaguya_orbit_sza_cache_variant_includes_non_identity_context(tmp_path) -> None:

@@ -11,7 +11,8 @@ counts = kg.ima.counts.load(time)
 b = kg.lmag.magnetic_field.load(time)
 bgse = kg.lmag.magnetic_field_gse.load(time)
 conn = kg.lmag.magnetic_connection.load(time, cache="use")
-sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+sza = kg.orbit.sza.load(time, cache="use")
+spn.kaguya.orbit.sza.plot(time)
 wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 ```
 
@@ -34,7 +35,7 @@ wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 | `orbit` | `radial_distance` | 月中心からの距離 |
 | `orbit` | `altitude` | 球面月半径からの高度 |
 | `orbit` | `subpoint` | 球面月面上の lon/lat |
-| `orbit` | `sza` | 明示した太陽方向 vector に対する球面 subpoint SZA |
+| `orbit` | `sza` | SPICE 太陽位置から計算する球面 subpoint SZA |
 
 ## 派生 geometry と時刻合わせ
 
@@ -46,9 +47,10 @@ magnetic connection は `connected_any`、plus/minus 別の接続有無、footpo
 ```python
 frames = spn.FrameContext(spice_kernels=("kaguya.tm",))
 conn = kg.lmag.magnetic_connection.load(time, cache="use")
-sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+sza = kg.orbit.sza.load(time, cache="use", context=frames)
 position_gse = kg.orbit.position_gse.load(time, cache="use")
 position_sse = kg.orbit.position.load(time, frame="SSE", context=frames)
+sza.plot()
 conn.plot(kind="footpoint")
 conn.plot(kind="altitude")
 conn.plot(kind="incidence")

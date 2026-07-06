@@ -11,7 +11,8 @@ counts = kg.ima.counts.load(time)
 b = kg.lmag.magnetic_field.load(time)
 bgse = kg.lmag.magnetic_field_gse.load(time)
 conn = kg.lmag.magnetic_connection.load(time, cache="use")
-sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+sza = kg.orbit.sza.load(time, cache="use")
+spn.kaguya.orbit.sza.plot(time)
 wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 ```
 
@@ -34,7 +35,7 @@ wfc = kg.lrs.wfc.ey_power_spectral_density.load(time, cache="use")
 | `orbit` | `radial_distance` | Distance from the Moon center |
 | `orbit` | `altitude` | Altitude above the spherical Moon radius |
 | `orbit` | `subpoint` | Spherical lon/lat subpoint |
-| `orbit` | `sza` | Spherical subpoint SZA for an explicit Sun direction vector |
+| `orbit` | `sza` | Spherical subpoint SZA from SPICE solar geometry |
 
 ## Derived Geometry And Time Matching
 
@@ -46,9 +47,10 @@ footpoint lon/lat, distance, and incidence angle.
 ```python
 frames = spn.FrameContext(spice_kernels=("kaguya.tm",))
 conn = kg.lmag.magnetic_connection.load(time, cache="use")
-sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+sza = kg.orbit.sza.load(time, cache="use", context=frames)
 position_gse = kg.orbit.position_gse.load(time, cache="use")
 position_sse = kg.orbit.position.load(time, frame="SSE", context=frames)
+sza.plot()
 conn.plot(kind="footpoint")
 conn.plot(kind="altitude")
 conn.plot(kind="incidence")

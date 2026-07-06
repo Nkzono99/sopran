@@ -35,7 +35,7 @@ def _pace_spectrum_schema(sensor: str) -> InstrumentSchema:
             VariableSchema(
                 name="energy",
                 dims=("energy",),
-                units=None,
+                units="channel",
                 description=(
                     f"PACE {sensor} energy channel index by default; calibrated loads "
                     "replace it with PACE INFO energy centers in eV."
@@ -45,7 +45,7 @@ def _pace_spectrum_schema(sensor: str) -> InstrumentSchema:
                 name="quality",
                 aliases=("q", "quality_flag"),
                 dims=("time",),
-                units=None,
+                units="flag",
                 description="Quality flag.",
             ),
         ),
@@ -149,8 +149,8 @@ KAGUYA_ORBIT_SZA = VariableSchema(
     units="deg",
     frame="MOON_ME",
     description=(
-        "Solar zenith angle at the spherical Moon subpoint, computed from an explicit "
-        "Sun direction vector."
+        "Solar zenith angle at the spherical Moon subpoint, computed from SPICE "
+        "Sun geometry unless an explicit Sun direction vector is supplied."
     ),
 )
 
@@ -158,18 +158,21 @@ KAGUYA_LMAG_CONNECTION_VARIABLES = (
     VariableSchema(
         name="connected_any",
         dims=("time",),
+        units="flag",
         dtype="bool",
         description="Whether either magnetic-field direction intersects the sphere.",
     ),
     VariableSchema(
         name="connected_plus",
         dims=("time",),
+        units="flag",
         dtype="bool",
         description="Whether the plus magnetic-field direction intersects the sphere.",
     ),
     VariableSchema(
         name="connected_minus",
         dims=("time",),
+        units="flag",
         dtype="bool",
         description="Whether the minus magnetic-field direction intersects the sphere.",
     ),
@@ -284,6 +287,7 @@ KAGUYA_LRS_SCHEMA = InstrumentSchema(
             name="npw_mode",
             aliases=("kgy_lrs_npw_mode",),
             dims=("time",),
+            units="flag",
             description="KAGUYA LRS NPW mode flag.",
         ),
         VariableSchema(
@@ -355,30 +359,35 @@ KAGUYA_LRS_SCHEMA = InstrumentSchema(
             name="wfc_xymode",
             aliases=("kgy_lrs_wfc_xymode",),
             dims=("time",),
+            units="flag",
             description="KAGUYA LRS WFC XY mode decoded from the Mode flag.",
         ),
         VariableSchema(
             name="wfc_fband",
             aliases=("kgy_lrs_wfc_fband",),
             dims=("time",),
+            units="flag",
             description="KAGUYA LRS WFC frequency band decoded from the Mode flag.",
         ),
         VariableSchema(
             name="wfc_omode",
             aliases=("kgy_lrs_wfc_omode",),
             dims=("time",),
+            units="flag",
             description="KAGUYA LRS WFC operation mode decoded from the Mode flag.",
         ),
         VariableSchema(
             name="wfc_pdc_ti",
             aliases=("kgy_lrs_wfc_pdc_ti", "kgy_lrs_wfc_pdc-ti"),
             dims=("time",),
+            units="flag",
             description="KAGUYA LRS WFC PDC-TI flag.",
         ),
         VariableSchema(
             name="wfc_postgap",
             aliases=("kgy_lrs_wfc_postgap",),
             dims=("time",),
+            units="flag",
             description="KAGUYA LRS WFC PostGap flag.",
         ),
     ),

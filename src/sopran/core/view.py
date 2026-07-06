@@ -229,6 +229,16 @@ class BoundNode:
             and _accepts_keyword(method, "download")
         ):
             call_kwargs["download"] = self._view.context.download
+        if "context" not in call_kwargs and _accepts_keyword(method, "context"):
+            call_kwargs["context"] = self._view.context
+        if (
+            "spice_kernels" not in call_kwargs
+            and self._view.context._spice_kernels
+            and _accepts_keyword(method, "spice_kernels")
+        ):
+            call_kwargs["spice_kernels"] = tuple(
+                path.as_posix() for path in self._view.context._spice_kernels
+            )
         selected_time = time or self._view.time
         if selected_time is None:
             return method(**call_kwargs)

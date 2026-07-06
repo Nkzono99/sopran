@@ -483,6 +483,7 @@ def test_kaguya_esa1_to_xarray_decodes_cached_pbf_counts(tmp_path: Path) -> None
     assert ds["counts"].shape == (1, 32, 64)
     assert int(ds["counts"].isel(time=0, energy=0).sum()) == 64
     assert ds["quality"].to_numpy().tolist() == [0]
+    assert ds["quality"].attrs["units"] == "flag"
     assert str(ds["time"].values[0]) == "2008-01-01T00:00:08.000000000"
 
 
@@ -656,7 +657,7 @@ def test_kaguya_esa1_to_xarray_records_loaded_unapplied_calibration(
     assert ds["energy_flux"].attrs["calibration_status"] == "applied"
     assert ds["energy_flux"].attrs["physical_validity"] == "calibrated"
     assert ds["energy"].attrs["description"].startswith("PACE ESA1 energy channel index")
-    assert "units" not in ds["energy"].attrs
+    assert ds["energy"].attrs["units"] == "channel"
     assert ds["energy_flux"].to_numpy()[0, 0, 0] == pytest.approx(1.0 / 0.6)
 
 

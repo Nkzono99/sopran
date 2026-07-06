@@ -70,6 +70,7 @@ def test_kaguya_lrs_npw_endpoint_loads_cdf_and_filters_half_open_time(tmp_path) 
     assert rx1.to_xarray().dims == ("time", "frequency")
     assert rx1.to_xarray().coords["frequency"].attrs["units"] == "kHz"
     assert rx1.to_xarray().shape == (2, 3)
+    assert mode.to_xarray().attrs["units"] == "flag"
     np.testing.assert_allclose(
         rx1.to_xarray().values,
         np.asarray([[1.0, 2.0, np.nan], [4.0, 5.0, 6.0]]),
@@ -118,6 +119,7 @@ def test_kaguya_lrs_wfc_derived_products_match_spedas_formulas(tmp_path) -> None
     assert ey_field.to_xarray().attrs["units"] == "dB uV/m"
     assert ey_power.to_xarray().attrs["units"] == "(V/m)^2/Hz"
     assert ey_power.to_xarray().attrs["dfreq_hz"] == [10_000.0, 10_000.0, 10_000.0]
+    assert xymode.to_xarray().attrs["units"] == "flag"
     np.testing.assert_allclose(ey_field.to_xarray().values, expected_field)
     np.testing.assert_allclose(ey_power.to_xarray().values, expected_power)
     np.testing.assert_allclose(xymode.to_xarray().values, np.asarray([0.0, 1.0, 2.0]))

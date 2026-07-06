@@ -232,7 +232,7 @@ def test_kaguya_esa1_energy_schema_describes_calibrated_energy_centers(tmp_path)
 
     schema = kg.esa1.energy.schema()
 
-    assert schema.units is None
+    assert schema.units == "channel"
     assert "channel index" in schema.description
     assert "PACE INFO energy centers in eV" in schema.description
 
@@ -617,7 +617,8 @@ def test_kaguya_esa1_to_xarray_returns_schema_backed_empty_dataset(tmp_path) -> 
     assert set(ds.data_vars) == {"energy_flux", "counts", "quality"}
     assert "energy" in ds.coords
     assert ds["energy"].attrs["description"].startswith("PACE ESA1 energy channel index")
-    assert "units" not in ds["energy"].attrs
+    assert ds["energy"].attrs["units"] == "channel"
+    assert ds["quality"].attrs["units"] == "flag"
     assert ds["energy_flux"].attrs["physical_validity"] == "placeholder"
     assert ds["energy_flux"].attrs["calibration_status"] == "not_loaded"
 

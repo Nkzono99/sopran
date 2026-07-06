@@ -9,8 +9,8 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE ESA1 differential electron energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw ESA1 counts. |
-| energy | energy |  |  |  |  | PACE ESA1 energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
-| quality | time |  |  |  | q, quality_flag | Quality flag. |
+| energy | energy | channel |  |  |  | PACE ESA1 energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
+| quality | time | flag |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / esa2
 
@@ -18,8 +18,8 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE ESA2 differential electron energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw ESA2 counts. |
-| energy | energy |  |  |  |  | PACE ESA2 energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
-| quality | time |  |  |  | q, quality_flag | Quality flag. |
+| energy | energy | channel |  |  |  | PACE ESA2 energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
+| quality | time | flag |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / ima
 
@@ -27,8 +27,8 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE IMA differential ion energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw IMA counts. |
-| energy | energy |  |  |  |  | PACE IMA energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
-| quality | time |  |  |  | q, quality_flag | Quality flag. |
+| energy | energy | channel |  |  |  | PACE IMA energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
+| quality | time | flag |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / iea
 
@@ -36,8 +36,8 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | energy_flux | time, energy, look | eV/(cm^2 s sr eV) |  |  | eflux, differential_energy_flux | KAGUYA PACE IEA differential ion energy flux derived from counts with PACE INFO calibration tables. |
 | counts | time, energy, look | count |  |  |  | Raw IEA counts. |
-| energy | energy |  |  |  |  | PACE IEA energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
-| quality | time |  |  |  | q, quality_flag | Quality flag. |
+| energy | energy | channel |  |  |  | PACE IEA energy channel index by default; calibrated loads replace it with PACE INFO energy centers in eV. |
+| quality | time | flag |  |  | q, quality_flag | Quality flag. |
 
 ## kaguya / lmag
 
@@ -53,7 +53,7 @@ Update the schema objects first, then regenerate this page.
 | --- | --- | --- | --- | --- | --- | --- |
 | npw_rx1 | time, frequency | dB |  |  | kgy_lrs_npw_rx1 | KAGUYA LRS NPW receiver 1 spectrum. |
 | npw_rx2 | time, frequency | dB |  |  | kgy_lrs_npw_rx2 | KAGUYA LRS NPW receiver 2 spectrum. |
-| npw_mode | time |  |  |  | kgy_lrs_npw_mode | KAGUYA LRS NPW mode flag. |
+| npw_mode | time | flag |  |  | kgy_lrs_npw_mode | KAGUYA LRS NPW mode flag. |
 | wfc_ex_db | time, frequency | dB |  |  | kgy_lrs_wfc_ex_db, kgy_lrs_wfc_Ex, kgy_lrs_wfc_Ex_dB | KAGUYA LRS WFC Ex raw electric-field spectrum in dB. |
 | wfc_ey_db | time, frequency | dB |  |  | kgy_lrs_wfc_ey_db, kgy_lrs_wfc_Ey, kgy_lrs_wfc_Ey_dB | KAGUYA LRS WFC Ey raw electric-field spectrum in dB. |
 | wfc_gain | time | dB |  |  | kgy_lrs_wfc_gain | KAGUYA LRS WFC gain decoded from the Gain flag. |
@@ -61,11 +61,11 @@ Update the schema objects first, then regenerate this page.
 | wfc_ey_field | time, frequency | dB uV/m |  |  | wfc_ey_physical, kgy_lrs_wfc_ey_phys, kgy_lrs_wfc_Ey_phys | KAGUYA LRS WFC Ey field level after gain and band correction. |
 | wfc_ex_power_spectral_density | time, frequency | (V/m)^2/Hz |  |  | wfc_ex_power, kgy_lrs_wfc_ex_phys2, kgy_lrs_wfc_Ex_phys2 | KAGUYA LRS WFC Ex electric-field power spectral density. |
 | wfc_ey_power_spectral_density | time, frequency | (V/m)^2/Hz |  |  | wfc_ey_power, kgy_lrs_wfc_ey_phys2, kgy_lrs_wfc_Ey_phys2 | KAGUYA LRS WFC Ey electric-field power spectral density. |
-| wfc_xymode | time |  |  |  | kgy_lrs_wfc_xymode | KAGUYA LRS WFC XY mode decoded from the Mode flag. |
-| wfc_fband | time |  |  |  | kgy_lrs_wfc_fband | KAGUYA LRS WFC frequency band decoded from the Mode flag. |
-| wfc_omode | time |  |  |  | kgy_lrs_wfc_omode | KAGUYA LRS WFC operation mode decoded from the Mode flag. |
-| wfc_pdc_ti | time |  |  |  | kgy_lrs_wfc_pdc_ti, kgy_lrs_wfc_pdc-ti | KAGUYA LRS WFC PDC-TI flag. |
-| wfc_postgap | time |  |  |  | kgy_lrs_wfc_postgap | KAGUYA LRS WFC PostGap flag. |
+| wfc_xymode | time | flag |  |  | kgy_lrs_wfc_xymode | KAGUYA LRS WFC XY mode decoded from the Mode flag. |
+| wfc_fband | time | flag |  |  | kgy_lrs_wfc_fband | KAGUYA LRS WFC frequency band decoded from the Mode flag. |
+| wfc_omode | time | flag |  |  | kgy_lrs_wfc_omode | KAGUYA LRS WFC operation mode decoded from the Mode flag. |
+| wfc_pdc_ti | time | flag |  |  | kgy_lrs_wfc_pdc_ti, kgy_lrs_wfc_pdc-ti | KAGUYA LRS WFC PDC-TI flag. |
+| wfc_postgap | time | flag |  |  | kgy_lrs_wfc_postgap | KAGUYA LRS WFC PostGap flag. |
 
 ## kaguya / orbit
 
@@ -76,15 +76,15 @@ Update the schema objects first, then regenerate this page.
 | radial_distance | time | km |  | MOON_ME | radius, r | Distance from the Moon center to the KAGUYA spacecraft. |
 | altitude | time | km |  | MOON_ME |  | KAGUYA altitude above a spherical Moon reference radius. |
 | subpoint | time, component | deg |  | MOON_ME |  | Spherical Moon subpoint longitude and latitude. |
-| sza | time | deg |  | MOON_ME |  | Solar zenith angle at the spherical Moon subpoint, computed from an explicit Sun direction vector. |
+| sza | time | deg |  | MOON_ME |  | Solar zenith angle at the spherical Moon subpoint, computed from SPICE Sun geometry unless an explicit Sun direction vector is supplied. |
 
 ## kaguya / lmag
 
 | name | dims | units | dtype | frame | aliases | description |
 | --- | --- | --- | --- | --- | --- | --- |
-| connected_any | time |  | bool |  |  | Whether either magnetic-field direction intersects the sphere. |
-| connected_plus | time |  | bool |  |  | Whether the plus magnetic-field direction intersects the sphere. |
-| connected_minus | time |  | bool |  |  | Whether the minus magnetic-field direction intersects the sphere. |
+| connected_any | time | flag | bool |  |  | Whether either magnetic-field direction intersects the sphere. |
+| connected_plus | time | flag | bool |  |  | Whether the plus magnetic-field direction intersects the sphere. |
+| connected_minus | time | flag | bool |  |  | Whether the minus magnetic-field direction intersects the sphere. |
 | footpoint_plus_lon | time | deg |  | MOON_ME |  | Plus-direction spherical footpoint longitude. |
 | footpoint_plus_lat | time | deg |  | MOON_ME |  | Plus-direction spherical footpoint latitude. |
 | footpoint_minus_lon | time | deg |  | MOON_ME |  | Minus-direction spherical footpoint longitude. |

@@ -127,6 +127,7 @@ class Kaguya:
         self.lmag: LmagInstrument = LmagInstrument(self)
         self.lrs: LrsInstrument = LrsInstrument(self)
         self.orbit: OrbitInstrument = OrbitInstrument(self)
+        self.sza: GeometryArrayEndpoint = self.orbit.sza
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -138,6 +139,7 @@ class Kaguya:
                 "iea: PACE Ion Energy Analyzer",
                 "lmag: Lunar MAGnetometer",
                 "lrs: Lunar Radar Sounder plasma wave spectra",
+                "sza: shortcut for orbit.sza",
             ),
         )
 
@@ -767,6 +769,7 @@ class OrbitInstrument:
                 sun_frame=sun_frame,
                 context=context,
                 backend=backend,
+                spice_kernels=_.get("spice_kernels", ()),
             ),
             product="sza",
         )
@@ -802,15 +805,14 @@ class GeometryArrayEndpoint:
         frame: str | None = None,
         sun_vector: Any | None = None,
         sun_frame: str = "MOON_ME",
+        spice_kernels: tuple[str | Path, ...] = (),
         context: Any | None = None,
         backend: str | None = None,
         missing: MissingMode = "empty",
-    ) -> Any:
+    ) -> SopranArray:
         if time is None:
             raise _missing_time_error(f"Kaguya.orbit.{self.name}")
         _validate_cache_mode(cache)
-        if self.name == "sza" and sun_vector is None:
-            raise ValueError("sun_vector is required for KAGUYA orbit sza")
         variant_id = orbit_variant_id(
             self.name,
             radius_km=radius_km,
@@ -818,6 +820,7 @@ class GeometryArrayEndpoint:
             sun_frame=sun_frame,
             context=context,
             backend=backend,
+            spice_kernels=spice_kernels,
         )
         if cache == "use":
             cached = _read_cached_array(
@@ -828,11 +831,14 @@ class GeometryArrayEndpoint:
                 time=time,
             )
             if cached is not None:
-                return _maybe_transform_geometry_array(
-                    cached,
-                    frame=frame,
-                    context=context,
-                    backend=backend,
+                return cast(
+                    "SopranArray",
+                    _maybe_transform_geometry_array(
+                        cached,
+                        frame=frame,
+                        context=context,
+                        backend=backend,
+                    ),
                 )
         data = self.instrument.mission.lmag.load(time, download=download, missing=missing)
         product = self._compute(
@@ -840,6 +846,7 @@ class GeometryArrayEndpoint:
             radius_km=radius_km,
             sun_vector=sun_vector,
             sun_frame=sun_frame,
+            spice_kernels=spice_kernels,
             context=context,
             backend=backend,
         )
@@ -850,7 +857,8 @@ class GeometryArrayEndpoint:
                 variant=variant_metadata(
                     radius_km=radius_km,
                     sun_vector=sun_vector,
-                    sun_frame=sun_frame,
+                    sun_frame=sun_frame if self.name == "sza" else None,
+                    spice_kernels=spice_kernels if self.name == "sza" else (),
                     context=context,
                     backend=backend,
                 ),
@@ -866,12 +874,49 @@ class GeometryArrayEndpoint:
                 overwrite=True,
                 producer=f"sopran.kaguya.orbit.{self.name}",
             )
-        return _maybe_transform_geometry_array(
-            product,
+        return cast(
+            "SopranArray",
+            _maybe_transform_geometry_array(
+                product,
+                frame=frame,
+                context=context,
+                backend=backend,
+            ),
+        )
+
+    def plot(
+        self,
+        time: TimeRange | None = None,
+        *,
+        radius_km: float = MOON_MEAN_RADIUS_KM,
+        cache: CacheMode = "use",
+        download: DownloadMode | None = None,
+        frame: str | None = None,
+        sun_vector: Any | None = None,
+        sun_frame: str = "MOON_ME",
+        spice_kernels: tuple[str | Path, ...] = (),
+        context: Any | None = None,
+        backend: str | None = None,
+        missing: MissingMode = "empty",
+        **kwargs: Any,
+    ) -> PlotResult | object | None:
+        product = self.load(
+            time,
+            radius_km=radius_km,
+            cache=cache,
+            download=download,
             frame=frame,
+            sun_vector=sun_vector,
+            sun_frame=sun_frame,
+            spice_kernels=spice_kernels,
             context=context,
             backend=backend,
+            missing=missing,
         )
+        kwargs.setdefault("dataset_id", self.dataset_id)
+        kwargs.setdefault("time_range", product.time)
+        kwargs.setdefault("frame", self._schema.frame)
+        return product.plot(**kwargs)
 
 
 def _maybe_transform_geometry_array(

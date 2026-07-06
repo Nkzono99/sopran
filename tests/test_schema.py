@@ -7,12 +7,37 @@ import xarray as xr
 
 import sopran as spn
 from sopran.core.schema import InstrumentSchema, VariableSchema
-from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
+from sopran.missions.kaguya.schema import (
+    KAGUYA_LMAG_CONNECTION_SCHEMA,
+    KAGUYA_LMAG_SCHEMA,
+    KAGUYA_LRS_SCHEMA,
+    KAGUYA_ORBIT_SCHEMA,
+    KAGUYA_PACE_SCHEMAS,
+)
 
 
 def test_schema_classes_are_exported_from_top_level() -> None:
     assert spn.InstrumentSchema is InstrumentSchema
     assert spn.VariableSchema is VariableSchema
+
+
+def test_public_kaguya_schema_variables_have_units() -> None:
+    schemas = (
+        *KAGUYA_PACE_SCHEMAS.values(),
+        KAGUYA_LMAG_SCHEMA,
+        KAGUYA_ORBIT_SCHEMA,
+        KAGUYA_LMAG_CONNECTION_SCHEMA,
+        KAGUYA_LRS_SCHEMA,
+    )
+
+    missing = [
+        f"{schema.mission}.{schema.instrument}.{variable.name}"
+        for schema in schemas
+        for variable in schema.variables
+        if variable.units is None
+    ]
+
+    assert missing == []
 
 
 def test_instrument_schema_exports_machine_readable_metadata() -> None:
@@ -90,7 +115,7 @@ def test_validate_schema_accepts_selected_polars_variables() -> None:
 
     assert spn.validate_schema(
         frame,
-        KAGUYA_ESA1_SCHEMA,
+        KAGUYA_PACE_SCHEMAS["ESA1"],
         variables=("counts",),
     ) is frame
 
@@ -106,7 +131,7 @@ def test_validate_schema_rejects_xarray_variable_dim_mismatch() -> None:
     with pytest.raises(spn.SchemaError, match="counts.*dims"):
         spn.validate_schema(
             dataset,
-            KAGUYA_ESA1_SCHEMA,
+            KAGUYA_PACE_SCHEMAS["ESA1"],
             variables=("counts",),
         )
 

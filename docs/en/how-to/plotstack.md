@@ -11,7 +11,7 @@
 ## From Loaded Objects
 
 ```python
-sza = kg.orbit.sza.load(time, sun_vector=(1.0, 0.0, 0.0), cache="use")
+sza = kg.orbit.sza.load(time, cache="use")
 
 stack = spn.stack(
     kg.esa1.counts.load(time).spectrogram(y="energy", log_color=True),

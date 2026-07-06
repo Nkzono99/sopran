@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -10,6 +10,7 @@ from typing import Any, Literal, cast
 import numpy as np
 
 from sopran.core.data import SopranArray
+from sopran.core.errors import BackendError
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange
 from sopran.missions.kaguya.schema import (
@@ -141,23 +142,37 @@ def lmag_subpoint(data: Any) -> SopranArray:
 def lmag_sza(
     data: Any,
     *,
-    sun_vector: Any,
+    sun_vector: Any | None = None,
     sun_frame: str = "MOON_ME",
     context: Any | None = None,
     backend: str | None = None,
+    spice_kernels: tuple[str | Path, ...] = (),
 ) -> SopranArray:
     schema = KAGUYA_ORBIT_SCHEMA.variable("sza")
     dataset = data.to_xarray()
     position = dataset["position_moon_me"].values.astype(float)
     times = dataset.coords["time"].values
-    sun_vectors = _sun_vectors_moon_me(
-        sun_vector,
-        sun_frame=sun_frame,
-        context=context,
-        backend=backend,
-        times=times,
-        count=position.shape[0],
-    )
+    if sun_vector is None:
+        sun_vectors = spice_sun_vectors_moon_me(
+            times,
+            context=context,
+            backend=backend,
+            spice_kernels=spice_kernels,
+        )
+        sun_source = "spice"
+        sun_frame = "MOON_ME"
+        sun_vector_shape = list(sun_vectors.shape)
+    else:
+        sun_vectors = _sun_vectors_moon_me(
+            sun_vector,
+            sun_frame=sun_frame,
+            context=context,
+            backend=backend,
+            times=times,
+            count=position.shape[0],
+        )
+        sun_source = "explicit"
+        sun_vector_shape = list(np.asarray(sun_vector, dtype=float).shape)
     position_norm = np.linalg.norm(position, axis=1)
     normal = np.divide(
         position,
@@ -183,7 +198,8 @@ def lmag_sza(
             "frame": schema.frame,
             "description": schema.description,
             "sun_frame": sun_frame,
-            "sun_vector_shape": list(np.asarray(sun_vector, dtype=float).shape),
+            "sun_source": sun_source,
+            "sun_vector_shape": sun_vector_shape,
         },
     )
     return SopranArray(
@@ -494,6 +510,7 @@ def orbit_variant_id(
     sun_frame: str = "MOON_ME",
     context: Any | None = None,
     backend: str | None = None,
+    spice_kernels: tuple[str | Path, ...] = (),
 ) -> str:
     if name == "position":
         return "lmag_moon_me_v1"
@@ -507,7 +524,11 @@ def orbit_variant_id(
         return f"sphere_r{_number_token(radius_km)}_moon_me_v1"
     if name == "sza":
         if sun_vector is None:
-            raise ValueError("sun_vector is required for KAGUYA orbit sza")
+            return (
+                "sphere_sza_spice_"
+                f"{_path_tuple_token(spice_kernels)}_"
+                f"{_transform_token(context=context, backend=backend)}_moon_me_v1"
+            )
         return (
             f"sphere_sza_sun_{_frame_token(sun_frame)}_"
             f"{_array_token(sun_vector)}_"
@@ -524,6 +545,7 @@ def variant_metadata(
     sun_frame: str | None = None,
     context: Any | None = None,
     backend: str | None = None,
+    spice_kernels: tuple[str | Path, ...] = (),
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "source": "kaguya.lmag.public",
@@ -535,9 +557,15 @@ def variant_metadata(
         metadata["direction"] = direction
         metadata["field_model"] = "straight_local_field_line"
     if sun_vector is not None:
+        metadata["sun_source"] = "explicit"
         metadata["sun_frame"] = sun_frame or "MOON_ME"
         metadata["sun_vector_shape"] = list(np.asarray(sun_vector, dtype=float).shape)
         metadata["sun_vector_hash"] = _array_token(sun_vector)
+        metadata["sun_transform"] = _transform_metadata(context=context, backend=backend)
+    elif sun_frame is not None:
+        metadata["sun_source"] = "spice"
+        metadata["sun_frame"] = "MOON_ME"
+        metadata["spice_kernels"] = [Path(path).as_posix() for path in spice_kernels]
         metadata["sun_transform"] = _transform_metadata(context=context, backend=backend)
     return metadata
 
@@ -721,6 +749,48 @@ def _sun_vectors_moon_me(
     )
 
 
+def spice_sun_vectors_moon_me(
+    times: Any,
+    *,
+    context: Any | None = None,
+    backend: str | None = None,
+    spice_kernels: tuple[str | Path, ...] = (),
+) -> np.ndarray:
+    if backend not in {None, "spiceypy"}:
+        raise BackendError(f"KAGUYA orbit sza SPICE backend does not support {backend!r}")
+    try:
+        import spiceypy
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise BackendError(
+            "spiceypy is required for KAGUYA orbit sza when sun_vector is omitted. "
+            'Install SPICE support and provide kernels, or pass sun_vector=... explicitly.'
+        ) from exc
+
+    kernel_paths = _spice_kernel_paths(spice_kernels, context=context)
+    time_values = np.asarray(times).reshape(-1)
+    vectors = np.full((time_values.size, 3), np.nan, dtype=float)
+    try:
+        for kernel in kernel_paths:
+            spiceypy.furnsh(str(kernel))
+        for index, time_value in enumerate(time_values):
+            et = float(spiceypy.utc2et(_time_to_utc_string(time_value)))
+            position, _light_time = spiceypy.spkpos(
+                "SUN",
+                et,
+                "MOON_ME",
+                "LT+S",
+                "MOON",
+            )
+            vectors[index] = _normalize_vector(np.asarray(position, dtype=float))
+    except Exception as exc:
+        raise BackendError(
+            "SPICE-backed KAGUYA orbit sza failed. Provide compatible leapsecond, "
+            "planetary ephemeris, and Moon body-fixed frame kernels, or pass "
+            "sun_vector=... explicitly."
+        ) from exc
+    return vectors
+
+
 def _data_array(
     values: np.ndarray,
     *,
@@ -789,6 +859,13 @@ def _array_token(value: Any) -> str:
     return digest.hexdigest()[:12]
 
 
+def _path_tuple_token(paths: tuple[str | Path, ...]) -> str:
+    encoded = json.dumps([Path(path).as_posix() for path in paths], sort_keys=True).encode(
+        "utf-8"
+    )
+    return sha256(encoded).hexdigest()[:12]
+
+
 def _transform_token(*, context: Any | None, backend: str | None) -> str:
     payload = _transform_metadata(context=context, backend=backend)
     encoded = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
@@ -820,6 +897,39 @@ def _none_if_nan(value: Any) -> Any:
     if isinstance(value, datetime):
         return value
     return value
+
+
+def _spice_kernel_paths(
+    spice_kernels: tuple[str | Path, ...],
+    *,
+    context: Any | None,
+) -> tuple[Path, ...]:
+    if spice_kernels:
+        return tuple(Path(path) for path in spice_kernels)
+    context_kernels = getattr(context, "_spice_kernels", ())
+    return tuple(Path(path) for path in context_kernels)
+
+
+def _normalize_vector(vector: np.ndarray) -> np.ndarray:
+    if vector.shape != (3,):
+        raise ValueError("SPICE Sun vector must have shape (3,)")
+    norm = float(np.linalg.norm(vector))
+    if not np.isfinite(norm) or norm == 0.0:
+        raise ValueError("SPICE Sun vector must be finite and non-zero")
+    return vector / norm
+
+
+def _time_to_utc_string(value: Any) -> str:
+    if isinstance(value, np.datetime64):
+        return np.datetime_as_string(value.astype("datetime64[ns]"), unit="ns") + " UTC"
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return dt.astimezone(UTC).replace(tzinfo=None).isoformat() + " UTC"
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        timestamp = datetime.fromtimestamp(float(value), tz=UTC)
+        return timestamp.replace(tzinfo=None).isoformat() + " UTC"
+    text = str(value)
+    return text if text.upper().endswith("UTC") else f"{text} UTC"
 
 
 def _target_time_range(target: Any, *, fallback: TimeRange, time: str = "time") -> TimeRange:

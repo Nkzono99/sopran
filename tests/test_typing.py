@@ -8,7 +8,12 @@ from typing import Any
 import sopran as spn
 from sopran.core.data import SopranArray
 from sopran.missions.artemis.mission import ArtemisVariableEndpoint
-from sopran.missions.kaguya.mission import VariableEndpoint as KaguyaVariableEndpoint
+from sopran.missions.kaguya.mission import (
+    GeometryArrayEndpoint,
+)
+from sopran.missions.kaguya.mission import (
+    VariableEndpoint as KaguyaVariableEndpoint,
+)
 
 
 def test_sopran_array_is_exported_for_public_api_completion() -> None:
@@ -49,6 +54,7 @@ def test_primary_mission_tree_attributes_have_source_annotations() -> None:
     assert "self.esa1: PaceInstrument" in kaguya_source
     assert "self.energy_flux: VariableEndpoint" in kaguya_source
     assert "self.counts: VariableEndpoint" in kaguya_source
+    assert "self.sza: GeometryArrayEndpoint" in kaguya_source
     assert "self.p1: ArtemisProbe" in artemis_source
     assert "self.ion_energy_flux: ArtemisVariableEndpoint" in artemis_source
 
@@ -60,6 +66,8 @@ def test_main_plotting_api_return_annotations_are_concrete() -> None:
         SopranArray.quicklook,
         KaguyaVariableEndpoint.plot,
         KaguyaVariableEndpoint.spectrogram,
+        GeometryArrayEndpoint.load,
+        GeometryArrayEndpoint.plot,
         ArtemisVariableEndpoint.spectrogram,
     )
 

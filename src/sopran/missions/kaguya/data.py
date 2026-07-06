@@ -397,7 +397,7 @@ class KaguyaPaceData:
                 "quality": (
                     quality_schema.dims,
                     np.empty((0,)),
-                    {"description": quality_schema.description},
+                    _variable_attrs(quality_schema),
                 ),
             },
             coords={
@@ -487,7 +487,7 @@ class KaguyaPaceData:
                 "quality": (
                     quality_schema.dims,
                     quality,
-                    {"description": quality_schema.description},
+                    _variable_attrs(quality_schema),
                 ),
             },
             coords={
