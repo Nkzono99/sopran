@@ -61,6 +61,7 @@ from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
 from sopran.maps import RasterLayer, RasterSpec, Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
+from sopran.missions.omni import Omni
 
 from . import config as config
 
@@ -68,6 +69,7 @@ if TYPE_CHECKING:
     artemis: Artemis
     kaguya: Kaguya
     moon: Moon
+    omni: Omni
 
 __version__ = "0.0.0"
 
@@ -77,7 +79,7 @@ def __getattr__(name: str) -> Any:
         from importlib import import_module
 
         return getattr(import_module("sopran.schema_docs"), name)
-    if name in {"kaguya", "artemis", "moon"}:
+    if name in {"kaguya", "artemis", "moon", "omni"}:
         return getattr(Project.default().view(), name)
     raise AttributeError(f"module 'sopran' has no attribute {name!r}")
 
@@ -104,6 +106,8 @@ __all__ = [
     "kaguya",
     "moon",
     "Moon",
+    "Omni",
+    "omni",
     "PlotArtifact",
     "PlotItem",
     "PlotOverlay",

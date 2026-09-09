@@ -128,7 +128,7 @@ class Store:
             raise FileNotFoundError(f"Raw file not found: {raw_file}")
         manifest_path = raw_file.with_name(f"{raw_file.name}.sopran.json")
         manifest = {
-            "path": raw_file.relative_to(self._root).as_posix(),
+            "path": raw_file.relative_to(self._root.resolve()).as_posix(),
             "filename": raw_file.name,
             "mission": mission,
             "provider": provider,

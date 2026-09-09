@@ -24,6 +24,7 @@ from sopran.core.view import View, ViewContext, ViewSelection, _backend_mapping,
 from sopran.maps import Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
+from sopran.missions.omni import Omni
 
 DownloadMode = Literal["never", "missing", "always"]
 
@@ -89,6 +90,12 @@ class Project:
     @property
     def artemis(self) -> Artemis:
         return Artemis(store=self.store)
+
+    @property
+    def omni(self) -> Omni:
+        return Omni(
+            store=self.store, download=_download_mode(self._merged_defaults().get("download"))
+        )
 
     @property
     def moon(self) -> Moon:

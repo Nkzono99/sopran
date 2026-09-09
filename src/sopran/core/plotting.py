@@ -421,6 +421,7 @@ def line(data: Any, *, x: str = "time", name: str | None = None) -> PlotItem:
         data=data,
         name=name or _data_name(data),
         x=x,
+        value_label=_value_label(data, name or _data_name(data)),
     )
 
 
@@ -439,6 +440,7 @@ def lines(
         data=lambda: _select_components(data, component_dim, components),
         name=name or _data_name(data),
         x=x,
+        value_label=_value_label(data, name or _data_name(data)),
     )
 
 

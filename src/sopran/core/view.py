@@ -4,7 +4,7 @@ import inspect
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from sopran.core.plotting import PlotItem, PlotStack, line, lines, spectrogram, stack
 from sopran.core.time import TimeRange, day, period
@@ -12,6 +12,9 @@ from sopran.frames import FrameContext
 from sopran.maps import Region
 
 DownloadMode = Literal["never", "missing", "always"]
+
+if TYPE_CHECKING:
+    from sopran.missions.omni import Omni
 
 
 @dataclass(frozen=True)
@@ -112,6 +115,13 @@ class View:
         from sopran.missions.artemis import Artemis
 
         return BoundNode(Artemis(store=self.project.store), self)
+
+    @property
+    def omni(self) -> Omni:
+        from sopran.missions.omni import Omni
+
+        return Omni(store=self.project.store, time=self.time,
+                    download=_download_mode(self.context.download))
 
     @property
     def moon(self) -> Any:

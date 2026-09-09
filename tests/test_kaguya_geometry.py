@@ -242,7 +242,7 @@ def test_kaguya_orbit_sza_plot_and_shortcut_use_spice_sun_vector(
 
     assert orbit_result.metadata["dataset_id"] == "kaguya.orbit.sza"
     assert shortcut_result.metadata["dataset_id"] == "kaguya.orbit.sza"
-    assert orbit_result.axes[0].get_ylabel() == "sza"
+    assert orbit_result.axes[0].get_ylabel() == "sza [deg]"
 
 
 def test_kaguya_view_orbit_sza_passes_context_spice_kernels(
@@ -301,7 +301,7 @@ def test_top_level_kaguya_orbit_sza_plot_uses_project_default(
     )
 
     assert result.metadata["dataset_id"] == "kaguya.orbit.sza"
-    assert result.axes[0].get_ylabel() == "sza"
+    assert result.axes[0].get_ylabel() == "sza [deg]"
     result.fig.clf()
 
 
