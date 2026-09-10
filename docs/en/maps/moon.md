@@ -62,6 +62,59 @@ svm = moon.svm_tsunakawa2015.load(path=r"C:/data/LunarSVM_000_02_v02.dat")
 bt = svm.sample(lat=-0.5, lon=0.0)
 ```
 
+## Search Literature Magnetic Anomaly Catalogs
+
+`spn.moon.magnetic_anomalies()` returns a fresh `pandas.DataFrame` of published
+reference locations without network access or SVM files. The same method is
+available on `spn.Moon()`.
+
+```python
+import sopran as spn
+
+sites = spn.moon.magnetic_anomalies()  # 15 corrected Blewett 2011 entries
+print(sites[["name", "lon_deg", "lat_deg", "peak_field_30km_nt", "swirl"]])
+reiner = spn.moon.magnetic_anomalies("all", name="Reiner Gamma")
+nearby = spn.moon.magnetic_anomalies("all", near=(-57.5, 7.5), radius_deg=5)
+nearby.to_csv("nearby_anomalies.csv", index=False)
+isolated = spn.moon.magnetic_anomalies("oliveira2017")
+```
+
+| `catalog` | Contents | Reference |
+| --- | --- | --- |
+| `blewett2011` (default) | 15 approximate locations, regional peak field at 30 km, terrain and historical swirl classifications | [Blewett (2011), corrected Table 1](https://doi.org/10.1029/2011JE003852) |
+| `oliveira2017` | 15 isolated-anomaly analysis centers, observation radii $r_o$ and dipole-domain radii $r_d$ | [Oliveira & Wieczorek (2017), Table 1](https://doi.org/10.1002/2016JE005199) |
+| `all` | 30 source rows, 23 distinct `feature_id` values; source differences are retained | Both tables |
+
+These study selections are not an exhaustive global inventory. `name` preserves
+the published label; `feature_id` associates Reiner-γ / Reiner Gamma and
+Sirsalis / Rima Sirsalis across sources. Coordinates are not averaged or merged.
+The original Blewett article has coordinate errors; SOPRAN uses the correction.
+
+| Column | Meaning |
+| --- | --- |
+| `lon_deg`, `lat_deg` | East longitude [0, 360), north-positive latitude; published lunar body-fixed positions, without precision MOON_ME / MOON_PA conversion |
+| `position_kind` | `approximate_anomaly_location` or `analysis_center` |
+| `peak_field_30km_nt` | Estimated regional peak $\lvert B\rvert$ at **30 km altitude**, in nT; neither a surface field nor a point sample at the listed location |
+| `setting`, `swirl` | Blewett terrain and swirl classifications; `not_recognized` refers to 2011, not proof of absence |
+| `observation_radius_deg`, `dipole_radius_deg` | Oliveira inversion-domain angular radii, not physical anomaly boundaries or sizes |
+| `reference_doi`, `note` | Per-row source and caveats, including limited LP MAG coverage at Marginis |
+| `distance_deg`, `distance_km` | Added with `near`; great-circle distance to the reference point, using a 1737.4 km lunar radius |
+
+Unreported quantities remain missing. `name` searches literal substrings of names
+or feature IDs, ignoring case and normalizing gamma (γ), hyphens and underscores.
+`near=(east_longitude, latitude)` accepts negative longitudes and sorts by distance.
+`radius_deg` requires `near`, accepts 0–180°, and filters reference points inclusively;
+it does not test intersections with anomaly boundaries. Empty results retain
+columns and `DataFrame.attrs` metadata.
+
+To sample a previously loaded surface SVM raster at these positions:
+
+```python
+sites["svm_surface_point_nt"] = svm.sample(lat=sites.lat_deg, lon=sites.lon_deg)
+```
+
+Keep these point samples separate from the published regional peaks at 30 km.
+
 ## Compute SZA / Illumination / Shadow
 
 `moon.sza.compute()` computes a spherical solar-zenith-angle raster on an

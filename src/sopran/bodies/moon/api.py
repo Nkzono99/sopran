@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
@@ -13,6 +13,11 @@ from .models import SurfacePlan, format_list
 from .parameters import surface_parameters
 from .schema import MOON_SURFACE_SCHEMA
 from .sources import SURFACE_SOURCE_INFO, SURFACE_SOURCES, canonical_source_id
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from .magnetic_anomalies import AnomalyCatalog
 
 
 class Moon:
@@ -50,6 +55,7 @@ class Moon:
                 "dem: digital elevation model endpoint",
                 "svm: default Tsunakawa lunar magnetic anomaly SVM endpoint",
                 "svm_tsunakawa2015: explicit Tsunakawa SVM endpoint",
+                "magnetic_anomalies(): cited reference locations and proximity search",
                 "shadow: SZA-threshold and terrain-ray shadow map endpoint",
                 "illumination: SZA-threshold illumination map endpoint",
                 "sza: solar zenith angle endpoint with explicit or SPICE Sun geometry",
@@ -69,6 +75,24 @@ class Moon:
 
     def example(self) -> GuidePage:
         return guides.moon_example()
+
+    def magnetic_anomalies(
+        self,
+        catalog: AnomalyCatalog = "blewett2011",
+        *,
+        name: str | None = None,
+        near: tuple[float, float] | None = None,
+        radius_deg: float | None = None,
+    ) -> pd.DataFrame:
+        """List literature anomalies; near=(east longitude, latitude) in degrees.
+
+        Catalogs: 'blewett2011' (corrected), 'oliveira2017', or 'all'.
+        Fields are regional peak nT at 30 km; radii are inversion domains.
+        See magnetic_anomalies.magnetic_anomalies for columns and limitations.
+        """
+        from .magnetic_anomalies import magnetic_anomalies
+
+        return magnetic_anomalies(catalog, name=name, near=near, radius_deg=radius_deg)
 
     def map(self, product: str) -> SurfaceEndpoint:
         endpoints = {
