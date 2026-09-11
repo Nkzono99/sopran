@@ -8,9 +8,8 @@ pages can focus on their own task.
 | Area | Current state | Next work |
 | --- | --- | --- |
 | KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode, ESA1 energy_flux calibration, exposure-aware native pitch-angle binning, Store writes, pipeline, coverage, quicklook | Broader calibration, internal validation, look-angle metadata |
-| KAGUYA electron reflectometry | Paired-count fit, full-period catalog, profile-CI refit, blind re-audit, ESA1/ESA2 and cadence checks, official/curved SVM3D comparison | Time-window joint fit, ESA2 geometry/response audit, independent multi-expert review, finite-gyroradius forward validation |
 | KAGUYA LMAG/geometry | Path planning, `MAG_TS*.dat` loading, MOON_ME/GSE magnetic field, `|B|`, MOON_ME/GSE orbit geometry, radial distance, SZA, magnetic connection, Store cache | SPICE-backed Sun geometry and SPEDAS parity |
-| KAGUYA LRS | NPW/WFC CDF, PDC-TI/sparse pads, PSD, WFC-H multi-label detector, ridge tracking, run-scoped clustering | Full-period statistics, WFC-L access, external physical validation |
+| KAGUYA LRS | NPW/WFC CDF, PDC-TI/sparse pads, PSD | WFC-L access and reader validation |
 | Other KAGUYA sensors | PACE/LMAG/LRS partial support | Instrument-specific calibration and real-data parity |
 | ARTEMIS | Object API and normalized parquet skeleton | CDAWeb/HAPI/CDF discovery and raw loader |
 | Frames | `FrameContext`, identity transform, and SPICE vector delegation | SpacePy / Astropy backend |
@@ -64,62 +63,21 @@ installed.
 For development installs, run `python -m pip install -e .` or
 `python -m maturin develop --release` from the repository root.
 
-## KAGUYA Electron Reflectometry
+## Experimental
 
-Implemented:
+ER models, KAGUYA ER adapters, and wave-candidate/ridge/clustering methods live
+in `sopran.experimental`. Standard instrument APIs do not import them.
+See [Experimental APIs](../experimental/index.md) for usage and limitations.
+Individual research runs and literature reviews are not public library docs.
 
-- `spn.kaguya.er.effective_field.fit(...)`
-- Mission-independent `spn.ElectronReflectionCounts` and `spn.fit_effective_field(...)`
-- Exposure-corrected paired-count beta-binomial likelihood
-- BIC comparison of `no_edge`, `mirror_only`, and `electrostatic`
-- Bound-stuck rejection and profile-likelihood 95% mirror-ratio intervals
-- Physical affected-side selection from `B dot r`
-- Variant-aware Store caching with provenance and schema
-- Synthetic Monte Carlo and a read-only legacy raw-PAD smoke test
-- Resumable daily archive construction from raw PACE, LMAG, and SPICE inputs
-- Checksum, geometry, and derived-value integrity validation on a fixed 473-day, 55,702-row variant
-- Independent refits and profile-likelihood 95% intervals for all 2,470 accepted rows
-- Full-period selection functions and time-blocked cross-validation
-- Boundary-free blind re-audit of 70 edge candidates
-- Fixed 18-day ESA1/ESA2 comparison and two-minute/native cadence sensitivity
-- Rust evaluator parity at all 5,041 official Tsunakawa SVM v2 positions
-- A 0.5 degree SVM3D shell, curved field-line traces, grid sensitivity, and normalized SVM comparisons
+## KAGUYA LRS
 
-Remaining:
+- Epoch-aligned NPW/WFC spectra and support flags
+- Separate sparse-pad and observed-zero handling
+- Scalar 48-bit `wfc_pdc_ti` and raw high/middle/low words
+- PSD units, frequency coordinates, Store persistence, and plotting
 
-- Independent audit of ESA2 look-vector coordinates, hemisphere mapping, and absolute exposure/response
-- A hierarchical time-window fit on native counts with an explicit persistence gate
-- Integration of profile intervals and truncation flags into the standard archive
-- Multi-expert blind review mixing accepted, poor, no-edge, and reject rows, including recall
-- Finite-gyroradius particle-tracing forward validation
-- External validation with solar-wind, wake, magnetotail, spacecraft-potential, and independent observations
-
-`B_eff` is an effective mirror field, not a lunar-surface magnetic-field vector.
-See [Effective Field From Electron Reflectometry](../missions/kaguya/electron-reflectometry.md),
-the [estimation algorithm](../missions/kaguya/electron-reflectometry-algorithm.md), and
-the [full-period validation](../missions/kaguya/electron-reflectometry-validation.md).
-
-## KAGUYA LRS / WFC-H Wave Candidates
-
-Implemented:
-
-- Epoch-aligned spectra/support flags and sparse-pad handling for real CDFs
-- Scalar 48-bit `wfc_pdc_ti` plus raw high/middle/low words
-- 120-second/60-second robust-background, seven-label candidate detector
-- Separate 2--30 and 30--100 kHz Viterbi tracks with gap splitting
-- Stable detector/config/feature/window/event/interval/run IDs and eligible exposure
-- Validated EventCatalog writes, onset counts, and exposure-normalized rates
-- Run-scoped background-residual PCA and deterministic K-means exploration
-- Real-CDF anchors from 2008-01-10, 2008-06-14, and 2008-06-18
-
-Remaining:
-
-- Full-period daily shards and tests against solar-wind, wake geometry, and ER context
-- Human interpretation and selection functions for tracks and clusters
-- A short-timescale triage detector for eight-second spikes
-- A verified public acquisition path for natural-wave WFC-L waveforms
-
-See [KAGUYA LRS/WFC Wave-Event Extraction](../missions/kaguya/wfc-waves.md).
+Candidate detection is documented under [experimental wave analysis](../experimental/waves.md).
 
 ## Maps / Moon
 
@@ -147,12 +105,10 @@ Remaining:
 
 ## Near-Term Priorities
 
-1. KAGUYA electron-reflectometry time-window joint fitting, ESA2 geometry audit, and independent blind/forward validation.
-2. KAGUYA PACE energy-coordinate/look-angle metadata and internal validation.
-3. KAGUYA LRS/WFC-H full-period statistics, WFC-L matching, and LMAG parity.
-4. ARTEMIS raw discovery and CDF ingest.
-5. SpacePy / Astropy frame transforms.
-6. Moon projection/reprojection and terrain-ray performance/real-data validation.
+1. Data-axis, unit, calibration, and missing-value contracts.
+2. ARTEMIS raw discovery and CDF ingest.
+3. Frame transforms and Moon map projection/performance.
+4. Periodic promotion or removal of experimental APIs.
 
 ## CI / Typing
 

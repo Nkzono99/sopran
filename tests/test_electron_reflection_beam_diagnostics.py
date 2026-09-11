@@ -3,8 +3,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from sopran.analysis.electron_reflection import global_joint as gj
-from sopran.analysis.electron_reflection.beam_diagnostics import (
+from sopran.experimental.electron_reflection import global_joint as gj
+from sopran.experimental.electron_reflection.beam_diagnostics import (
     decompose_global_joint_beam,
     plot_global_joint_beam_decomposition,
 )

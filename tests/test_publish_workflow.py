@@ -36,7 +36,7 @@ def test_ci_workflow_runs_core_verification_commands() -> None:
 
     assert "pull_request:" in workflow
     assert "branches:" in workflow
-    assert 'python -m pip install -e ".[dev,kaguya,moon,viz,docs]"' in workflow
+    assert 'python -m pip install -e ".[dev,kaguya,moon,viz,docs,experimental]"' in workflow
     assert "python -m pytest -q" in workflow
     assert "python -m compileall src" in workflow
     assert "python -m sopran.schema_docs --check docs/reference/schemas.md" in workflow

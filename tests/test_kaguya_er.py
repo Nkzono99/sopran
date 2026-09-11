@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 
 import sopran as spn
-import sopran.missions.kaguya.er as er_module
-from sopran.analysis.electron_reflection import (
+import sopran.experimental.kaguya.er as er_module
+from sopran.core.data import SopranArray
+from sopran.core.schema import VariableSchema
+from sopran.experimental.electron_reflection import (
     EffectiveFieldFitSettings,
     simulate_electron_reflection_counts,
 )
-from sopran.core.data import SopranArray
-from sopran.core.schema import VariableSchema
-from sopran.missions.kaguya.er import affected_side_from_geometry
+from sopran.experimental.kaguya.er import affected_side_from_geometry
 
 pytest.importorskip("scipy")
 xr = pytest.importorskip("xarray")
@@ -74,7 +74,7 @@ def test_affected_side_from_geometry_uses_outgoing_field_direction() -> None:
 def test_kaguya_effective_field_endpoint_fits_pitch_spectrum(tmp_path) -> None:
     kg = spn.Kaguya(store=spn.Store(tmp_path / "store"), download="never")
 
-    fitted = kg.er.effective_field.fit(
+    fitted = er_module.KaguyaErInstrument(kg).effective_field.fit(
         _full_pitch_spectrum(),
         b_sc_nT=np.array([8.0, 8.0]),
         affected_side="low",
@@ -102,7 +102,7 @@ def test_kaguya_effective_field_endpoint_can_infer_affected_side(tmp_path) -> No
     magnetic = np.array([[8.0, 0.0, 0.0], [8.0, 0.0, 0.0]])
     position = np.array([[1738.0, 0.0, 0.0], [1738.0, 0.0, 0.0]])
 
-    fitted = kg.er.effective_field.fit(
+    fitted = er_module.KaguyaErInstrument(kg).effective_field.fit(
         _full_pitch_spectrum(),
         magnetic_field=magnetic,
         position=position,
@@ -123,7 +123,7 @@ def test_kaguya_effective_field_endpoint_requires_count_pitch_data(tmp_path) -> 
     spectrum.to_xarray().attrs["value"] = "energy_flux"
 
     with pytest.raises(ValueError, match="counts"):
-        kg.er.effective_field.fit(
+        er_module.KaguyaErInstrument(kg).effective_field.fit(
             spectrum,
             b_sc_nT=8.0,
             affected_side="low",
@@ -141,7 +141,7 @@ def test_kaguya_effective_field_endpoint_allows_joint_count_exposure_gaps(tmp_pa
     array.coords["exposure"] = (array.dims, exposure)
     array.coords["exposure"].attrs["mode"] = "calibrated"
 
-    fitted = kg.er.effective_field.fit(
+    fitted = er_module.KaguyaErInstrument(kg).effective_field.fit(
         spectrum,
         b_sc_nT=8.0,
         affected_side="low",
@@ -164,7 +164,7 @@ def test_kaguya_effective_field_endpoint_reuses_store_cache(tmp_path, monkeypatc
         profile_likelihood=False,
     )
 
-    first = kg.er.effective_field.fit(
+    first = er_module.KaguyaErInstrument(kg).effective_field.fit(
         _full_pitch_spectrum(),
         b_sc_nT=8.0,
         affected_side="low",
@@ -173,7 +173,7 @@ def test_kaguya_effective_field_endpoint_reuses_store_cache(tmp_path, monkeypatc
         variant_id="synthetic_mirror_v1",
     )
     record = store.dataset(
-        "kaguya.er.effective_field",
+        "experimental.kaguya.er.effective_field",
         layer="features",
         variant_id="synthetic_mirror_v1",
     )
@@ -182,7 +182,7 @@ def test_kaguya_effective_field_endpoint_reuses_store_cache(tmp_path, monkeypatc
         raise AssertionError("cached effective-field data should be reused")
 
     monkeypatch.setattr(er_module, "fit_effective_field", unexpected_refit)
-    second = kg.er.effective_field.fit(
+    second = er_module.KaguyaErInstrument(kg).effective_field.fit(
         _full_pitch_spectrum(),
         b_sc_nT=8.0,
         affected_side="low",
@@ -191,7 +191,7 @@ def test_kaguya_effective_field_endpoint_reuses_store_cache(tmp_path, monkeypatc
         variant_id="synthetic_mirror_v1",
     )
 
-    assert record.manifest()["producer"] == "sopran.kaguya.er.robust_counts"
+    assert record.manifest()["producer"] == "sopran.experimental.kaguya.er.robust_counts"
     assert record.verify_checksums()
     assert second.to_pandas()["mirror_ratio"].tolist() == pytest.approx(
         first.to_pandas()["mirror_ratio"].tolist()

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from sopran.missions.kaguya.er_validation import (
+from sopran.experimental.kaguya.er_validation import (
     _straight_local_footpoints,
     validate_effective_field_archive,
     wilson_interval,
@@ -115,7 +115,7 @@ def test_validate_effective_field_archive_checks_a_minimal_variant(
     (variant / "dataset.json").write_text(
         json.dumps(
             {
-                "dataset_id": "kaguya.er.effective_field",
+                "dataset_id": "experimental.kaguya.er.effective_field",
                 "parameters": {
                     "sampling_cadence_seconds": 600.0,
                     "pitch_bins": 16,

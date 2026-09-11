@@ -10,8 +10,8 @@ description: SOPRANのPyO3/Rust backendの移植、高速化、数値等価性�
 パスはリポジトリルートからの相対パスです。
 build設定は`pyproject.toml`の`tool.maturin`と`crates/sopran-native/Cargo.toml`、
 Pythonの拡張名は`sopran._native`。配布行列は`.github/workflows/publish.yml`を確認する。
-ERの設計経緯は`docs/missions/kaguya/electron-reflectometry-rust-backend.md`にあるが、
-過去の計測値・未移植経路の記述は現行コードと照合する。
+ERの設計経緯は`working/kaguya-er-fit-review/library-docs-archive/`にあるが、
+過去の計測値・未移植経路の記述は`src/sopran/experimental/`の現行コードと照合する。
 
 - 公開API、機器の補正仕様、モデル選択方針と、重い計算kernelの責務を分ける。
   数式が同じでも単位、配列順序、mask、境界条件が異なれば同等ではない。

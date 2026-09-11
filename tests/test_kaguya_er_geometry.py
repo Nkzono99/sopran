@@ -7,13 +7,13 @@ import pytest
 import sopran as spn
 from sopran.core.data import SopranArray
 from sopran.core.schema import VariableSchema
-from sopran.missions.kaguya import er_timeseries as ts
+from sopran.experimental.kaguya import er_timeseries as ts
+from sopran.experimental.kaguya.er import _vectors_at
 from sopran.missions.kaguya import pitch
-from sopran.missions.kaguya.er import _vectors_at
-from sopran.missions.kaguya.er_geometry import (
+from sopran.missions.kaguya.magnetic_geometry import (
     geometry_support,
     interpolate_vectors,
-    load_lmag_for_er,
+    load_lmag_with_margin,
 )
 from sopran.missions.kaguya.pace import PaceData, PaceRecord
 
@@ -161,7 +161,7 @@ def test_geometry_load_keeps_real_brackets_outside_requested_interval():
                          & (source.time < np.datetime64(time.stop.replace(tzinfo=None))), drop=True)
         return SimpleNamespace(magnetic_field=SopranArray(name="b", time=time,
             schema=VariableSchema(name="b", dims=a.dims, units="nT"), xr=a))
-    loaded = load_lmag_for_er(SimpleNamespace(load=load), period, download="never")
+    loaded = load_lmag_with_margin(SimpleNamespace(load=load), period, download="never")
     assert calls[0] == (period, "error")
     assert calls[1][1] == "empty"
     target = np.array(["2008-01-01T00:00:14"], dtype="datetime64[ns]")

@@ -1,6 +1,8 @@
 # SOPRAN Agent Guide
 
 SOPRANは衛星データの取得・保存・解析・可視化を提供するPythonパッケージです。
+APIの階層・型・単位がデータの構造と意味を伝え、標準の入口から可視化まで進めること、
+元ファイルとnative観測ビンへの直接アクセスを保つことを設計の基準とします。
 重い数値処理は同梱のPyO3/Rust拡張へまとめて渡します。
 全体ルールはこのファイル、仕様は`docs/`、一時的な進捗は`_handoff/`や
 各解析出力のログに置きます。仕様・既定値は現行コードとテストで確認してください。
@@ -15,7 +17,7 @@ SOPRANは衛星データの取得・保存・解析・可視化を提供するPy
 | `src/sopran/missions/` | KAGUYA、ARTEMIS、OMNIなどのreader・機器・product API |
 | `src/sopran/bodies/moon/` | DEM、shadow、SVMなどの月面product |
 | `src/sopran/frames/` | 座標系、SPICE、時刻変換 |
-| `src/sopran/analysis/` | ミッション非依存の解析。ERは`electron_reflection/` |
+| `src/sopran/experimental/` | 明示importで使う試作。ER、波動候補、mission用adapter |
 | `src/sopran/maps/` | 共通raster型。月固有productは`bodies/moon/`に置く |
 | `crates/sopran-native/` | Pythonから`sopran._native`として呼ぶRust拡張 |
 | `tests/` | 合成データ・fixture中心の回帰テスト |
@@ -39,6 +41,10 @@ SOPRANは衛星データの取得・保存・解析・可視化を提供するPy
   欠損値、ゼロ、未取得、校正・品質フラグを区別する。
 - 任意依存は利用する経路で読み込む。`import sopran`に全ミッションの依存を要求しない。
   依存・build・extrasの定義は`pyproject.toml`を正とする。
+- 通常APIからexperimentalへ依存しない。試作を機器やルートへ再公開しない。
+  試作にも型・単位・テストを付け、Storeキーを通常productと分ける。
+  `experimental/README.md`で未確定点と正式化の条件を管理し、リリース前に棚卸しする。
+  未公開APIの念のための互換aliasやshimは作らない。
 - 可視化は既存plot APIを使い、軸とカラーに物理量・単位を表示する。
   科学画像は実データから作り、NaNとゼロ、候補解と採択解を区別する。
 

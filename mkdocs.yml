@@ -68,6 +68,7 @@ nav:
       - First Analysis: getting-started/first-analysis.md
       - Data Store: getting-started/data-store.md
   - Concepts:
+      - Design Principles: concepts/design-principles.md
       - Object API: concepts/object-api.md
       - Store: concepts/store.md
       - Pipeline: concepts/pipeline.md
@@ -81,15 +82,14 @@ nav:
       - KAGUYA/SELENE:
           - Overview: missions/kaguya/index.md
           - PACE ESA1: missions/kaguya/esa1.md
-          - Electron Reflectometry: missions/kaguya/electron-reflectometry.md
-          - ER Estimation Algorithm: missions/kaguya/electron-reflectometry-algorithm.md
-          - ER Full-Period Validation: missions/kaguya/electron-reflectometry-validation.md
-          - ER Method Survey: missions/kaguya/electron-reflectometry-method-survey.md
-          - ER Rust Backend Design: missions/kaguya/electron-reflectometry-rust-backend.md
-          - LRS/WFC Wave Candidates: missions/kaguya/wfc-waves.md
+          - ESA Mode Policy: missions/kaguya/esa-mode-policy.md
       - ARTEMIS:
           - Overview: missions/artemis/index.md
       - OMNI: missions/omni.md
+  - Experimental:
+      - Policy And Inventory: experimental/index.md
+      - Electron Reflectometry: experimental/electron-reflectometry.md
+      - Wave Candidates: experimental/waves.md
   - How-to:
       - Load KAGUYA ESA1: how-to/load-kaguya-esa1.md
       - Load KAGUYA LRS: how-to/load-kaguya-lrs.md

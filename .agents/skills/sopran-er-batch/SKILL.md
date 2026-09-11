@@ -9,11 +9,11 @@ description: SOPRANの電子反射法（ER）のfit、実データ評価、可�
 
 パスはリポジトリルートからの相対パスです。必要なものだけ読む。
 
-- 数式・モデル: `docs/missions/kaguya/electron-reflectometry-algorithm.md`、
-  `src/sopran/analysis/electron_reflection/`。
-- 機器データからの構成と公開API: `src/sopran/missions/kaguya/er.py`、`er_timeseries.py`。
-- 評価・制約: `docs/missions/kaguya/electron-reflectometry-validation.md`、
-  `docs/missions/kaguya/electron-reflectometry-method-survey.md`。
+- 試作APIと制約: `docs/experimental/electron-reflectometry.md`、
+  `src/sopran/experimental/electron_reflection/`。
+- 機器データからの構成: `src/sopran/experimental/kaguya/er.py`、`er_timeseries.py`。
+  通常の`Kaguya`からは再公開しない。明示的な`KaguyaErInstrument`を使う。
+- 旧数式解説・評価・文献調査: `working/kaguya-er-fit-review/library-docs-archive/`。
 - ローカル実験: `working/kaguya-er-fit-review/`。指定されたrunのREADME、
   binding、summary、input audit、ログと、その生成scriptを対応付ける。
   最新という名前や画像の見た目だけで実行中・採択済みと判断しない。

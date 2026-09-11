@@ -5,8 +5,8 @@ import json
 import pandas as pd
 
 import sopran as spn
-from sopran.analysis.electron_reflection import EffectiveFieldFitSettings
-from sopran.missions.kaguya.er_catalog import (
+from sopran.experimental.electron_reflection import EffectiveFieldFitSettings
+from sopran.experimental.kaguya.er_catalog import (
     KAGUYA_ESA1_ARCHIVE_TIME,
     _cadence_seconds,
     _catalog_variant_id,

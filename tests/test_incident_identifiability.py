@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from sopran.analysis.electron_reflection.identifiability import scan_incident_likelihood
-from sopran.analysis.electron_reflection.incident import IncidentProblem
+from sopran.experimental.electron_reflection.identifiability import scan_incident_likelihood
+from sopran.experimental.electron_reflection.incident import IncidentProblem
 
 
 class QuadraticProblem:

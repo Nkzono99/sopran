@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import sopran as spn
-from sopran.missions.kaguya.er_timeseries import _window_record, _window_skip_reason
+from sopran.experimental.kaguya.er_timeseries import _window_record, _window_skip_reason
 from sopran.missions.kaguya.esa_quality import esa_pitch_rejection_reason
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData, PaceRecord
 from sopran.missions.kaguya.pitch import PitchAngleSpectrumOptions, build_pitch_angle_spectrum

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from sopran import Store
-from sopran.analysis.waves import (
+from sopran.experimental.waves import (
     BBN_ESW_CANDIDATE,
     FPE_LOW_RIDGE_CANDIDATE,
     INSTRUMENT_RFI_CANDIDATE,

@@ -47,16 +47,6 @@
 
 ::: sopran.core.events.EventCatalog
 
-::: sopran.analysis.waves.detect_wave_candidates
-
-::: sopran.analysis.waves.WaveDetectorConfig
-
-::: sopran.analysis.waves.fit_background_residual_clustering
-
-::: sopran.analysis.waves.BackgroundResidualClusteringConfig
-
-::: sopran.missions.kaguya.waves.build_kaguya_wfc_quality_mask
-
 ::: sopran.core.project.Project
 
 ::: sopran.core.project.ProjectArtifact

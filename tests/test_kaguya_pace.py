@@ -1461,7 +1461,7 @@ def test_pitch_angle_spectrum_skips_spice_attitude_gaps(
     assert spectrum.sizes["time"] == 1
     assert spectrum.coords["time"].values[0] == np.datetime64("2008-01-01T00:00:00")
     assert spectrum.attrs["geometry_rejected_times_unix"] == [start + 1]
-    from sopran.missions.kaguya.er_timeseries import (
+    from sopran.experimental.kaguya.er_timeseries import (
         _native_record_arrays,
         _usable_record_indices,
         _window_geometry_diagnostics,

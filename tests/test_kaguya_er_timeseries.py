@@ -8,7 +8,7 @@ import pytest
 import sopran as spn
 from sopran.core.data import SopranArray
 from sopran.core.schema import VariableSchema
-from sopran.missions.kaguya import er_timeseries
+from sopran.experimental.kaguya import er_timeseries
 
 xr = pytest.importorskip("xarray")
 
@@ -141,11 +141,11 @@ def test_fit_timeseries_integrates_complete_16_second_window(
         np.testing.assert_allclose(observation.counts, 10.0)
         np.testing.assert_allclose(observation.exposure, 1.0)
     record = mission.store.dataset(
-        "kaguya.er.global_joint_effective_field",
+        "experimental.kaguya.er.global_joint_effective_field",
         layer="features",
         variant_id=result.variant_id,
     )
-    assert record.manifest()["producer"] == "sopran.kaguya.er.global_joint_timeseries"
+    assert record.manifest()["producer"] == "sopran.experimental.kaguya.er.global_joint_timeseries"
 
     monkeypatch.setattr(
         er_timeseries,

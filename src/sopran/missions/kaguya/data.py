@@ -21,7 +21,7 @@ from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange, _filter_polars_time, period
-from sopran.missions.kaguya.er_geometry import GEOMETRY_POLICY
+from sopran.missions.kaguya.magnetic_geometry import GEOMETRY_POLICY
 from sopran.missions.kaguya.pace import (
     PaceCalibration,
     PaceData,

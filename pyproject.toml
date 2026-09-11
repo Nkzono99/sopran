@@ -45,6 +45,9 @@ sopran-schema-docs = "sopran.schema_docs:main"
 analysis = [
   "scipy>=1.11",
 ]
+experimental = [
+  "scipy>=1.11",
+]
 kaguya = [
   "cdflib>=1.3",
   "pdr>=0.7.1",

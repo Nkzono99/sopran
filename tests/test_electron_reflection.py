@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy.special import ndtr
 
-from sopran.analysis.electron_reflection import (
+from sopran.experimental.electron_reflection import (
     BinaryLossConeFitSettings,
     EffectiveFieldFitSettings,
     EffectiveFieldQualitySettings,
@@ -75,7 +75,7 @@ def test_global_joint_settings_reject_nonpositive_rate_prior() -> None:
 
 
 def test_physical_pitch_orientation_places_affected_hemisphere_on_left() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _orient_pitch_surface
+    from sopran.experimental.electron_reflection.global_joint import _orient_pitch_surface
 
     pitch = np.asarray([10.0, 60.0, 120.0, 170.0])
     values = np.asarray([[1.0, 2.0, 3.0, 4.0]])
@@ -100,7 +100,7 @@ def test_physical_pitch_orientation_places_affected_hemisphere_on_left() -> None
 
 
 def test_prepared_global_observation_preserves_declared_affected_side() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _prepare_observation
+    from sopran.experimental.electron_reflection.global_joint import _prepare_observation
 
     settings = GlobalJointFitSettings(
         spectrum_knots=4,
@@ -123,7 +123,7 @@ def test_prepared_global_observation_preserves_declared_affected_side() -> None:
 
 
 def test_prepared_global_observation_uses_configured_energy_range() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _prepare_observation
+    from sopran.experimental.electron_reflection.global_joint import _prepare_observation
 
     observation = GlobalPitchCountObservation(
         energy_eV=np.asarray([10.0, 20.0, 1_500.0, 2_000.0]),
@@ -163,7 +163,7 @@ def test_global_joint_rejects_insufficient_energy_pitch_support() -> None:
 
 
 def test_global_support_is_aggregated_across_records_within_each_sensor() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _prepare_observation,
         _validate_global_support,
     )
@@ -284,7 +284,7 @@ def test_global_joint_rejects_disconnected_sensor_energy_support() -> None:
 
 
 def test_global_boundary_support_combines_complementary_sensor_pitch_coverage() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _global_boundary_support,
         _prepare_observation,
     )
@@ -325,7 +325,7 @@ def test_global_boundary_support_combines_complementary_sensor_pitch_coverage() 
 
 
 def test_global_boundary_support_does_not_count_repeated_pitch_bins_twice() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _global_boundary_support,
         _prepare_observation,
     )
@@ -394,8 +394,8 @@ def _global_model_fit(
 
 
 def test_combined_global_fov_keeps_zero_count_exposure_in_denominator() -> None:
-    from sopran.analysis.electron_reflection import GlobalNormalizedFlux, GlobalSensorFit
-    from sopran.analysis.electron_reflection.global_joint import _combined_full_fov
+    from sopran.experimental.electron_reflection import GlobalNormalizedFlux, GlobalSensorFit
+    from sopran.experimental.electron_reflection.global_joint import _combined_full_fov
 
     energy = np.asarray([100.0, 200.0])
     pitch = np.asarray([45.0, 135.0])
@@ -455,7 +455,7 @@ def test_combined_global_fov_keeps_zero_count_exposure_in_denominator() -> None:
 def test_global_joint_auto_selects_resolution_limited_hard_edge(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     def fake_fit_candidate(
         observations: object,
@@ -502,7 +502,7 @@ def test_global_joint_auto_selects_resolution_limited_hard_edge(
 def test_global_contrast_family_is_selected_per_edge_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     def fake_fit_transition_without_beam(
         observations: object,
@@ -580,7 +580,7 @@ def test_global_contrast_screen_controls_band_refinement(
     expected_contrast: str,
     expected_refined: bool,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     transition_calls: list[str] = []
     screen_pitch_samples: list[int] = []
@@ -650,7 +650,7 @@ def test_global_contrast_screen_controls_band_refinement(
 def test_global_auto_contrast_accepts_zero_floor_through_screen_and_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     constant = _global_model_fit("electrostatic", 100.0)
     band = replace(
@@ -690,7 +690,7 @@ def test_global_contrast_refine_uses_multiple_starts_after_unqualified_constant(
     screening: bool,
     refine_count: int,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     refine_starts: list[int | None] = []
 
@@ -754,7 +754,7 @@ def test_global_contrast_refine_uses_multiple_starts_after_unqualified_constant(
 def test_global_smooth_screen_skips_expensive_refinement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     calls: list[tuple[str, int]] = []
 
@@ -796,7 +796,7 @@ def test_global_smooth_screen_skips_expensive_refinement(
 def test_global_smooth_screen_refines_promising_candidate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     calls: list[tuple[str, int]] = []
 
@@ -840,7 +840,7 @@ def test_global_smooth_screen_refines_promising_candidate(
 def test_global_smooth_refinement_uses_hard_seed_after_failed_screen(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     hard = replace(
         _global_model_fit(
@@ -900,7 +900,7 @@ def test_mirror_boundary_uses_mirror_ratio_and_energy_correction() -> None:
 
 
 def test_global_selection_can_accept_electrostatic_when_mirror_loses_to_no_edge() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _select_global_model
+    from sopran.experimental.electron_reflection.global_joint import _select_global_model
 
     no_edge = _global_model_fit("no_edge", 1_000.0)
     mirror = _global_model_fit("mirror_only", 1_020.0)
@@ -918,7 +918,7 @@ def test_global_selection_can_accept_electrostatic_when_mirror_loses_to_no_edge(
 
 
 def test_global_selection_does_not_require_nested_gain_when_mirror_is_unsupported() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _select_global_model
+    from sopran.experimental.electron_reflection.global_joint import _select_global_model
 
     no_edge = _global_model_fit("no_edge", 1_000.0)
     mirror = _global_model_fit("mirror_only", 1_001.0)
@@ -942,7 +942,7 @@ def test_global_selection_does_not_require_nested_gain_when_mirror_is_unsupporte
 
 
 def test_global_selection_falls_back_to_supported_mirror_at_electrostatic_bound() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _select_global_model
+    from sopran.experimental.electron_reflection.global_joint import _select_global_model
 
     no_edge = _global_model_fit("no_edge", 1_000.0)
     mirror = _global_model_fit("mirror_only", 950.0)
@@ -964,7 +964,7 @@ def test_global_selection_falls_back_to_supported_mirror_at_electrostatic_bound(
 
 
 def test_global_selection_accepts_zero_contrast_floor_for_localized_band() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _select_global_model
+    from sopran.experimental.electron_reflection.global_joint import _select_global_model
 
     no_edge = _global_model_fit("no_edge", 1_000.0)
     mirror = replace(
@@ -988,7 +988,7 @@ def test_global_selection_accepts_zero_contrast_floor_for_localized_band() -> No
 
 
 def test_global_selection_rejects_contrast_floor_at_upper_bound() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _select_global_model
+    from sopran.experimental.electron_reflection.global_joint import _select_global_model
 
     no_edge = _global_model_fit("no_edge", 1_000.0)
     mirror = replace(
@@ -1012,7 +1012,7 @@ def test_global_selection_rejects_contrast_floor_at_upper_bound() -> None:
 
 
 def test_global_selection_rejects_unbracketed_edge() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _select_global_model
+    from sopran.experimental.electron_reflection.global_joint import _select_global_model
 
     no_edge = _global_model_fit("no_edge", 1_000.0)
     mirror = replace(
@@ -1317,7 +1317,7 @@ def test_global_joint_fit_recovers_field_and_cross_sensor_gain(tmp_path) -> None
         result.normalized_flux.energy_edges_eV[[0, -1]],
         [20.0, 1_500.0],
     )
-    from sopran.analysis.electron_reflection.global_joint import _combined_full_fov
+    from sopran.experimental.electron_reflection.global_joint import _combined_full_fov
 
     combined = _combined_full_fov(selected, orientation="physical")
     np.testing.assert_allclose(combined[0], selected.global_fov.energy_eV)
@@ -1682,7 +1682,7 @@ def test_global_observation_from_spectrum_requires_count_metadata() -> None:
 
 
 def test_global_observation_builds_finite_bin_response_samples() -> None:
-    from sopran.analysis.electron_reflection.global_joint import _prepare_observation
+    from sopran.experimental.electron_reflection.global_joint import _prepare_observation
 
     observation = GlobalPitchCountObservation(
         energy_eV=np.asarray([100.0, 200.0]),
@@ -1727,7 +1727,7 @@ def test_global_observation_builds_finite_bin_response_samples() -> None:
 
 
 def test_global_observation_uses_common_physical_energy_support() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _predicted_surfaces,
         _prepare_observation,
@@ -1809,7 +1809,7 @@ def test_global_observation_uses_common_physical_energy_support() -> None:
 
 
 def test_global_forward_model_applies_background_and_dead_time() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _predicted_surfaces,
         _prepare_observation,
@@ -1853,7 +1853,7 @@ def test_global_forward_model_applies_background_and_dead_time() -> None:
 
 
 def test_global_forward_model_applies_response_matrix_and_secondary_beam() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _predicted_surfaces,
         _prepare_observation,
@@ -1900,7 +1900,7 @@ def test_global_forward_model_applies_response_matrix_and_secondary_beam() -> No
 
 
 def test_global_hard_edge_is_integrated_over_pitch_bin() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _normalized_flux,
         _predicted_surfaces,
@@ -1959,7 +1959,7 @@ def test_global_hard_edge_is_integrated_over_pitch_bin() -> None:
 
 
 def test_global_fold_uses_full_fov_and_retains_zero_count_cells() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _fold_global_fov,
         _global_full_fov,
@@ -2069,7 +2069,7 @@ def test_global_fold_uses_full_fov_and_retains_zero_count_cells() -> None:
 
 
 def test_global_fov_orients_mixed_affected_sides_before_aggregation() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _global_full_fov,
         _prepare_observation,
@@ -2111,7 +2111,7 @@ def test_global_fov_orients_mixed_affected_sides_before_aggregation() -> None:
 
 
 def test_global_fov_preserves_negative_background_correction() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _global_full_fov,
         _prepare_observation,
@@ -2221,7 +2221,7 @@ def test_global_native_hard_objective_matches_python(
     transition_model: str,
     beam_enabled: bool,
 ) -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _native_hard_problem,
         _objective,
@@ -2324,7 +2324,7 @@ def test_global_native_hard_objective_matches_python(
 
 
 def test_global_native_hard_problem_rejects_unsupported_forward_models() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _native_hard_problem,
         _prepare_observation,
@@ -2367,7 +2367,7 @@ def test_global_native_hard_problem_rejects_unsupported_forward_models() -> None
 
 
 def test_global_problem_shares_nuisance_parameters_within_sensor_group() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _group_sensor_fits_for_plot,
         _native_hard_problem,
@@ -2428,7 +2428,7 @@ def test_global_problem_shares_nuisance_parameters_within_sensor_group() -> None
 
 
 def test_global_problem_shares_effective_field_across_varying_spacecraft_field() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _predicted_surfaces,
         _prepare_observation,
@@ -2472,7 +2472,7 @@ def test_global_problem_shares_effective_field_across_varying_spacecraft_field()
 
 
 def test_global_no_edge_beam_uses_multiple_beam_starts() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _prepare_observation,
         _starts,
@@ -2511,7 +2511,7 @@ def test_global_no_edge_beam_uses_multiple_beam_starts() -> None:
 
 
 def test_global_seeded_multistart_keeps_independent_canonical_starts() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _build_problem,
         _prepare_observation,
         _starts,
@@ -2565,7 +2565,7 @@ def test_global_seeded_multistart_keeps_independent_canonical_starts() -> None:
 
 
 def test_global_hard_energy_quadrature_resolves_bin_crossing() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _bin_quadrature,
         _hard_pitch_bin_transmission,
     )
@@ -2595,7 +2595,7 @@ def test_global_hard_energy_quadrature_resolves_bin_crossing() -> None:
 
 
 def test_global_smooth_pitch_quadrature_resolves_narrow_transition() -> None:
-    from sopran.analysis.electron_reflection.global_joint import (
+    from sopran.experimental.electron_reflection.global_joint import (
         _bin_quadrature,
         _transition_probability,
     )
@@ -2676,7 +2676,7 @@ def test_global_joint_auto_selects_clear_secondary_beam() -> None:
 
 
 def test_global_joint_auto_keeps_beam_off_without_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     def fake_fit_candidate(
         observations: object,
@@ -2713,7 +2713,7 @@ def test_global_joint_auto_keeps_beam_off_without_evidence(monkeypatch: pytest.M
 def test_global_joint_unqualified_edge_receives_full_beam_refinement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     calls: list[tuple[bool, int]] = []
 
@@ -2760,7 +2760,7 @@ def test_global_joint_unqualified_edge_receives_full_beam_refinement(
 def test_global_joint_auto_keeps_qualified_edge_when_beam_fit_is_invalid(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from sopran.analysis.electron_reflection import global_joint
+    from sopran.experimental.electron_reflection import global_joint
 
     def fake_fit_candidate(
         observations: object,
@@ -3181,7 +3181,7 @@ def test_effective_field_quality_thresholds_validate_ordering() -> None:
 
 
 def test_beta_binomial_analytic_gradient_matches_central_difference() -> None:
-    from sopran.analysis.electron_reflection.model import (
+    from sopran.experimental.electron_reflection.model import (
         _initial_parameters,
         _negative_log_likelihood,
         _negative_log_likelihood_and_gradient,

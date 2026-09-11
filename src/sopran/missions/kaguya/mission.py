@@ -35,7 +35,6 @@ from sopran.missions.kaguya.data import (
     _pitch_angle_spectrum_variant_metadata,
     _read_pitch_angle_spectrum_store,
 )
-from sopran.missions.kaguya.er import KaguyaErInstrument
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
     iter_hourly_public_paths,
@@ -131,7 +130,6 @@ class Kaguya:
         self.lmag: LmagInstrument = LmagInstrument(self)
         self.lrs: LrsInstrument = LrsInstrument(self)
         self.orbit: OrbitInstrument = OrbitInstrument(self)
-        self.er: KaguyaErInstrument = KaguyaErInstrument(self)
         self.sza: GeometryArrayEndpoint = self.orbit.sza
 
     def info(self) -> InfoPage:
@@ -144,7 +142,6 @@ class Kaguya:
                 "iea: PACE Ion Energy Analyzer",
                 "lmag: Lunar MAGnetometer",
                 "lrs: Lunar Radar Sounder plasma wave spectra",
-                "er: electron-reflectometry effective mirror field",
                 "sza: shortcut for orbit.sza",
             ),
         )

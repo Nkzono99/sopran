@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from sopran.missions.kaguya.er_profile_validation import _profile_summary
+from sopran.experimental.kaguya.er_profile_validation import _profile_summary
 
 
 def test_profile_summary_reports_interval_width_and_source_reproduction() -> None:

@@ -53,39 +53,15 @@ SPEDASはtype 0/1を読み込み、type 2のget3dは未対応扱いです。
 「採用可能」はロスコーン検出成功を意味しません。生のゼロカウントや低カウントも、
 有効なexposureがある限り、このmode判定では捨てません。
 
-## 記録と時間窓
+## 観測メタデータとcache
 
-- `pace_data_mode`, `pace_data_type` に加え、`pace_submode`, `pace_svs_tbl`,
-  `pace_data_quality`, `record_duration_seconds` をsensor別pitch配列とSTOREに保存します。
-- joint配列の `record_selection` に総数、採用可能数、除外理由別件数、時刻整合後の件数を残します。
-  全除外日は `excluded_by_record_policy`。データ欠損やSPICE失敗とは区別します。
-- 16秒窓では各native recordを収録中心時刻で割り当てます。EC-Nの16秒レコード1件を、
-  通常の2秒レコード8件に相当する収録として診断します。`window_coverage` はレコード数と
-  収録時間に基づく目安で、窓と観測区間の厳密な重なり積分ではありません。
-- `record_duration_seconds=16` と `integration_time_seconds=16/sampl_time` は別です。
-  実データのEC-Nでは `sampl_time=512`、各検出器視線の積分は0.03125秒です。
-- 17↔18だけの共通コマンド切替は除外しません。ただしESAのtype/submode/RAM変更や、
-  その他の共通mode変更は窓単位の別ラベルで保留します。月面側の反転等の既存診断も維持します。
+`pace_data_mode`、`pace_data_type`、`pace_submode`、`pace_svs_tbl`、
+`pace_data_quality`、`record_duration_seconds`をpitch配列とStoreに残します。
+全除外は`excluded_by_record_policy`として、未取得やSPICE失敗と区別します。
 
-## キャッシュと既存結果
+`record_duration_seconds=16`は1レコードの収録時間で、各検出器視線の
+`integration_time_seconds=16/sampl_time`とは異なります。
+時間窓への割当・積分やfit supportは解析側の別条件です。
 
-自動pitch variant、明示variantの検査、ER入力fingerprintに新規則を反映します。
-作業用日別pickleも旧規則なら利用を拒否し、別出力に再構築します。
-旧計算 `mission-native-all-period-v7` は保存したまま停止しています。
-旧入力でfit済みの結果を新規則の結果に付け替えることはしません。
-新規則の全期間処理は `mission-native-all-period-v8` に分離し、3 workerで実行します（開始時の5から削減）。
-そのディレクトリの存在は全期間完了を意味しません。`progress.json` と日別inventoryを確認してください。
-
-実データのヘッダー監査は `working/kaguya-er-fit-review/esa-mode-policy-audit/raw-audit.json`、
-fitの確認図は同ディレクトリの `validation/` に保存します。
-
-| 日付 | 新規則で採用可能なS1 | S2 | 確認した共通mode |
-|---|---:|---:|---|
-| 2008-04-11 | 5,035 | 4,819 | 17/18のみ。旧規則では全除外 |
-| 2008-04-26 | 5,058 | 4,796 | 17/18のみ。旧規則では全除外 |
-| 2008-02-29 | 4,000 | 3,720 | 17/18のみ。旧規則では全除外 |
-| 2008-05-01 | 40,419 | 38,037 | 20/36。ヘッダー規則による変更なし |
-| 2008-08-18 | 17,492 | 15,835 | 17/36。旧規則よりS1は799件、S2は744件増加 |
-
-これは要求UTC日内の**各センサーのヘッダー適格数**です。
-S1/S2同時観測数・16秒窓数・fit成功数ではありません。
+自動variantと明示variantの検査に品質policyを含めます。異なるpolicyで作った
+pitch cacheを同じものとして再利用しません。元ファイルは変更しません。

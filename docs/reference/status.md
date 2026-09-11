@@ -7,9 +7,8 @@
 | 領域 | 現状 | 次の主作業 |
 | --- | --- | --- |
 | KAGUYA PACE | ESA1/ESA2/IMA/IEA PBF decode、ESA1 energy_flux 較正、exposure 付き pitch angle native binning、Store 保存、pipeline、coverage、quicklook | 較正対象の拡張、内部 validation、look-angle |
-| KAGUYA electron reflectometry | paired-count fit、全期間 catalog、profile CI 再計算、blind 再監査、ESA1/ESA2・cadence 検証、official/curved SVM3D 比較 | 時間窓 joint fit、ESA2 geometry/response 監査、独立複数 expert 監査、finite-gyroradius forward validation |
 | KAGUYA LMAG/geometry | path planning、`MAG_TS*.dat` load、MOON_ME/GSE magnetic field、`|B|`、MOON_ME/GSE orbit geometry、radial distance、SZA、magnetic connection、Store cache | SPICE-backed Sun geometry、SPEDAS parity |
-| KAGUYA LRS | NPW/WFC CDF、PDC-TI/sparse pad、PSD、WFC-H multi-label detector、ridge tracker、run-scoped clustering | 全期間統計、WFC-L取得、外部物理 validation |
+| KAGUYA LRS | NPW/WFC CDF、PDC-TI/sparse pad、PSD | WFC-L取得、reader検証 |
 | KAGUYA その他 | PACE/LMAG/LRS の一部を実装済み | instrument 固有の較正と実データ parity |
 | ARTEMIS | object API、normalized parquet reader skeleton | CDAWeb/HAPI/CDF discovery と raw loader |
 | Frames | `FrameContext`、identity transform、SPICE vector 委譲 | SpacePy / Astropy backend |
@@ -49,40 +48,12 @@ Python reference に fallback します。
 開発環境では repository root で `python -m pip install -e .` または
 `python -m maturin develop --release` を実行して native module を入れます。
 
-## KAGUYA electron reflectometry
+## Experimental
 
-入っているもの:
-
-- `spn.kaguya.er.effective_field.fit(...)`
-- mission 非依存の `spn.ElectronReflectionCounts` / `spn.fit_effective_field(...)`
-- exposure 補正付き paired-count beta-binomial 尤度
-- `no_edge` / `mirror_only` / `electrostatic` の BIC 比較
-- bound 張り付き reject と mirror ratio の profile-likelihood 95% interval
-- affected side の `B dot r` による物理選択
-- variant 付き Store cache と provenance/schema
-- synthetic Monte Carlo と旧 raw-PAD 読み取り smoke
-- raw PACE、LMAG、SPICE からの再開可能な日別 archive build
-- 473日・55,702行の固定 variant に対する checksum / geometry / 派生量 integrity 検証
-- accepted 2,470件の別 workflow 再 fit と profile-likelihood 95% interval
-- 月、SZA、count、altitude、spacecraft field の全期間 selection function と時間 block 交差検証
-- 70 edge 候補の境界なし blind 再監査
-- 固定18日の ESA1/ESA2 相互検証と、2分・native cadence 感度検証
-- official Tsunakawa SVM v2 出力5,041点に対する Rust evaluator parity
-- 0.5 degree SVM3D shell、曲線 field-line trace、格子感度、正規化 SVM 比較
-
-残っているもの:
-
-- ESA2 look-vector 座標・半球対応・絶対 exposure/response の独立監査
-- native count を時間 window で同時に扱う階層 fit と persistence gate
-- profile interval と truncation flag の標準 archive への統合
-- accepted/poor/no-edge/reject を混ぜた複数 expert blind audit と recall 評価
-- finite-gyroradius particle tracing による forward validation
-- solar wind / wake / magnetotail / spacecraft potential と独立観測を使う外部検証
-
-`B_eff` は実効 mirror field であり、月面磁場ベクトルではありません。詳細は
-[電子反射法による実効磁場](../missions/kaguya/electron-reflectometry.md)、
-[推定アルゴリズム](../missions/kaguya/electron-reflectometry-algorithm.md)、
-[全期間検証](../missions/kaguya/electron-reflectometry-validation.md)を参照してください。
+ER推定モデル、KAGUYA用ER adapter、WFCの候補検出・ridge・clusteringは
+`sopran.experimental`に隔離しています。通常の機器APIから自動で読み込みません。
+利用方法と制約は[Experimental APIs](../experimental/index.md)を参照してください。
+個別runの結果と文献調査は公開ドキュメントに含めません。
 
 ## KAGUYA LMAG / geometry
 
@@ -100,27 +71,14 @@ Python reference に fallback します。
 - SPICE kernel による Sun vector / GSE / SSE の実運用 parity
 - SPEDAS/IDL との geometry golden test
 
-## KAGUYA LRS / WFC-H 波動候補
+## KAGUYA LRS
 
-入っているもの:
+- CDFのEpochに揃えたNPW/WFCスペクトルとsupport flag
+- sparse padと観測ゼロの区別
+- 48-bit `wfc_pdc_ti`とraw high/middle/low word
+- PSDの単位・周波数座標、Store保存、可視化
 
-- 実CDF `Epoch` へ揃えたspectrum/support flagとsparse pad処理
-- 48-bit `wfc_pdc_ti` とraw high/middle/low wordの二層API
-- 120秒窓・60秒step、median/MAD背景、7種multi-label候補
-- 2--30 / 30--100 kHz独立Viterbi trackerとgap分割
-- detector/config/feature/window/event/interval/run IDとeligible `exposure_seconds`
-- EventCatalogのUTC/区間/confidence/schema検証、event onset count、exposure rate
-- 背景残差PCA + deterministic K-meansのrun-scoped探索cluster
-- 2008-01-10、2008-06-14、2008-06-18の実CDF anchor検証
-
-残っているもの:
-
-- 全期間daily shard生成と太陽風・wake geometry・ER文脈との統計検定
-- tracker/clusterの人手解釈とselection function
-- 8秒級spike用の短時間triage detector
-- 自然波動WFC-L waveformの取得経路確認とWFC-H候補との照合
-
-詳細は [KAGUYA LRS/WFC 波動イベント抽出](../missions/kaguya/wfc-waves.md) を参照してください。
+候補検出は[試作の波動解析](../experimental/waves.md)として別途提供します。
 
 ## ARTEMIS
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from sopran.missions.kaguya.er_selection_validation import (
+from sopran.experimental.kaguya.er_selection_validation import (
     validate_effective_field_selection,
 )
 

@@ -6,10 +6,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from sopran.analysis.electron_reflection import global_joint as gj
-from sopran.analysis.electron_reflection import integrated as model
-from sopran.analysis.electron_reflection import temporal as t
-from sopran.analysis.electron_reflection.incident import IncidentProblem, Result
+from sopran.experimental.electron_reflection import global_joint as gj
+from sopran.experimental.electron_reflection import integrated as model
+from sopran.experimental.electron_reflection import temporal as t
+from sopran.experimental.electron_reflection.incident import IncidentProblem, Result
 
 
 @pytest.fixture

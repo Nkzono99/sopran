@@ -2,40 +2,6 @@
 
 from typing import TYPE_CHECKING, Any
 
-from sopran.analysis import (
-    BackgroundModel,
-    BinaryLossConeEstimate,
-    BinaryLossConeFitSettings,
-    BinaryLossConeModelFit,
-    ContrastModel,
-    EdgeTransition,
-    EffectiveFieldDiagnostics,
-    EffectiveFieldEstimate,
-    EffectiveFieldFitSettings,
-    EffectiveFieldModelFit,
-    EffectiveFieldQualitySettings,
-    ElectronReflectionCounts,
-    FitQualityGrade,
-    GlobalFullFOV,
-    GlobalJointEstimate,
-    GlobalJointFitSettings,
-    GlobalJointModelFit,
-    GlobalNormalizedFlux,
-    GlobalPitchCountObservation,
-    GlobalSensorFit,
-    HalekasDistributionFit,
-    HalekasEdgeTransition,
-    HalekasFitSettings,
-    ResolvedEdgeTransition,
-    SecondaryBeamMode,
-    fit_binary_loss_cone,
-    fit_effective_field,
-    fit_global_joint_effective_field,
-    fit_halekas_distribution,
-    mirror_boundary_sin2,
-    mirror_transmission_probability,
-    plot_global_joint_effective_field_fit,
-)
 from sopran.bodies import Moon
 from sopran.core import (
     AlignmentResult,
@@ -100,6 +66,8 @@ from sopran.missions.omni import Omni
 from . import config as config
 
 if TYPE_CHECKING:
+    from . import experimental as experimental
+
     artemis: Artemis
     kaguya: Kaguya
     moon: Moon
@@ -109,6 +77,10 @@ __version__ = "0.0.0"
 
 
 def __getattr__(name: str) -> Any:
+    if name == "experimental":
+        from importlib import import_module
+
+        return import_module("sopran.experimental")
     if name in {"builtin_schemas", "schema_reference_markdown"}:
         from importlib import import_module
 
@@ -124,35 +96,13 @@ __all__ = [
     "AlignmentResult",
     "Artemis",
     "BackendError",
-    "BackgroundModel",
-    "BinaryLossConeEstimate",
-    "BinaryLossConeFitSettings",
-    "BinaryLossConeModelFit",
     "ConfigError",
-    "ContrastModel",
     "config",
+    "experimental",
     "Database",
     "DatasetNotFoundError",
     "DecodeError",
     "DownloadError",
-    "EffectiveFieldDiagnostics",
-    "EffectiveFieldEstimate",
-    "EffectiveFieldFitSettings",
-    "EffectiveFieldModelFit",
-    "EffectiveFieldQualitySettings",
-    "EdgeTransition",
-    "ElectronReflectionCounts",
-    "FitQualityGrade",
-    "GlobalFullFOV",
-    "GlobalJointEstimate",
-    "GlobalJointFitSettings",
-    "GlobalJointModelFit",
-    "GlobalNormalizedFlux",
-    "GlobalPitchCountObservation",
-    "GlobalSensorFit",
-    "HalekasDistributionFit",
-    "HalekasEdgeTransition",
-    "HalekasFitSettings",
     "EventCatalog",
     "FrameTransformError",
     "FrameContext",
@@ -183,8 +133,6 @@ __all__ = [
     "SampleSpec",
     "SampleTable",
     "SchemaError",
-    "SecondaryBeamMode",
-    "ResolvedEdgeTransition",
     "SopranArray",
     "SopranError",
     "Store",
@@ -198,18 +146,11 @@ __all__ = [
     "align",
     "builtin_schemas",
     "day",
-    "fit_binary_loss_cone",
-    "fit_effective_field",
-    "fit_global_joint_effective_field",
-    "fit_halekas_distribution",
     "histogram",
     "line",
     "lines",
     "load",
     "month",
-    "mirror_boundary_sin2",
-    "mirror_transmission_probability",
-    "plot_global_joint_effective_field_fit",
     "normalize_frame",
     "period",
     "rebin",

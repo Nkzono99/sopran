@@ -7,13 +7,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sopran.analysis.waves import WaveDetectorConfig, feature_spec_hash
-from sopran.missions.kaguya.waves import (
+from sopran.experimental.kaguya.waves import (
     KAGUYA_WFC_FIXED_LINES,
     KAGUYA_WFC_V1,
     build_kaguya_wfc_quality_mask,
     kaguya_wfc_fixed_lines,
 )
+from sopran.experimental.waves import WaveDetectorConfig, feature_spec_hash
 
 DATA_DIR = Path(__file__).with_name("fixtures")
 
@@ -204,7 +204,7 @@ def test_gold_manifest_has_ordered_utc_strict_and_review_intervals() -> None:
 
 def test_wave_documentation_records_exposure_and_wfc_product_boundaries() -> None:
     text = (
-        Path(__file__).parents[1] / "docs" / "missions" / "kaguya" / "wfc-waves.md"
+        Path(__file__).parents[1] / "docs" / "experimental" / "waves.md"
     ).read_text(encoding="utf-8")
     assert "exposure_seconds" in text
     assert "二重計上" in text

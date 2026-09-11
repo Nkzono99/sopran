@@ -7,6 +7,10 @@ analyzing, and visualizing lunar and planetary spacecraft observations. The
 first target missions are KAGUYA/SELENE and ARTEMIS, with Moon surface maps
 provided through a body-first API.
 
+The API follows the data: mission, instrument, physical quantity, and its axes.
+Standard paths lead from acquisition to labeled plots, while source files and
+native records remain accessible. Rust handles heavy kernels internally.
+
 ## Quick Start
 
 For day-to-day notebooks, use the top-level shortcuts. They read the default
@@ -25,22 +29,6 @@ quicklook = spn.kaguya.esa1.energy_flux.load(time).quicklook(
     root="reports",
 )
 ```
-
-Candidate electron-reflectometry features are fitted from full-pitch counts and
-cached in the same Store:
-
-```python
-effective_field = spn.kaguya.er.effective_field.fit_timeseries(
-    time,
-    integration="16s",
-    workers=8,
-)
-effective_field.plot(y="effective_field")
-```
-
-This integrates all native records in each window and jointly fits ESA-S1/S2;
-it is not 16-second decimation. The primary estimate is `B_eff/B_sc`; `B_eff`
-is an effective mirror field, not a direct lunar-surface field measurement.
 
 For spectrum-like products, `plot()` defaults to a spectrogram: time on x,
 energy or pitch angle on y, and the product value on color. The colorbar label
@@ -95,6 +83,7 @@ counts = kg.esa1.counts.load(time)
 | `spn.Kaguya(...)`, `spn.Artemis(...)`, `spn.Moon()` | Explicit low-level mission/body objects |
 | `spn.Store(...)` | Raw files, normalized parquet, features, models, event/database products |
 | `spn.stack(...)` | SPEDAS/tplot-like stacked quicklooks |
+| `sopran.experimental` | Explicitly imported, unstable research APIs |
 
 ## Configuration
 
@@ -157,9 +146,9 @@ stop = "2008-02-02T00:00:00"
 Implemented vertical slices include:
 
 - KAGUYA PACE raw discovery/decode, ESA1 `energy_flux`, exposure-aware
-  pitch-angle products, robust electron-reflectometry candidate features,
+  pitch-angle products,
   coverage summaries, pipeline writes, and quicklooks
-- KAGUYA LMAG/LRS readers, cached products, and WFC-H wave-candidate/ridge analysis
+- KAGUYA LMAG/LRS readers, native records, and cached products
 - ARTEMIS object API with normalized parquet readers
 - Moon DEM/SVM loading, SZA computation, SPICE Sun geometry, and terrain-ray
   shadow maps
@@ -168,6 +157,12 @@ Implemented vertical slices include:
 - Optional Rust/PyO3 backend for heavier PACE decode and pitch-angle work
 
 Detailed status is tracked in `docs/reference/status.md`.
+
+ER models and wave-candidate detectors live in `sopran.experimental`, not on
+`spn.kaguya` or the root API. They have no compatibility guarantee; individual
+research runs and reports belong in `working/`. See
+[Experimental APIs](docs/experimental/index.md) and
+[Design Principles](docs/concepts/design-principles.md).
 
 ## Install
 

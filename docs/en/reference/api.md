@@ -22,6 +22,3 @@ Core entry points:
 | `spn.Moon` | Moon map API |
 | `spn.PlotStack` | Stacked time-series visualization |
 | `spn.FrameContext` | Frame-transform provenance boundary |
-| `sopran.analysis.waves.detect_wave_candidates` | Mission-independent multi-label spectral wave detector |
-| `sopran.analysis.waves.fit_background_residual_clustering` | Run-scoped exploratory residual clustering |
-| `sopran.missions.kaguya.KAGUYA_WFC_V1` | Versioned KAGUYA WFC-H detector preset |

@@ -3,8 +3,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from sopran.analysis.electron_reflection import global_joint as gj
-from sopran.analysis.electron_reflection.incident import IncidentProblem
+from sopran.experimental.electron_reflection import global_joint as gj
+from sopran.experimental.electron_reflection.incident import IncidentProblem
 
 
 def make_problem(model="electrostatic", beam=False, anisotropic=True, backend="rust"):
@@ -94,7 +94,7 @@ def test_native_extreme_parameters(field, delta, shape):
 def test_fit_preserves_better_feasible_seed(monkeypatch):
     from scipy.optimize import OptimizeResult
 
-    from sopran.analysis.electron_reflection import incident
+    from sopran.experimental.electron_reflection import incident
 
     p, seed = make_problem(backend="python")
     best = p.objective(seed)[0]
@@ -168,7 +168,7 @@ def test_response_reuse_keeps_weights_and_distinct_bases(monkeypatch, changed):
 
 
 def test_labels_separate_edge_from_field_identification():
-    from sopran.analysis.electron_reflection.integrated import fit_labels
+    from sopran.experimental.electron_reflection.integrated import fit_labels
 
     fit = replace(
         gj._empty_fit("electrostatic", "constant", "hard", "test", loss_cone_model="shared"),
@@ -191,7 +191,7 @@ def test_labels_separate_edge_from_field_identification():
 
 
 def test_failed_candidate_never_qualifies_as_field():
-    from sopran.analysis.electron_reflection.integrated import fit_labels
+    from sopran.experimental.electron_reflection.integrated import fit_labels
 
     fit = gj._empty_fit("no_edge", "none", "none", "failed", loss_cone_model="shared")
     labels = fit_labels(fit, "all_candidates_nonconverged", {"no_edge": fit, "no_edge_beam": fit})
@@ -201,7 +201,7 @@ def test_failed_candidate_never_qualifies_as_field():
 
 
 def test_better_rejected_null_makes_edge_evidence_unresolved():
-    from sopran.analysis.electron_reflection.integrated import choose
+    from sopran.experimental.electron_reflection.integrated import choose
 
     settings = gj.GlobalJointFitSettings(loss_cone_model="shared")
     fits = {}
@@ -232,7 +232,7 @@ def test_better_rejected_null_makes_edge_evidence_unresolved():
 
 
 def test_quality_rejection_is_not_no_edge_evidence():
-    from sopran.analysis.electron_reflection.integrated import fit_labels
+    from sopran.experimental.electron_reflection.integrated import fit_labels
 
     fit = replace(
         gj._empty_fit("no_edge", "none", "none", "ok", loss_cone_model="shared"),
@@ -246,7 +246,7 @@ def test_quality_rejection_is_not_no_edge_evidence():
 
 
 def test_rejected_beam_edge_is_not_no_edge_evidence():
-    from sopran.analysis.electron_reflection.integrated import choose, fit_labels
+    from sopran.experimental.electron_reflection.integrated import choose, fit_labels
 
     settings = gj.GlobalJointFitSettings(loss_cone_model="shared")
     fits = {}

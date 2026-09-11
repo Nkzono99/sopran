@@ -3,8 +3,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from sopran.analysis.electron_reflection import global_joint as gj
-from sopran.analysis.electron_reflection.model import EffectiveFieldFitSettings
+from sopran.experimental.electron_reflection import global_joint as gj
+from sopran.experimental.electron_reflection.model import EffectiveFieldFitSettings
 
 
 def synthetic_case(mode="fixed", ratio=0.8, beam=False, pitch_bins=16, level=1000.0):

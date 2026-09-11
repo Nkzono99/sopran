@@ -15,12 +15,12 @@ from sopran.core.errors import FrameTransformError
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange
 from sopran.frames import FrameContext, normalize_frame
-from sopran.missions.kaguya.er_geometry import GEOMETRY_POLICY, interpolate_vectors
 from sopran.missions.kaguya.esa_quality import (
     ESA_PITCH_RECORD_POLICY,
     PACE_ION_CHECK_MODES,
     esa_pitch_rejection_reason,
 )
+from sopran.missions.kaguya.magnetic_geometry import GEOMETRY_POLICY, interpolate_vectors
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData, PaceRecord
 
 PitchBins = Literal["native"] | int | Any

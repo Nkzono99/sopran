@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from sopran.analysis.waves.clustering import (
+from sopran.experimental.waves.clustering import (
     ALGORITHM_VERSION,
     BackgroundResidualClusteringConfig,
     fit_background_residual_clustering,

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from sopran.analysis.electron_reflection.upstream import match_omni_hourly, read_omni_hourly
+from sopran.experimental.electron_reflection.upstream import match_omni_hourly, read_omni_hourly
 
 
 def test_fill_and_half_open_hour_join(tmp_path):

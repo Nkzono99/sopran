@@ -6,8 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sopran.analysis.electron_reflection import halekas as h
-from sopran.analysis.electron_reflection.model import ElectronReflectionCounts, FloatArray
+from sopran.experimental.electron_reflection import halekas as h
+from sopran.experimental.electron_reflection.model import ElectronReflectionCounts, FloatArray
 
 
 def reference_search(

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy.special import ndtr
 
-from sopran.analysis.electron_reflection import (
+from sopran.experimental.electron_reflection import (
     BinaryLossConeFitSettings,
     EffectiveFieldFitSettings,
     ElectronReflectionCounts,
@@ -16,8 +16,8 @@ from sopran.analysis.electron_reflection import (
     fit_halekas_distribution,
     mirror_boundary_sin2,
 )
-from sopran.analysis.electron_reflection import global_joint as gj
-from sopran.analysis.electron_reflection.halekas import (
+from sopran.experimental.electron_reflection import global_joint as gj
+from sopran.experimental.electron_reflection.halekas import (
     _boundary_supported,
     _fit_hard_distribution,
     _parameters_at_bounds,
