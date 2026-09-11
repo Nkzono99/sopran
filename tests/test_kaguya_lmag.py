@@ -189,6 +189,44 @@ def test_kaguya_lmag_download_skips_missing_optional_file(tmp_path: Path) -> Non
     assert any("/optional/" in path for path in source.downloaded)
 
 
+def test_kaguya_lmag_download_falls_back_from_nominal_to_optional(
+    tmp_path: Path,
+) -> None:
+    class FakeSource:
+        def __init__(self, root: Path) -> None:
+            self.root = root
+            self.downloaded: list[str] = []
+
+        def local_path(self, remote_file: str) -> Path:
+            return self.root / remote_file
+
+        def remote_url(self, remote_file: str) -> str:
+            return f"https://example.test/{remote_file}"
+
+        def download(self, remote_file: str, *, overwrite: bool = False) -> Path:
+            self.downloaded.append(remote_file)
+            if "/nominal/" in remote_file:
+                raise HTTPError(self.remote_url(remote_file), 404, "Not Found", None, None)
+            path = self.local_path(remote_file)
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                "2008-11-01T00:00:00,  -155.0,  -305.2, -1791.2,  -2.61,   2.98,  "
+                "-1.09, 157120.9, -356486.3, -14589.0, -1.26, -3.78, -1.00\n",
+                encoding="utf-8",
+            )
+            return path
+
+    source = FakeSource(tmp_path / "raw")
+    kg = spn.Kaguya(store=Store(tmp_path / "store"), source=source, download="missing")
+
+    data = kg.lmag.load(spn.day("2008-11-01"))
+
+    assert len(data.files) == 1
+    assert "/optional/" in data.files[0].as_posix()
+    assert "/nominal/" in source.downloaded[0]
+    assert "/optional/" in source.downloaded[1]
+
+
 def _write_lmag_file(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(

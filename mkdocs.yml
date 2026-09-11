@@ -45,12 +45,18 @@ extra:
 extra_css:
   - assets/stylesheets/sopran.css
 
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
 markdown_extensions:
   - admonition
   - attr_list
   - md_in_html
   - pymdownx.details
   - pymdownx.highlight
+  - pymdownx.arithmatex:
+      generic: true
   - pymdownx.superfences
   - toc:
       permalink: true
@@ -75,6 +81,12 @@ nav:
       - KAGUYA/SELENE:
           - Overview: missions/kaguya/index.md
           - PACE ESA1: missions/kaguya/esa1.md
+          - Electron Reflectometry: missions/kaguya/electron-reflectometry.md
+          - ER Estimation Algorithm: missions/kaguya/electron-reflectometry-algorithm.md
+          - ER Full-Period Validation: missions/kaguya/electron-reflectometry-validation.md
+          - ER Method Survey: missions/kaguya/electron-reflectometry-method-survey.md
+          - ER Rust Backend Design: missions/kaguya/electron-reflectometry-rust-backend.md
+          - LRS/WFC Wave Candidates: missions/kaguya/wfc-waves.md
       - ARTEMIS:
           - Overview: missions/artemis/index.md
       - OMNI: missions/omni.md

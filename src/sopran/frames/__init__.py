@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from sopran.core.errors import FrameTransformError
 from sopran.core.time import spice_utc_string
@@ -18,6 +20,33 @@ _FRAME_ALIASES = {
 _KNOWN_BACKENDS = ("spiceypy", "astropy", "spacepy")
 _IMPLEMENTED_BACKENDS = ("identity", "spiceypy")
 _PLANNED_BACKENDS = ("astropy", "spacepy")
+
+
+@contextmanager
+def spice_kernel_context(spiceypy: Any, kernels: Sequence[str | Path]) -> Iterator[None]:
+    """Load kernels for one operation and restore their prior load counts."""
+
+    loaded: list[str] = []
+    seen: set[str] = set()
+    try:
+        for kernel in kernels:
+            path = str(kernel)
+            if path in seen:
+                continue
+            spiceypy.furnsh(path)
+            loaded.append(path)
+            seen.add(path)
+        yield
+    finally:
+        unload = getattr(spiceypy, "unload", None)
+        if unload is not None:
+            for path in reversed(loaded):
+                try:
+                    unload(path)
+                except Exception:
+                    reset = getattr(spiceypy, "reset", None)
+                    if reset is not None:
+                        reset()
 
 
 @dataclass(frozen=True)
@@ -127,6 +156,7 @@ class FrameContext:
         source_frame: str,
         target_frame: str,
         backend: str | None = None,
+        missing: Literal["error", "nan"] = "error",
     ) -> Any:
         """Transform one or more 3-D vectors between coordinate frames.
 
@@ -160,7 +190,14 @@ class FrameContext:
             )
 
         time_values = _vector_transform_times(times, flat.shape[0])
-        transformed = _transform_vectors_spice(flat, time_values, plan)
+        if missing not in {"error", "nan"}:
+            raise ValueError("missing must be 'error' or 'nan'")
+        transformed = _transform_vectors_spice(
+            flat,
+            time_values,
+            plan,
+            missing=missing,
+        )
         out = transformed.reshape(arr.shape)
         return out.reshape(3) if input_was_vector else out
 
@@ -319,7 +356,13 @@ def _vector_transform_times(times: Any, count: int) -> tuple[Any, ...]:
     return values
 
 
-def _transform_vectors_spice(vectors: Any, times: tuple[Any, ...], plan: FrameTransformPlan) -> Any:
+def _transform_vectors_spice(
+    vectors: Any,
+    times: tuple[Any, ...],
+    plan: FrameTransformPlan,
+    *,
+    missing: Literal["error", "nan"],
+) -> Any:
     import numpy as np
 
     try:
@@ -331,18 +374,36 @@ def _transform_vectors_spice(vectors: Any, times: tuple[Any, ...], plan: FrameTr
         ) from exc
 
     try:
-        for kernel in plan.spice_kernels:
-            spiceypy.furnsh(str(kernel))
-        out = np.empty_like(vectors, dtype=float)
-        for index, (vector, time_value) in enumerate(zip(vectors, times, strict=True)):
-            et = spiceypy.utc2et(_time_to_utc_string(time_value))
-            matrix = np.asarray(spiceypy.pxform(plan.source_frame, plan.target_frame, et))
-            out[index, :] = matrix @ np.asarray(vector, dtype=float)
-        return out
+        with spice_kernel_context(spiceypy, plan.spice_kernels):
+            out = np.empty_like(vectors, dtype=float)
+            for index, (vector, time_value) in enumerate(
+                zip(vectors, times, strict=True)
+            ):
+                try:
+                    et = spiceypy.utc2et(_time_to_utc_string(time_value))
+                    matrix = np.asarray(
+                        spiceypy.pxform(plan.source_frame, plan.target_frame, et)
+                    )
+                    out[index, :] = matrix @ np.asarray(vector, dtype=float)
+                except Exception as exc:
+                    if missing == "nan":
+                        out[index, :] = np.nan
+                        reset = getattr(spiceypy, "reset", None)
+                        if reset is not None:
+                            reset()
+                        continue
+                    raise FrameTransformError(
+                        f"SPICE frame transform failed for {plan.source_frame} -> "
+                        f"{plan.target_frame}. Provide compatible SPICE kernels "
+                        "including time and frame kernels."
+                    ) from exc
+            return out
+    except FrameTransformError:
+        raise
     except Exception as exc:
         raise FrameTransformError(
-            f"SPICE frame transform failed for {plan.source_frame} -> {plan.target_frame}. "
-            "Provide compatible SPICE kernels including time and frame kernels."
+            f"SPICE kernel loading failed for {plan.source_frame} -> "
+            f"{plan.target_frame}."
         ) from exc
 
 

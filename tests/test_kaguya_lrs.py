@@ -101,11 +101,13 @@ def test_kaguya_lrs_wfc_derived_products_match_spedas_formulas(tmp_path) -> None
     time = spn.period("2008-04-01T00:00:00Z", "2008-04-01T00:03:00Z")
 
     gain = kg.lrs.wfc_gain.load(time)
+    mode = kg.lrs.wfc_mode.load(time)
     ey_field = kg.lrs.wfc_ey_field.load(time)
     ey_power = kg.lrs.wfc_ey_power_spectral_density.load(time)
     xymode = kg.lrs.wfc_xymode.load(time)
 
     np.testing.assert_allclose(gain.to_xarray().values, np.asarray([40.0, 20.0, 0.0]))
+    np.testing.assert_allclose(mode.to_xarray().values, np.asarray([0.0, 1.0, 2.0]))
     raw_ey = np.asarray(
         [
             [50.0, 55.0, 60.0],
@@ -123,6 +125,94 @@ def test_kaguya_lrs_wfc_derived_products_match_spedas_formulas(tmp_path) -> None
     np.testing.assert_allclose(ey_field.to_xarray().values, expected_field)
     np.testing.assert_allclose(ey_power.to_xarray().values, expected_power)
     np.testing.assert_allclose(xymode.to_xarray().values, np.asarray([0.0, 1.0, 2.0]))
+
+
+def test_kaguya_lrs_wfc_decodes_pdc_ti_and_masks_sparse_pad_records(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = (
+        "sln-l-lrs-4-wfc-spectrum-v1.0/20080401/data/"
+        "LRS_WFC_V010_20080401000000.cdf"
+    )
+    path = store.raw_path("kaguya", "pds3") / remote_file
+    pdc_words = np.asarray(
+        [[0x6505, 0xB505, 0x4603], [65534, 0, 65534], [0x6505, 0xB505, 0x460D]],
+        dtype=np.uint16,
+    )
+    _write_wfc_cdf(
+        path,
+        gain=np.asarray([0, 254, 12], dtype=np.uint8),
+        mode=np.asarray([30, 254, 14], dtype=np.uint8),
+        pdc_ti=pdc_words,
+        postgap=np.asarray([64, 254, 32], dtype=np.uint8),
+    )
+    kg = spn.Kaguya(store=store, download="never")
+    time = spn.period("2008-04-01T00:00:00Z", "2008-04-01T00:03:00Z")
+
+    counter = kg.lrs.wfc_pdc_ti.load(time, cache="never").to_xarray()
+    words = kg.lrs.wfc_pdc_ti_words.load(time, cache="never").to_xarray()
+    data = kg.lrs.load(time, kind="WFC")
+
+    expected = np.asarray(
+        [float(0x6505_B505_4603), np.nan, float(0x6505_B505_460D)]
+    )
+    np.testing.assert_allclose(counter.values, expected, equal_nan=True)
+    assert counter.dims == ("time",)
+    assert counter.attrs["encoding"] == "uint48-big-endian-words"
+    assert words.dims == ("time", "pdc_word")
+    assert words.coords["pdc_word"].values.tolist() == ["high", "middle", "low"]
+    np.testing.assert_allclose(words.values[[0, 2]], pdc_words[[0, 2]])
+    assert np.isnan(words.values[1]).all()
+    assert np.isnan(data.wfc_gain.to_xarray().values[1])
+    assert np.isnan(data.wfc_mode.to_xarray().values[1])
+    assert np.isnan(data.wfc_xymode.to_xarray().values[1])
+    assert np.isnan(data.wfc_postgap.to_xarray().values[1])
+    assert np.isnan(data.wfc_ey_db.to_xarray().values[1]).all()
+    assert read_lrs_public(path).wfc_pdc_ti.to_xarray().shape == (3,)
+
+
+def test_kaguya_lrs_wfc_pdc_ti_words_cache_round_trip(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = (
+        "sln-l-lrs-4-wfc-spectrum-v1.0/20080401/data/"
+        "LRS_WFC_V010_20080401000000.cdf"
+    )
+    path = store.raw_path("kaguya", "pds3") / remote_file
+    _write_wfc_cdf(path)
+    kg = spn.Kaguya(store=store, download="never")
+    time = spn.period("2008-04-01T00:00:00Z", "2008-04-01T00:03:00Z")
+
+    first = kg.lrs.wfc_pdc_ti_words.load(time, cache="refresh")
+    path.unlink()
+    cached = kg.lrs.wfc_pdc_ti_words.load(time, cache="use")
+
+    assert cached.to_xarray().dims == ("time", "pdc_word")
+    assert cached.to_xarray().coords["pdc_word"].values.tolist() == [
+        "high",
+        "middle",
+        "low",
+    ]
+    np.testing.assert_allclose(cached.to_xarray().values, first.to_xarray().values)
+
+
+def test_kaguya_lrs_wfc_aligns_short_variables_to_epoch_with_nan_pad(tmp_path) -> None:
+    path = tmp_path / "LRS_WFC_V010_20080401000000.cdf"
+    _write_wfc_cdf(
+        path,
+        values=np.asarray([[50.0, 55.0, 60.0], [70.0, 75.0, 80.0]]),
+        gain=np.asarray([24, 24], dtype=np.uint8),
+        mode=np.asarray([30, 30], dtype=np.uint8),
+        pdc_ti=np.asarray([[0x6505, 0xB505, 0x4603], [0x6505, 0xB505, 0x460D]], dtype=np.uint16),
+        postgap=np.asarray([64, 64], dtype=np.uint8),
+    )
+
+    data = read_lrs_public(path)
+
+    assert data.wfc_ey_db.to_xarray().shape == (3, 3)
+    assert data.wfc_gain.to_xarray().shape == (3,)
+    assert data.wfc_pdc_ti_words.to_xarray().shape == (3, 3)
+    assert np.isnan(data.wfc_ey_db.to_xarray().values[-1]).all()
+    assert np.isnan(data.wfc_gain.to_xarray().values[-1])
+    assert np.isnan(data.wfc_pdc_ti_words.to_xarray().values[-1]).all()
 
 
 def test_kaguya_lrs_schema_accepts_spedas_wfc_aliases() -> None:
@@ -225,6 +315,22 @@ def test_kaguya_lrs_endpoint_does_not_cache_partial_missing_data(tmp_path) -> No
     assert power.to_xarray().shape == (3, 3)
     with pytest.raises(DatasetNotFoundError, match="Dataset not found"):
         store.dataset("kaguya.lrs.wfc_ey_power_spectral_density", layer="features")
+
+
+def test_kaguya_lrs_wfc_coverage_counts_only_wfc_remote_files(tmp_path) -> None:
+    store = Store(tmp_path / "store")
+    remote_file = (
+        "sln-l-lrs-4-wfc-spectrum-v1.0/20080401/data/"
+        "LRS_WFC_V010_20080401000000.cdf"
+    )
+    _write_wfc_cdf(store.raw_path("kaguya", "pds3") / remote_file)
+    kg = spn.Kaguya(store=store, download="never")
+
+    coverage = kg.lrs.wfc_gain.coverage(spn.day("2008-04-01"), cache="never")
+    row = coverage.to_dicts()[0]
+
+    assert row["expected_remote_files"] == 12
+    assert row["available_source_files"] == 1
 
 
 def test_kaguya_lrs_download_404_uses_missing_policy(tmp_path) -> None:
@@ -457,6 +563,10 @@ def _write_wfc_cdf(
     *,
     frequency: np.ndarray | None = None,
     values: np.ndarray | None = None,
+    gain: np.ndarray | None = None,
+    mode: np.ndarray | None = None,
+    pdc_ti: np.ndarray | None = None,
+    postgap: np.ndarray | None = None,
 ) -> None:
     frequency = np.asarray([10.0, 20.0, 30.0], dtype=float) if frequency is None else frequency
     values = (
@@ -478,12 +588,18 @@ def _write_wfc_cdf(
                 ]
             ),
             "Frequency": frequency,
-            "Gain": np.asarray([0, 4, 12], dtype=np.int32),
+            "Gain": np.asarray([0, 4, 12], dtype=np.int32) if gain is None else gain,
             "Ex": values,
             "Ey": values,
-            "Mode": np.asarray([0, 1, 2], dtype=np.int32),
-            "PDC-TI": np.asarray([10, 11, 12], dtype=np.int32),
-            "PostGap": np.asarray([20, 21, 22], dtype=np.int32),
+            "Mode": np.asarray([0, 1, 2], dtype=np.int32) if mode is None else mode,
+            "PDC-TI": (
+                np.asarray([[10, 11, 12], [13, 14, 15], [16, 17, 18]], dtype=np.uint16)
+                if pdc_ti is None
+                else pdc_ti
+            ),
+            "PostGap": (
+                np.asarray([20, 21, 22], dtype=np.int32) if postgap is None else postgap
+            ),
         },
     )
 
@@ -533,6 +649,10 @@ def _write_cdf(path: Path, variables: dict[str, np.ndarray]) -> None:
 
 
 def _cdf_data_type(values: np.ndarray) -> int:
+    if values.dtype == np.dtype(np.uint8):
+        return cdfwrite.CDF.CDF_UINT1
+    if values.dtype == np.dtype(np.uint16):
+        return cdfwrite.CDF.CDF_UINT2
     if np.issubdtype(values.dtype, np.integer):
         return cdfwrite.CDF.CDF_INT4
     return cdfwrite.CDF.CDF_DOUBLE
@@ -541,6 +661,10 @@ def _cdf_data_type(values: np.ndarray) -> int:
 def _variable_attrs(name: str, values: np.ndarray) -> dict[str, object]:
     if name in {"RX1", "RX2", "Ex", "Ey"}:
         return {"FILLVAL": [-1.0, "CDF_DOUBLE"], "UNITS": "dB"}
+    if values.dtype == np.dtype(np.uint8):
+        return {"FILLVAL": [0, "CDF_UINT1"]}
+    if values.dtype == np.dtype(np.uint16):
+        return {"FILLVAL": [0, "CDF_UINT2"]}
     if np.issubdtype(values.dtype, np.integer):
         return {"FILLVAL": [-2147483648, "CDF_INT4"]}
     return {}

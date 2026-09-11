@@ -4,9 +4,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from sopran.core.data import (
     DEFAULT_MAX_POLARS_ROWS,
@@ -27,6 +28,7 @@ LRS_WFC_VARIABLES = (
     "wfc_ex_db",
     "wfc_ey_db",
     "wfc_gain",
+    "wfc_mode",
     "wfc_ex_field",
     "wfc_ey_field",
     "wfc_ex_power_spectral_density",
@@ -35,6 +37,7 @@ LRS_WFC_VARIABLES = (
     "wfc_fband",
     "wfc_omode",
     "wfc_pdc_ti",
+    "wfc_pdc_ti_words",
     "wfc_postgap",
 )
 
@@ -107,6 +110,10 @@ class KaguyaLrsData:
         return self.array("wfc_gain")
 
     @cached_property
+    def wfc_mode(self) -> SopranArray:
+        return self.array("wfc_mode")
+
+    @cached_property
     def wfc_ex_field(self) -> SopranArray:
         return self.array("wfc_ex_field")
 
@@ -137,6 +144,10 @@ class KaguyaLrsData:
     @cached_property
     def wfc_pdc_ti(self) -> SopranArray:
         return self.array("wfc_pdc_ti")
+
+    @cached_property
+    def wfc_pdc_ti_words(self) -> SopranArray:
+        return self.array("wfc_pdc_ti_words")
 
     @cached_property
     def wfc_postgap(self) -> SopranArray:
@@ -307,6 +318,22 @@ def lrs_array_from_polars(
             name=schema.name,
             attrs=array_attrs,
         )
+    elif schema.dims == ("time", "pdc_word"):
+        rows = [np.asarray(item, dtype=float).reshape(-1) for item in pandas[schema.name]]
+        values = np.vstack(rows) if rows else np.empty((0, 0), dtype=float)
+        word_coordinate = np.asarray((coordinates or {}).get("pdc_word", ()), dtype=str)
+        if word_coordinate.size != values.shape[1]:
+            word_coordinate = _pdc_word_coordinate(values.shape[1])
+        array = xr.DataArray(
+            values,
+            dims=("time", "pdc_word"),
+            coords={
+                "time": pandas["time"].to_numpy(dtype="datetime64[ns]"),
+                "pdc_word": word_coordinate,
+            },
+            name=schema.name,
+            attrs=array_attrs,
+        )
     elif schema.dims == ("time", "frequency"):
         array = _spectral_array_from_polars(
             pandas,
@@ -412,11 +439,16 @@ def _read_wfc(cdf: Any) -> dict[str, Any]:
     frequency_units = _frequency_units(cdf)
     frequency_coord = ("frequency", frequency, {"units": frequency_units})
     arrays = {}
+    invalid_records = _wfc_invalid_record_mask(cdf, len(times))
 
     gain_raw = _var(cdf, "Gain")
     gain = None
     if gain_raw is not None:
-        gain = _wfc_gain(gain_raw, fill=_fill_value(_attrs(cdf, "Gain")))
+        gain_values = _time_first(np.asarray(gain_raw), len(times))
+        gain = _pad_time_records(
+            _wfc_gain(gain_values, invalid=_wfc_uint1_pad_mask(gain_values)),
+            len(times),
+        )
         arrays["wfc_gain"] = xr.DataArray(
             gain,
             dims=("time",),
@@ -446,7 +478,13 @@ def _read_wfc(cdf: Any) -> dict[str, Any]:
         data = _var(cdf, source)
         if data is None:
             continue
-        raw_db = _time_first(_fill_to_nan(data, _attrs(cdf, source)), len(times))
+        raw_db = _align_spectral_records(
+            _fill_to_nan(data, _attrs(cdf, source)),
+            len(times),
+            frequency.size,
+        )
+        if raw_db.ndim == 2 and invalid_records.size:
+            raw_db[invalid_records[: raw_db.shape[0]], :] = np.nan
         var_times = _times_for_data(times, raw_db)
         arrays[db_name] = xr.DataArray(
             raw_db,
@@ -492,12 +530,20 @@ def _read_wfc(cdf: Any) -> dict[str, Any]:
 
     mode = _var(cdf, "Mode")
     if mode is not None:
-        mode_values = np.asarray(mode)
-        fill = _fill_value(_attrs(cdf, "Mode"))
-        fill_mask = (
-            mode_values == fill
-            if fill is not None
-            else np.zeros(mode_values.shape, dtype=bool)
+        mode_values = _time_first(np.asarray(mode), len(times))
+        fill_mask = _wfc_uint1_pad_mask(mode_values)
+        raw_mode = mode_values.astype(float, copy=True)
+        raw_mode[fill_mask] = np.nan
+        raw_mode = _pad_time_records(raw_mode, len(times))
+        arrays["wfc_mode"] = xr.DataArray(
+            raw_mode,
+            dims=("time",),
+            coords={"time": _times_for_data(times, raw_mode)},
+            name="wfc_mode",
+            attrs={
+                **_schema_attrs(KAGUYA_LRS_SCHEMA.variable("wfc_mode")),
+                "source_variable": "Mode",
+            },
         )
         mode_int = mode_values.astype(np.int64, copy=False)
         for name, values in {
@@ -506,6 +552,7 @@ def _read_wfc(cdf: Any) -> dict[str, Any]:
             "wfc_omode": ((mode_int & 48) >> 4).astype(float),
         }.items():
             values[fill_mask] = np.nan
+            values = _pad_time_records(values, len(times))
             arrays[name] = xr.DataArray(
                 values,
                 dims=("time",),
@@ -514,19 +561,53 @@ def _read_wfc(cdf: Any) -> dict[str, Any]:
                 attrs=_schema_attrs(KAGUYA_LRS_SCHEMA.variable(name)),
             )
 
-    for source, name in (("PDC-TI", "wfc_pdc_ti"), ("PostGap", "wfc_postgap")):
-        data = _var(cdf, source)
-        if data is None:
-            continue
-        values = _fill_to_nan(data, _attrs(cdf, source))
-        arrays[name] = xr.DataArray(
+    pdc_ti = _var(cdf, "PDC-TI")
+    if pdc_ti is not None:
+        words = _align_vector_records(pdc_ti, len(times), width=3)
+        invalid = np.any(_wfc_uint2_pad_mask(words), axis=1)
+        words[invalid, :] = np.nan
+        counter = _wfc_pdc_ti_counter(words)
+        arrays["wfc_pdc_ti"] = xr.DataArray(
+            counter,
+            dims=("time",),
+            coords={"time": _times_for_data(times, counter)},
+            name="wfc_pdc_ti",
+            attrs={
+                **_schema_attrs(KAGUYA_LRS_SCHEMA.variable("wfc_pdc_ti")),
+                "source_variable": "PDC-TI",
+                "encoding": "uint48-big-endian-words",
+            },
+        )
+        arrays["wfc_pdc_ti_words"] = xr.DataArray(
+            words,
+            dims=("time", "pdc_word"),
+            coords={
+                "time": _times_for_data(times, words),
+                "pdc_word": _pdc_word_coordinate(words.shape[1]),
+            },
+            name="wfc_pdc_ti_words",
+            attrs={
+                **_schema_attrs(KAGUYA_LRS_SCHEMA.variable("wfc_pdc_ti_words")),
+                "source_variable": "PDC-TI",
+                "word_order": "high-mid-low",
+            },
+        )
+
+    postgap = _var(cdf, "PostGap")
+    if postgap is not None:
+        values = _pad_time_records(
+            _time_first(np.asarray(postgap), len(times)).astype(float, copy=True),
+            len(times),
+        )
+        values[_wfc_uint1_pad_mask(values)] = np.nan
+        arrays["wfc_postgap"] = xr.DataArray(
             values,
             dims=("time",),
             coords={"time": _times_for_data(times, values)},
-            name=name,
+            name="wfc_postgap",
             attrs={
-                **_schema_attrs(KAGUYA_LRS_SCHEMA.variable(name)),
-                "source_variable": source,
+                **_schema_attrs(KAGUYA_LRS_SCHEMA.variable("wfc_postgap")),
+                "source_variable": "PostGap",
             },
         )
     return arrays
@@ -560,7 +641,10 @@ def _time_from_files(paths: list[Path]) -> TimeRange:
     if all_times.size == 0:
         raise ValueError("time is required when no LRS epoch values are available")
     start = _datetime_from_datetime64(all_times.min())
-    stop = _datetime_from_datetime64(all_times.max() + np.timedelta64(1, "ns"))
+    # Python datetime has microsecond resolution.  A 1 ns increment is discarded by
+    # ``Timestamp.to_pydatetime()``, which made the final CDF record fall outside the
+    # half-open range when ``time`` was inferred from the file.
+    stop = _datetime_from_datetime64(all_times.max() + np.timedelta64(1, "us"))
     return TimeRange(start, stop)
 
 
@@ -619,16 +703,116 @@ def _frequency_units(cdf: Any) -> str:
     return str(attrs.get("UNITS", attrs.get("units", "")))
 
 
-def _wfc_gain(raw: Any, *, fill: object | None = None) -> np.ndarray:
+def _wfc_gain(raw: Any, *, invalid: np.ndarray | None = None) -> np.ndarray:
     raw_values = np.asarray(raw)
     gain_code = ((raw_values.astype(np.int64) & 12) >> 2).astype(float)
     gain = np.full(gain_code.shape, np.nan, dtype=float)
     gain[gain_code == 0] = 40.0
     gain[(gain_code == 1) | (gain_code == 2)] = 20.0
     gain[gain_code == 3] = 0.0
-    if fill is not None:
-        gain[raw_values == fill] = np.nan
+    if invalid is not None:
+        gain[np.asarray(invalid, dtype=bool)] = np.nan
     return gain
+
+
+def _wfc_uint1_pad_mask(values: Any) -> NDArray[np.bool_]:
+    """Return the CDF default-pad mask used by WFC byte support variables."""
+
+    return cast(NDArray[np.bool_], np.asarray(values) == 254)
+
+
+def _wfc_uint2_pad_mask(values: Any) -> NDArray[np.bool_]:
+    """Return the CDF default-pad mask used by WFC uint16 support variables."""
+
+    return cast(NDArray[np.bool_], np.asarray(values) == 65534)
+
+
+def _wfc_pdc_ti_counter(words: Any) -> np.ndarray:
+    """Decode the three high-to-low uint16 PDC-TI words as an exact uint48 count."""
+
+    values = np.asarray(words, dtype=float)
+    if values.ndim != 2 or values.shape[1] != 3:
+        return np.full(values.shape[0] if values.ndim else 0, np.nan, dtype=float)
+    output = np.full(values.shape[0], np.nan, dtype=float)
+    valid = np.all(np.isfinite(values), axis=1)
+    if np.any(valid):
+        integer = values[valid].astype(np.uint64)
+        decoded = (integer[:, 0] << 32) | (integer[:, 1] << 16) | integer[:, 2]
+        # A uint48 integer is represented exactly by IEEE-754 float64, while NaN
+        # is needed for sparse CDF records.
+        output[valid] = decoded.astype(float)
+    return output
+
+
+def _pdc_word_coordinate(count: int) -> np.ndarray:
+    if count == 3:
+        return np.asarray(["high", "middle", "low"])
+    return np.asarray([f"word_{index}" for index in range(count)])
+
+
+def _wfc_invalid_record_mask(cdf: Any, nt: int) -> np.ndarray:
+    """Identify sparse WFC records whose support bytes contain the CDF pad value."""
+
+    invalid = np.zeros(nt, dtype=bool)
+    for name in ("Gain", "Mode", "PostGap"):
+        values = _var(cdf, name)
+        if values is None:
+            continue
+        array = _time_first(np.asarray(values), nt)
+        if array.ndim != 1:
+            continue
+        count = min(nt, array.shape[0])
+        invalid[:count] |= _wfc_uint1_pad_mask(array[:count])
+        invalid[count:] = True
+    return invalid
+
+
+def _pad_time_records(values: Any, nt: int) -> np.ndarray:
+    """Align a scalar support variable to the complete CDF Epoch axis."""
+
+    array = np.asarray(values, dtype=float).reshape(-1)
+    output = np.full(nt, np.nan, dtype=float)
+    count = min(nt, array.size)
+    output[:count] = array[:count]
+    return output
+
+
+def _align_spectral_records(values: Any, nt: int, nf: int) -> np.ndarray:
+    """Align a WFC spectrum to Epoch, padding absent trailing records with NaN."""
+
+    array = np.asarray(values)
+    if array.size == 0:
+        array = np.empty((0, nf), dtype=float)
+    elif array.ndim == 1 and array.size == nf:
+        array = array.reshape(1, nf)
+    elif array.ndim == 2 and array.shape[1] != nf and array.shape[0] == nf:
+        array = array.T
+    if array.ndim != 2 or array.shape[1] != nf:
+        raise ValueError(
+            f"WFC spectrum must have a frequency axis of length {nf}, got {array.shape}"
+        )
+    output = np.full((nt, nf), np.nan, dtype=float)
+    count = min(nt, array.shape[0])
+    output[:count, :] = array[:count, :]
+    return output
+
+
+def _align_vector_records(values: Any, nt: int, *, width: int) -> np.ndarray:
+    """Align a fixed-width record vector to the complete CDF Epoch axis."""
+
+    array = np.asarray(values)
+    if array.size == 0:
+        array = np.empty((0, width), dtype=float)
+    elif array.ndim == 1 and array.size == width:
+        array = array.reshape(1, width)
+    elif array.ndim == 2 and array.shape[1] != width and array.shape[0] == width:
+        array = array.T
+    if array.ndim != 2 or array.shape[1] != width:
+        raise ValueError(f"WFC support vector must have width {width}, got {array.shape}")
+    output = np.full((nt, width), np.nan, dtype=float)
+    count = min(nt, array.shape[0])
+    output[:count, :] = array[:count, :]
+    return output
 
 
 def _wfc_dfreq(frequency: Any) -> np.ndarray:
@@ -701,6 +885,8 @@ def _empty_array(name: str, time: TimeRange) -> Any:
         coords["time"] = np.asarray([], dtype="datetime64[ns]")
     if "frequency" in schema.dims:
         coords["frequency"] = ("frequency", np.asarray([], dtype=float), {"units": ""})
+    if "pdc_word" in schema.dims:
+        coords["pdc_word"] = np.asarray([], dtype=str)
     return xr.DataArray(
         np.empty(shape, dtype=float),
         dims=schema.dims,
@@ -718,6 +904,18 @@ def _empty_cached_array(
 ) -> Any:
     import xarray as xr
 
+    if schema.dims == ("time", "pdc_word"):
+        words = np.asarray(coordinates.get("pdc_word", ()), dtype=str)
+        return xr.DataArray(
+            np.empty((0, words.size), dtype=float),
+            dims=("time", "pdc_word"),
+            coords={
+                "time": np.asarray([], dtype="datetime64[ns]"),
+                "pdc_word": words,
+            },
+            name=schema.name,
+            attrs=_schema_attrs(schema),
+        )
     if schema.dims != ("time", "frequency"):
         return _empty_array(schema.name, time)
     frequency = np.asarray(coordinates.get("frequency", ()), dtype=float)

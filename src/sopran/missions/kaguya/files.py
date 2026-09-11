@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from math import isfinite
 from pathlib import Path
+from shutil import copyfileobj
 from typing import Any
-from urllib.request import urlretrieve
+from urllib.error import ContentTooShortError
+from urllib.request import urlopen
 from uuid import uuid4
 
 PUBLIC_BASE_URL = "https://data.darts.isas.jaxa.jp/pub/pds3/"
@@ -29,7 +32,12 @@ class KaguyaFileSource:
     def remote_url(self, remote_file: str) -> str:
         return self.remote_base_url.rstrip("/") + "/" + remote_file.replace("\\", "/")
 
-    def download(self, remote_file: str, *, overwrite: bool = False) -> Path:
+    def download(
+        self, remote_file: str, *, overwrite: bool = False, timeout_seconds: float = 60.0
+    ) -> Path:
+        """Download atomically with a finite timeout on connection/read operations."""
+        if not isfinite(timeout_seconds) or timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be finite and positive")
         existing = self.local_path(remote_file)
         if existing.exists() and not overwrite:
             return existing
@@ -37,7 +45,12 @@ class KaguyaFileSource:
         target.parent.mkdir(parents=True, exist_ok=True)
         temp = _temporary_download_path(target)
         try:
-            urlretrieve(self.remote_url(remote_file), temp)
+            with urlopen(self.remote_url(remote_file), timeout=timeout_seconds) as response:
+                expected_size = response.headers.get("Content-Length")
+                with temp.open("wb") as stream:
+                    copyfileobj(response, stream)
+            if expected_size is not None and temp.stat().st_size < int(expected_size):
+                raise ContentTooShortError("Download ended before Content-Length bytes", None)
             temp.replace(target)
         except Exception:
             temp.unlink(missing_ok=True)
@@ -66,9 +79,7 @@ def iter_hours(start: object, stop: object | None = None, *, step_hours: int = 1
         raise ValueError("step_hours must be positive")
     current = _floor_hour(_as_datetime(start))
     final = (
-        _floor_hour(_as_datetime(stop) - timedelta(microseconds=1))
-        if stop is not None
-        else current
+        _floor_hour(_as_datetime(stop) - timedelta(microseconds=1)) if stop is not None else current
     )
     while current <= final:
         yield current
@@ -136,8 +147,7 @@ def pace_pbf_public_template(sensor: str, version: str = "003") -> str:
     sensor = sensor.upper()
     version2 = f"{version[2]}.0"
     return (
-        f"sln-l-pace-3-pbf1-v{version2}/YYYYMMDD/data/"
-        f"IPACE_PBF1_yyMMDD_{sensor}_V{version}.dat.gz"
+        f"sln-l-pace-3-pbf1-v{version2}/YYYYMMDD/data/IPACE_PBF1_yyMMDD_{sensor}_V{version}.dat.gz"
     )
 
 
@@ -153,8 +163,7 @@ def lrs_public_template(kind: str, version: str = "010") -> tuple[str, str, bool
     kind = kind.upper()
     if kind == "NPW":
         return (
-            f"sln-l-lrs-5-npw-spectrum-v{version2}/YYYYMMDD/data/"
-            f"LRS_NPW_V{version}_YYYYMMDD.cdf",
+            f"sln-l-lrs-5-npw-spectrum-v{version2}/YYYYMMDD/data/LRS_NPW_V{version}_YYYYMMDD.cdf",
             "daily",
             False,
         )

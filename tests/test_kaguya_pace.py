@@ -464,8 +464,7 @@ def test_pace_calibration_remote_files_lists_esa1_tables() -> None:
     assert "public/FOV_ANGLE_070726/ESAS1/esas1-ch_angle" in files
     assert "public/FOV_ANGLE_070726/ESAS1/esas1-pol_angle-RAM7" in files
     assert (
-        "public/Kaguya_MAP_PACE_information/"
-        "ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+        "public/Kaguya_MAP_PACE_information/ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
     ) in files
 
 
@@ -670,9 +669,7 @@ def test_kaguya_esa1_to_xarray_filters_records_to_requested_time_range(tmp_path:
 
     kg = spn.Kaguya(store=store)
 
-    ds = kg.esa1.load(
-        spn.period("2008-01-01T00:00:09Z", "2008-01-01T00:00:10Z")
-    ).to_xarray()
+    ds = kg.esa1.load(spn.period("2008-01-01T00:00:09Z", "2008-01-01T00:00:10Z")).to_xarray()
 
     assert ds["counts"].shape == (0, 0, 0)
 
@@ -990,18 +987,41 @@ def test_kaguya_esa1_to_pandas_wraps_polars_conversion(tmp_path: Path) -> None:
     assert frame["counts"].tolist() == [64] * 32
 
 
-def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> None:
+def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch(tmp_path: Path) -> None:
     sample_time = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
     counts = np.zeros((32, 4, 16), dtype=np.uint16)
     counts[0, 0, 0] = 5
     counts[0, 0, 8] = 7
     counts[1, 0, 0] = 11
-    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+    calibration_record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": np.full_like(counts, 99)},
+    )
+    record = PaceRecord(
+        type=0x01,
+        index=1,
+        arrays={
+            "cnt": counts,
+            "trash": np.zeros((32, 4, 2), dtype=np.uint16),
+        },
+    )
     pace = PaceData(
         sensor=0,
         headers=(
             {
                 "time": sample_time,
+                "mode": 0x29,
+                "type": 0x01,
+                "sensor": 0,
+                "svs_tbl": 0,
+                "sampl_time": 16000,
+                "time_resolution": 16000,
+                "data_quality": 0,
+            },
+            {
+                "time": sample_time + 2.0,
+                "mode": 0x14,
                 "type": 0x01,
                 "sensor": 0,
                 "svs_tbl": 0,
@@ -1010,9 +1030,9 @@ def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> N
                 "data_quality": 0,
             },
         ),
-        records={0x01: (record,)},
+        records={0x01: (calibration_record, record)},
         source_files=(),
-        record_order=(record,),
+        record_order=(calibration_record, record),
     )
     fov = {
         "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
@@ -1021,15 +1041,19 @@ def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> N
         "pol4": np.zeros((8, 32, 4), dtype=float),
         "pol16": np.zeros((8, 32, 16), dtype=float),
     }
+    store = Store(tmp_path / "store")
     data = KaguyaESA1Data(
         time=spn.day("2008-01-01"),
         calibration=PaceCalibration(fov={0: fov}),
+        store=store,
     )
     object.__setattr__(data, "pace", pace)
 
     spectrum = data.pitch_angle_spectrum(
         magnetic_field=np.array([1.0, 0.0, 0.0]),
         pitch_bins=np.array([0.0, 90.0, 180.0]),
+        cache="use",
+        variant_id="relative_exposure_pitch2",
     )
     array = spectrum.to_xarray()
 
@@ -1040,6 +1064,13 @@ def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> N
     assert array.values[0, 0, 0] == pytest.approx(5.0)
     assert array.values[0, 0, 1] == pytest.approx(7.0)
     assert array.values[0, 1, 0] == pytest.approx(11.0)
+    assert array.coords["exposure"].dims == ("time", "energy", "pitch_angle")
+    assert np.all(array.coords["exposure"].values > 0.0)
+    assert array.coords["exposure"].attrs["mode"] == "relative"
+    assert array.coords["pace_data_mode"].values.tolist() == [0x14]
+    assert array.coords["pace_data_type"].values.tolist() == [0x01]
+    assert array.attrs["pace_data_mode_policy"] == "esa_look_quality_v2"
+    assert array.attrs["excluded_pace_data_modes"] == []
     assert spectrum.metadata["operations"] == [
         {
             "operation": "pitch_angle_spectrum",
@@ -1049,9 +1080,400 @@ def test_kaguya_esa1_pitch_angle_spectrum_bins_counts_by_energy_and_pitch() -> N
                 "look_frame": "SELENE_M_SPACECRAFT",
                 "magnetic_frame": None,
                 "min_look_bins": 1,
+                "cadence_seconds": None,
+                "count_correction": "none",
+                "count_correction_order": "trash_then_event",
+                "exposure_mode": "relative",
+                "pace_data_mode_policy": "esa_look_quality_v2",
+                "geometry_policy": "bounded_geometry_v2",
+                "excluded_pace_data_modes": [],
             },
         }
     ]
+
+    cached = KaguyaESA1Data(
+        time=spn.day("2008-01-01"),
+        store=store,
+    ).pitch_angle_spectrum(
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+        cache="use",
+        variant_id="relative_exposure_pitch2",
+    )
+    cached_array = cached.to_xarray()
+
+    assert cached_array.coords["energy_eV"].values.tolist() == (
+        array.coords["energy_eV"].values.tolist()
+    )
+    assert cached_array.coords["exposure"].values.tolist() == (
+        array.coords["exposure"].values.tolist()
+    )
+    assert cached_array.coords["exposure"].attrs["mode"] == "relative"
+    assert cached_array.coords["detector_samples"].values.tolist() == (
+        array.coords["detector_samples"].values.tolist()
+    )
+    assert cached_array.coords["integration_time_seconds"].values.tolist() == (
+        array.coords["integration_time_seconds"].values.tolist()
+    )
+    assert cached_array.coords["pace_data_mode"].values.tolist() == [0x14]
+    assert cached_array.coords["pace_data_type"].values.tolist() == [0x01]
+    assert cached_array.attrs["count_correction"] == "none"
+    assert cached_array.attrs["count_correction_order"] == "trash_then_event"
+    assert cached_array.attrs["pace_data_mode_policy"] == "esa_look_quality_v2"
+    assert cached_array.attrs["excluded_pace_data_modes"] == []
+    for coordinate in (
+        "pace_submode", "pace_svs_tbl", "pace_data_quality", "record_duration_seconds"
+    ):
+        np.testing.assert_array_equal(cached_array.coords[coordinate], array.coords[coordinate])
+        assert (
+            cached_array.coords[coordinate].attrs["units"]
+            == array.coords[coordinate].attrs["units"]
+        )
+
+    reconfigured = data.pitch_angle_spectrum(
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+        count_correction="trash",
+        cache="use",
+        variant_id="relative_exposure_pitch2",
+    ).to_xarray()
+    assert reconfigured.attrs["count_correction"] == "trash"
+    assert (
+        store.dataset(
+            "kaguya.esa1.counts_pitch_angle_spectrum",
+            layer="features",
+            variant_id="relative_exposure_pitch2",
+        ).manifest()["variant"]["count_correction"]
+        == "trash"
+    )
+
+    stored = store.dataset(
+        "kaguya.esa1.counts_pitch_angle_spectrum",
+        layer="features",
+        variant_id="relative_exposure_pitch2",
+    )
+    first_shard = stored.root / str(stored.shards()[0]["path"])
+    obsolete_shard = stored.root / "shards" / "part-001.parquet"
+    obsolete_shard.write_bytes(first_shard.read_bytes())
+    obsolete_row = (
+        stored.catalog().head(1).with_columns(pl.lit("shards/part-001.parquet").alias("path"))
+    )
+    pl.concat((stored.catalog(), obsolete_row)).write_parquet(stored.catalog_path)
+    stale_manifest = stored.manifest()
+    stale_manifest["variant"]["pace_data_mode_policy"] = "legacy"
+    stored.manifest_path.write_text(
+        json.dumps(stale_manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    counts[0, 0, 0] = 13
+
+    rebuilt = data.pitch_angle_spectrum(
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+        cache="use",
+        variant_id="relative_exposure_pitch2",
+    ).to_xarray()
+
+    assert rebuilt.values[0, 0, 0] == pytest.approx(13.0)
+    assert stored.manifest()["variant"]["pace_data_mode_policy"] == ("esa_look_quality_v2")
+    assert not obsolete_shard.exists()
+
+
+def test_combined_pitch_angle_spectrum_aligns_esa1_esa2_energy_and_fov(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    xr = pytest.importorskip("xarray")
+    instant = np.datetime64("2008-01-01T00:00:00", "ns")
+    pitch = np.array([45.0, 135.0])
+
+    def spectrum(
+        energy: np.ndarray,
+        rate: float,
+        exposure_value: float,
+        pitch_index: int,
+        data_type: int,
+    ) -> object:
+        exposure = np.full((1, energy.size, pitch.size), np.nan)
+        counts = np.full_like(exposure, np.nan)
+        exposure[0, :, pitch_index] = exposure_value
+        counts[0, :, pitch_index] = rate * exposure_value
+        array = xr.DataArray(
+            counts,
+            dims=("time", "energy", "pitch_angle"),
+            coords={
+                "time": [instant],
+                "energy": np.arange(energy.size),
+                "pitch_angle": pitch,
+                "energy_eV": (("time", "energy"), energy[None, :]),
+                "exposure": (
+                    ("time", "energy", "pitch_angle"),
+                    exposure,
+                ),
+                "pace_data_mode": ("time", [0x14]),
+                "pace_data_type": ("time", [data_type]),
+            },
+            attrs={"pitch_edges": [0.0, 90.0, 180.0]},
+        )
+        return types.SimpleNamespace(to_xarray=lambda: array)
+
+    products = iter(
+        (
+            spectrum(np.array([10.0, 100.0, 1000.0]), 2.0, 5.0, 0, 0x01),
+            spectrum(np.array([20.0, 200.0, 2000.0]), 4.0, 10.0, 1, 0x03),
+        )
+    )
+    monkeypatch.setattr(
+        pitch_module,
+        "build_pitch_angle_spectrum",
+        lambda **_kwargs: next(products),
+    )
+    paces = (
+        PaceData(sensor=0, headers=(), records={}, source_files=(), record_order=()),
+        PaceData(sensor=1, headers=(), records={}, source_files=(), record_order=()),
+    )
+
+    combined = pitch_module.build_combined_pitch_angle_spectrum(
+        paces=paces,
+        time=spn.day("2008-01-01"),
+        calibration=None,
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        options=pitch_module.PitchAngleSpectrumOptions(pitch_bins=np.array([0.0, 90.0, 180.0])),
+        energy_bins=2,
+    ).to_xarray()
+
+    rate = combined.values / combined.coords["exposure"].values
+    assert combined.coords["energy_eV"].values[0] == pytest.approx(
+        [np.sqrt(20.0 * np.sqrt(20_000.0)), np.sqrt(np.sqrt(20_000.0) * 1000.0)]
+    )
+    assert rate[0, :, 0] == pytest.approx([2.0, 2.0])
+    assert rate[0, :, 1] == pytest.approx([4.0, 4.0])
+    assert combined.attrs["source_sensors"] == ["ESA-S1", "ESA-S2"]
+    assert combined.attrs["energy_alignment"] == ("log_energy_count_rebin_common_range")
+    assert combined.coords["pace_data_mode_esa_s1"].values.tolist() == [0x14]
+    assert combined.coords["pace_data_mode_esa_s2"].values.tolist() == [0x14]
+    assert combined.coords["pace_data_type_esa_s1"].values.tolist() == [0x01]
+    assert combined.coords["pace_data_type_esa_s2"].values.tolist() == [0x03]
+
+
+def test_aligned_pitch_spectra_filter_internal_counts_before_cadence_sampling() -> None:
+    start = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+
+    def pace(sensor: int, offset: float, calibration_mode: int) -> PaceData:
+        records = tuple(PaceRecord(type=0x01, index=index, arrays={}) for index in range(2))
+        headers = (
+            {
+                "time": start + 10.0 + offset,
+                "mode": 0x14,
+                "type": 0x01,
+                "sensor": sensor,
+            },
+            {
+                "time": start + 60.0 + offset,
+                "mode": calibration_mode,
+                "type": 0x01,
+                "sensor": sensor,
+            },
+        )
+        return PaceData(
+            sensor=sensor,
+            headers=headers,
+            records={0x01: records},
+            source_files=(),
+            record_order=records,
+        )
+
+    aligned = pitch_module._aligned_sampled_paces(
+        (pace(0, 0.0, 0x91), pace(1, 1.0, 0x92)),
+        spn.day("2008-01-01"),
+        cadence_seconds=120.0,
+        max_time_offset_seconds=2.0,
+    )
+
+    assert [item.index for item in aligned[0].record_order] == [0]
+    assert [item.index for item in aligned[1].record_order] == [0]
+    for item in aligned:
+        assert [item.headers[record.index]["mode"] for record in item.record_order] == [0x14]
+
+
+def test_aligned_pitch_angle_spectra_preserve_sensor_surfaces(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    time = spn.day("2008-01-01")
+    options = pitch_module.PitchAngleSpectrumOptions(
+        pitch_bins=np.array([0.0, 90.0, 180.0]),
+    )
+
+    def spectrum(sensor_offset: float, second_offset: int) -> object:
+        times = np.asarray(
+            [
+                np.datetime64("2008-01-01T00:00:00", "ns"),
+                np.datetime64("2008-01-01T00:00:10", "ns"),
+            ]
+        ) + np.timedelta64(second_offset, "s")
+        values = np.full((2, 3, 2), sensor_offset, dtype=float)
+        energies = np.broadcast_to(
+            np.asarray([10.0, 100.0, 1000.0]) + sensor_offset,
+            (2, 3),
+        ).copy()
+        return pitch_module._pitch_spectrum_array(
+            values=values,
+            time_values=times,
+            energy_values=energies,
+            exposure_values=np.ones_like(values),
+            exposure_mode="relative",
+            pitch_centers=np.asarray([45.0, 135.0]),
+            pitch_edges=np.asarray([0.0, 90.0, 180.0]),
+            time=time,
+            files=(),
+            options=options,
+        )
+
+    products = iter((spectrum(1.0, 0), spectrum(2.0, 1)))
+    monkeypatch.setattr(
+        pitch_module,
+        "build_pitch_angle_spectrum",
+        lambda **_kwargs: next(products),
+    )
+    records = tuple(PaceRecord(type=0x01, index=i, arrays={}) for i in range(2))
+    paces = tuple(
+        PaceData(
+            sensor=sensor,
+            headers=tuple(
+                dict(time=time.start.timestamp() + 10 * i + sensor, mode=0x14) for i in range(2)
+            ),
+            records={0x01: records},
+            source_files=(),
+            record_order=records,
+        )
+        for sensor in (0, 1)
+    )
+
+    aligned = pitch_module.build_aligned_pitch_angle_spectra(
+        paces=paces,
+        time=time,
+        calibration=None,
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        options=options,
+        max_time_offset_seconds=2.0,
+    )
+
+    assert set(aligned) == {"ESA-S1", "ESA-S2"}
+    esa1 = aligned["ESA-S1"].to_xarray()
+    esa2 = aligned["ESA-S2"].to_xarray()
+    assert esa1.sizes["time"] == esa2.sizes["time"] == 2
+    assert np.all(esa1.values == 1.0)
+    assert np.all(esa2.values == 2.0)
+    assert np.all(esa1.coords["energy_eV"].values != esa2.coords["energy_eV"].values)
+    assert aligned["ESA-S1"].metadata["operations"][-1]["operation"] == (
+        "align_pitch_angle_spectra"
+    )
+    assert esa1.attrs["joint_input_status"] == "usable"
+    assert esa1.attrs["record_selection"]["eligible_records"] == 2
+
+
+@pytest.mark.parametrize("second_mode", [0x92, 0x14])
+def test_aligned_empty_spectra_record_mode_exclusions(second_mode: int) -> None:
+    period = spn.day("2008-01-01")
+    records = tuple(PaceRecord(type=0x01, index=i, arrays={}) for i in range(3))
+    paces = tuple(
+        PaceData(
+            sensor=sensor,
+            records={0x01: records},
+            source_files=(),
+            record_order=records,
+            headers=(
+                dict(time=period.start.timestamp(), mode=mode),
+                dict(time=period.stop.timestamp(), mode=0x14),
+                dict(time=None),
+            ),
+        )
+        for sensor, mode in enumerate((0x91, second_mode))
+    )
+    spectra = pitch_module.build_aligned_pitch_angle_spectra(
+        paces=paces,
+        time=period,
+        calibration=None,
+        magnetic_field=np.array([1.0, 0.0, 0.0]),
+        options=pitch_module.PitchAngleSpectrumOptions(pitch_bins=16),
+    )
+    for sensor, spectrum in spectra.items():
+        array = spectrum.to_xarray()
+        assert array.sizes["time"] == 0
+        assert array.attrs["joint_input_status"] == "excluded_by_record_policy"
+        selection = array.attrs["record_selection"]
+        assert selection["records_in_range"] == 1
+        assert selection["matched_records"] == 0
+        assert selection["eligible_records"] == int(sensor == "ESA-S2" and second_mode == 0x14)
+
+
+def test_pitch_angle_spectrum_skips_spice_attitude_gaps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    start = datetime(2008, 1, 1, 0, 0, tzinfo=UTC).timestamp()
+    records = tuple(
+        PaceRecord(
+            type=0x01,
+            index=index,
+            arrays={"cnt": np.ones((32, 4, 16), dtype=np.uint16)},
+        )
+        for index in range(2)
+    )
+    headers = tuple(
+        {
+            "time": start + index,
+            "type": 0x01,
+            "sensor": 0,
+            "svs_tbl": 0,
+            "sampl_time": 16000,
+            "time_resolution": 16000,
+            "data_quality": 0,
+        }
+        for index in range(2)
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=headers,
+        records={0x01: records},
+        source_files=(),
+        record_order=records,
+    )
+    fov = {
+        "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+    monkeypatch.setattr(
+        pitch_module,
+        "_magnetic_vectors_at",
+        lambda *_args, **_kwargs: np.asarray([[1.0, 0.0, 0.0], [np.nan, np.nan, np.nan]]),
+    )
+
+    spectrum = pitch_module.build_pitch_angle_spectrum(
+        pace=pace,
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(fov={0: fov}),
+        magnetic_field=np.asarray([1.0, 0.0, 0.0]),
+        options=pitch_module.PitchAngleSpectrumOptions(pitch_bins=16),
+    ).to_xarray()
+
+    assert spectrum.sizes["time"] == 1
+    assert spectrum.coords["time"].values[0] == np.datetime64("2008-01-01T00:00:00")
+    assert spectrum.attrs["geometry_rejected_times_unix"] == [start + 1]
+    from sopran.missions.kaguya.er_timeseries import (
+        _native_record_arrays,
+        _usable_record_indices,
+        _window_geometry_diagnostics,
+        _window_skip_reason,
+    )
+    arrays = _native_record_arrays({"S1": spectrum, "S2": spectrum})
+    indices = np.array([1])
+    assert _window_skip_reason(indices, arrays=arrays) == "S1_geometry_unavailable"
+    diagnostic = _window_geometry_diagnostics(
+        arrays, indices, {n: _usable_record_indices(a, indices) for n, a in arrays.items()}
+    )
+    assert diagnostic["geometry_rejected_records"] == {"S1": 1, "S2": 1}
 
 
 def test_kaguya_esa1_pitch_angle_spectrum_requires_angle_calibration() -> None:
@@ -1131,12 +1553,172 @@ def test_kaguya_esa1_pitch_angle_spectrum_bins_energy_flux() -> None:
 
     assert array.attrs["value"] == "energy_flux"
     assert array.attrs["units"] == "eV/(cm^2 s sr eV)"
-    assert array.values[0, 0, 0] == pytest.approx(
-        6.0 / (1.0 * 2.0 * 0.6) / 28.0
+    assert array.coords["integration_time_seconds"].values[0] == pytest.approx(1.0)
+    assert array.coords["detector_samples"].values[0, 0].tolist() == [28.0, 36.0]
+    assert array.values[0, 0, 0] == pytest.approx(6.0 / (1.0 * 2.0 * 0.6) / 28.0)
+    assert array.values[0, 0, 1] == pytest.approx(12.0 / (1.0 * 2.0 * 0.6) / 36.0)
+
+
+def test_pace_count_correction_matches_spedas_trash_then_event_scaling() -> None:
+    counts = np.zeros((32, 4, 2), dtype=np.uint16)
+    counts[0, 0] = [2, 2]
+    counts[1, 0] = [1, 3]
+    trash = np.zeros((32, 4, 2), dtype=np.uint16)
+    trash[0, 0] = [1, 3]
+    event = np.zeros(16, dtype=np.uint32)
+    event[0] = 24
+    record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": counts, "event": event, "trash": trash},
     )
-    assert array.values[0, 0, 1] == pytest.approx(
-        12.0 / (1.0 * 2.0 * 0.6) / 36.0
+
+    trash_factor = pitch_module._pace_count_correction_factor(
+        record,
+        counts.astype(float),
+        "trash",
     )
+    combined_factor = pitch_module._pace_count_correction_factor(
+        record,
+        counts.astype(float),
+        "event_trash",
+    )
+
+    assert trash_factor[0, 0].tolist() == pytest.approx([2.0, 2.0])
+    assert trash_factor[1, 0].tolist() == pytest.approx([1.0, 1.0])
+    # Trash correction yields 12 counts in energy pair 0/1; event telemetry
+    # reports 24, so the subsequent event multiplier is another factor of 2.
+    assert combined_factor[0, 0].tolist() == pytest.approx([4.0, 4.0])
+    assert combined_factor[1, 0].tolist() == pytest.approx([2.0, 2.0])
+
+
+def test_pace_count_correction_keeps_raw_counts_and_adjusts_exposure() -> None:
+    counts = np.zeros((32, 4, 16), dtype=np.uint16)
+    counts[0, 0, 0] = 4
+    trash = np.zeros((32, 4, 2), dtype=np.uint16)
+    trash[0, 0] = [2, 2]
+    event = np.zeros(16, dtype=np.uint32)
+    event[0] = 8
+    record = PaceRecord(
+        type=0x01,
+        index=0,
+        arrays={"cnt": counts, "event": event, "trash": trash},
+    )
+    header = {"svs_tbl": 0, "sampl_time": 16}
+    shape = (8, 32, 4, 16)
+    info = {
+        "gfactor_4x16": np.full(shape, 2.0, dtype=float),
+        "ene_4x16": np.broadcast_to(
+            np.arange(32, dtype=float)[None, :, None, None],
+            shape,
+        ).copy(),
+        "pol_4x16": np.zeros(shape, dtype=float),
+        "az_4x16": np.zeros(shape, dtype=float),
+    }
+    fov = {
+        "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+    calibration = PaceCalibration(fov={0: fov}, info={0: info})
+
+    angular = pitch_module._record_angular_data(
+        record,
+        header,
+        0,
+        calibration,
+        value="counts",
+        count_correction="event_trash",
+    )
+
+    # Trash doubles the one observed cell, while the event total agrees with
+    # that corrected pair total. Raw count remains integer-valued and the same
+    # corrected rate is represented by halving effective exposure.
+    assert angular.values[0, 0] == 4.0
+    assert angular.exposure[0, 0] == pytest.approx((1.0 * 2.0 * 0.6) / 2.0)
+    assert angular.values[0, 0] / angular.exposure[0, 0] == pytest.approx(8.0 / (1.0 * 2.0 * 0.6))
+
+    energy_flux = pitch_module._record_angular_data(
+        record,
+        header,
+        0,
+        calibration,
+        value="energy_flux",
+        count_correction="event_trash",
+    )
+    assert energy_flux.values[0, 0] == pytest.approx(8.0 / (1.0 * 2.0 * 0.6))
+
+
+def test_pace_count_correction_requires_requested_telemetry() -> None:
+    counts = np.ones((32, 4, 16), dtype=float)
+    record = PaceRecord(type=0x01, index=0, arrays={"cnt": counts})
+
+    with pytest.raises(ValueError, match="trash telemetry"):
+        pitch_module._pace_count_correction_factor(record, counts, "trash")
+    with pytest.raises(ValueError, match="event telemetry"):
+        pitch_module._pace_count_correction_factor(record, counts, "event")
+
+
+def test_pace_count_correction_still_skips_unsupported_record_shapes() -> None:
+    sample_time = datetime(2008, 1, 1, tzinfo=UTC).timestamp()
+    unsupported = PaceRecord(
+        type=0x03,
+        index=0,
+        arrays={
+            "cnt": np.ones((32, 8, 64), dtype=np.uint16),
+            "event": np.ones(16, dtype=np.uint32),
+            "trash": np.zeros((32, 8, 2), dtype=np.uint16),
+        },
+    )
+    supported = PaceRecord(
+        type=0x01,
+        index=1,
+        arrays={
+            "cnt": np.ones((32, 4, 16), dtype=np.uint16),
+            "event": np.full(16, 128, dtype=np.uint32),
+            "trash": np.zeros((32, 4, 2), dtype=np.uint16),
+        },
+    )
+    headers = (
+        {"time": sample_time, "type": 0x03, "sensor": 0, "svs_tbl": 0},
+        {
+            "time": sample_time + 1.0,
+            "type": 0x01,
+            "sensor": 0,
+            "svs_tbl": 0,
+            "sampl_time": 16000,
+        },
+    )
+    pace = PaceData(
+        sensor=0,
+        headers=headers,
+        records={0x03: (unsupported,), 0x01: (supported,)},
+        source_files=(),
+        record_order=(unsupported, supported),
+    )
+    fov = {
+        "az16": np.linspace(0.0, 360.0, 16, endpoint=False),
+        "az64": np.linspace(0.0, 360.0, 64, endpoint=False),
+        "ene": np.broadcast_to(np.arange(32, dtype=float), (8, 32)).copy(),
+        "pol4": np.zeros((8, 32, 4), dtype=float),
+        "pol16": np.zeros((8, 32, 16), dtype=float),
+    }
+
+    spectrum = pitch_module.build_pitch_angle_spectrum(
+        pace=pace,
+        time=spn.day("2008-01-01"),
+        calibration=PaceCalibration(fov={0: fov}),
+        magnetic_field=np.asarray([1.0, 0.0, 0.0]),
+        options=pitch_module.PitchAngleSpectrumOptions(
+            pitch_bins=16,
+            count_correction="event_trash",
+        ),
+    ).to_xarray()
+
+    assert spectrum.sizes["time"] == 1
+    assert spectrum.coords["pace_data_type"].values.tolist() == [0x01]
 
 
 def test_kaguya_esa1_pitch_angle_spectrum_energy_flux_requires_info() -> None:
@@ -1219,9 +1801,14 @@ def test_kaguya_esa1_energy_flux_endpoint_pitch_spectrogram_writes_feature_store
     assert manifest["product"] == "energy_flux_pitch_angle_spectrum"
     assert manifest["parameters"]["operations"][0]["parameters"]["value"] == "energy_flux"
     frame = record.scan().collect()
-    assert {"time", "energy", "pitch_angle", "pitch_angle_spectrum"} <= set(
-        frame.columns
-    )
+    assert {
+        "time",
+        "energy",
+        "energy_eV",
+        "pitch_angle",
+        "exposure",
+        "pitch_angle_spectrum",
+    } <= set(frame.columns)
     cached.unlink()
 
     cached_item = kg.esa1.energy_flux.pitch_spectrogram(
@@ -1723,10 +2310,7 @@ def test_kaguya_esa1_pipeline_streams_catalog_shards(tmp_path: Path) -> None:
     chunks = list(pipe.stream(partition="shard"))
 
     assert [chunk.height for chunk in chunks] == [2048, 2048]
-    assert [
-        chunk.select("time").head(1).to_series().to_list()[0]
-        for chunk in chunks
-    ] == [
+    assert [chunk.select("time").head(1).to_series().to_list()[0] for chunk in chunks] == [
         datetime(2008, 1, 1, 0, 0, 8),
         datetime(2008, 1, 2, 0, 0, 8),
     ]
@@ -1921,9 +2505,7 @@ def test_kaguya_esa1_pipeline_run_only_failed_replays_failed_shards(
     assert result.outputs[0].verify_checksums()
     assert result.outputs[0].failed_shards() == ()
     assert result.outputs[0].manifest()["provenance"]["pipeline"]["run_id"] == result.run_id
-    assert result.outputs[0].catalog().select("status").to_series().to_list() == [
-        "complete"
-    ]
+    assert result.outputs[0].catalog().select("status").to_series().to_list() == ["complete"]
     assert result.outputs[0].scan().collect().height == 2048
     log = json.loads(result.log_path.read_text(encoding="utf-8"))
     assert log["status"] == "complete"

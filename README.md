@@ -26,6 +26,22 @@ quicklook = spn.kaguya.esa1.energy_flux.load(time).quicklook(
 )
 ```
 
+Candidate electron-reflectometry features are fitted from full-pitch counts and
+cached in the same Store:
+
+```python
+effective_field = spn.kaguya.er.effective_field.fit_timeseries(
+    time,
+    integration="16s",
+    workers=8,
+)
+effective_field.plot(y="effective_field")
+```
+
+This integrates all native records in each window and jointly fits ESA-S1/S2;
+it is not 16-second decimation. The primary estimate is `B_eff/B_sc`; `B_eff`
+is an effective mirror field, not a direct lunar-surface field measurement.
+
 For spectrum-like products, `plot()` defaults to a spectrogram: time on x,
 energy or pitch angle on y, and the product value on color. The colorbar label
 includes the product name and units when available. KAGUYA PACE `energy_flux`
@@ -140,14 +156,15 @@ stop = "2008-02-02T00:00:00"
 
 Implemented vertical slices include:
 
-- KAGUYA PACE raw discovery/decode, ESA1 `energy_flux`, pitch-angle products,
+- KAGUYA PACE raw discovery/decode, ESA1 `energy_flux`, exposure-aware
+  pitch-angle products, robust electron-reflectometry candidate features,
   coverage summaries, pipeline writes, and quicklooks
-- KAGUYA LMAG/LRS readers and cached derived geometry/products
+- KAGUYA LMAG/LRS readers, cached products, and WFC-H wave-candidate/ridge analysis
 - ARTEMIS object API with normalized parquet readers
 - Moon DEM/SVM loading, SZA computation, SPICE Sun geometry, and terrain-ray
   shadow maps
-- Store manifests, schema/catalog metadata, event catalogs, PlotStack, and
-  feature-table helpers
+- Store manifests, schema/catalog metadata, validated event catalogs,
+  exposure-normalized event rates, PlotStack, and feature-table helpers
 - Optional Rust/PyO3 backend for heavier PACE decode and pitch-angle work
 
 Detailed status is tracked in `docs/reference/status.md`.
@@ -159,7 +176,7 @@ python -m pip install -e .
 python -m pip install -e ".[dev]"
 ```
 
-Optional extras are split by area: `kaguya`, `artemis`, `moon`, `viz`,
+Optional extras are split by area: `analysis`, `kaguya`, `artemis`, `moon`, `viz`,
 `geospace`, `native`, `docs`, and `full`.
 
 ```powershell

@@ -42,12 +42,16 @@ sopran-env-check = "sopran.env_check:main"
 sopran-schema-docs = "sopran.schema_docs:main"
 
 [project.optional-dependencies]
+analysis = [
+  "scipy>=1.11",
+]
 kaguya = [
   "cdflib>=1.3",
   "pdr>=0.7.1",
   "pds4-tools>=1.4",
   "polars>=1.0",
   "pyarrow>=15.0",
+  "scipy>=1.11",
   "spiceypy>=6.0",
   "xarray>=2024.3",
 ]

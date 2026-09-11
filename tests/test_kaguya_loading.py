@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,18 @@ from sopran.missions.kaguya import Kaguya, normalize_sensors
 from sopran.missions.kaguya.data import KaguyaESA1Data
 from sopran.missions.kaguya.pace import PaceData, PaceRecord
 from sopran.missions.kaguya.schema import KAGUYA_ESA1_SCHEMA
+
+
+class DownloadResponse(BytesIO):
+    def __init__(self, data: bytes, *, fail: bool = False):
+        super().__init__(data)
+        self.headers = {"Content-Length": str(len(data))}
+        self.fail = fail
+
+    def read(self, size=-1):
+        if self.fail and self.tell():
+            raise OSError("network interrupted")
+        return super().read(size)
 
 
 def test_normalize_sensors_accepts_spedas_ids_and_names() -> None:
@@ -36,8 +49,7 @@ def test_kaguya_esa1_calibration_loads_local_store_tables(tmp_path) -> None:
     root = store.raw_path("kaguya", "calibration", "pace")
     fov_file = root / "public/FOV_ANGLE_070726/ESAS1/esas1-ch_angle"
     info_file = (
-        root
-        / "public/Kaguya_MAP_PACE_information/ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+        root / "public/Kaguya_MAP_PACE_information/ESA-S1_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
     )
     fov_file.parent.mkdir(parents=True)
     info_file.parent.mkdir(parents=True)
@@ -67,16 +79,44 @@ def test_kaguya_esa1_calibration_loads_local_store_tables(tmp_path) -> None:
     assert calibration.info[0]["gfactor_4x16"][0, 1, 2, 3] == pytest.approx(4.5)
 
 
+def test_kaguya_calibration_resolves_tables_from_public_fallback_root(tmp_path) -> None:
+    fallback = tmp_path / "legacy" / "public"
+    fov_file = fallback / "FOV_ANGLE_070726/ESAS2/esas2-ch_angle"
+    info_file = fallback / "Kaguya_MAP_PACE_information/ESA-S2_ENE_POL_AZ_GFACTOR_4X16_20090828.dat"
+    fov_file.parent.mkdir(parents=True)
+    info_file.parent.mkdir(parents=True)
+    fov_file.write_text("AZ AZ64 AZ16\n3 22.5 67.5\n", encoding="utf-8")
+    info_file.write_text(
+        "\n".join(
+            [
+                "RAM ENE POL AZ ENERGY POLAR AZIMUTH GFACTOR ENE_SQNO POL_SQNO",
+                "0 1 2 3 0.25 -12.5 90.0 4.5 6 7",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    kg = Kaguya(
+        store=Store(tmp_path / "store"),
+        fallback_roots=(fallback,),
+        download="never",
+    )
+
+    paths = kg.esa2.calibration_files()
+    calibration = kg.esa2.load_calibration()
+
+    assert paths == [fov_file, info_file]
+    assert calibration.coverage("ESA2") == {"fov": True, "info": True}
+
+
 def test_kaguya_esa1_calibration_download_registers_raw_manifest(
     tmp_path,
     monkeypatch,
 ) -> None:
-    def fake_urlretrieve(url, target):
-        path = Path(target)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(f"downloaded from {url}\n", encoding="utf-8")
+    def fake_urlopen(url, *, timeout):
+        assert timeout == 60
+        return DownloadResponse(f"downloaded from {url}\n".encode())
 
-    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+    monkeypatch.setattr(kaguya_files, "urlopen", fake_urlopen)
     store = Store(tmp_path / "store")
     kg = Kaguya(store=store, download="missing")
 
@@ -115,9 +155,7 @@ def test_kaguya_time_filter_handles_timezone_aware_polars_datetime() -> None:
         }
     )
 
-    assert _filter_frame_by_time(frame, time).select("value").to_series().to_list() == [
-        1.0
-    ]
+    assert _filter_frame_by_time(frame, time).select("value").to_series().to_list() == [1.0]
 
 
 def test_kaguya_time_filter_handles_polars_date_with_subday_range() -> None:
@@ -133,9 +171,7 @@ def test_kaguya_time_filter_handles_polars_date_with_subday_range() -> None:
         }
     )
 
-    assert _filter_frame_by_time(frame, time).select("value").to_series().to_list() == [
-        1.0
-    ]
+    assert _filter_frame_by_time(frame, time).select("value").to_series().to_list() == [1.0]
 
 
 def test_kaguya_lmag_query_builds_nominal_and_optional_paths(tmp_path) -> None:
@@ -279,10 +315,7 @@ def test_kaguya_pace_ion_instruments_expose_esa_style_spectrum_api(tmp_path) -> 
         assert instrument.plan(time).dataset_id == f"kaguya.{sensor_key}"
         assert instrument.counts.plan(time).dataset_id == f"kaguya.{sensor_key}.counts"
         assert instrument.counts.plan(time).remote_files == [
-            (
-                "sln-l-pace-3-pbf1-v3.0/20080201/data/"
-                f"IPACE_PBF1_080201_{sensor}_V003.dat.gz"
-            )
+            (f"sln-l-pace-3-pbf1-v3.0/20080201/data/IPACE_PBF1_080201_{sensor}_V003.dat.gz")
         ]
         assert data.instrument == sensor
         assert data.counts.name == "counts"
@@ -466,11 +499,10 @@ def test_kaguya_download_registers_raw_file_manifest(tmp_path, monkeypatch) -> N
     store = Store(tmp_path / "store")
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
 
-    def fake_urlretrieve(url, target):
-        Path(target).write_bytes(b"downloaded")
-        return target, None
+    def fake_urlopen(url, *, timeout):
+        return DownloadResponse(b"downloaded")
 
-    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+    monkeypatch.setattr(kaguya_files, "urlopen", fake_urlopen)
     kg = spn.Kaguya(store=store, download="missing")
 
     data = kg.esa1.load(spn.day("2008-01-01"))
@@ -495,11 +527,10 @@ def test_kaguya_file_source_download_removes_partial_file_on_failure(
     remote_file = "sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz"
     target = source.local_root / remote_file
 
-    def fake_urlretrieve(url, target):
-        Path(target).write_bytes(b"partial")
-        raise OSError("network interrupted")
+    def fake_urlopen(url, *, timeout):
+        return DownloadResponse(b"partial", fail=True)
 
-    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+    monkeypatch.setattr(kaguya_files, "urlopen", fake_urlopen)
 
     with pytest.raises(OSError, match="network interrupted"):
         source.download(remote_file)
@@ -518,17 +549,60 @@ def test_kaguya_file_source_overwrite_failure_preserves_existing_file(
     target.parent.mkdir(parents=True)
     target.write_bytes(b"existing")
 
-    def fake_urlretrieve(url, target):
-        Path(target).write_bytes(b"partial")
-        raise OSError("network interrupted")
+    def fake_urlopen(url, *, timeout):
+        return DownloadResponse(b"partial", fail=True)
 
-    monkeypatch.setattr(kaguya_files, "urlretrieve", fake_urlretrieve)
+    monkeypatch.setattr(kaguya_files, "urlopen", fake_urlopen)
 
     with pytest.raises(OSError, match="network interrupted"):
         source.download(remote_file, overwrite=True)
 
     assert target.read_bytes() == b"existing"
     assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
+
+
+def test_kaguya_file_source_rejects_truncated_download(tmp_path, monkeypatch):
+    response = DownloadResponse(b"truncated")
+    response.headers["Content-Length"] = "100"
+    monkeypatch.setattr(kaguya_files, "urlopen", lambda *a, **k: response)
+    source = kaguya_files.KaguyaFileSource(tmp_path)
+    with pytest.raises(kaguya_files.ContentTooShortError):
+        source.download("data")
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("during_body", [False, True])
+def test_kaguya_file_source_times_out_on_stalled_server(tmp_path, during_body):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from threading import Event, Thread
+
+    release = Event()
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if during_body:
+                self.send_response(200)
+                self.send_header("Content-Length", "10")
+                self.end_headers()
+                self.wfile.write(b"a")
+                self.wfile.flush()
+            release.wait(2)
+
+        def log_message(self, *args):
+            pass
+
+    with HTTPServer(("127.0.0.1", 0), Handler) as server:
+        worker = Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        source = kaguya_files.KaguyaFileSource(tmp_path, f"http://127.0.0.1:{server.server_port}/")
+        try:
+            with pytest.raises(TimeoutError):
+                source.download("data", timeout_seconds=0.1)
+            assert list(tmp_path.iterdir()) == []
+        finally:
+            release.set()
+            server.shutdown()
+            worker.join()
 
 
 def test_kaguya_reads_default_download_policy_from_environment(tmp_path, monkeypatch) -> None:
@@ -1009,12 +1083,7 @@ def test_pipeline_write_accepts_database_product_reference(tmp_path) -> None:
     kg = spn.Kaguya(store=store)
     product = store.database("wake_events").product("raw_counts")
 
-    pipe = (
-        kg.esa1.pipeline(spn.month("2008-02"))
-        .decode()
-        .select_variables("counts")
-        .write(product)
-    )
+    pipe = kg.esa1.pipeline(spn.month("2008-02")).decode().select_variables("counts").write(product)
 
     plan = pipe.plan()
 

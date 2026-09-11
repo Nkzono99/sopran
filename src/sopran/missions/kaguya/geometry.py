@@ -13,6 +13,7 @@ from sopran.core.data import SopranArray
 from sopran.core.errors import BackendError
 from sopran.core.schema import VariableSchema
 from sopran.core.time import TimeRange, spice_utc_string
+from sopran.frames import spice_kernel_context
 from sopran.missions.kaguya.schema import (
     KAGUYA_LMAG_CONNECTION_SCHEMA,
     KAGUYA_ORBIT_SCHEMA,
@@ -770,18 +771,17 @@ def spice_sun_vectors_moon_me(
     time_values = np.asarray(times).reshape(-1)
     vectors = np.full((time_values.size, 3), np.nan, dtype=float)
     try:
-        for kernel in kernel_paths:
-            spiceypy.furnsh(str(kernel))
-        for index, time_value in enumerate(time_values):
-            et = float(spiceypy.utc2et(_time_to_utc_string(time_value)))
-            position, _light_time = spiceypy.spkpos(
-                "SUN",
-                et,
-                "MOON_ME",
-                "LT+S",
-                "MOON",
-            )
-            vectors[index] = _normalize_vector(np.asarray(position, dtype=float))
+        with spice_kernel_context(spiceypy, kernel_paths):
+            for index, time_value in enumerate(time_values):
+                et = float(spiceypy.utc2et(_time_to_utc_string(time_value)))
+                position, _light_time = spiceypy.spkpos(
+                    "SUN",
+                    et,
+                    "MOON_ME",
+                    "LT+S",
+                    "MOON",
+                )
+                vectors[index] = _normalize_vector(np.asarray(position, dtype=float))
     except Exception as exc:
         raise BackendError(
             "SPICE-backed KAGUYA orbit sza failed. Provide compatible leapsecond, "

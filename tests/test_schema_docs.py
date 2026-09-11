@@ -17,6 +17,7 @@ def test_schema_reference_markdown_lists_builtin_instrument_schemas() -> None:
     assert "runtime schema object から生成" in markdown
     assert "## kaguya / esa1" in markdown
     assert "## kaguya / esa2" in markdown
+    assert "## kaguya / er" in markdown
     assert "## kaguya / ima" in markdown
     assert "## kaguya / iea" in markdown
     assert "## artemis / fgm" in markdown
@@ -25,6 +26,8 @@ def test_schema_reference_markdown_lists_builtin_instrument_schemas() -> None:
     assert "| energy_flux | time, energy, look |" in markdown
     assert "eflux, differential_energy_flux" in markdown
     assert "| magnetic_field | time, component | nT |" in markdown
+    assert "| effective_field | time | nT |" in markdown
+    assert "| mirror_ratio | time | 1 |" in markdown
     assert "b, fgm" in markdown
     assert "| dem | lat, lon | m |" in markdown
     assert "shadow_map" in markdown

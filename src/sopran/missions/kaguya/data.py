@@ -21,13 +21,19 @@ from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import DatasetRecord, Store
 from sopran.core.time import TimeRange, _filter_polars_time, period
+from sopran.missions.kaguya.er_geometry import GEOMETRY_POLICY
 from sopran.missions.kaguya.pace import (
     PaceCalibration,
     PaceData,
     pace_count_energy_look,
     read_pace_pbf,
 )
-from sopran.missions.kaguya.pitch import PitchAngleSpectrumOptions, build_pitch_angle_spectrum
+from sopran.missions.kaguya.pitch import (
+    PACE_PITCH_DATA_MODE_POLICY,
+    CountCorrection,
+    PitchAngleSpectrumOptions,
+    build_pitch_angle_spectrum,
+)
 from sopran.missions.kaguya.schema import kaguya_pace_schema
 
 PitchCacheMode = Literal["use", "refresh", "never"]
@@ -166,12 +172,7 @@ class KaguyaPaceData:
                 max_rows=max_rows,
                 allow_large=allow_large,
             )
-        if (
-            reduce_look is None
-            and variable == "counts"
-            and pace is not None
-            and layout == "long"
-        ):
+        if reduce_look is None and variable == "counts" and pace is not None and layout == "long":
             ensure_polars_row_limit(
                 _pace_counts_padded_row_count(pace, self.time),
                 name=f"KAGUYA {self.instrument} {variable}",
@@ -227,6 +228,7 @@ class KaguyaPaceData:
         look_frame: str = "SELENE_M_SPACECRAFT",
         magnetic_frame: str | None = None,
         min_look_bins: int = 1,
+        count_correction: CountCorrection = "none",
         frame_context: Any | None = None,
         cache: PitchCacheMode = "never",
         store: Store | None = None,
@@ -245,6 +247,7 @@ class KaguyaPaceData:
         target_store = store or self.store
         resolved_dataset_id = dataset_id
         resolved_variant_id = variant_id
+        variant_metadata: dict[str, Any] | None = None
         if cache != "never":
             if target_store is None:
                 raise TypeError("pitch_angle_spectrum(cache=...) requires store=...")
@@ -260,7 +263,17 @@ class KaguyaPaceData:
                 look_frame=look_frame,
                 magnetic_frame=magnetic_frame,
                 min_look_bins=min_look_bins,
+                count_correction=count_correction,
                 variant_id=variant_id,
+            )
+            variant_metadata = _pitch_angle_spectrum_variant_metadata(
+                value=value,
+                magnetic_field=magnetic_field,
+                pitch_bins=pitch_bins,
+                look_frame=look_frame,
+                magnetic_frame=magnetic_frame,
+                min_look_bins=min_look_bins,
+                count_correction=count_correction,
             )
             if cache == "use":
                 cached = _read_pitch_angle_spectrum_store(
@@ -269,6 +282,7 @@ class KaguyaPaceData:
                     layer=layer,
                     variant_id=resolved_variant_id,
                     time=self.time,
+                    expected_variant=variant_metadata,
                 )
                 if cached is not None:
                     return cached
@@ -285,6 +299,7 @@ class KaguyaPaceData:
                 look_frame=look_frame,
                 magnetic_frame=magnetic_frame,
                 min_look_bins=min_look_bins,
+                count_correction=count_correction,
             ),
             frame_context=frame_context,
         )
@@ -297,6 +312,13 @@ class KaguyaPaceData:
                 layer=layer,
                 variant_id=resolved_variant_id,
             )
+            policy_matches = exists and _pitch_angle_spectrum_store_policy_matches(
+                target_store,
+                dataset_id=resolved_dataset_id,
+                layer=layer,
+                variant_id=resolved_variant_id,
+                expected_variant=variant_metadata,
+            )
             _write_pitch_angle_spectrum_store(
                 product,
                 target_store,
@@ -305,15 +327,10 @@ class KaguyaPaceData:
                 dataset_id=resolved_dataset_id,
                 layer=layer,
                 variant_id=resolved_variant_id,
-                variant=_pitch_angle_spectrum_variant_metadata(
-                    magnetic_field=magnetic_field,
-                    pitch_bins=pitch_bins,
-                    look_frame=look_frame,
-                    magnetic_frame=magnetic_frame,
-                    min_look_bins=min_look_bins,
-                ),
-                overwrite=cache == "refresh",
-                append=cache == "use" and exists,
+                variant=variant_metadata or {},
+                overwrite=cache == "refresh" or (exists and not policy_matches),
+                append=cache == "use" and exists and policy_matches,
+                replace_existing=exists and (cache == "refresh" or not policy_matches),
             )
         return product
 
@@ -725,10 +742,7 @@ def _header_in_time_range(header: dict[str, Any], time: TimeRange) -> bool:
 def _calibration_info_line(calibration: PaceCalibration | None, instrument: str) -> str:
     metadata = _calibration_metadata(calibration, instrument)
     return (
-        "calibration: "
-        f"fov={metadata['fov']}, "
-        f"info={metadata['info']}, "
-        f"status={metadata['status']}"
+        f"calibration: fov={metadata['fov']}, info={metadata['info']}, status={metadata['status']}"
     )
 
 
@@ -1054,6 +1068,7 @@ def _write_pitch_angle_spectrum_store(
     variant: dict[str, Any],
     overwrite: bool,
     append: bool,
+    replace_existing: bool,
 ) -> DatasetRecord:
     product_name = _pitch_angle_spectrum_product(value)
     instrument_id = instrument.lower()
@@ -1062,7 +1077,17 @@ def _write_pitch_angle_spectrum_store(
         instrument=instrument_id,
         variables=(product.schema,),
     )
-    return store.write_parquet_dataset(
+    obsolete_shards = (
+        _pitch_angle_spectrum_obsolete_shards(
+            store,
+            dataset_id=dataset_id,
+            layer=layer,
+            variant_id=variant_id,
+        )
+        if replace_existing
+        else ()
+    )
+    record = store.write_parquet_dataset(
         dataset_id=dataset_id,
         layer=layer,
         variant_id=variant_id,
@@ -1072,7 +1097,7 @@ def _write_pitch_angle_spectrum_store(
         product=product_name,
         schema=schema,
         time_coverage=product.time,
-        frame=product.to_polars(layout="long", max_rows=None),
+        frame=_pitch_angle_spectrum_store_frame(product),
         source_files=tuple(str(path) for path in product.files),
         shard_path="shards/part-000.parquet",
         overwrite=overwrite,
@@ -1082,6 +1107,30 @@ def _write_pitch_angle_spectrum_store(
         parameters=_metadata_with_operations({}, product.operations),
         status="candidate",
     )
+    for path in obsolete_shards:
+        path.unlink(missing_ok=True)
+    return record
+
+
+def _pitch_angle_spectrum_obsolete_shards(
+    store: Store,
+    *,
+    dataset_id: str,
+    layer: str,
+    variant_id: str,
+) -> tuple[Path, ...]:
+    try:
+        record = store.dataset(dataset_id, layer=layer, variant_id=variant_id)
+    except DatasetNotFoundError:
+        return ()
+    root = record.root.resolve()
+    keep = (root / "shards" / "part-000.parquet").resolve()
+    paths = []
+    for shard in record.shards():
+        path = (root / str(shard["path"])).resolve()
+        if path != keep and path.is_relative_to(root):
+            paths.append(path)
+    return tuple(paths)
 
 
 def _read_pitch_angle_spectrum_store(
@@ -1091,10 +1140,13 @@ def _read_pitch_angle_spectrum_store(
     layer: str,
     variant_id: str,
     time: TimeRange,
+    expected_variant: dict[str, Any],
 ) -> SopranArray | None:
     try:
         record = store.dataset(dataset_id, layer=layer, variant_id=variant_id)
     except DatasetNotFoundError:
+        return None
+    if not _pitch_angle_spectrum_record_variant_matches(record, expected_variant):
         return None
     if not _record_covers_time(record, time):
         return None
@@ -1122,6 +1174,29 @@ def _pitch_angle_spectrum_store_exists(
     return True
 
 
+def _pitch_angle_spectrum_store_policy_matches(
+    store: Store,
+    *,
+    dataset_id: str,
+    layer: str,
+    variant_id: str,
+    expected_variant: dict[str, Any],
+) -> bool:
+    try:
+        record = store.dataset(dataset_id, layer=layer, variant_id=variant_id)
+    except DatasetNotFoundError:
+        return False
+    return _pitch_angle_spectrum_record_variant_matches(record, expected_variant)
+
+
+def _pitch_angle_spectrum_record_variant_matches(
+    record: DatasetRecord,
+    expected_variant: dict[str, Any],
+) -> bool:
+    variant = record.manifest().get("variant") or {}
+    return all(variant.get(name) == value for name, value in expected_variant.items())
+
+
 def _pitch_angle_spectrum_from_polars(
     frame: Any,
     *,
@@ -1146,33 +1221,145 @@ def _pitch_angle_spectrum_from_polars(
     energies = frame.select("energy").unique(maintain_order=True).to_series().to_list()
     pitches = frame.select("pitch_angle").unique(maintain_order=True).to_series().to_list()
     values = np.full((len(times), len(energies), len(pitches)), np.nan, dtype=float)
+    energy_values = np.full((len(times), len(energies)), np.nan, dtype=float)
+    exposure_values = np.full_like(values, np.nan)
+    detector_sample_values = np.full_like(values, np.nan)
+    integration_time_values = np.full(len(times), np.nan, dtype=float)
+    data_mode_values = np.full(len(times), -1, dtype=np.int32)
+    data_type_values = np.full(len(times), -1, dtype=np.int32)
+    has_energy_values = "energy_eV" in frame.columns
+    has_exposure = "exposure" in frame.columns
+    has_detector_samples = "detector_samples" in frame.columns
+    has_integration_time = "integration_time_seconds" in frame.columns
+    has_data_mode = "pace_data_mode" in frame.columns
+    has_data_type = "pace_data_type" in frame.columns
     time_index = {value: index for index, value in enumerate(times)}
     energy_index = {value: index for index, value in enumerate(energies)}
     pitch_index = {value: index for index, value in enumerate(pitches)}
-    for row in frame.select(["time", "energy", "pitch_angle", value_column]).iter_rows(
-        named=True
-    ):
-        values[
-            time_index[row["time"]],
-            energy_index[row["energy"]],
-            pitch_index[row["pitch_angle"]],
-        ] = row[value_column]
+    selected_columns = ["time", "energy", "pitch_angle", value_column]
+    record_metadata = {
+        name: np.full(len(times), -1.0)
+        for name in ("pace_submode", "pace_svs_tbl", "pace_data_quality", "record_duration_seconds")
+        if name in frame.columns
+    }
+    selected_columns.extend(record_metadata)
+    if has_energy_values:
+        selected_columns.append("energy_eV")
+    if has_exposure:
+        selected_columns.append("exposure")
+    if has_detector_samples:
+        selected_columns.append("detector_samples")
+    if has_integration_time:
+        selected_columns.append("integration_time_seconds")
+    if has_data_mode:
+        selected_columns.append("pace_data_mode")
+    if has_data_type:
+        selected_columns.append("pace_data_type")
+    for row in frame.select(selected_columns).iter_rows(named=True):
+        time_position = time_index[row["time"]]
+        energy_position = energy_index[row["energy"]]
+        pitch_position = pitch_index[row["pitch_angle"]]
+        values[time_position, energy_position, pitch_position] = row[value_column]
+        if has_energy_values:
+            energy_values[time_position, energy_position] = row["energy_eV"]
+        if has_exposure:
+            exposure_values[time_position, energy_position, pitch_position] = row["exposure"]
+        if has_detector_samples:
+            detector_sample_values[time_position, energy_position, pitch_position] = row[
+                "detector_samples"
+            ]
+        if has_integration_time:
+            integration_time_values[time_position] = row["integration_time_seconds"]
+        if has_data_mode:
+            data_mode_values[time_position] = row["pace_data_mode"]
+        if has_data_type:
+            data_type_values[time_position] = row["pace_data_type"]
+        for name, metadata in record_metadata.items():
+            metadata[time_position] = row[name]
 
     parameters = manifest.get("parameters") or {}
     operations = tuple(parameters.get("operations") or ())
+    operation_parameters = operations[0].get("parameters") if operations else {}
+    operation_parameters = operation_parameters or {}
     value = _pitch_angle_spectrum_value_from_operations(operations)
     units = "count" if value == "counts" else "eV/(cm^2 s sr eV)"
+    coords: dict[str, Any] = {
+        "time": np.asarray(times, dtype="datetime64[ns]"),
+        "energy": np.asarray(energies),
+        "pitch_angle": np.asarray(pitches, dtype=float),
+    }
+    if has_energy_values:
+        coords["energy_eV"] = (("time", "energy"), energy_values)
+    if has_exposure:
+        coords["exposure"] = (("time", "energy", "pitch_angle"), exposure_values)
+    if has_detector_samples:
+        coords["detector_samples"] = (
+            ("time", "energy", "pitch_angle"),
+            detector_sample_values,
+        )
+    if has_integration_time:
+        coords["integration_time_seconds"] = ("time", integration_time_values)
+    if has_data_mode:
+        coords["pace_data_mode"] = ("time", data_mode_values)
+    if has_data_type:
+        coords["pace_data_type"] = ("time", data_type_values)
+    for name, metadata in record_metadata.items():
+        coords[name] = (
+            "time", metadata if name == "record_duration_seconds" else metadata.astype(np.int64)
+        )
+    attrs: dict[str, Any] = {"units": units, "value": value}
+    for name in (
+        "pitch_edges",
+        "look_frame",
+        "cadence_seconds",
+        "count_correction",
+        "count_correction_order",
+        "pace_data_mode_policy",
+        "geometry_policy",
+        "geometry_rejected_times_unix",
+        "excluded_pace_data_modes",
+        "source_sensors",
+        "energy_alignment",
+    ):
+        if name in operation_parameters:
+            attrs[name] = operation_parameters[name]
     array = xr.DataArray(
         values,
         dims=("time", "energy", "pitch_angle"),
-        coords={
-            "time": np.asarray(times, dtype="datetime64[ns]"),
-            "energy": np.asarray(energies),
-            "pitch_angle": np.asarray(pitches, dtype=float),
-        },
+        coords=coords,
         name=value_column,
-        attrs={"units": units, "value": value},
+        attrs=attrs,
     )
+    for name in record_metadata:
+        array.coords[name].attrs.update(
+            units="s" if name == "record_duration_seconds" else "1"
+        )
+    if has_energy_values:
+        array.coords["energy_eV"].attrs.update({"units": "eV", "long_name": "energy"})
+    if has_exposure:
+        exposure_mode = str((operation_parameters or {}).get("exposure_mode") or "provided")
+        array.coords["exposure"].attrs.update(
+            {
+                "units": "relative",
+                "long_name": "effective count exposure",
+                "mode": exposure_mode,
+            }
+        )
+    if has_detector_samples:
+        array.coords["detector_samples"].attrs.update(
+            {
+                "units": "count",
+                "long_name": "number of calibrated detector looks in pitch cell",
+            }
+        )
+    if has_integration_time:
+        array.coords["integration_time_seconds"].attrs.update(
+            {"units": "s", "long_name": "PACE integration time per detector look"}
+        )
+    if has_data_mode:
+        array.coords["pace_data_mode"].attrs.update({"long_name": "PACE data mode command"})
+    if has_data_type:
+        array.coords["pace_data_type"].attrs.update({"long_name": "PACE record data type"})
     schema = VariableSchema(
         name=value_column,
         aliases=("pas",),
@@ -1199,6 +1386,32 @@ def _pitch_angle_spectrum_value_from_operations(
         if value in {"counts", "energy_flux"}:
             return value
     return "counts"
+
+
+def _pitch_angle_spectrum_store_frame(product: SopranArray) -> Any:
+    import numpy as np
+    import polars as pl
+
+    array = product.to_xarray()
+    frame = product.to_polars(layout="long", max_rows=None)
+    columns = []
+    for name in (
+        "energy_eV",
+        "exposure",
+        "detector_samples",
+        "integration_time_seconds",
+        "pace_data_mode",
+        "pace_data_type",
+        "pace_submode",
+        "pace_svs_tbl",
+        "pace_data_quality",
+        "record_duration_seconds",
+    ):
+        if name not in array.coords:
+            continue
+        coordinate = array.coords[name].broadcast_like(array).transpose(*array.dims)
+        columns.append(pl.Series(name, np.asarray(coordinate.values).reshape(-1)))
+    return frame.with_columns(columns) if columns else frame
 
 
 def _record_covers_time(record: DatasetRecord, time: TimeRange) -> bool:
@@ -1233,6 +1446,7 @@ def _pitch_angle_spectrum_variant_id(
     look_frame: str,
     magnetic_frame: str | None,
     min_look_bins: int,
+    count_correction: CountCorrection,
     variant_id: str | None,
 ) -> str:
     if variant_id is not None:
@@ -1244,27 +1458,37 @@ def _pitch_angle_spectrum_variant_id(
         "look_frame": look_frame,
         "magnetic_frame": magnetic_frame,
         "min_look_bins": min_look_bins,
+        "count_correction": count_correction,
+        "pace_data_mode_policy": PACE_PITCH_DATA_MODE_POLICY,
+        "geometry_policy": GEOMETRY_POLICY,
     }
     digest = hashlib.sha1(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()[:16]
-    return f"v1_{digest}"
+    return f"v2_{digest}"
 
 
 def _pitch_angle_spectrum_variant_metadata(
     *,
+    value: str,
     magnetic_field: Any,
     pitch_bins: Any,
     look_frame: str,
     magnetic_frame: str | None,
     min_look_bins: int,
+    count_correction: CountCorrection,
 ) -> dict[str, Any]:
     return {
+        "value": value,
         "magnetic_field": _cache_fingerprint(magnetic_field),
         "pitch_bins": _cache_fingerprint(pitch_bins),
         "look_frame": look_frame,
         "magnetic_frame": magnetic_frame,
         "min_look_bins": min_look_bins,
+        "count_correction": count_correction,
+        "pace_data_mode_policy": PACE_PITCH_DATA_MODE_POLICY,
+        "geometry_policy": GEOMETRY_POLICY,
+        "excluded_pace_data_modes": [],
     }
 
 
@@ -1280,6 +1504,11 @@ def _cache_fingerprint(value: Any) -> Any:
             "name": getattr(value, "name", None),
             "schema": getattr(getattr(value, "schema", None), "name", None),
             "values": values,
+            "time": _numeric_array_fingerprint(
+                array.coords["time"].values.astype("datetime64[ns]").astype("int64")
+            ) if "time" in array.coords else None,
+            "frame": getattr(getattr(value, "schema", None), "frame", None)
+            or array.attrs.get("frame"),
         }
     try:
         import numpy as np

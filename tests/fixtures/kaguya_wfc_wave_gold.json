@@ -1,0 +1,164 @@
+{
+  "schema": "sopran.kaguya.wfc-wave-gold/v1",
+  "preset": "KAGUYA_WFC_V1",
+  "time_scale": "UTC",
+  "interval_semantics": "half_open_[start,stop)",
+  "scope": {
+    "mission": "KAGUYA",
+    "instrument": "LRS/WFC-H",
+    "source_products": [
+      "wfc_ex_power_spectral_density",
+      "wfc_ey_power_spectral_density"
+    ],
+    "purpose": "Detector regression anchors, not a complete scientific event catalog"
+  },
+  "strict_intervals": [
+    {
+      "id": "wfc-ey-20080110-low-frequency-broadband",
+      "start": "2008-01-10T00:17:08Z",
+      "stop": "2008-01-10T00:18:36Z",
+      "component": "Ey",
+      "expected_candidate_types": [
+        "bbn_esw_candidate"
+      ],
+      "expected_frequency_khz": [
+        0.923,
+        2.154
+      ],
+      "context": [
+        "strong_low_frequency_enhancement",
+        "terminator_or_wake_boundary"
+      ],
+      "known_artifacts": [
+        "957_khz_fixed_line"
+      ],
+      "must_not_claim": [
+        "esw_confirmed_without_wfc_l_waveform",
+        "957_khz_peak_is_the_physical_event"
+      ],
+      "notes_ja": "低周波広帯域候補の強い回帰基準。WFC-HだけではESW確定としない。"
+    },
+    {
+      "id": "wfc-ey-20080614-quiet-negative",
+      "start": "2008-06-14T04:40:04Z",
+      "stop": "2008-06-14T04:42:04Z",
+      "component": "Ey",
+      "expected_candidate_types": [],
+      "expected_false": [
+        "bbn_esw_candidate",
+        "fpe_low_ridge_candidate",
+        "plasma_line_ridge_candidate",
+        "radio_akr_candidate",
+        "instrument_rfi_candidate"
+      ],
+      "context": [
+        "quiet_negative"
+      ],
+      "notes_ja": "物理候補・固定線候補ともfalseを期待するquiet strict negative。"
+    },
+    {
+      "id": "wfc-ey-20080618-957-khz-rfi",
+      "start": "2008-06-18T14:44:36Z",
+      "stop": "2008-06-18T14:44:44Z",
+      "component": "Ey",
+      "expected_candidate_types": [],
+      "expected_false": [
+        "bbn_esw_candidate",
+        "fpe_low_ridge_candidate",
+        "plasma_line_ridge_candidate",
+        "radio_akr_candidate"
+      ],
+      "expected_fixed_line_khz": 957.03,
+      "detector_scope": "120_second_median",
+      "must_not_claim": [
+        "957_khz_peak_is_a_physical_plasma_line"
+      ],
+      "notes_ja": "8秒の957.03 kHz spikeは120秒medianでは抑制される。物理候補へ漏れないことを確認し、短時間triageは別detectorで扱う。"
+    }
+  ],
+  "review_intervals": [
+    {
+      "id": "wfc-ey-20080110-200-khz-legacy-label-review",
+      "start": "2008-01-10T04:55:04Z",
+      "stop": "2008-01-10T04:57:04Z",
+      "component": "Ey",
+      "candidate_types": [
+        "instrument_line_review"
+      ],
+      "expected_frequency_khz": [
+        195.0,
+        225.0
+      ],
+      "review_reasons": [
+        "legacy_200_khz_label_not_reproduced",
+        "native_spectrum_peaks_near_215_225_khz",
+        "final_v1_rfi_threshold_not_met"
+      ],
+      "notes_ja": "旧メモでは200 kHz RFIだったが、実日背景差では195 kHz増強なし、215--225 kHzが約+3 dB。strict labelにしない。"
+    },
+    {
+      "id": "wfc-ey-20080614-low-frequency-broadband",
+      "start": "2008-06-14T17:27:40Z",
+      "stop": "2008-06-14T17:40:04Z",
+      "component": "Ey",
+      "candidate_types": [
+        "bbn_esw_candidate"
+      ],
+      "expectation_level": "should_detect_but_quality_review_required",
+      "review_reasons": [
+        "mixed_gain",
+        "mixed_mode",
+        "mixed_postgap"
+      ],
+      "notes_ja": "低kHz広帯域候補だが、状態フラグの混在を含むためreview扱い。"
+    },
+    {
+      "id": "wfc-ey-20080614-descending-ridge",
+      "start": "2008-06-14T18:08:30Z",
+      "stop": "2008-06-14T18:22:30Z",
+      "component": "Ey",
+      "candidate_types": [
+        "tracked_low_fpe_ridge_candidate",
+        "tracked_high_plasma_ridge_candidate"
+      ],
+      "expected_frequency_khz": [
+        16.0,
+        50.0
+      ],
+      "review_reasons": [
+        "near_gap_or_mode_transition"
+      ],
+      "notes_ja": "およそ50 kHzから16 kHzへ下降するridge候補。直前のgap/mode遷移を要確認。"
+    },
+    {
+      "id": "wfc-20080618-ridge-radio-complex-day",
+      "start": "2008-06-18T00:00:00Z",
+      "stop": "2008-06-19T00:00:00Z",
+      "component": "either",
+      "candidate_types": [
+        "plasma_line_ridge_candidate",
+        "radio_akr_candidate"
+      ],
+      "review_reasons": [
+        "day_scale_search_region",
+        "vertical_lines_and_saturation_possible"
+      ],
+      "notes_ja": "10--120 kHz ridge/driftと100--300 kHzの広がりを含む日単位探索領域。"
+    },
+    {
+      "id": "wfc-20080111-20080118-radio-npw-complex",
+      "start": "2008-01-11T00:00:00Z",
+      "stop": "2008-01-19T00:00:00Z",
+      "component": "either",
+      "candidate_types": [
+        "radio_akr_candidate",
+        "plasma_line_ridge_candidate"
+      ],
+      "review_reasons": [
+        "multi_day_search_region",
+        "solar_or_npw_context_required"
+      ],
+      "notes_ja": "radio/NPW活動が複雑な期間。個々のevent windowは再ラベルする。"
+    }
+  ]
+}

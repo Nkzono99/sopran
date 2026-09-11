@@ -166,3 +166,36 @@ def test_frame_context_spice_transform_uses_spice_compatible_utc(
         ("utc2et", "2008-01-01 00:00:08.123456 UTC"),
         ("pxform", ("SELENE_M_SPACECRAFT", "MOON_ME", 123.0)),
     ]
+
+
+def test_frame_context_spice_transform_can_mask_ck_gaps(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_spice = types.ModuleType("spiceypy")
+    resets: list[bool] = []
+
+    fake_spice.furnsh = lambda _path: None  # type: ignore[attr-defined]
+    fake_spice.utc2et = (  # type: ignore[attr-defined]
+        lambda value: 1.0 if "00:00:01" in value else 0.0
+    )
+
+    def pxform(_source: str, _target: str, et: float):
+        if et == 1.0:
+            raise RuntimeError("CK coverage gap")
+        return np.eye(3)
+
+    fake_spice.pxform = pxform  # type: ignore[attr-defined]
+    fake_spice.reset = lambda: resets.append(True)  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "spiceypy", fake_spice)
+
+    transformed = spn.FrameContext(spice_kernels=("selene.bc",)).transform_vectors(
+        np.asarray([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
+        times=("2008-01-01T00:00:00", "2008-01-01T00:00:01"),
+        source_frame="MOON_ME",
+        target_frame="SELENE_M_SPACECRAFT",
+        missing="nan",
+    )
+
+    np.testing.assert_allclose(transformed[0], [1.0, 2.0, 3.0])
+    assert np.isnan(transformed[1]).all()
+    assert resets == [True]

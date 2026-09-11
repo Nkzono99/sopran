@@ -32,8 +32,10 @@ from sopran.missions.kaguya.data import (
     KaguyaPaceData,
     _pitch_angle_spectrum_dataset_id,
     _pitch_angle_spectrum_variant_id,
+    _pitch_angle_spectrum_variant_metadata,
     _read_pitch_angle_spectrum_store,
 )
+from sopran.missions.kaguya.er import KaguyaErInstrument
 from sopran.missions.kaguya.files import (
     KaguyaFileSource,
     iter_hourly_public_paths,
@@ -72,6 +74,7 @@ from sopran.missions.kaguya.pace import (
     read_pace_fov,
     read_pace_info,
 )
+from sopran.missions.kaguya.pitch import CountCorrection
 from sopran.missions.kaguya.schema import (
     KAGUYA_ESA1_SCHEMA,
     KAGUYA_LMAG_SCHEMA,
@@ -128,6 +131,7 @@ class Kaguya:
         self.lmag: LmagInstrument = LmagInstrument(self)
         self.lrs: LrsInstrument = LrsInstrument(self)
         self.orbit: OrbitInstrument = OrbitInstrument(self)
+        self.er: KaguyaErInstrument = KaguyaErInstrument(self)
         self.sza: GeometryArrayEndpoint = self.orbit.sza
 
     def info(self) -> InfoPage:
@@ -140,6 +144,7 @@ class Kaguya:
                 "iea: PACE Ion Energy Analyzer",
                 "lmag: Lunar MAGnetometer",
                 "lrs: Lunar Radar Sounder plasma wave spectra",
+                "er: electron-reflectometry effective mirror field",
                 "sza: shortcut for orbit.sza",
             ),
         )
@@ -386,8 +391,14 @@ fig = plot_result.fig
             calibration=calibration,
         )
         bins = coverage_bins(time, freq=freq)
-        expected = _expected_remote_file_counts(self.instrument, bins)
-        available = _available_source_file_counts(self.instrument, loaded.files, bins)
+        lrs_kind = getattr(self, "kind", None)
+        expected = _expected_remote_file_counts(self.instrument, bins, kind=lrs_kind)
+        available = _available_source_file_counts(
+            self.instrument,
+            loaded.files,
+            bins,
+            kind=lrs_kind,
+        )
         frame = coverage_frame_from_xarray(
             loaded.to_xarray(),
             time=time,
@@ -605,6 +616,7 @@ fig = plot_result.fig
         look_frame: str = "SELENE_M_SPACECRAFT",
         magnetic_frame: str | None = None,
         min_look_bins: int = 1,
+        count_correction: CountCorrection = "none",
         frame_context: Any | None = None,
         cache: CacheMode = "use",
         variant_id: str | None = None,
@@ -635,15 +647,26 @@ fig = plot_result.fig
                 look_frame=look_frame,
                 magnetic_frame=magnetic_frame,
                 min_look_bins=min_look_bins,
+                count_correction=count_correction,
                 variant_id=variant_id,
             )
             if cache == "use":
+                expected_variant = _pitch_angle_spectrum_variant_metadata(
+                    value=self.name,
+                    magnetic_field=magnetic_field,
+                    pitch_bins=pitch_bins,
+                    look_frame=look_frame,
+                    magnetic_frame=magnetic_frame,
+                    min_look_bins=min_look_bins,
+                    count_correction=count_correction,
+                )
                 cached = _read_pitch_angle_spectrum_store(
                     self.instrument.mission.store,
                     dataset_id=resolved_dataset_id,
                     layer=layer,
                     variant_id=resolved_variant_id,
                     time=time,
+                    expected_variant=expected_variant,
                 )
                 if cached is not None:
                     return cached
@@ -660,6 +683,7 @@ fig = plot_result.fig
             look_frame=look_frame,
             magnetic_frame=magnetic_frame,
             min_look_bins=min_look_bins,
+            count_correction=count_correction,
             frame_context=frame_context,
             cache=cache,
             store=self.instrument.mission.store,
@@ -680,6 +704,7 @@ fig = plot_result.fig
         look_frame: str = "SELENE_M_SPACECRAFT",
         magnetic_frame: str | None = None,
         min_look_bins: int = 1,
+        count_correction: CountCorrection = "none",
         frame_context: Any | None = None,
         cache: CacheMode = "use",
         variant_id: str | None = None,
@@ -700,6 +725,7 @@ fig = plot_result.fig
             look_frame=look_frame,
             magnetic_frame=magnetic_frame,
             min_look_bins=min_look_bins,
+            count_correction=count_correction,
             frame_context=frame_context,
             cache=cache,
             variant_id=variant_id,
@@ -1027,9 +1053,18 @@ class PaceInstrument(KaguyaInstrument):
     def calibration_files(self, *, download: DownloadMode | None = None) -> list[Path]:
         download = self.mission.download if download is None else download
         _validate_download_mode(download)
+        mission_fallback_roots = (
+            self.mission.source.fallback_roots
+            if isinstance(self.mission.source, KaguyaFileSource)
+            else ()
+        )
         source = KaguyaFileSource(
             local_root=self.mission.store.raw_path("kaguya", "calibration", "pace"),
             remote_base_url=PACE_CALIBRATION_BASE_URL,
+            fallback_roots=tuple(
+                root.parent if root.name.casefold() == "public" else root
+                for root in mission_fallback_roots
+            ),
         )
         paths: list[Path] = []
         for remote_file in self.calibration_remote_files():
@@ -2165,6 +2200,7 @@ class LrsInstrument(KaguyaInstrument):
     wfc_ex_db: LrsVariableEndpoint
     wfc_ey_db: LrsVariableEndpoint
     wfc_gain: LrsVariableEndpoint
+    wfc_mode: LrsVariableEndpoint
     wfc_ex_field: LrsVariableEndpoint
     wfc_ey_field: LrsVariableEndpoint
     wfc_ex_power_spectral_density: LrsVariableEndpoint
@@ -2175,6 +2211,7 @@ class LrsInstrument(KaguyaInstrument):
     wfc_fband: LrsVariableEndpoint
     wfc_omode: LrsVariableEndpoint
     wfc_pdc_ti: LrsVariableEndpoint
+    wfc_pdc_ti_words: LrsVariableEndpoint
     wfc_postgap: LrsVariableEndpoint
     npw: LrsEndpointGroup
     wfc: LrsEndpointGroup
@@ -2196,6 +2233,7 @@ class LrsInstrument(KaguyaInstrument):
             ex_db=self.wfc_ex_db,
             ey_db=self.wfc_ey_db,
             gain=self.wfc_gain,
+            mode=self.wfc_mode,
             ex_field=self.wfc_ex_field,
             ey_field=self.wfc_ey_field,
             ex_power_spectral_density=self.wfc_ex_power_spectral_density,
@@ -2206,6 +2244,7 @@ class LrsInstrument(KaguyaInstrument):
             fband=self.wfc_fband,
             omode=self.wfc_omode,
             pdc_ti=self.wfc_pdc_ti,
+            pdc_ti_words=self.wfc_pdc_ti_words,
             postgap=self.wfc_postgap,
         )
 
@@ -2498,7 +2537,9 @@ plot_result = spn.stack(item).plot()
         return paths
 
     def is_optional_missing_file(self, remote_file: str, exc: HTTPError) -> bool:
-        return exc.code == 404 and "/optional/" in remote_file.replace("\\", "/")
+        # Each day is represented by either the nominal or optional template.
+        # A 404 for one candidate must not prevent trying the other candidate.
+        return exc.code == 404
 
     def load(
         self,
@@ -2776,13 +2817,16 @@ def _lrs_cache_layer(name: str) -> str:
 
 
 def _lrs_cache_coordinates(array: Any) -> dict[str, object]:
-    if "frequency" not in getattr(array, "coords", {}):
-        return {}
-    coordinate = array.coords["frequency"]
-    metadata: dict[str, object] = {"frequency": coordinate.values.tolist()}
-    units = getattr(coordinate, "attrs", {}).get("units")
-    if units is not None:
-        metadata["frequency_units"] = str(units)
+    coordinates = getattr(array, "coords", {})
+    metadata: dict[str, object] = {}
+    if "frequency" in coordinates:
+        coordinate = coordinates["frequency"]
+        metadata["frequency"] = coordinate.values.tolist()
+        units = getattr(coordinate, "attrs", {}).get("units")
+        if units is not None:
+            metadata["frequency_units"] = str(units)
+    if "pdc_word" in coordinates:
+        metadata["pdc_word"] = coordinates["pdc_word"].values.tolist()
     return metadata
 
 
@@ -2907,11 +2951,13 @@ def _load_endpoint_for_coverage(
 def _expected_remote_file_counts(
     instrument: EndpointInstrument,
     bins: tuple[Any, ...],
+    *,
+    kind: str | None = None,
 ) -> dict[str, int]:
     counts: dict[str, int] = {}
     for item in bins:
         time = TimeRange(item.start, item.stop)
-        counts[item.start_iso] = len(instrument.remote_files_for_period(time))
+        counts[item.start_iso] = len(_coverage_remote_files(instrument, time, kind=kind))
     return counts
 
 
@@ -2919,18 +2965,31 @@ def _available_source_file_counts(
     instrument: EndpointInstrument,
     files: tuple[Path, ...],
     bins: tuple[Any, ...],
+    *,
+    kind: str | None = None,
 ) -> dict[str, int]:
     source_files = tuple(path.as_posix().replace("\\", "/") for path in files)
     counts: dict[str, int] = {}
     for item in bins:
         time = TimeRange(item.start, item.stop)
         count = 0
-        for remote_file in instrument.remote_files_for_period(time):
+        for remote_file in _coverage_remote_files(instrument, time, kind=kind):
             remote = Path(remote_file).as_posix().replace("\\", "/")
             if any(source.endswith(remote) for source in source_files):
                 count += 1
         counts[item.start_iso] = count
     return counts
+
+
+def _coverage_remote_files(
+    instrument: EndpointInstrument,
+    time: TimeRange,
+    *,
+    kind: str | None,
+) -> list[str]:
+    if kind is None:
+        return instrument.remote_files_for_period(time)
+    return instrument.remote_files_for_period(time, kind=kind)
 
 
 def _merge_metadata(

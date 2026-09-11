@@ -88,9 +88,10 @@ def test_optional_extras_include_space_map_and_viz_backends() -> None:
     assert {"cdasws", "hapiclient", "pyspedas", "spacepy"} <= _dependency_names(
         optional_dependencies["artemis"]
     )
-    assert {"pdr", "pds4-tools", "spiceypy"} <= _dependency_names(
+    assert {"pdr", "pds4-tools", "scipy", "spiceypy"} <= _dependency_names(
         optional_dependencies["kaguya"]
     )
+    assert {"scipy"} <= _dependency_names(optional_dependencies["analysis"])
     assert {"datashader", "geoviews", "holoviews", "hvplot", "panel"} <= _dependency_names(
         optional_dependencies["viz"]
     )
