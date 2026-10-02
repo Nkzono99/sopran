@@ -1,134 +1,78 @@
 # SOPRAN Agent Guide
 
 SOPRANは衛星データの取得・保存・解析・可視化を提供するPythonパッケージです。
-APIの階層・型・単位がデータの構造と意味を伝え、標準の入口から可視化まで進めること、
-元ファイルとnative観測ビンへの直接アクセスを保つことを設計の基準とします。
-重い数値処理は同梱のPyO3/Rust拡張へまとめて渡します。
-全体ルールはこのファイル、仕様は`docs/`、一時的な進捗は`_handoff/`や
-各解析出力のログに置きます。仕様・既定値は現行コードとテストで確認してください。
-`docs/`は公開ライブラリの利用方法・仕様向けです。個別研究のテーマ設定、文献調査、
-試行錯誤、run単位の研究評価は`working/`以下に置き、公開ドキュメントのナビゲーションへ追加しません。
+APIの階層・型・単位でデータの意味を伝え、標準の入口から可視化まで進める設計にします。
+元ファイルとnative観測ビンへの直接アクセスを保ち、重い数値処理は同梱のPyO3/Rust拡張へまとめて渡します。
+仕様・既定値は現行コードとテストで確認してください。
 
-## 現在の構成
+## 判断と文章
+
+- 結論・根拠・次の行動を、肯定形で直接書く。否定は誤解の訂正や具体的な制約に絞る。
+- 主張と根拠を一貫して追える構成にし、判断に影響する数値・前提・不確かさを該当する説明に添える。一般的な留保の反復は省く。
+- 観測事実と作業仮説を区別する。証拠の強さと検証コストから有力な仮説を選び、見直しの条件と必要最小限の検証を示す。
+- 低優先度の候補は保留し、有力な仮説の検証に集中する。具体的な反証や判断を変える新しい証拠が得られたら見直す。
+- 結果は「現時点で何を採用し、次に何を調べるか」まで示し、許可された可逆的な作業はその判断に沿って進める。
+- 会話・日本語文書は日本語、`docs/en/` は英語で書く。API名・外部仕様名は原名を保つ。数式は `$...$` / `$$...$$`、画像はMarkdownで埋め込む。
+
+## 実装と記録の置き場所
 
 | 場所 | 責務 |
 |---|---|
 | `src/sopran/core/` | Store、config、Project/Case/View、データ型、pipeline、plotting、resampling |
-| `src/sopran/missions/` | KAGUYA、ARTEMIS、OMNIなどのreader・機器・product API |
-| `src/sopran/bodies/moon/` | DEM、shadow、SVMなどの月面product |
-| `src/sopran/frames/` | 座標系、SPICE、時刻変換 |
-| `src/sopran/experimental/` | 明示importで使う試作。ER、波動候補、mission用adapter |
-| `src/sopran/maps/` | 共通raster型。月固有productは`bodies/moon/`に置く |
-| `crates/sopran-native/` | Pythonから`sopran._native`として呼ぶRust拡張 |
+| `src/sopran/missions/` | KAGUYA・ARTEMIS・OMNIなどのreader・機器・product API |
+| `src/sopran/bodies/moon/` | DEM・shadow・SVMなどの月面product |
+| `src/sopran/frames/`, `src/sopran/maps/` | 座標・時刻変換、共通raster型 |
+| `src/sopran/experimental/` | 明示importで使うER・波動候補・mission用adapterの試作 |
+| `crates/sopran-native/` | `sopran._native` として呼ぶRust拡張 |
 | `tests/` | 合成データ・fixture中心の回帰テスト |
-| `docs/`, `docs/en/` | 日本語・英語ドキュメント。ナビゲーションは`mkdocs.yml` |
-| `working/`, `_handoff/` | ローカル解析・生成物・引き継ぎ。通常はGit管理外 |
+| `docs/`, `docs/en/` | 公開APIの仕様・利用方法。ナビゲーションは `mkdocs.yml` |
+| `working/`, `_handoff/` | Git管理外の個別研究・試行錯誤・生成物・進捗・ログ |
+
+個別研究のテーマ設定・文献調査・run単位の評価は `working/` に置き、公開docsのナビゲーションへ追加しません。
+全体ルールはこのファイル、再利用可能な仕様は `docs/`、一時的な進捗は `_handoff/` や解析出力のログに記録します。
 
 ## APIと実装の境界
 
-- 日常の入口は`spn.kaguya`、`spn.artemis`、`spn.moon`、`spn.omni`。
-  共通の時刻・領域等は`spn.view(...)`、永続的な研究条件は`Project`/`Case`で扱う。
-  明示的なmissionオブジェクトも独立したStore/source設定用に残す。
-- プロセス内の既定値は`spn.config.use(...)`、一時変更は`spn.config.using(...)`。
-  `Store(...)`の生成自体にはグローバル設定を変更する副作用を持たせない。
-  設定解決は既存config/Project/View経由とし、機器ごとに別のグローバル状態を作らない。
-- 公開APIには返り値型と単位・座標系・時刻・ビン情報を付ける。
-  補完を失う`Any`の連鎖を避け、外部ライブラリとの境界で型を明確にする。
-- 加工データは既存product/cacheの仕組みを使い、取得・計算・保存・再読込を透過的にする。
-  パラメータ依存の結果は入力と設定を区別できるキーにするか、明示保存にする。
-  異なる設定の結果を同じStore項目として再利用しない。
-- ファイル探索はStore/layout/provider経由。パッケージ内へローカル絶対パスを埋め込まない。
-  欠損値、ゼロ、未取得、校正・品質フラグを区別する。
-- 任意依存は利用する経路で読み込む。`import sopran`に全ミッションの依存を要求しない。
-  依存・build・extrasの定義は`pyproject.toml`を正とする。
-- 通常APIからexperimentalへ依存しない。試作を機器やルートへ再公開しない。
-  試作にも型・単位・テストを付け、Storeキーを通常productと分ける。
-  `experimental/README.md`で未確定点と正式化の条件を管理し、リリース前に棚卸しする。
-  未公開APIの念のための互換aliasやshimは作らない。
-- 可視化は既存plot APIを使い、軸とカラーに物理量・単位を表示する。
-  科学画像は実データから作り、NaNとゼロ、候補解と採択解を区別する。
+- 日常の入口は `spn.kaguya` / `spn.artemis` / `spn.moon` / `spn.omni`。時刻・領域は `spn.view(...)`、永続的な研究条件は `Project` / `Case`、独立したStore/source設定は明示的なmissionオブジェクトで扱う。
+- プロセスの既定値は `spn.config.use(...)`、一時変更は `spn.config.using(...)`。設定は既存config/Project/View経由で解決し、Store生成でグローバル設定を変えたり、機器ごとに別のグローバル状態を作ったりしない。
+- 公開APIには返り値型・単位・座標系・時刻・ビン情報を付ける。外部ライブラリとの型境界を明確にし、`Any` の連鎖を避ける。
+- 加工データは既存product/cacheで取得・計算・保存・再読込する。入力と設定を区別できるキー、または明示保存を使い、異なる設定の結果を同じStore項目として再利用しない。
+- ファイル探索はStore/layout/provider経由とし、ローカル絶対パスをパッケージへ埋め込まない。欠損・ゼロ・未取得・校正・品質フラグを区別する。
+- 任意依存は利用する経路で読み込み、`import sopran` に全ミッションの依存を要求しない。依存・build・extrasは `pyproject.toml` を正とする。
+- 通常APIからexperimentalへ依存せず、試作を機器やルートへ再公開しない。試作にも型・単位・テストを付け、Storeキーを通常productと分ける。未確定点と正式化の条件は `src/sopran/experimental/README.md` で管理し、リリース前に棚卸しする。未公開APIの互換aliasやshimは作らない。
+- 可視化は既存plot APIを使い、軸とカラーに物理量・単位を示す。科学画像は実データから作り、NaNとゼロ、候補解と採択解を区別する。
 
 ## データと実行中ジョブの保護
 
-- 実データ、キャッシュ、secret、大量の図やfit結果はGitに入れない。
-  外部データセットや旧実装`F:\idl\lunarsat`は、明示依頼なしに削除・移動・書換えしない。
-  旧IDL/SPEDASは読み取り参照とし、移植時は出典・単位・補正条件を記録する。
-- 長時間処理の再開・停止・並列数変更は、対象のコマンド、PID、ログ、出力先を確認して行う。
-  Pythonプロセスの一括停止や、別ジョブの再起動は行わない。
-- 実行中ジョブが参照する入力、コード、nativeバイナリを差し替える前に影響を確認する。
-  設定・コードhashが変わる結果は別の出力先に分け、既存bindingを編集して再開条件を回避しない。
-- 全期間計算や大量ダウンロードは要求された範囲・並列数に従い、まず少数ケースで検証する。
-  一時的なPID、完了率、特定runの既定値はこのガイドやskillへ固定しない。
+- 実データ・キャッシュ・secret・大量の図やfit結果はGitに入れない。外部データセットや旧実装 `F:\idl\lunarsat` は明示依頼なしに削除・移動・書換えしない。
+- 旧IDL/SPEDASは読み取り参照とし、移植時は出典・単位・補正条件を記録する。
+- 長時間処理の再開・停止・並列数変更はコマンド・PID・ログ・出力先を確認して行う。Pythonプロセスの一括停止や別ジョブの再起動は行わない。
+- 実行中ジョブの入力・コード・nativeバイナリを差し替える前に影響を確認する。設定・コードhashが変わる結果は別の出力先に置き、既存bindingを編集して再開条件を回避しない。
+- 全期間計算・大量ダウンロードは要求された範囲・並列数で、まず少数ケースを検証する。一時的なPID・完了率・run固有の既定値はこのガイドやskillへ固定しない。
 
-## 検証
+## 変更と検証
 
-リポジトリルートで対象環境のPythonを使います。Windowsの既存venvは
-`.venv/Scripts/python.exe`。以下の`python`はその環境を有効化した場合の表記です。
-依存導入は必要なextrasだけを選び、共有環境や実行中ジョブへの影響を先に確認します。
+- 編集前後に `git status --short` を確認し、既存の未コミット変更を保全する。検索は `rg`、手作業の編集は `apply_patch` を使い、無関係な整形・refactorを混ぜない。
+- API・解析仕様を変えたら関連ドキュメントとテストを更新する。commit・merge・push・リリースは依頼された場合だけ行う。
+- 対象環境のPythonを使う。Windowsの既存venvは `.venv/Scripts/python.exe`。依存は必要なextrasだけ導入し、共有環境・実行中ジョブへの影響を先に確認する。
+- 狭い変更は関連テスト、広い回帰確認はCI相当の環境で行う。IDL実行環境を前提にせず、合成データ・参照仕様・既存実データで比較する。報告では実行済みと未実行の検証、実データの対象範囲を区別する。
 
-```powershell
-# 狭い変更ではまず関連テスト。広い回帰確認はCI相当の環境で行う
-python -m pytest -q tests/test_omni.py
-python -m pytest -q
-python -m compileall -q src
-python -m ruff check src tests
-python -m mypy src
+リポジトリルートから、有効化した対象venvの `python` で実行します。
 
-# Rustを変更した場合
-cargo test -p sopran-native
-cargo fmt --all --check
+| 対象 | コマンド |
+|---|---|
+| 関連テスト / 全体テスト | `python -m pytest -q tests/test_omni.py` / `python -m pytest -q` |
+| 構文・lint・型 | `python -m compileall -q src` / `python -m ruff check src tests` / `python -m mypy src` |
+| Rust変更 | `cargo test -p sopran-native` / `cargo fmt --all --check` |
+| schema変更 | `python -m sopran.schema_docs --check docs/reference/schemas.md` / `python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md` |
+| docs変更 | `python -m mkdocs build` |
 
-# schemaまたはドキュメントを変更した場合
-python -m sopran.schema_docs --check docs/reference/schemas.md
-python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md
-python -m mkdocs build
-```
+CIの依存セット・手順は `.github/workflows/ci.yml`、docsとwheel配布は同ディレクトリの `docs.yml` / `publish.yml` を確認します。
 
-CIの依存セット・手順は`.github/workflows/ci.yml`、docsとwheel配布は同ディレクトリの
-`docs.yml`、`publish.yml`を確認します。IDL実行環境は前提にせず、合成データと
-参照仕様・既存実データとの比較で検証します。実行したテスト、未実行の検証、
-実データの対象範囲を区別して報告してください。
+## 作業に応じて読むskill
 
-## 変更の進め方
+利用できるskillを確認して必要なものを読み、読み込み済みのものは再読込しません。通常の小さな変更に全手順を強制しません。
 
-- 前後に`git status --short`を確認し、既存の未コミット変更を保全する。
-  手作業の編集は`apply_patch`、検索は`rg`を使い、無関係な整形・refactorを混ぜない。
-- API・解析仕様の変更時は関連ドキュメントとテストも更新する。
-  日本語説明でよいが、API名・外部仕様名は原名を保つ。数式は`$...$`、`$$...$$`を使う。
-- commit、merge、push、リリースは依頼された場合だけ行う。
-- 作業に応じて以下のローカルskillを読む。通常の小さな変更に全手順を強制しない。
-  - [ER解析・長時間バッチ](.agents/skills/sopran-er-batch/SKILL.md)
-  - [Rust backendの変更・性能検証](.agents/skills/sopran-native/SKILL.md)
-
-<skills_system priority="1">
-
-## Available Skills
-
-<!-- SKILLS_TABLE_START -->
-<usage>
-When users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.
-
-How to use skills:
-- Invoke: `npx openskills read <skill-name>` (run in your shell)
-  - For multiple: `npx openskills read skill-one,skill-two`
-- The skill content will load with detailed instructions on how to complete the task
-- Base directory provided in output for resolving bundled resources (references/, scripts/, assets/)
-
-Usage notes:
-- Only use skills listed in <available_skills> below
-- Do not invoke a skill that is already loaded in your context
-- Each skill invocation is stateless
-</usage>
-
-<available_skills>
-
-<skill>
-<name>natural-japanese</name>
-<description>仕事の日本語文書を読みやすくわかりやすく書く・直すためのスキル。議事録（文字起こしからの議事録化を含む）、調査レポート・分析レポート、社内ガイド・マニュアル、リサーチメモ・ディスカッションペーパー・企画書・提案書・報告書・メール、スライド構成案といったビジネス文書の作成・校正、「結論から書いて」「論旨を明確に」「見出しを端的に」「専門用語をわかりやすく説明して」といった指示のいずれでも使用する。AI臭さの除去（「AIっぽい」「AI臭い」「機械翻訳っぽい」「不自然」「もっと自然な日本語に」「機械っぽい」「人間っぽくして」「単調」「〜することができる、と言えるだろう、のような言い回し」といった直接・間接・口語の指摘、AIで書いたと言われた/疑われた）、読みにくい・わかりにくい文章の改善依頼（語順がおかしい、一文が長い、何が言いたいか分からない、読点の位置がおかしい等）、note記事やブログ記事・エッセイの新規執筆（任意のテーマをゼロから書く・書き起こす依頼を含む）、既存文章のリライト・推敲、AI臭さの診断・採点（「この文章AIが書いた？」「AI臭さをスコアで出して」「どれくらいAIっぽいか判定して」という書き換えを伴わない依頼）、自分の文体を学ばせたい・プロファイル化したいという要望（過去の文章を読ませて自分らしく書いてほしいという依頼も含む）にも対応する。禁止語の除去、リズムの単調さ・段落構造の均質さ・英語統語の直訳調に加え、語順・読点・一文一義・主語述語の距離といった読みやすさの原則にも対応する。技術文書の章構成やMarkdownフォーマットの整形自体（一文一行化・引用ブロック・脚注記法など）は対象外——それは別スキルの領域であり、本スキルは文章の自然さ・読みやすさ・わかりやすさに特化する。</description>
-<location>project</location>
-</skill>
-
-</available_skills>
-<!-- SKILLS_TABLE_END -->
-
-</skills_system>
+- ER解析・長時間バッチ: [.agents/skills/sopran-er-batch/SKILL.md](.agents/skills/sopran-er-batch/SKILL.md)
+- Rust backend・性能検証: [.agents/skills/sopran-native/SKILL.md](.agents/skills/sopran-native/SKILL.md)
+- 日本語文書の作成・推敲: 利用可能な `natural-japanese`。OpenSkillsでは `npx openskills read natural-japanese` で読みます。
