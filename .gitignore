@@ -8,6 +8,7 @@ site/
 
 .venv/
 .venvs/
+node_modules/
 build/
 dist/
 *.egg-info/
