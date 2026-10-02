@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 import sopran as spn
-from sopran.experimental.kaguya.er_timeseries import _window_record, _window_skip_reason
 from sopran.missions.kaguya.esa_quality import esa_pitch_rejection_reason
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData, PaceRecord
 from sopran.missions.kaguya.pitch import PitchAngleSpectrumOptions, build_pitch_angle_spectrum
@@ -83,70 +82,3 @@ def test_ion_checks_build_esa_pitch_counts(sensor):
     assert array.record_duration_seconds.values.tolist() == [16.0, 16.0]
     assert array.integration_time_seconds.values.tolist() == [16.0 / 512] * 2
     assert array.attrs["pace_data_mode_policy"] == "esa_look_quality_v2"
-
-
-def test_ion_check_command_transition_is_not_esa_response_change():
-    import xarray as xr
-
-    array = xr.DataArray(
-        np.ones(2),
-        dims="time",
-        coords={
-            "pace_data_mode": ("time", [17, 18]),
-            "pace_submode": ("time", [0, 0]),
-            "pace_data_type": ("time", [0, 0]),
-            "pace_svs_tbl": ("time", [6, 6]),
-        },
-    )
-    assert _window_skip_reason(np.arange(2), arrays={"ESA-S1": array}) is None
-    changed = array.assign_coords(pace_svs_tbl=("time", [6, 7]))
-    assert (
-        _window_skip_reason(np.arange(2), arrays={"ESA-S1": changed})
-        == "ESA-S1_pace_svs_tbl_changed"
-    )
-
-
-def test_full_16s_record_is_not_one_eighth_window_coverage():
-    import xarray as xr
-
-    time = np.array(["2008-04-11T00:00:08"], dtype="datetime64[ns]")
-    array = xr.DataArray([1.0], dims="time", coords={"record_duration_seconds": ("time", [16.0])})
-    row = _window_record(
-        int(time.astype("int64")[0] // 16_000_000_000),
-        np.array([0]),
-        record_times=time,
-        integration_seconds=16,
-        native_cadence_seconds=2,
-        expected_records=8,
-        minimum_records=1,
-        b_sc=np.array([4.0]),
-        sides=np.array(["parallel"]),
-        arrays={"ESA-S1": array, "ESA-S2": array},
-        count_correction="event_trash",
-    )
-    assert row["native_cadence_seconds"] == 16
-    assert row["expected_records"] == 1
-    assert row["window_coverage"] == 1
-
-
-def test_changed_cadence_uses_original_coverage_fraction():
-    import xarray as xr
-
-    time = np.array(["2008-04-11T00:00:08"], dtype="datetime64[ns]")
-    array = xr.DataArray([1.0], dims="time", coords={"record_duration_seconds": ("time", [1.0])})
-    row = _window_record(
-        int(time.astype("int64")[0] // 16_000_000_000),
-        np.array([0]),
-        record_times=time,
-        integration_seconds=16,
-        native_cadence_seconds=2,
-        expected_records=8,
-        minimum_records=3,
-        min_window_coverage=0.3,
-        b_sc=np.array([4.0]),
-        sides=np.array(["low"]),
-        arrays={"ESA-S1": array},
-        count_correction="event_trash",
-    )
-    assert row["expected_records"] == 16
-    assert row["minimum_records"] == 5

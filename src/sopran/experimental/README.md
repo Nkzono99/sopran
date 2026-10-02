@@ -1,38 +1,39 @@
 # Experimental APIs
 
 This namespace contains reusable research code, not supported instrument APIs.
-There are no compatibility shims for former imports or `Kaguya.er`.
-Import the specific model or adapter explicitly. `import sopran` and
-`import sopran.experimental` do not load experimental implementations.
+Import the specific model or adapter explicitly. Importing `sopran` or
+`sopran.experimental` does not load these implementations.
 
 ## Inventory
 
 | Modules | Status and open questions | Promotion requirements |
 |---|---|---|
-| `electron_reflection.model`, `binary_surface`, `halekas` | Competing edge/count/distribution models; physical identifiability unresolved | Defined estimator, assumptions, units, uncertainty limits, synthetic recovery and independent comparisons |
-| `electron_reflection.joint`, `global_joint` | Sensor response, normalization and selection under evaluation | Response/zero-count tests, frozen selection policy and representative comparisons |
-| `electron_reflection.incident`, `integrated`, `temporal`, `identifiability` | Incident shape, beam separation and warm starts under evaluation | Recovery and optimizer stability across input regimes; measured runtime |
-| `electron_reflection.beam_diagnostics`, `upstream` | Diagnostic decomposition and context matching | Explicit conventions and scope, source/units and reproducible examples |
-| `kaguya.er`, `er_timeseries`, `er_catalog`, `schema` | KAGUYA adapters and candidate products | Stable model contract plus reader, geometry, cache and cadence tests |
-| `kaguya.er_*validation`, `er_population` | Research evaluation helpers | Demonstrated reuse beyond a particular study; otherwise move to `working/` |
-| `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels where claimed, instrument comparisons |
+| `electron_reflection.finite_bin` | Folded finite-bin bottom/scale model, optional D_out, Huber0.1 | Profile/recovery and independent field validation; convergence is separate from identification |
+| `electron_reflection.halekas` | Fixed-backscatter hard/probit distribution comparison | Defined uncertainty limits and representative independent comparisons |
+| `electron_reflection.common` | Shared paired-count input, exposure validation and boundary convention | Preserve input units, masks, zero/missing distinctions |
+| `kaguya.er` | Shared ESA/LMAG/SPICE input preparation and explicit estimator calls | Calibration, pairing, exposure, geometry and reader regression tests |
+| `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels and instrument comparisons |
 
-Last boundary review: 2026-09-11, after checkpoint `d5208e9`.
-No ER fit or wave candidate is promoted by this reorganization.
+ER inventory reviewed: 2026-10-02. Finite-bin and Halekas are the retained
+estimators. Paired-count, binary, joint, global-joint and incident models,
+their dedicated research helpers and the former standalone JSONL CLI are retired.
+See `docs/experimental/er-methods.md`.
+Historical runners, source snapshots and saved products stay under `working/`.
+No ER fit or wave candidate is promoted by this cleanup.
 
 ## Rules
 
 - Dependencies point from experiments to standard APIs, never the reverse.
-- Optional model dependencies belong in the `experimental` extra. Use the
-  mission and plotting extras separately when needed.
-- Keep typed inputs, units, missing/zero semantics, and focused regression tests.
-- ER defaults use `experimental.kaguya.er.*` Store IDs. Do not publish trial
-  products under a standard product's cache key. Preserve settings and provenance.
-- Rust kernels remain private implementation details in `sopran._native`.
-- Put run scripts, large outputs, research reports and literature surveys under
-  `working/`, not in this package or the public documentation navigation.
-- Before each release, decide for each row: promote, retain with a stated
-  unresolved question, or remove. Promotion requires documentation and tests;
-  numerical agreement does not imply physical accuracy.
+- Optional model dependencies belong in the `experimental` extra. Use mission
+  and plotting extras separately.
+- Keep typed inputs, units, missing/zero semantics and focused regressions.
+- ER results are returned without automatic Store writes. Save settings and
+  provenance with each result; do not reuse another model's stored product.
+- Native kernels are private implementation details in `sopran._native`.
+- Put runs, large outputs, research reports and surveys under `working/`.
+- Before release, decide whether to promote, retain or remove each experiment.
+  Promotion requires documentation and tests; numerical agreement alone
+  does not imply physical accuracy.
+- Removed experimental imports have no compatibility aliases or fallback.
 
-Usage and migration: `docs/experimental/`.
+Usage: `docs/experimental/`.

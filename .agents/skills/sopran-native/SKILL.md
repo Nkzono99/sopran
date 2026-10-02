@@ -50,8 +50,8 @@ python -c "import sopran._native as native; print(native.__file__)"
 python -m pytest -q tests/test_kaguya_pace.py
 ```
 
-テストは変更したkernelに合わせて選ぶ。ERでは`tests/test_electron_reflection*.py`や
-`tests/test_incident*.py`等の該当ファイルを明示する。
+テストは変更したkernelに合わせて選ぶ。ERでは`tests/test_er_finite_bin.py`、
+`tests/test_halekas_search.py`、`tests/test_electron_reflection*.py`を明示する。
 新しいrelease buildを本当にロードしているか、新しいPythonプロセスで確認する。
 Windowsで使用中の`.pyd`を差し替えるために無関係なPythonを停止しない。
 

@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from sopran.experimental.electron_reflection import halekas as h
-from sopran.experimental.electron_reflection.model import ElectronReflectionCounts, FloatArray
+from sopran.experimental.electron_reflection.common import ElectronReflectionCounts, FloatArray
 
 
 def reference_search(

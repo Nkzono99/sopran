@@ -16,14 +16,15 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | WFC presets and candidate quality rules | `sopran.experimental.kaguya.waves` |
 
 See [ER usage](electron-reflectometry.md) and [wave candidates](waves.md).
+The [ER method inventory](er-methods.md) distinguishes estimator entry points and objectives.
 Instrument readers, calibration, native bins, frames, Store and plotting remain
 in the standard API. `Kaguya.er` and root-level ER symbols have been removed.
 Former `sopran.analysis` and `sopran.missions.kaguya.er*` imports have no shims.
 Shared magnetic interpolation remains in `missions.kaguya.magnetic_geometry`.
 
-ER defaults use `experimental.kaguya.er.*` Store keys, separate from former
-products. Existing data is neither deleted nor migrated automatically.
-Model settings remain part of variant metadata.
+ER retains finite-bin and Halekas. Each returns a typed fit result for callers
+to save with settings and provenance. Historical Store products remain
+accessible through the standard dataset reader.
 
 The inventory in `src/sopran/experimental/README.md` records open questions and
 promotion requirements. Review it before each release: promote, retain, or

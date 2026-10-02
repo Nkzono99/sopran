@@ -89,6 +89,7 @@ nav:
   - Experimental:
       - Policy And Inventory: experimental/index.md
       - Electron Reflectometry: experimental/electron-reflectometry.md
+      - ER Methods And Code: experimental/er-methods.md
       - Wave Candidates: experimental/waves.md
   - How-to:
       - Load KAGUYA ESA1: how-to/load-kaguya-esa1.md

@@ -11,11 +11,12 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | 対象 | 入口 |
 |---|---|
 | ERの推定モデル | `sopran.experimental.electron_reflection` |
-| KAGUYAのER入力・保存・時系列処理 | `sopran.experimental.kaguya.er.KaguyaErInstrument` |
+| KAGUYAのER入力・2手法への呼出し | `sopran.experimental.kaguya.er.KaguyaErInstrument` |
 | 波動候補・ridge・clustering | `sopran.experimental.waves` |
 | KAGUYA WFCの候補抽出preset・品質処理 | `sopran.experimental.kaguya.waves` |
 
 - [ERの利用方法と限界](electron-reflectometry.md)
+- [ER手法とコードの一覧](er-methods.md)
 - [波動候補の利用方法と限界](waves.md)
 
 ## 通常APIとの境界
@@ -28,8 +29,8 @@ ERの型やfit関数も`spn`直下には再公開しません。
 `sopran.missions.kaguya.er*`の試作は上記へ移動しました。互換aliasはありません。
 共有の磁場補間は通常側の`missions.kaguya.magnetic_geometry`にあります。
 
-ERの既定Storeキーは`experimental.kaguya.er.*`です。以前のキーを自動で再利用せず、
-異なる設定の結果も既存variantの仕組みで分けます。古い保存物は削除・移行しません。
+ERの推定器はfinite-binとHalekasです。結果は型付きのfit結果として返し、
+設定とともに呼出し側で保存します。古いStore保存物は通常のdataset読込で参照できます。
 
 ## 定期的に正式化・継続・廃止を判断する
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -8,191 +10,161 @@ import sopran.experimental.kaguya.er as er_module
 from sopran.core.data import SopranArray
 from sopran.core.schema import VariableSchema
 from sopran.experimental.electron_reflection import (
-    EffectiveFieldFitSettings,
-    simulate_electron_reflection_counts,
+    FiniteBinFitSettings,
+    FiniteBinObservation,
+    HalekasFitSettings,
+    mirror_boundary_sin2,
 )
-from sopran.experimental.kaguya.er import affected_side_from_geometry
 
-pytest.importorskip("scipy")
 xr = pytest.importorskip("xarray")
 
 
-def _full_pitch_spectrum() -> SopranArray:
+def spectrum():
     energy = np.array([120.0, 180.0, 270.0, 400.0, 600.0, 900.0])
-    folded_pitch = np.arange(5.0, 90.0, 10.0)
-    full_pitch = np.concatenate((folded_pitch, 180.0 - folded_pitch[::-1]))
-    rows = []
-    for seed in (3, 4):
-        paired = simulate_electron_reflection_counts(
-            energy_eV=energy,
-            pitch_deg=folded_pitch,
-            b_sc_nT=8.0,
-            mirror_ratio=7.0,
-            sigma_ln_b=0.18,
-            reference_counts=1_200.0,
-            concentration=220.0,
-            random_seed=seed,
-        )
-        values = np.empty((energy.size, full_pitch.size), dtype=float)
-        values[:, : folded_pitch.size] = paired.affected_counts
-        values[:, folded_pitch.size :] = paired.reference_counts[:, ::-1]
-        rows.append(values)
-    array = xr.DataArray(
-        np.stack(rows),
+    pitch = np.arange(5.0, 90.0, 10.0)
+    boundary = mirror_boundary_sin2(energy, 1.35, -60.0)
+    ratio = np.where(np.sin(np.deg2rad(pitch))[None, :] ** 2 < boundary[:, None], 0.1, 1.0)
+    reference = np.full(ratio.shape, 100_000.0)
+    affected = np.rint(reference * ratio)
+    full = np.concatenate((affected, reference[:, ::-1]), axis=1)
+    return xr.DataArray(
+        np.stack((full, full)),
         dims=("time", "energy", "pitch_angle"),
         coords={
             "time": np.array(
-                ["2008-04-02T14:58:32", "2008-04-02T14:58:34"],
-                dtype="datetime64[ns]",
+                ["2008-04-02T14:58:32", "2008-04-02T14:58:34"], dtype="datetime64[ns]"
             ),
-            "energy": np.arange(energy.size),
-            "energy_eV": (("time", "energy"), np.broadcast_to(energy, (2, energy.size))),
-            "pitch_angle": full_pitch,
+            "energy": energy,
+            "pitch_angle": np.concatenate((pitch, 180.0 - pitch[::-1])),
         },
-        name="pitch_angle_spectrum",
         attrs={"units": "count", "value": "counts"},
     )
-    return SopranArray(
-        name="pitch_angle_spectrum",
-        time=spn.period("2008-04-02T14:58:32", "2008-04-02T14:58:36"),
-        schema=VariableSchema(
-            name="pitch_angle_spectrum",
-            dims=("time", "energy", "pitch_angle"),
-            units="count",
-        ),
-        xr=array,
+
+
+def adapter():
+    return er_module.KaguyaErInstrument(spn.Kaguya(download="never"))
+
+
+def test_paired_input_feeds_both_retained_estimators():
+    er = adapter()
+    paired = er.paired_counts(spectrum(), index=0, b_sc_nT=8.0, affected_side="low")
+    hard = er.effective_field.fit_halekas(
+        paired, settings=HalekasFitSettings(mirror_grid_points=72, delta_u_grid_points=81)
     )
-
-
-def test_affected_side_from_geometry_uses_outgoing_field_direction() -> None:
-    magnetic = np.array([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
-    position = np.array([[1738.0, 0.0, 0.0], [1738.0, 0.0, 0.0]])
-
-    assert affected_side_from_geometry(magnetic, position).tolist() == ["low", "high"]
-
-
-def test_kaguya_effective_field_endpoint_fits_pitch_spectrum(tmp_path) -> None:
-    kg = spn.Kaguya(store=spn.Store(tmp_path / "store"), download="never")
-
-    fitted = er_module.KaguyaErInstrument(kg).effective_field.fit(
-        _full_pitch_spectrum(),
-        b_sc_nT=np.array([8.0, 8.0]),
-        affected_side="low",
-        settings=EffectiveFieldFitSettings(
-            optimizer_starts=3,
-            profile_likelihood=False,
-        ),
-        cache="never",
-        workers=2,
+    assert hard.success
+    assert hard.effective_field_nT == pytest.approx(8.0 * hard.mirror_ratio)
+    obs = FiniteBinObservation.from_counts(
+        paired,
+        energy_edges_eV=[100, 150, 220, 330, 500, 750, 1100],
+        pitch_edges_deg=np.arange(0, 91, 10),
     )
-    frame = fitted.to_pandas()
-
-    assert len(frame) == 2
-    assert frame["success"].all()
-    assert frame["edge_supported"].all()
-    assert set(frame["selected_model"]) == {"mirror_only"}
-    assert frame["mirror_ratio"].to_numpy() == pytest.approx([7.0, 7.0], rel=0.3)
-    assert frame["effective_field"].to_numpy() == pytest.approx([56.0, 56.0], rel=0.3)
-    assert frame["affected_side"].tolist() == ["low", "low"]
-    assert set(frame["quality_grade"]) == {"good"}
-
-
-def test_kaguya_effective_field_endpoint_can_infer_affected_side(tmp_path) -> None:
-    kg = spn.Kaguya(store=spn.Store(tmp_path / "store"), download="never")
-    magnetic = np.array([[8.0, 0.0, 0.0], [8.0, 0.0, 0.0]])
-    position = np.array([[1738.0, 0.0, 0.0], [1738.0, 0.0, 0.0]])
-
-    fitted = er_module.KaguyaErInstrument(kg).effective_field.fit(
-        _full_pitch_spectrum(),
-        magnetic_field=magnetic,
-        position=position,
-        affected_side="auto",
-        settings=EffectiveFieldFitSettings(
-            optimizer_starts=2,
-            profile_likelihood=False,
+    fitted = er.effective_field.fit_finite_bin(
+        obs,
+        settings=FiniteBinFitSettings(
+            mirror_ratio_bounds=(1.35, 1.35),
+            bottom_ratio_bounds=(0.1, 0.1),
+            delta_u_bounds_eV=(-60, -60),
+            scale_bounds=(1, 1),
+            beam_enabled=False,
         ),
-        cache="never",
     )
-
-    assert fitted.to_pandas()["affected_side"].tolist() == ["low", "low"]
-
-
-def test_kaguya_effective_field_endpoint_requires_count_pitch_data(tmp_path) -> None:
-    kg = spn.Kaguya(store=spn.Store(tmp_path / "store"), download="never")
-    spectrum = _full_pitch_spectrum()
-    spectrum.to_xarray().attrs["value"] = "energy_flux"
-
-    with pytest.raises(ValueError, match="counts"):
-        er_module.KaguyaErInstrument(kg).effective_field.fit(
-            spectrum,
-            b_sc_nT=8.0,
-            affected_side="low",
-            cache="never",
-        )
+    assert fitted.effective_field_nT == pytest.approx(10.8)
+    assert np.isfinite(fitted.fitted_log_ratio_dex).all()
+    assert paired.metadata["exposure_assumed_equal"] is True
 
 
-def test_kaguya_effective_field_endpoint_allows_joint_count_exposure_gaps(tmp_path) -> None:
-    kg = spn.Kaguya(store=spn.Store(tmp_path / "store"), download="never")
-    spectrum = _full_pitch_spectrum()
-    array = spectrum.to_xarray()
-    exposure = np.ones(array.shape, dtype=float)
-    array.values[0, 0, 0] = np.nan
+def test_geometry_and_hemisphere_preserve_counts_and_exposure():
+    er = adapter()
+    data = spectrum()
+    exposure = np.ones(data.shape)
+    exposure[:, :, 9:] = 2.0
+    data.coords["exposure"] = (data.dims, exposure)
+    low = er.paired_counts(data, index=1, magnetic_field=[8, 0, 0], position=[1738, 0, 0])
+    high = er.paired_counts(data, index=1, magnetic_field=[-8, 0, 0], position=[1738, 0, 0])
+    assert low.metadata["affected_side"] == "low"
+    assert high.metadata["affected_side"] == "high"
+    np.testing.assert_array_equal(low.affected_counts, high.reference_counts)
+    np.testing.assert_array_equal(low.reference_counts, high.affected_counts)
+    assert np.all(low.affected_exposure == 1)
+    assert np.all(high.affected_exposure == 2)
+    assert high.b_sc_nT == 8
+
+
+def test_joint_count_exposure_gap_preserves_missing_cell():
+    data = spectrum()
+    exposure = np.ones(data.shape)
+    data.values[0, 0, 0] = np.nan
     exposure[0, 0, 0] = np.nan
-    array.coords["exposure"] = (array.dims, exposure)
-    array.coords["exposure"].attrs["mode"] = "calibrated"
+    data.coords["exposure"] = (data.dims, exposure)
+    data.coords["exposure"].attrs["mode"] = "calibrated"
+    counts = adapter().paired_counts(data, index=0, b_sc_nT=8.0, affected_side="low")
+    assert np.isnan(counts.affected_counts[0, 0])
+    assert counts.metadata["exposure_mode"] == "calibrated"
+    exposure[0, 0, 1] = 0
+    data.coords["exposure"] = (data.dims, exposure)
+    with pytest.raises(ValueError, match="exposure"):
+        adapter().paired_counts(data, index=0, b_sc_nT=8.0, affected_side="low")
 
-    fitted = er_module.KaguyaErInstrument(kg).effective_field.fit(
-        spectrum,
-        b_sc_nT=8.0,
-        affected_side="low",
-        settings=EffectiveFieldFitSettings(
-            optimizer_starts=2,
-            profile_likelihood=False,
+
+def test_pairing_uses_only_selected_geometry_for_arrays_and_time_series():
+    data = spectrum()
+    magnetic = np.array([[8.0, 0.0, 0.0], [np.nan, np.nan, np.nan]])
+    radial = np.array([[1738.0, 0.0, 0.0], [np.nan, np.nan, np.nan]])
+    field = SopranArray(
+        name="b",
+        time=spn.day("2008-04-02"),
+        schema=VariableSchema(name="b", dims=("time", "component"), units="nT"),
+        xr=xr.DataArray(
+            magnetic,
+            dims=("time", "component"),
+            coords={"time": data.time.values},
         ),
-        cache="never",
     )
+    er = adapter()
+    array_counts = er.paired_counts(data, index=0, magnetic_field=magnetic, position=radial)
+    series_counts = er.paired_counts(data, index=0, magnetic_field=field, position=radial)
+    assert array_counts.b_sc_nT == series_counts.b_sc_nT == 8.0
+    assert array_counts.metadata == series_counts.metadata
+    np.testing.assert_array_equal(array_counts.affected_counts, series_counts.affected_counts)
+    with pytest.raises(ValueError, match="finite"):
+        er.paired_counts(data, index=1, magnetic_field=magnetic, position=radial)
 
-    assert fitted.to_pandas()["success"].all()
-    assert fitted.to_pandas()["exposure_mode"].tolist() == ["calibrated", "calibrated"]
+
+def test_pairing_requires_counts_and_an_existing_sample():
+    data = spectrum()
+    data.attrs["value"] = "energy_flux"
+    with pytest.raises(ValueError, match="counts"):
+        adapter().paired_counts(data, index=0, b_sc_nT=8.0, affected_side="low")
+    data.attrs["value"] = "counts"
+    with pytest.raises(IndexError, match="index"):
+        adapter().paired_counts(data, index=2, b_sc_nT=8.0, affected_side="low")
+    with pytest.raises(TypeError, match="position"):
+        adapter().paired_counts(data, index=0, b_sc_nT=8.0)
 
 
-def test_kaguya_effective_field_endpoint_reuses_store_cache(tmp_path, monkeypatch) -> None:
-    store = spn.Store(tmp_path / "store")
-    kg = spn.Kaguya(store=store, download="never")
-    settings = EffectiveFieldFitSettings(
-        optimizer_starts=2,
-        profile_likelihood=False,
+def test_shared_reader_preparation_preserves_builder_options(monkeypatch):
+    er = adapter()
+    inputs = SimpleNamespace(
+        paces=object(),
+        calibration=object(),
+        magnetic_field=object(),
+        files=(),
+        context=object(),
     )
+    monkeypatch.setattr(er, "_load_pitch_inputs", lambda *args: inputs)
+    calls = []
 
-    first = er_module.KaguyaErInstrument(kg).effective_field.fit(
-        _full_pitch_spectrum(),
-        b_sc_nT=8.0,
-        affected_side="low",
-        settings=settings,
-        cache="use",
-        variant_id="synthetic_mirror_v1",
-    )
-    record = store.dataset(
-        "experimental.kaguya.er.effective_field",
-        layer="features",
-        variant_id="synthetic_mirror_v1",
-    )
+    def builder(**kwargs):
+        calls.append(kwargs)
+        return kwargs
 
-    def unexpected_refit(*args, **kwargs):
-        raise AssertionError("cached effective-field data should be reused")
-
-    monkeypatch.setattr(er_module, "fit_effective_field", unexpected_refit)
-    second = er_module.KaguyaErInstrument(kg).effective_field.fit(
-        _full_pitch_spectrum(),
-        b_sc_nT=8.0,
-        affected_side="low",
-        settings=settings,
-        cache="use",
-        variant_id="synthetic_mirror_v1",
-    )
-
-    assert record.manifest()["producer"] == "sopran.experimental.kaguya.er.robust_counts"
-    assert record.verify_checksums()
-    assert second.to_pandas()["mirror_ratio"].tolist() == pytest.approx(
-        first.to_pandas()["mirror_ratio"].tolist()
-    )
+    monkeypatch.setattr(er_module, "build_combined_pitch_angle_spectrum", builder)
+    monkeypatch.setattr(er_module, "build_aligned_pitch_angle_spectra", builder)
+    time = spn.day("2008-04-02")
+    er.pitch_angle_spectrum(time, energy_bins=30, cadence_seconds=None)
+    er.pitch_angle_spectra(time, align=False, max_time_offset_seconds=2)
+    assert calls[0]["paces"] is calls[1]["paces"] is inputs.paces
+    assert calls[0]["energy_bins"] == 30
+    assert calls[0]["options"].cadence_seconds is None
+    assert calls[1]["align"] is False
+    assert calls[1]["max_time_offset_seconds"] == 2

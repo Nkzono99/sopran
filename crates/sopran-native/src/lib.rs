@@ -10,8 +10,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-mod electron_reflection;
-mod incident_reflection;
+mod finite_bin;
 mod svm3d;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -222,8 +221,7 @@ fn bin_energy_pitch<'py>(
 #[pymodule]
 #[pyo3(name = "_native")]
 fn sopran_native(module: &Bound<'_, PyModule>) -> PyResult<()> {
-    module.add_class::<electron_reflection::GlobalHardProblem>()?;
-    module.add_class::<incident_reflection::IncidentHardProblem>()?;
+    module.add_class::<finite_bin::FiniteBinProblem>()?;
     module.add_function(wrap_pyfunction!(read_pace_pbf, module)?)?;
     module.add_function(wrap_pyfunction!(pitch_angles_deg, module)?)?;
     module.add_function(wrap_pyfunction!(bin_energy_pitch, module)?)?;

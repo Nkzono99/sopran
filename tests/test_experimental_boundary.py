@@ -123,15 +123,16 @@ def test_standard_modules_do_not_depend_on_experimental_implementations() -> Non
     assert not violations, violations
 
 
-def test_experimental_er_requires_explicit_adapter_and_uses_separate_store_keys(tmp_path) -> None:
+def test_experimental_er_requires_explicit_adapter_and_explicit_estimator(tmp_path) -> None:
     pytest.importorskip("scipy")
     import sopran as spn
     from sopran.experimental.kaguya.er import KaguyaErInstrument
-    from sopran.experimental.kaguya.schema import KAGUYA_ER_SCHEMA
 
     mission = spn.Kaguya(store=spn.Store(tmp_path), download="never")
     adapter = KaguyaErInstrument(mission)
     assert adapter.mission is mission
-    assert adapter.effective_field.dataset_id == "experimental.kaguya.er.effective_field"
-    assert KAGUYA_ER_SCHEMA.variable("effective_field").units == "nT"
+    assert callable(adapter.effective_field.fit_finite_bin)
+    assert callable(adapter.effective_field.fit_halekas)
+    assert not hasattr(adapter.effective_field, "fit_timeseries")
+    assert not hasattr(adapter.effective_field, "fit_global_joint")
     assert not hasattr(mission, "er")

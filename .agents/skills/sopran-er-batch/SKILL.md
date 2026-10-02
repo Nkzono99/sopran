@@ -11,7 +11,7 @@ description: SOPRANの電子反射法（ER）のfit、実データ評価、可�
 
 - 試作APIと制約: `docs/experimental/electron-reflectometry.md`、
   `src/sopran/experimental/electron_reflection/`。
-- 機器データからの構成: `src/sopran/experimental/kaguya/er.py`、`er_timeseries.py`。
+- 機器データからの構成: `src/sopran/experimental/kaguya/er.py`。
   通常の`Kaguya`からは再公開しない。明示的な`KaguyaErInstrument`を使う。
 - 旧数式解説・評価・文献調査: `working/kaguya-er-fit-review/library-docs-archive/`。
 - ローカル実験: `working/kaguya-er-fit-review/`。指定されたrunのREADME、

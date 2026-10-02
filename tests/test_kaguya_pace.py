@@ -1461,19 +1461,6 @@ def test_pitch_angle_spectrum_skips_spice_attitude_gaps(
     assert spectrum.sizes["time"] == 1
     assert spectrum.coords["time"].values[0] == np.datetime64("2008-01-01T00:00:00")
     assert spectrum.attrs["geometry_rejected_times_unix"] == [start + 1]
-    from sopran.experimental.kaguya.er_timeseries import (
-        _native_record_arrays,
-        _usable_record_indices,
-        _window_geometry_diagnostics,
-        _window_skip_reason,
-    )
-    arrays = _native_record_arrays({"S1": spectrum, "S2": spectrum})
-    indices = np.array([1])
-    assert _window_skip_reason(indices, arrays=arrays) == "S1_geometry_unavailable"
-    diagnostic = _window_geometry_diagnostics(
-        arrays, indices, {n: _usable_record_indices(a, indices) for n, a in arrays.items()}
-    )
-    assert diagnostic["geometry_rejected_records"] == {"S1": 1, "S2": 1}
 
 
 def test_kaguya_esa1_pitch_angle_spectrum_requires_angle_calibration() -> None:

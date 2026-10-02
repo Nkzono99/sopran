@@ -5,13 +5,12 @@ from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import minimize
-from scipy.special import ndtr
+from scipy.optimize import minimize  # type: ignore[import-untyped]
+from scipy.special import ndtr  # type: ignore[import-untyped]
 
-from sopran.experimental.electron_reflection.model import (
+from sopran.experimental.electron_reflection.common import (
     ElectronReflectionCounts,
     FloatArray,
-    _validate_positive_bounds,
     mirror_boundary_sin2,
 )
 
@@ -57,7 +56,9 @@ class HalekasFitSettings:
             raise ValueError("min_pitch_bins_per_energy must be at least 2")
         if self.min_total_counts <= 0:
             raise ValueError("min_total_counts must be positive")
-        _validate_positive_bounds("mirror_ratio_bounds", self.mirror_ratio_bounds)
+        lower, upper = self.mirror_ratio_bounds
+        if not np.isfinite((lower, upper)).all() or not 0.0 < lower < upper:
+            raise ValueError("mirror_ratio_bounds must contain finite positive increasing bounds")
         if not self.delta_u_bounds_eV[0] < self.delta_u_bounds_eV[1]:
             raise ValueError("delta_u_bounds_eV must satisfy lower < upper")
         if not 0.0 < self.backscatter_fraction < 1.0:
