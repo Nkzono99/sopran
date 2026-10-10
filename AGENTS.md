@@ -25,6 +25,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 | `src/sopran/experimental/` | 明示importで使うER・波動候補・mission用adapterの試作 |
 | `crates/sopran-native/` | `sopran._native` として呼ぶRust拡張 |
 | `tests/` | 合成データ・fixture中心の回帰テスト |
+| `scripts/hpc/` | スパコン用の環境構築・ジョブ雛形（京大Slurmは `scripts/hpc/kyoto/`） |
 | `docs/`, `docs/en/` | 公開APIの仕様・利用方法。ナビゲーションは `mkdocs.yml` |
 | `working/`, `_handoff/` | Git管理外の個別研究・試行錯誤・生成物・進捗・ログ |
 

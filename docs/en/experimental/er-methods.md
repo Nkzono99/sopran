@@ -23,6 +23,7 @@ not interchangeable.
 | `electron_reflection/common.py` | `ElectronReflectionCounts`, exposure validation, `mirror_boundary_sin2` |
 | `electron_reflection/__init__.py` | Explicit exports for the two estimators and shared input |
 | `experimental/kaguya/er.py` | Shared ESA/LMAG/SPICE preparation, pitch readers, `paired_counts`, explicit fit methods |
+| `experimental/kaguya/er_batch.py` | Full-period day shards, frozen runs, parallel fits, Store registration; see [full-period batch](er-batch.md) |
 | `crates/sopran-native/src/finite_bin.rs` | Finite-bin response, D_out, losses, beam amplitude, loss-cone test and optimization at the PyO3 problem boundary |
 
 Prepare one sample with `KaguyaErInstrument.paired_counts(..., index=...)`.

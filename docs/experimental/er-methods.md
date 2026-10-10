@@ -22,6 +22,7 @@ RMSEの比較には単位とmaskを合わせます。HalekasのGaussian BICとHu
 | `electron_reflection/common.py` | `ElectronReflectionCounts`、exposureの検証、境界式 `mirror_boundary_sin2` |
 | `electron_reflection/__init__.py` | 2手法と共有型を明示import用に公開 |
 | `experimental/kaguya/er.py` | ESA1/ESA2とLMAG・SPICEの共通準備、pitch生成、`paired_counts`、2手法への呼出し |
+| `experimental/kaguya/er_batch.py` | 全期間の日別shard変換・run固定・並列fit・Store登録。[全期間バッチ](er-batch.md) |
 | `crates/sopran-native/src/finite_bin.rs` | 有限bin応答・D_out・損失・beam振幅・loss cone検定・最適化。PyO3のproblem単位で呼出し |
 
 `er.paired_counts(pitch_counts, index=..., ...)` で共通入力を作ります。

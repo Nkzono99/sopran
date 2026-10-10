@@ -11,6 +11,7 @@ Import the specific model or adapter explicitly. Importing `sopran` or
 | `electron_reflection.finite_bin` | Folded finite-bin bottom/scale model, beta-binomial count likelihood (Huber for flux-only input), optional D_out, loss-cone test and Rm profile | Recovery against an independent forward model (e.g. test-particle tracing) and independent field validation; convergence is separate from identification |
 | `electron_reflection.halekas` | Fixed-backscatter hard/probit distribution comparison | Defined uncertainty limits and representative independent comparisons |
 | `electron_reflection.common` | Shared paired-count input, exposure validation and boundary convention | Preserve input units, masks, zero/missing distinctions |
+| `kaguya.er_batch` | Day-sharded full-period fits, frozen run identity, Slurm-ready CLI | Pilot agreement on the target cluster and a completed full-period run |
 | `kaguya.er` | Shared ESA/LMAG/SPICE input preparation and explicit estimator calls | Calibration, pairing, exposure, geometry and reader regression tests |
 | `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels and instrument comparisons |
 
