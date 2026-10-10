@@ -17,10 +17,12 @@ from sopran.experimental.electron_reflection import (
     FiniteBinFitSettings,
     FiniteBinObservation,
     FiniteBinParameters,
+    FiniteBinProfile,
     HalekasDistributionFit,
     HalekasFitSettings,
     fit_finite_bin_distribution,
     fit_halekas_distribution,
+    profile_mirror_ratio,
 )
 from sopran.missions.kaguya.magnetic_geometry import MAX_GEOMETRY_GAP_SECONDS, load_lmag_with_margin
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData
@@ -71,7 +73,8 @@ class EffectiveFieldEndpoint:
         return InfoPage(
             title="Experimental KAGUYA ER effective field",
             lines=(
-                "fit_finite_bin: folded flux/log10 ratio, optional D_out, Huber0.1",
+                "fit_finite_bin: paired counts, beta-binomial (or Huber), optional D_out",
+                "profile_finite_bin: Rm profile and count-likelihood interval",
                 "fit_halekas: paired counts, fixed backscatter, hard/probit boundary",
                 "B_eff = Rm * B_sc [nT]; delta U [eV] is surface minus spacecraft",
             ),
@@ -84,8 +87,18 @@ class EffectiveFieldEndpoint:
         settings: FiniteBinFitSettings | None = None,
         starts: Sequence[FiniteBinParameters] = (),
     ) -> FiniteBinFit:
-        """Fit folded finite-bin fluxes with optional D_out and Huber loss."""
+        """Fit a folded finite-bin distribution with optional D_out."""
         return fit_finite_bin_distribution(observation, settings=settings, starts=starts)
+
+    def profile_finite_bin(
+        self,
+        observation: FiniteBinObservation,
+        fit: FiniteBinFit,
+        *,
+        mirror_ratios: ArrayLike | None = None,
+    ) -> FiniteBinProfile:
+        """Profile Rm around a finite-bin fit; count losses also give an interval."""
+        return profile_mirror_ratio(observation, fit, mirror_ratios=mirror_ratios)
 
     def fit_halekas(
         self,

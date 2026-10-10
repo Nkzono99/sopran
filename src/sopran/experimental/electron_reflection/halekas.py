@@ -29,12 +29,15 @@ class HalekasFitSettings:
 
     Positive surface-to-spacecraft field ratios include values below one.
     This implementation does not yet add the upward secondary-electron beam.
+    Cells need affected + reference >= ``min_cell_total_counts``; empty cells
+    would otherwise enter as a pseudocount ratio of one.
     """
 
     edge_transition: HalekasEdgeTransition = "hard"
     min_energy_bins: int = 3
     min_pitch_bins_per_energy: int = 3
     min_total_counts: int = 100
+    min_cell_total_counts: int = 1
     mirror_ratio_bounds: tuple[float, float] = (0.001, 1000.0)
     delta_u_bounds_eV: tuple[float, float] = (-500.0, 1000.0)
     spacecraft_potential_eV: float = 0.0
@@ -56,6 +59,8 @@ class HalekasFitSettings:
             raise ValueError("min_pitch_bins_per_energy must be at least 2")
         if self.min_total_counts <= 0:
             raise ValueError("min_total_counts must be positive")
+        if self.min_cell_total_counts < 0:
+            raise ValueError("min_cell_total_counts must be non-negative")
         lower, upper = self.mirror_ratio_bounds
         if not np.isfinite((lower, upper)).all() or not 0.0 < lower < upper:
             raise ValueError("mirror_ratio_bounds must contain finite positive increasing bounds")
@@ -210,6 +215,7 @@ def _prepare_distribution(
         & np.isfinite(reference_exposure)
         & (affected_exposure > 0.0)
         & (reference_exposure > 0.0)
+        & (affected + reference >= settings.min_cell_total_counts)
     )
     energy = np.asarray(counts.energy_eV, dtype=float)
     corrected_energy = energy - settings.spacecraft_potential_eV

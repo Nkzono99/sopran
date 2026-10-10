@@ -103,6 +103,32 @@ def test_electron_reflection_counts_rejects_non_physical_inputs() -> None:
         )
 
 
+def test_halekas_excludes_empty_cells_instead_of_reading_ratio_one() -> None:
+    counts = _simulate_halekas_distribution(sigma_ln_sin2=None)
+    affected = counts.affected_counts.copy()
+    reference = counts.reference_counts.copy()
+    # Empty high-energy, low-pitch cells sit inside the loss cone.
+    affected[-4:, :3] = 0.0
+    reference[-4:, :3] = 0.0
+    sparse = ElectronReflectionCounts(
+        energy_eV=counts.energy_eV,
+        pitch_deg=counts.pitch_deg,
+        affected_counts=affected,
+        reference_counts=reference,
+        b_sc_nT=counts.b_sc_nT,
+    )
+    settings = HalekasFitSettings(
+        mirror_ratio_bounds=(1.01, 5.0),
+        delta_u_bounds_eV=(-200.0, 200.0),
+        mirror_grid_points=72,
+        delta_u_grid_points=81,
+    )
+    result = fit_halekas_distribution(sparse, settings=settings)
+    assert result.n_cells == counts.affected_counts.size - 12
+    assert result.mirror_ratio == pytest.approx(1.35, rel=0.05)
+    assert result.root_mean_square_error < 0.01
+
+
 def _simulate_halekas_distribution(
     *,
     sigma_ln_sin2: float | None,

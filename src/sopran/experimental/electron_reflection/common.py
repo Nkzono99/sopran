@@ -91,7 +91,9 @@ def mirror_boundary_sin2(
     The sign convention is ``surface minus spacecraft``: positive
     ``delta_u_eff_eV`` expands the low-energy loss cone. It is an effective
     curvature parameter, not an assertion that a physical surface potential
-    has been identified.
+    has been identified. Energies are those measured at the spacecraft. A
+    non-zero ``spacecraft_potential_eV`` converts them to the ambient plasma,
+    and ``delta_u_eff_eV`` then becomes surface minus ambient plasma.
     """
 
     energy = _float_array(energy_eV)

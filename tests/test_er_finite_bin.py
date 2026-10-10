@@ -14,7 +14,13 @@ from sopran.experimental.electron_reflection import (
     FiniteBinObservation,
     FiniteBinParameters,
     fit_finite_bin_distribution,
+    profile_mirror_ratio,
 )
+
+
+def huber(**kwargs):
+    """Flux-only observations need a log-ratio loss; the default is beta-binomial."""
+    return FiniteBinFitSettings(loss="huber", **kwargs)
 
 
 def observation():
@@ -27,7 +33,7 @@ def observation():
 @pytest.mark.parametrize("sigma", [0.0, 0.5, 12.0, 90.0])
 def test_conservative_kernel_and_native_projection(sigma):
     obs = observation()
-    model = FiniteBinModel(obs, FiniteBinFitSettings(angular_transport="out", beam_enabled=False))
+    model = FiniteBinModel(obs, huber(angular_transport="out", beam_enabled=False))
     kernel = model.kernel(sigma)
     assert np.min(kernel) >= 0
     np.testing.assert_allclose(kernel.sum(axis=0), 1, atol=2e-12)
@@ -46,14 +52,14 @@ def test_conservative_kernel_and_native_projection(sigma):
 def test_zero_transport_matches_analytic_finite_bin_and_default():
     obs = observation()
     params = FiniteBinParameters(4, 0.1, 0, 0.8)
-    a = FiniteBinModel(obs).evaluate(params)
-    b = FiniteBinModel(obs, FiniteBinFitSettings(angular_transport="out")).evaluate(params)
+    a = FiniteBinModel(obs, huber()).evaluate(params)
+    b = FiniteBinModel(obs, huber(angular_transport="out")).evaluate(params)
     fraction = np.clip((obs.pitch_edges_deg[1:] - 30) / np.diff(obs.pitch_edges_deg), 0, 1)
     expected = np.tile(np.log10(0.8 * (0.1 + 0.9 * fraction)), (2, 1))
     np.testing.assert_allclose(a.fitted_log_ratio_dex, expected, atol=1e-13)
     np.testing.assert_array_equal(a.fitted_log_ratio_dex, b.fitted_log_ratio_dex)
     # The option is authoritative even when nonzero sigma is passed to evaluation.
-    c = FiniteBinModel(obs).evaluate(replace(params, sigma_deg=20))
+    c = FiniteBinModel(obs, huber()).evaluate(replace(params, sigma_deg=20))
     np.testing.assert_array_equal(a.fitted_log_ratio_dex, c.fitted_log_ratio_dex)
 
 
@@ -63,7 +69,7 @@ def test_missing_incident_flux_is_interpolated_but_excluded_and_rows_do_not_mix(
     flux[0, 0] = np.nan
     changed = replace(obs, incident_flux=flux)
     params = FiniteBinParameters(2, 0.1, -80, sigma_deg=20)
-    settings = FiniteBinFitSettings(angular_transport="out")
+    settings = huber(angular_transport="out")
     result = FiniteBinModel(changed, settings).evaluate(params)
     assert result.interpolated_incident_bins == 1
     assert not result.fit_valid[0, 0]
@@ -93,7 +99,7 @@ def test_objective_is_distinct_from_reported_rmse(loss):
 
 def test_fixed_field_refits_potential_and_no_transport_parameter():
     obs = observation()
-    settings = FiniteBinFitSettings(
+    settings = huber(
         angular_transport="out",
         beam_enabled=False,
         mirror_ratio_bounds=(2, 2),
@@ -136,15 +142,27 @@ def test_count_preparation_respects_exposure_and_input_cuts():
     assert obs.fit_valid.all()
     sparse = counts.affected_counts.copy()
     sparse[0, :2] = 1
-    obs = FiniteBinObservation.from_counts(
+    paired = FiniteBinObservation.from_counts(
+        replace(counts, affected_counts=sparse),
+        energy_edges_eV=[100, 200, 400],
+        pitch_edges_deg=edges,
+        selection="paired",
+        min_counts=5,
+    )
+    assert not paired.fit_valid[0].any()
+    assert paired.fit_valid[1].all()
+    # Low counts still carry incident flux, but they do not enter the objective.
+    assert np.isfinite(paired.incident_flux).all()
+    # The default total-count selection keeps low affected counts for the likelihood.
+    sparse[0, 0] = 0
+    total = FiniteBinObservation.from_counts(
         replace(counts, affected_counts=sparse),
         energy_edges_eV=[100, 200, 400],
         pitch_edges_deg=edges,
     )
-    assert not obs.fit_valid[0].any()
-    assert obs.fit_valid[1].all()
-    # Low counts still carry incident flux, but they do not enter the objective.
-    assert np.isfinite(obs.incident_flux).all()
+    assert total.fit_valid.all()
+    np.testing.assert_array_equal(total.affected_counts, sparse)
+    np.testing.assert_allclose(total.exposure_ratio, 2.0)
 
 
 def test_obvious_field_degeneracies_and_mission_adapter():
@@ -154,9 +172,11 @@ def test_obvious_field_degeneracies_and_mission_adapter():
     obs = observation()
     mask = obs.fit_valid.copy()
     mask[:, :2] = False
-    result = FiniteBinModel(replace(obs, fit_valid=mask)).evaluate(FiniteBinParameters(100, 0.1, 0))
+    result = FiniteBinModel(replace(obs, fit_valid=mask), huber()).evaluate(
+        FiniteBinParameters(100, 0.1, 0)
+    )
     assert "barrier_unobserved" in result.field_flags
-    settings = FiniteBinFitSettings(
+    settings = huber(
         mirror_ratio_bounds=(4, 4),
         bottom_ratio_bounds=(0.1, 0.1),
         delta_u_bounds_eV=(0, 0),
@@ -180,17 +200,31 @@ def test_frozen_synthetic_events_match_pilot_predictions_and_beam_selection():
             event["b_sc_nT"],
             event["fit_valid"],
         )
-        model = FiniteBinModel(obs, FiniteBinFitSettings(angular_transport="out"))
+        model = FiniteBinModel(obs, huber(angular_transport="out"))
         for golden in event["evaluations"]:
-            result = model.evaluate(FiniteBinParameters(*golden["parameters"]))
-            assert result.beam_template == golden["beam_template"]
-            assert result.objective_sum == pytest.approx(golden["objective_sum"], abs=1e-9)
+            parameters = FiniteBinParameters(*golden["parameters"])
+            # Pilot templates: 1 + 8*energy width + 4*pitch width + amplitude index.
+            old = golden["beam_template"]
+            shape = 0 if old == 0 else 1 + 2 * ((old - 1) // 8) + ((old - 1) // 4) % 2
+            amplitude = 1.0 if old == 0 else [0.5, 1.0, 2.0, 4.0][(old - 1) % 4]
+            pinned = FiniteBinModel(
+                obs,
+                huber(angular_transport="out", beam_amplitude_bounds=(amplitude, amplitude)),
+            ).evaluate(parameters)
+            assert pinned.beam_template == shape
+            assert pinned.objective_sum == pytest.approx(golden["objective_sum"], abs=1e-9)
             np.testing.assert_allclose(
-                result.fitted_log_ratio_dex[result.fit_valid],
+                pinned.fitted_log_ratio_dex[pinned.fit_valid],
                 golden["prediction"],
                 atol=1e-9,
                 rtol=1e-9,
             )
+            # A continuous amplitude can only lower the objective of the pilot grid.
+            result = model.evaluate(parameters)
+            assert result.objective_sum <= golden["objective_sum"] + 1e-9
+            if old:
+                assert result.beam_template == shape
+                assert 0.25 <= result.beam_amplitude <= 8
 
 
 @pytest.mark.parametrize(
@@ -208,3 +242,120 @@ def test_frozen_synthetic_events_match_pilot_predictions_and_beam_selection():
 def test_invalid_settings_are_rejected(kwargs):
     with pytest.raises(ValueError):
         FiniteBinFitSettings(**kwargs)
+
+
+def synthetic_counts(level, *, seed=3, truth=None, ratio=None, b_sc=5.0):
+    """Poisson paired counts on a KAGUYA-like 20-1500 eV, 8-pitch grid."""
+    energy_edges = np.geomspace(20, 1500, 13)
+    pitch_edges = np.linspace(0, 90, 9)
+    energy = np.sqrt(energy_edges[:-1] * energy_edges[1:])
+    pitch = (pitch_edges[:-1] + pitch_edges[1:]) / 2
+    shape = (energy.size, pitch.size)
+    if ratio is None:
+        dummy = FiniteBinObservation(
+            energy_edges, pitch_edges, np.ones(shape), np.zeros(shape), b_sc
+        )
+        model = FiniteBinModel(dummy, huber(beam_enabled=False))
+        ratio = 10 ** model.evaluate(truth).fitted_log_ratio_dex
+    rng = np.random.default_rng(seed)
+    expected = np.repeat((level * (energy / 100) ** -1.0)[:, None], pitch.size, axis=1)
+    reference = rng.poisson(expected).astype(float)
+    affected = rng.poisson(expected * ratio).astype(float)
+    counts = ElectronReflectionCounts(energy, pitch, affected, reference, b_sc)
+    return counts, energy_edges, pitch_edges
+
+
+TRUTH = FiniteBinParameters(4.0, 0.15, -40.0, 0.9)
+FAST = dict(beam_enabled=False, generations=60, seeds=1)
+
+
+def test_count_deviances_match_scipy_binomial_and_beta_binomial():
+    from scipy.stats import betabinom, binom  # type: ignore[import-untyped]
+
+    counts, energy_edges, pitch_edges = synthetic_counts(20.0, truth=TRUTH)
+    counts = replace(counts, affected_exposure=1.5)
+    obs = FiniteBinObservation.from_counts(
+        counts, energy_edges_eV=energy_edges, pitch_edges_deg=pitch_edges
+    )
+    a = obs.affected_counts[obs.fit_valid]
+    n = a + obs.reference_counts[obs.fit_valid]
+    saturated = binom.logpmf(a, n, a / n)
+    for loss, concentration in (("binomial", 100.0), ("beta_binomial", 30.0)):
+        params = replace(TRUTH, concentration=concentration)
+        result = FiniteBinModel(obs, FiniteBinFitSettings(loss=loss, beam_enabled=False)).evaluate(
+            params
+        )
+        odds = 1.5 * 10 ** result.fitted_log_ratio_dex[obs.fit_valid]
+        q = odds / (1 + odds)
+        if loss == "binomial":
+            likelihood = binom.logpmf(a, n, q)
+        else:
+            likelihood = betabinom.logpmf(a, n, concentration * q, concentration * (1 - q))
+        expected = 2 * np.sum(saturated - likelihood)
+        assert result.objective_sum == pytest.approx(expected, rel=1e-9, abs=1e-8)
+
+
+def test_count_likelihood_recovers_field_with_zero_affected_counts():
+    counts, energy_edges, pitch_edges = synthetic_counts(8.0, truth=TRUTH)
+    obs = FiniteBinObservation.from_counts(
+        counts, energy_edges_eV=energy_edges, pitch_edges_deg=pitch_edges
+    )
+    assert np.any(obs.affected_counts[obs.fit_valid] == 0)
+    result = fit_finite_bin_distribution(obs, settings=FiniteBinFitSettings(**FAST))
+    assert abs(np.log10(result.parameters.mirror_ratio / TRUTH.mirror_ratio)) < 0.15
+    assert result.boundary_rows >= 3
+    assert result.loss_cone_delta_bic is not None and result.loss_cone_delta_bic > 0
+    assert not result.field_unconstrained
+    profile = profile_mirror_ratio(obs, result, points=13)
+    assert not profile.improved_minimum
+    assert profile.interval_bounded
+    low, high = profile.interval_nT
+    assert low <= TRUTH.mirror_ratio * counts.b_sc_nT <= high
+    np.testing.assert_allclose(profile.effective_field_nT, profile.mirror_ratio * 5.0)
+    assert profile.minimum_fit.objective_sum <= result.objective_sum
+    # Interpolated ends lie strictly between grid points around the interval.
+    assert low > profile.effective_field_nT[0] and high < profile.effective_field_nT[-1]
+
+
+def test_energy_step_without_pitch_structure_is_flagged():
+    energy = np.sqrt(np.geomspace(20, 1500, 13)[:-1] * np.geomspace(20, 1500, 13)[1:])
+    step = np.repeat(np.where(energy < 80, 1.0, 0.3)[:, None], 8, axis=1)
+    counts, energy_edges, pitch_edges = synthetic_counts(200.0, ratio=step)
+    obs = FiniteBinObservation.from_counts(
+        counts, energy_edges_eV=energy_edges, pitch_edges_deg=pitch_edges
+    )
+    result = fit_finite_bin_distribution(obs, settings=FiniteBinFitSettings(**FAST))
+    assert result.field_unconstrained
+    assert "loss_cone_unsupported" in result.field_flags
+
+
+def test_model_offset_and_scale_prior_constrain_the_outside_level():
+    efficiency = np.log10(0.8)
+    counts, energy_edges, pitch_edges = synthetic_counts(500.0, truth=TRUTH)
+    counts = replace(counts, affected_counts=np.rint(counts.affected_counts * 0.8))
+    obs = FiniteBinObservation.from_counts(
+        counts, energy_edges_eV=energy_edges, pitch_edges_deg=pitch_edges
+    )
+    fixed = dict(
+        mirror_ratio_bounds=(4, 4), bottom_ratio_bounds=(0.15, 0.15), delta_u_bounds_eV=(-40, -40)
+    )
+    settings = FiniteBinFitSettings(**FAST, **fixed)
+    raw = fit_finite_bin_distribution(obs, settings=settings)
+    calibrated = fit_finite_bin_distribution(
+        replace(obs, model_offset_dex=efficiency), settings=settings
+    )
+    assert raw.parameters.scale == pytest.approx(0.72, rel=0.05)
+    assert calibrated.parameters.scale == pytest.approx(0.9, rel=0.05)
+    pinned = fit_finite_bin_distribution(
+        obs, settings=replace(settings, scale_prior_sigma_dex=1e-4)
+    )
+    assert pinned.parameters.scale == pytest.approx(1.0, abs=0.01)
+
+
+def test_count_losses_need_counts_and_count_only_prior():
+    with pytest.raises(ValueError, match="flux-only"):
+        FiniteBinModel(observation(), FiniteBinFitSettings())
+    with pytest.raises(ValueError, match="scale_prior"):
+        FiniteBinFitSettings(loss="huber", scale_prior_sigma_dex=0.1)
+    with pytest.raises(ValueError):
+        FiniteBinFitSettings(concentration_bounds=(0, 10))

@@ -7,29 +7,46 @@ See [ER methods and code](er-methods.md) for each estimator's input and objectiv
 
 ## Folded finite-bin fitting with optional D_out
 
+The default objective is the beta-binomial likelihood of paired counts.
+`angular_transport="none"` (default) is the Diagonal model; `"out"` enables D_out.
+
 ```python
 from sopran.experimental.electron_reflection import (
     FiniteBinFitSettings, FiniteBinObservation, fit_finite_bin_distribution,
+    profile_mirror_ratio,
 )
-observation = FiniteBinObservation(
-    energy_edges_eV=energy_edges, pitch_edges_deg=pitch_edges,
-    incident_flux=reference_flux, observed_log_ratio_dex=log10_ratio,
-    b_sc_nT=b_sc, fit_valid=valid,
+# counts is ElectronReflectionCounts; edges are the calibrated bin edges.
+observation = FiniteBinObservation.from_counts(
+    counts, energy_edges_eV=energy_edges, pitch_edges_deg=folded_pitch_edges,
 )
-settings = FiniteBinFitSettings(angular_transport="out", loss="huber", huber_delta_dex=0.1)
-result = fit_finite_bin_distribution(observation, settings=settings)
+result = fit_finite_bin_distribution(observation, settings=FiniteBinFitSettings())
+profile = profile_mirror_ratio(observation, result)
 ```
 
-`angular_transport="none"` is the default Diagonal model; `"out"` enables D_out.
-The adapter exposes the same operation as
-`er.effective_field.fit_finite_bin(observation, settings=settings)`.
+The adapter exposes `er.effective_field.fit_finite_bin(...)` and
+`er.effective_field.profile_finite_bin(observation, result)`.
 
-`FiniteBinObservation.from_counts(counts, energy_edges_eV=..., pitch_edges_deg=...)`
-prepares exposure-corrected log10 ratios with a 0.5 pseudocount. Defaults require
-both counts >=5, >=3 pitch cells per energy and an exposure ratio in [0.01, 100].
-Supply actual edges: positive energy and folded 0–90 degree pitch.
-For already prepared ratios, construct the observation directly. Calibration and
-potential corrections are upstream; preserve relative incident flux across pitch.
+| `loss` | Data | Use |
+|---|---|---|
+| `"beta_binomial"` (default) | affected count given affected + reference | Main analysis; concentration phi absorbs systematic over-dispersion |
+| `"binomial"` | same | Statistical-noise-only comparison |
+| `"huber"` (0.1 dex) | log10(a/r) | Flux-only input, comparison with earlier runs |
+| `"squared"` | log10(a/r) | Comparison |
+
+Count losses model the affected count as binomial in n = a + r with
+q = lambda/(1+lambda), lambda = x 10^c R, where R is the model ratio, x the
+affected/reference exposure ratio and c `model_offset_dex`. The beta-binomial
+has mean q and concentration phi, fitted jointly. `objective_sum` is a deviance
+(-2 log L relative to the saturated binomial), so differences read on a chi-square scale.
+
+`from_counts` defaults to `selection="total"`, `min_counts=1`, keeping cells with
+a + r >= 1, including a = 0 inside the loss cone. `selection="paired",
+min_counts=5` is the former D-gallery cut; selecting on the affected count
+censors deep loss-cone cells and biases rho upward (synthetic truth rho = 0.15:
+0.18–0.6 with paired + Huber, 0.15 with total + beta-binomial). Both selections
+require >=3 pitch cells per energy and an exposure ratio in [0.01, 100].
+Log10 ratios use a 0.5 pseudocount for RMSE and plots. Calibration and potential
+corrections are upstream; preserve relative incident flux across pitch.
 
 $$
 N_{out}=D_{out}\{s[\rho+(1-\rho)P_0]N_{in}+N_{beam}\},
@@ -37,13 +54,20 @@ N_{out}=D_{out}\{s[\rho+(1-\rho)P_0]N_{in}+N_{beam}\},
 $$
 
 `bottom_ratio` is rho and `scale` is s; inside/outside levels are s*rho and s.
-Beam is retained by default (`beam_enabled=False` disables it). The 17 templates
-are none plus log-energy widths 0.15/0.30, pitch widths 10/20 deg and amplitudes
-0.5/1/2/4. Template 0 is none; others are
-`1 + 8*energy_index + 4*pitch_index + amplitude_index`.
+Beam is retained by default (`beam_enabled=False` disables it). Its four shapes are
+log-energy widths 0.15/0.30 and pitch widths 10/20 deg; the amplitude is a
+continuous golden-section optimum within `beam_amplitude_bounds` (0.25–8) at
+each evaluation. `beam_template` is 0 (none) or `1 + 2*energy_index + pitch_index`;
+`beam_amplitude` reports the amplitude.
+`model_offset_dex` adds a known log10 affected/reference efficiency to the model.
+`scale_prior_sigma_dex` places a zero-centred Gaussian prior on log10 s (count
+losses only); combine it with an offset to centre it on a calibration.
+
 The response uses split 17-point quadrature, eight pitch subdivisions by default
 and ideal uniform log-energy/pitch averaging. Seeded DE (35 candidates, 180
 generations, two seeds) and bounded Nelder–Mead (up to 650 iterations) run in Rust.
+Without `starts`, Nelder–Mead also refines twelve starts (Rm 1.2/2/5/20 by
+DeltaU −50/0/+50 eV); DE alone missed the best basin in 2 of 7 KAGUYA windows.
 There are no optimizer callbacks to Python or silent Python fallbacks.
 
 Huber is r² for |r|<=0.1 dex and 0.2|r|−0.01 otherwise. `objective_sum` and
@@ -63,16 +87,34 @@ Missing incident bins are log-interpolated per energy, with nearest values at
 the ends; they remain excluded from the objective. Their assumed flux can feed
 observed angles through D. `interpolated_incident_bins` reports their count;
 inactive energy rows retain NaN reconstructions.
-`local_converged` reports local termination, `at_bounds` lists free parameters
-at search limits, and `field_unconstrained` flags contrast loss, an unseen barrier
-or Rm at a search limit. False does not certify identification. Fixed-parameter
-`evaluate` has `local_converged=False`. Settings are retained; Store saving is explicit.
+`local_converged` reports local termination and `at_bounds` lists free parameters
+at search limits. `field_unconstrained` is true when any `field_flags` entry is set:
+`no_contrast` (rho >= 0.99), `barrier_unobserved` (all cells on one side),
+`field_at_search_bound`, `boundary_rows_insufficient` (fewer than
+`min_boundary_rows`, default 3, energy rows with cells on both sides of the
+boundary) or `loss_cone_unsupported` (count losses with `loss_cone_delta_bic <= 0`).
+`loss_cone_delta_objective` compares free per-energy levels without (rho = 1) and
+with the fitted loss cone at the fitted beam, so an energy-only step does not count
+as pitch structure; `loss_cone_delta_bic` subtracts k ln N for the free Rm/rho/DeltaU.
+In 288 KAGUYA windows 21% were flagged (33% with Rm <= 1, 11% with Rm > 1).
+
+A false flag does not certify identification; use `profile_mirror_ratio` before
+adopting a field. It fixes Rm on a grid (default ±1 dex, 21 points) and refits the
+rest from neighbours. For count losses delta objective <= 3.84 gives a 95%
+interval with interpolated ends; `interval_bounded=False` means the interval
+reached the grid end, and `improved_minimum=True` means the fit missed a better
+basin, returned as `minimum_fit`. For example, 2008-02-10 03:03:36 UTC fits
+124.7 nT with a 95% interval of 15.7–124.7 nT that includes the ~17 nT Huber solution.
+Fixed-parameter `evaluate` has `local_converged=False`. Settings are retained;
+Store saving is explicit.
 
 ## Fixed-backscatter Halekas distribution
 
 Use `fit_halekas_distribution(counts, settings=HalekasFitSettings(...))`.
 Both estimators share `ElectronReflectionCounts`, an energy-by-folded-pitch input.
 Halekas minimizes squared residuals of the exposure-corrected natural-log ratio.
+Cells with a + r below `min_cell_total_counts` (default 1) are excluded; empty
+cells would otherwise read as a pseudocount ratio of one.
 Its RMSE uses natural logarithms; divide by `np.log(10)` to compare with dex RMSE
 on the same input and mask.
 

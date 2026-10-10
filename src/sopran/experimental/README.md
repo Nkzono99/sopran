@@ -8,13 +8,13 @@ Import the specific model or adapter explicitly. Importing `sopran` or
 
 | Modules | Status and open questions | Promotion requirements |
 |---|---|---|
-| `electron_reflection.finite_bin` | Folded finite-bin bottom/scale model, optional D_out, Huber0.1 | Profile/recovery and independent field validation; convergence is separate from identification |
+| `electron_reflection.finite_bin` | Folded finite-bin bottom/scale model, beta-binomial count likelihood (Huber for flux-only input), optional D_out, loss-cone test and Rm profile | Recovery against an independent forward model (e.g. test-particle tracing) and independent field validation; convergence is separate from identification |
 | `electron_reflection.halekas` | Fixed-backscatter hard/probit distribution comparison | Defined uncertainty limits and representative independent comparisons |
 | `electron_reflection.common` | Shared paired-count input, exposure validation and boundary convention | Preserve input units, masks, zero/missing distinctions |
 | `kaguya.er` | Shared ESA/LMAG/SPICE input preparation and explicit estimator calls | Calibration, pairing, exposure, geometry and reader regression tests |
 | `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels and instrument comparisons |
 
-ER inventory reviewed: 2026-10-02. Finite-bin and Halekas are the retained
+ER inventory reviewed: 2026-10-02; finite-bin count likelihood added 2026-10-10. Finite-bin and Halekas are the retained
 estimators. Paired-count, binary, joint, global-joint and incident models,
 their dedicated research helpers and the former standalone JSONL CLI are retired.
 See `docs/experimental/er-methods.md`.
