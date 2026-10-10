@@ -884,6 +884,9 @@ def test_loaded_array_delegates_sel_where_and_mean_to_xarray() -> None:
     assert averaged.to_xarray().values.tolist() == [1.5, 3.5]
     assert averaged.schema.units == "count"
     assert averaged.metadata["schema"]["dims"] == ["time"]
+    indexed = loaded.isel(energy=slice(1, 2)).mean("energy")
+    assert isinstance(indexed, SopranArray)
+    assert indexed.to_xarray().values.tolist() == [2.0, 4.0]
 
 
 def test_loaded_array_resample_delegates_to_xarray_resampler() -> None:

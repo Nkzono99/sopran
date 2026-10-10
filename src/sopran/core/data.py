@@ -111,6 +111,9 @@ class SopranArray:
     def sel(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._with_xarray(self.to_xarray().sel(*args, **kwargs))
 
+    def isel(self, *args: Any, **kwargs: Any) -> SopranArray:
+        return self._with_xarray(self.to_xarray().isel(*args, **kwargs))
+
     def where(self, *args: Any, **kwargs: Any) -> SopranArray:
         return self._with_xarray(self.to_xarray().where(*args, **kwargs))
 
