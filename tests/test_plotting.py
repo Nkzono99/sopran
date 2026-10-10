@@ -400,7 +400,7 @@ def test_loaded_array_peak_trace_can_return_top_two_peaks_after_reduction() -> N
     )
 
     peaks = loaded.peak_trace(axis="energy", max_peaks=2, min_value=5.0)
-    detected = loaded.detect_peaks(axis="energy", max_peaks=1, min_value=5.0)
+    detected = loaded.peak_trace(axis="energy", max_peaks=1, min_value=5.0)
 
     assert peaks.name == "counts_energy_peaks"
     assert peaks.schema.dims == ("time", "peak")

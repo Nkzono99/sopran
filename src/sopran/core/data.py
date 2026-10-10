@@ -298,9 +298,6 @@ class SopranArray:
             xr=xr_array,
         )
 
-    def detect_peaks(self, **kwargs: Any) -> SopranArray:
-        return self.peak_trace(**kwargs)
-
     def write_parquet(
         self,
         store: Any,

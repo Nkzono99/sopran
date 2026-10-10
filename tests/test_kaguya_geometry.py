@@ -31,7 +31,6 @@ def test_kaguya_orbit_geometry_loads_from_lmag_native_time(tmp_path) -> None:
     position_gse = kg.orbit.position_gse.load(time, cache="never")
     position_me = kg.orbit.position.load(time, cache="never", frame="MOON_ME")
     radial_distance = kg.orbit.radial_distance.load(time, cache="never")
-    radius_alias = kg.orbit.radius.load(time, cache="never")
     altitude = kg.orbit.altitude.load(time, cache="never")
     subpoint = kg.orbit.subpoint.load(time, cache="never")
 
@@ -55,11 +54,6 @@ def test_kaguya_orbit_geometry_loads_from_lmag_native_time(tmp_path) -> None:
         atol=1e-9,
     )
     assert radial_distance.schema.units == "km"
-    np.testing.assert_allclose(
-        radius_alias.to_xarray().values,
-        radial_distance.to_xarray().values,
-        atol=1e-9,
-    )
     np.testing.assert_allclose(
         altitude.to_xarray().values,
         np.asarray([100.0, 100.0, 100.0]),

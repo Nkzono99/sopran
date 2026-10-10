@@ -341,9 +341,6 @@ class KaguyaPaceData:
             )
         return product
 
-    def pas(self, magnetic_field: Any, **kwargs: Any) -> SopranArray:
-        return self.pitch_angle_spectrum(magnetic_field, **kwargs)
-
     def to_energy_flux(self, *, efficiency: float = PACE_DEFAULT_EFFICIENCY) -> SopranArray:
         try:
             import numpy as np

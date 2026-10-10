@@ -801,7 +801,6 @@ class OrbitInstrument:
             compute=lambda data, **_: lmag_radial_distance(data),
             product="radial_distance",
         )
-        self.radius = self.radial_distance
         self.altitude = GeometryArrayEndpoint(
             self,
             KAGUYA_ORBIT_SCHEMA.variable("altitude"),
