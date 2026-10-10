@@ -203,29 +203,27 @@ Rust へ移植する処理だけとする。その場合も、外部ライブラ
 
 ### 依存関係の扱い
 
-SOPRAN は研究・解析用途を主対象にする。依存を小さく保つこと自体の価値は
-このプロジェクトでは高くないため、KAGUYA/ARTEMIS、SPICE、SpacePy、MAP/DEM/SVM、
-Matplotlib/HoloViz 系の runtime backend は標準 dependencies に含める。
-ただし `import sopran` 自体は重くしすぎず、重い backend は必要な module / method に
-入った時点で遅延 import する。
+基本 dependencies は `numpy` と `pandas` に限り、`import sopran` と top-level API は
+任意依存なしで読み込める。mission・地図・可視化の backend は用途別の extra に分け、
+必要な module / method に入った時点で遅延 import する。
 
 ```text
 pip install sopran
-  runtime:
-    numpy, scipy, xarray, pandas, polars, pyarrow
-    astropy, cdflib, matplotlib, requests
-    pdr, pds4-tools, spiceypy
-    cdasws, hapiclient, pyspedas, spacepy
-    cartopy, rasterio, rioxarray, pyproj, shapely, geopandas, pyogrio
-    hvplot, holoviews, bokeh, datashader, panel, geoviews
-    sunpy, plasmapy, aacgmv2, apexpy
+  numpy, pandas
 
-pip install "sopran[dev]"
-  pytest, ruff, mypy, build tools
+pip install "sopran[kaguya]"        cdflib, polars, pyarrow, scipy, spiceypy, xarray
+pip install "sopran[artemis]"       polars, pyarrow, xarray
+pip install "sopran[moon]"          rasterio, spiceypy
+pip install "sopran[viz]"           matplotlib, panel
+pip install "sopran[analysis]"      scipy
+pip install "sopran[experimental]"  scipy
+pip install "sopran[full]"          上記の和集合
+pip install "sopran[dev]"           pytest, ruff, mypy, build tools
 ```
 
-optional extras は用途別の目印として `kaguya`, `artemis`, `moon`, `viz`, `geospace`,
-`full`, `dev` を残してよいが、runtime 系は標準 dependencies にも入れる。
+各 extra には、その経路で SOPRAN が実際に import する package だけを入れる。
+予定段階の backend（SpacePy など）は、実装と同時に extra へ加える。
+extra と実 import の一致は `tests/test_project_metadata.py` で検査する。
 
 `pyarrow` は Polars の通常の parquet scan/write を動かすための必須実装ではなく、
 Arrow table/array 互換、pandas/xarray 連携、partitioned dataset、Parquet metadata や
