@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-import inspect
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from sopran.core.plotting import PlotItem, PlotStack, line, lines, spectrogram, stack
+from sopran.core.plotting import PlotItem, PlotStack, stack
+from sopran.core.sources import build_source, source_names
 from sopran.core.time import TimeRange, day, period
 from sopran.frames import FrameContext
 from sopran.maps import Region
 
-DownloadMode = Literal["never", "missing", "always"]
-
 if TYPE_CHECKING:
+    from sopran.bodies.moon import Moon
+    from sopran.core.project import Project
+    from sopran.missions.artemis import Artemis
+    from sopran.missions.kaguya import Kaguya
     from sopran.missions.omni import Omni
 
 
@@ -79,9 +81,13 @@ class ViewContext:
 
 @dataclass(frozen=True)
 class View:
-    """A lightweight lens that binds selection and context to the data tree."""
+    """A lightweight lens that binds selection and context to the data tree.
 
-    project: Any
+    ``view.kaguya`` and the other registered sources are real mission objects whose
+    endpoints default to this view's time, region, download policy and SPICE kernels.
+    """
+
+    project: Project
     selection: ViewSelection = field(default_factory=ViewSelection)
     context: ViewContext = field(default_factory=ViewContext)
 
@@ -102,32 +108,36 @@ class View:
         return self.context.cache
 
     @property
-    def kaguya(self) -> Any:
-        from sopran.missions.kaguya import Kaguya
-
-        return BoundNode(
-            Kaguya(store=self.project.store, download=_download_mode(self.context.download)),
-            self,
-        )
+    def kaguya(self) -> Kaguya:
+        return cast("Kaguya", self.source("kaguya"))
 
     @property
-    def artemis(self) -> Any:
-        from sopran.missions.artemis import Artemis
-
-        return BoundNode(Artemis(store=self.project.store), self)
+    def artemis(self) -> Artemis:
+        return cast("Artemis", self.source("artemis"))
 
     @property
     def omni(self) -> Omni:
-        from sopran.missions.omni import Omni
-
-        return Omni(store=self.project.store, time=self.time,
-                    download=_download_mode(self.context.download))
+        return cast("Omni", self.source("omni"))
 
     @property
-    def moon(self) -> Any:
-        from sopran.bodies import Moon
+    def moon(self) -> Moon:
+        return cast("Moon", self.source("moon"))
 
-        return BoundMoon(Moon(), self)
+    def source(self, name: str) -> Any:
+        """Return the registered source ``name`` bound to this view's time and context."""
+
+        cache = self.__dict__.setdefault("_sources", {})
+        if name not in cache:
+            cache[name] = build_source(name, self)
+        return cache[name]
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_") or name not in source_names():
+            raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
+        return self.source(name)
+
+    def __dir__(self) -> list[str]:
+        return sorted({*super().__dir__(), *source_names()})
 
     def with_time(self, time: object, stop: object | None = None) -> View:
         return replace(
@@ -189,111 +199,6 @@ class View:
         }
 
 
-class BoundNode:
-    def __init__(self, value: Any, view: View) -> None:
-        self._value = value
-        self._view = view
-
-    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._call_with_time("load", time, kwargs)
-
-    def plan(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._call_with_time("plan", time, kwargs)
-
-    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._call_with_time("plot", time, kwargs)
-
-    def pipeline(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._call_with_time("pipeline", time, kwargs)
-
-    def line(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        line_method = getattr(self._value, "line", None)
-        if line_method is not None:
-            return self._call_with_time("line", time, kwargs)
-        return line(lambda: self.load(time).to_xarray(), **kwargs)
-
-    def lines(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        lines_method = getattr(self._value, "lines", None)
-        if lines_method is not None:
-            return self._call_with_time("lines", time, kwargs)
-        return lines(lambda: self.load(time).to_xarray(), **kwargs)
-
-    def spectrogram(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        spectrogram_method = getattr(self._value, "spectrogram", None)
-        if spectrogram_method is not None:
-            return self._call_with_time("spectrogram", time, kwargs)
-        return spectrogram(lambda: self.load(time).to_xarray(), **kwargs)
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._value, name)
-        if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):
-            return BoundNode(value, self._view)
-        return value
-
-    def _call_with_time(self, name: str, time: TimeRange | None, kwargs: dict[str, Any]) -> Any:
-        method = getattr(self._value, name)
-        call_kwargs = dict(kwargs)
-        if (
-            self._view.context.download is not None
-            and "download" not in call_kwargs
-            and _accepts_keyword(method, "download")
-        ):
-            call_kwargs["download"] = self._view.context.download
-        if "context" not in call_kwargs and _accepts_keyword(method, "context"):
-            call_kwargs["context"] = self._view.context
-        if (
-            "spice_kernels" not in call_kwargs
-            and self._view.context._spice_kernels
-            and _accepts_keyword(method, "spice_kernels")
-        ):
-            call_kwargs["spice_kernels"] = tuple(
-                path.as_posix() for path in self._view.context._spice_kernels
-            )
-        selected_time = time or self._view.time
-        if selected_time is None:
-            return method(**call_kwargs)
-        return method(selected_time, **call_kwargs)
-
-
-class BoundMoon:
-    def __init__(self, moon: Any, view: View) -> None:
-        self._moon = moon
-        self._view = view
-
-    def map(self, product: str) -> Any:
-        return BoundSurfaceEndpoint(self._moon.map(product), self._view)
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._moon, name)
-        if hasattr(value, "plan") and hasattr(value, "load"):
-            return BoundSurfaceEndpoint(value, self._view)
-        return value
-
-
-class BoundSurfaceEndpoint:
-    def __init__(self, endpoint: Any, view: View) -> None:
-        self._endpoint = endpoint
-        self._view = view
-
-    def plan(self, **parameters: Any) -> Any:
-        return self._endpoint.plan(
-            **_surface_parameters_with_view(self._endpoint, self._view, parameters)
-        )
-
-    def load(self, **parameters: Any) -> Any:
-        return self._endpoint.load(
-            **_surface_parameters_with_view(self._endpoint, self._view, parameters)
-        )
-
-    def compute(self, **parameters: Any) -> Any:
-        return self._endpoint.compute(
-            **_surface_parameters_with_view(self._endpoint, self._view, parameters)
-        )
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._endpoint, name)
-
-
 def view(**parameters: Any) -> View:
     from sopran.core.project import Project
 
@@ -318,14 +223,6 @@ def _backend_mapping(value: str | Mapping[str, str] | None) -> dict[str, str]:
     return {str(key): str(item) for key, item in value.items()}
 
 
-def _download_mode(value: str | None) -> DownloadMode | None:
-    if value is None:
-        return None
-    if value not in ("never", "missing", "always"):
-        raise ValueError("download must be 'never', 'missing', or 'always'")
-    return cast(DownloadMode, value)
-
-
 def _time_metadata(time: TimeRange | None) -> dict[str, str] | None:
     if time is None:
         return None
@@ -333,42 +230,6 @@ def _time_metadata(time: TimeRange | None) -> dict[str, str] | None:
         "start": time.start_iso,
         "stop": time.stop_iso,
     }
-
-
-def _surface_parameters_with_view(
-    endpoint: Any,
-    view: View,
-    parameters: dict[str, Any],
-) -> dict[str, Any]:
-    normalized = dict(parameters)
-    if "region" not in normalized and view.region is not None:
-        normalized["region"] = view.region
-    if (
-        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
-        and "time" not in normalized
-        and view.time is not None
-    ):
-        normalized["time"] = view.time.start_iso
-    if (
-        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
-        and "spice_kernels" not in normalized
-        and view.context._spice_kernels
-    ):
-        normalized["spice_kernels"] = tuple(
-            path.as_posix() for path in view.context._spice_kernels
-        )
-    return normalized
-
-
-def _accepts_keyword(method: Any, name: str) -> bool:
-    try:
-        parameters = inspect.signature(method).parameters.values()
-    except (TypeError, ValueError):
-        return False
-    return any(
-        parameter.kind == inspect.Parameter.VAR_KEYWORD or parameter.name == name
-        for parameter in parameters
-    )
 
 
 __all__ = ["View", "ViewContext", "ViewSelection", "view"]

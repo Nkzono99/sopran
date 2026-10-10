@@ -1,3 +1,4 @@
+from sopran.core.sources import register_source
 from sopran.missions.kaguya.data import KaguyaESA1Data, KaguyaPaceData
 from sopran.missions.kaguya.files import KaguyaFileSource
 from sopran.missions.kaguya.lmag import KaguyaLmagData, read_lmag_public
@@ -26,6 +27,8 @@ from sopran.missions.kaguya.pitch import (
 )
 from sopran.missions.kaguya.sensors import normalize_sensor, normalize_sensors
 from sopran.missions.kaguya.spice import selene_spice_kernels
+
+register_source("kaguya", "sopran.missions.kaguya.mission:Kaguya.from_view")
 
 __all__ = [
     "Kaguya",

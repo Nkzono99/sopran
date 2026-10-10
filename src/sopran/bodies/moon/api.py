@@ -17,7 +17,12 @@ from .sources import SURFACE_SOURCE_INFO, SURFACE_SOURCES, canonical_source_id
 if TYPE_CHECKING:
     import pandas as pd
 
+    from sopran.core.view import View
+
     from .magnetic_anomalies import AnomalyCatalog
+
+# Products whose geometry depends on an epoch and, without an explicit Sun vector, SPICE.
+_TIME_DEPENDENT_PRODUCTS = frozenset({"shadow", "illumination", "sza"})
 
 
 class Moon:
@@ -25,7 +30,8 @@ class Moon:
 
     name = "moon"
 
-    def __init__(self) -> None:
+    def __init__(self, *, view: View | None = None) -> None:
+        self.view = view
         self.dem = SurfaceEndpoint(
             self,
             "dem",
@@ -47,6 +53,12 @@ class Moon:
         self.shadow = SurfaceEndpoint(self, "shadow", "Shadow map")
         self.illumination = SurfaceEndpoint(self, "illumination", "Illumination map")
         self.sza = SurfaceEndpoint(self, "sza", "Solar zenith angle")
+
+    @classmethod
+    def from_view(cls, view: View) -> Moon:
+        """Build Moon endpoints whose plans default to the view's region, time and kernels."""
+
+        return cls(view=view)
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -170,7 +182,7 @@ class SurfaceEndpoint:
         return SURFACE_SOURCES.get(self.product, ())
 
     def plan(self, **parameters: Any) -> SurfacePlan:
-        normalized_parameters = dict(parameters)
+        normalized_parameters = self._with_view_defaults(parameters)
         if self.default_source is not None and "source" not in normalized_parameters:
             normalized_parameters["source"] = self.default_source
         if self.default_model is not None and "model" not in normalized_parameters:
@@ -221,7 +233,10 @@ class SurfaceEndpoint:
         )
 
     def load(self, **parameters: Any) -> RasterLayer:
-        return cast(RasterLayer, loaders.load_surface_raster(self, **parameters))
+        return cast(
+            RasterLayer,
+            loaders.load_surface_raster(self, **self._with_view_defaults(parameters)),
+        )
 
     def compute(self, **parameters: Any) -> RasterLayer:
         plan = self.plan(**parameters)
@@ -238,3 +253,19 @@ class SurfaceEndpoint:
 
             return compute_shadow_layer(self, plan)
         raise NotImplementedError(f"Moon.{plan.product}.compute() is not implemented yet")
+
+    def _with_view_defaults(self, parameters: dict[str, Any]) -> dict[str, Any]:
+        normalized = dict(parameters)
+        view = self.body.view
+        if view is None:
+            return normalized
+        if "region" not in normalized and view.region is not None:
+            normalized["region"] = view.region
+        if self.product in _TIME_DEPENDENT_PRODUCTS:
+            if "time" not in normalized and view.time is not None:
+                normalized["time"] = view.time.start_iso
+            if "spice_kernels" not in normalized and view.context.spice_kernels:
+                normalized["spice_kernels"] = tuple(
+                    Path(path).as_posix() for path in view.context.spice_kernels
+                )
+        return normalized

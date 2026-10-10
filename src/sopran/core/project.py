@@ -7,9 +7,8 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from sopran.bodies import Moon
 from sopran.core.config import (
     config_section,
     configured_path,
@@ -22,11 +21,12 @@ from sopran.core.store import Store
 from sopran.core.time import TimeRange, period
 from sopran.core.view import View, ViewContext, ViewSelection, _backend_mapping, _coerce_time_range
 from sopran.maps import Region
-from sopran.missions.artemis import Artemis
-from sopran.missions.kaguya import Kaguya
-from sopran.missions.omni import Omni
 
-DownloadMode = Literal["never", "missing", "always"]
+if TYPE_CHECKING:
+    from sopran.bodies.moon import Moon
+    from sopran.missions.artemis import Artemis
+    from sopran.missions.kaguya import Kaguya
+    from sopran.missions.omni import Omni
 
 
 @dataclass(frozen=True)
@@ -82,24 +82,21 @@ class Project:
 
     @property
     def kaguya(self) -> Kaguya:
-        return Kaguya(
-            store=self.store,
-            download=_download_mode(self._merged_defaults().get("download")),
-        )
+        """KAGUYA bound to the project defaults (no time); see ``view(time=...)``."""
+
+        return self.view().kaguya
 
     @property
     def artemis(self) -> Artemis:
-        return Artemis(store=self.store)
+        return self.view().artemis
 
     @property
     def omni(self) -> Omni:
-        return Omni(
-            store=self.store, download=_download_mode(self._merged_defaults().get("download"))
-        )
+        return self.view().omni
 
     @property
     def moon(self) -> Moon:
-        return Moon()
+        return self.view().moon
 
     def view(
         self,
@@ -366,12 +363,32 @@ class Case:
         self.frame = defaults.get("frame")
         self.cache = bool(defaults.get("cache", False))
         self.region = region
-        self.kaguya = CaseKaguya(
-            Kaguya(store=project.store, download=_download_mode(defaults.get("download"))),
-            self,
-        )
-        self.artemis = CaseMission(Artemis(store=project.store), self)
-        self.moon = CaseMoon(Moon(), self)
+        self._view = self.to_view()
+
+    @property
+    def view(self) -> View:
+        """The case as a view; its sources are reused across attribute access."""
+
+        return self._view
+
+    @property
+    def kaguya(self) -> Kaguya:
+        return self._view.kaguya
+
+    @property
+    def artemis(self) -> Artemis:
+        return self._view.artemis
+
+    @property
+    def omni(self) -> Omni:
+        return self._view.omni
+
+    @property
+    def moon(self) -> Moon:
+        return self._view.moon
+
+    def source(self, name: str) -> Any:
+        return self._view.source(name)
 
     def metadata(self) -> dict[str, Any]:
         metadata: dict[str, Any] = {
@@ -393,6 +410,7 @@ class Case:
         return metadata
 
     def to_view(self) -> View:
+        spice_kernels = self.defaults.get("spice_kernels")
         return self.project.view(
             time=self.time,
             region=self.region,
@@ -400,6 +418,8 @@ class Case:
             cache=self.cache,
             download=_optional_str(self.defaults.get("download")),
             backends=_case_backends(self.defaults),
+            spice_kernels=None if spice_kernels is None else tuple(spice_kernels),
+            time_scale=_optional_str(self.defaults.get("time_scale")),
         )
 
     def with_time(self, time: object, stop: object | None = None) -> View:
@@ -407,160 +427,6 @@ class Case:
 
     def stack(self, *items: PlotItem) -> PlotStack:
         return stack(*items)
-
-
-class CaseKaguya:
-    def __init__(self, mission: Kaguya, case: Case) -> None:
-        self._mission = mission
-        self._case = case
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._mission, name)
-        if hasattr(value, "load"):
-            return CaseInstrument(value, self._case)
-        return value
-
-
-class CaseMission:
-    def __init__(self, mission: Any, case: Case) -> None:
-        self._mission = mission
-        self._case = case
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._mission, name)
-        return CaseNode(value, self._case)
-
-
-class CaseMoon:
-    def __init__(self, moon: Moon, case: Case) -> None:
-        self._moon = moon
-        self._case = case
-
-    def map(self, product: str) -> Any:
-        return CaseSurfaceEndpoint(self._moon.map(product), self._case)
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._moon, name)
-        if hasattr(value, "plan") and hasattr(value, "load"):
-            return CaseSurfaceEndpoint(value, self._case)
-        return value
-
-
-class CaseSurfaceEndpoint:
-    def __init__(self, endpoint: Any, case: Case) -> None:
-        self._endpoint = endpoint
-        self._case = case
-
-    def plan(self, **parameters: Any) -> Any:
-        return self._endpoint.plan(
-            **_surface_parameters_with_case(self._endpoint, self._case, parameters)
-        )
-
-    def load(self, **parameters: Any) -> Any:
-        return self._endpoint.load(
-            **_surface_parameters_with_case(self._endpoint, self._case, parameters)
-        )
-
-    def compute(self, **parameters: Any) -> Any:
-        return self._endpoint.compute(
-            **_surface_parameters_with_case(self._endpoint, self._case, parameters)
-        )
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._endpoint, name)
-
-
-class CaseNode:
-    def __init__(self, value: Any, case: Case) -> None:
-        self._value = value
-        self._case = case
-
-    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._value.load(time or self._case.time, **kwargs)
-
-    def plan(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._value.plan(time or self._case.time, **kwargs)
-
-    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._value.plot(time or self._case.time, **kwargs)
-
-    def line(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        line_method = getattr(self._value, "line", None)
-        if line_method is not None:
-            return line_method(time or self._case.time, **kwargs)
-        from sopran.core.plotting import line
-
-        return line(lambda: self.load(time).to_xarray(), **kwargs)
-
-    def lines(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        lines_method = getattr(self._value, "lines", None)
-        if lines_method is not None:
-            return lines_method(time or self._case.time, **kwargs)
-        from sopran.core.plotting import lines
-
-        return lines(lambda: self.load(time).to_xarray(), **kwargs)
-
-    def spectrogram(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        spectrogram_method = getattr(self._value, "spectrogram", None)
-        if spectrogram_method is not None:
-            return spectrogram_method(time or self._case.time, **kwargs)
-        from sopran.core.plotting import spectrogram
-
-        return spectrogram(lambda: self.load(time).to_xarray(), **kwargs)
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._value, name)
-        if hasattr(value, "load") or hasattr(value, "plan") or not callable(value):
-            return CaseNode(value, self._case)
-        return value
-
-
-class CaseInstrument:
-    def __init__(self, instrument: Any, case: Case) -> None:
-        self._instrument = instrument
-        self._case = case
-
-    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._instrument.load(time or self._case.time, **kwargs)
-
-    def plan(self, time: TimeRange | None = None) -> Any:
-        return self._instrument.plan(time or self._case.time)
-
-    def pipeline(self, time: TimeRange | None = None) -> Any:
-        return self._instrument.pipeline(time or self._case.time)
-
-    def __getattr__(self, name: str) -> Any:
-        value = getattr(self._instrument, name)
-        if hasattr(value, "load") and hasattr(value, "plan"):
-            return CaseVariableEndpoint(value, self._case)
-        return value
-
-
-class CaseVariableEndpoint:
-    def __init__(self, endpoint: Any, case: Case) -> None:
-        self._endpoint = endpoint
-        self._case = case
-
-    def load(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._endpoint.load(time or self._case.time, **kwargs)
-
-    def plan(self, time: TimeRange | None = None) -> Any:
-        return self._endpoint.plan(time or self._case.time)
-
-    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._endpoint.plot(time or self._case.time, **kwargs)
-
-    def line(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._endpoint.line(time or self._case.time, **kwargs)
-
-    def lines(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._endpoint.lines(time or self._case.time, **kwargs)
-
-    def spectrogram(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
-        return self._endpoint.spectrogram(time or self._case.time, **kwargs)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._endpoint, name)
 
 
 def _case_region(
@@ -582,28 +448,6 @@ def _case_region(
         lon_direction=cast(Any, region.get("lon_direction", "east_positive")),
         lat_type=cast(Any, region.get("lat_type", "planetocentric")),
     )
-
-
-def _surface_parameters_with_case(
-    endpoint: Any,
-    case: Case,
-    parameters: dict[str, Any],
-) -> dict[str, Any]:
-    normalized = dict(parameters)
-    if "region" not in normalized and case.region is not None:
-        normalized["region"] = case.region
-    if (
-        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
-        and "time" not in normalized
-    ):
-        normalized["time"] = case.time.start_iso
-    if (
-        getattr(endpoint, "product", None) in {"shadow", "illumination", "sza"}
-        and "spice_kernels" not in normalized
-        and case.defaults.get("spice_kernels")
-    ):
-        normalized["spice_kernels"] = tuple(str(path) for path in case.defaults["spice_kernels"])
-    return normalized
 
 
 def _discover_project_root(start: Path) -> Path | None:
@@ -665,15 +509,6 @@ def _optional_str(value: object | None) -> str | None:
     if value is None:
         return None
     return str(value)
-
-
-def _download_mode(value: object | None) -> DownloadMode | None:
-    if value is None:
-        return None
-    text = str(value)
-    if text not in ("never", "missing", "always"):
-        raise ConfigError("download must be 'never', 'missing', or 'always'")
-    return cast(DownloadMode, text)
 
 
 def _string_tuple(value: str | tuple[str, ...] | list[str]) -> tuple[str, ...]:

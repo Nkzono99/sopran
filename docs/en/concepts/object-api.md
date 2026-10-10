@@ -24,6 +24,25 @@ at explicit methods.
 | `guide(language=...)` | Return a Markdown guide for notebooks or terminals |
 | `example()` | Return a short runnable example |
 
+## From A View Or Case
+
+`spn.kaguya`, `view.kaguya` and `case.kaguya` are real `spn.Kaguya` objects.
+Taken from a view or case, their methods default `time` to the view's time and
+use the view's download policy, SPICE kernels and region.
+
+```python
+view = spn.view(time=spn.day("2008-02-01"))
+
+isinstance(view.kaguya, spn.Kaguya)  # True
+view.kaguya.esa1.counts.load()       # uses the view's time
+view.kaguya.orbit.altitude.line()    # PlotStack item
+```
+
+`spn.load("kaguya.esa1.counts", time)` loads by dataset ID. The ID is the
+attribute path below a registered source (`kaguya`, `artemis`, `omni`, `moon`),
+so it runs `spn.kaguya.esa1.counts.load(time)`. A new mission registers itself
+with `sopran.core.sources.register_source("name", "module:Factory.from_view")`.
+
 ## Loaded Data
 
 ```python

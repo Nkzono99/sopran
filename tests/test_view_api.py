@@ -210,3 +210,104 @@ def test_project_save_case_persists_view_as_named_analysis_context(tmp_path) -> 
     assert case.cache is True
     assert case.to_view().context.backends == {"frames": "spiceypy"}
     assert json.loads(saved.metadata_path.read_text(encoding="utf-8")) == view.metadata()
+
+
+def test_shortcuts_return_real_bound_mission_objects(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SOPRAN_CONFIG", str(tmp_path / "missing-user-config.toml"))
+    project = spn.Project(tmp_path / "project", store=spn.Store(tmp_path / "store"))
+    view = project.view(time=spn.day("2008-02-01"))
+
+    assert isinstance(spn.kaguya, spn.Kaguya)
+    assert isinstance(view.kaguya, spn.Kaguya)
+    assert isinstance(view.artemis, spn.Artemis)
+    assert isinstance(view.omni, spn.Omni)
+    assert isinstance(view.moon, spn.Moon)
+    assert view.kaguya is view.kaguya
+    assert view.kaguya.view is view
+    assert {"esa1", "lmag", "lrs", "orbit"} <= set(dir(view.kaguya))
+    assert {"kaguya", "artemis", "omni", "moon"} <= set(dir(spn))
+    assert {"kaguya", "artemis", "omni", "moon"} <= set(dir(view))
+    assert view.omni.time == view.time
+
+
+def test_case_orbit_line_uses_case_time_without_loading(tmp_path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        '[cases.wake]\nstart = "2008-02-01T00:00:00"\nstop = "2008-02-02T00:00:00"\n',
+        encoding="utf-8",
+    )
+    case = spn.Project(project_root, store=spn.Store(tmp_path / "store")).case("wake")
+
+    item = case.kaguya.orbit.altitude.line()
+
+    assert isinstance(item, spn.PlotItem)
+    assert item.name == "altitude"
+    assert case.kaguya is case.kaguya
+    assert case.kaguya.esa1.counts.plan().time == case.time
+
+
+def test_top_level_load_resolves_attribute_paths_of_registered_sources(
+    tmp_path, monkeypatch
+) -> None:
+    import sys
+    import types
+
+    from sopran.core import sources
+
+    calls = []
+
+    class FakeEndpoint:
+        def load(self, time, **kwargs):
+            calls.append((time, kwargs))
+            return "loaded"
+
+    class FakeSource:
+        def __init__(self, view):
+            self.view = view
+            self.instrument = types.SimpleNamespace(product=FakeEndpoint())
+
+    module = types.ModuleType("sopran_fake_source")
+    module.FakeSource = FakeSource
+    monkeypatch.setitem(sys.modules, "sopran_fake_source", module)
+    monkeypatch.setitem(sources._SOURCES, "fake", "sopran_fake_source:FakeSource")
+    store = spn.Store(tmp_path / "store")
+    time = spn.day("2008-02-01")
+
+    assert spn.load("fake.instrument.product", time, store=store, flag=1) == "loaded"
+    assert calls == [(time, {"flag": 1})]
+    with pytest.raises(spn.DatasetNotFoundError, match="has no 'missing'"):
+        spn.load("fake.instrument.missing", time, store=store)
+    with pytest.raises(spn.DatasetNotFoundError, match="Unknown SOPRAN dataset ID"):
+        spn.load("nowhere.product", time, store=store)
+
+
+def test_core_does_not_import_missions_or_bodies_at_runtime() -> None:
+    import ast
+    from pathlib import Path
+
+    root = Path(spn.__file__).parent / "core"
+    violations = []
+    for path in root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        type_only = {
+            id(child)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "TYPE_CHECKING"
+            for child in ast.walk(node)
+        }
+        for node in ast.walk(tree):
+            if id(node) in type_only:
+                continue
+            if isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            elif isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            else:
+                continue
+            if any(name.startswith(("sopran.missions", "sopran.bodies")) for name in names):
+                violations.append(f"{path.name}:{node.lineno}")
+    assert not violations, violations

@@ -78,7 +78,7 @@ stop = "2008-02-02T00:00:00"
     )
     source = FakeSource(tmp_path / "raw")
     case = spn.Project(project_root, store=Store(tmp_path / "store")).case("wake")
-    case.kaguya._mission.source = source
+    case.kaguya.source = source
 
     data = case.kaguya.esa1.load()
 

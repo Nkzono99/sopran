@@ -24,6 +24,26 @@ art.p1.fgm.magnetic_field
 | `guide(language=...)` | notebook や terminal で読める Markdown guide を返す |
 | `example()` | その場で試せる短いコード例を返す |
 
+## View と Case から使う
+
+`spn.kaguya`、`view.kaguya`、`case.kaguya` は、`spn.Kaguya()` と同じ型の実体です。
+View や Case から取り出したオブジェクトは、メソッドの `time` を省くと View の時刻を使い、
+download policy・SPICE kernel・region も View の設定を既定にします。
+
+```python
+view = spn.view(time=spn.day("2008-02-01"))
+
+isinstance(view.kaguya, spn.Kaguya)  # True
+view.kaguya.esa1.counts.load()       # view の時刻で読む
+view.kaguya.orbit.altitude.line()    # PlotStack 用の item
+```
+
+dataset ID からは `spn.load("kaguya.esa1.counts", time)` で読めます。
+ID は登録された source（`kaguya`、`artemis`、`omni`、`moon`）からの属性パスで、
+`spn.kaguya.esa1.counts.load(time)` と同じ処理になります。
+新しい mission は自身の package で
+`sopran.core.sources.register_source("name", "module:Factory.from_view")` を呼んで登録します。
+
 ## 読み込んだ後
 
 `load()` が返す `SopranArray` は、xarray と table の両方へ渡せます。

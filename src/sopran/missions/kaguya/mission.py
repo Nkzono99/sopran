@@ -87,6 +87,7 @@ from sopran.missions.kaguya.spice import moon_me_spice_kernels
 if TYPE_CHECKING:
     from sopran.core.data import SopranArray
     from sopran.core.plotting import PlotItem, PlotResult
+    from sopran.core.view import View
 
 MissingMode = Literal["empty", "warn", "error"]
 CacheMode = Literal["use", "refresh", "never"]
@@ -108,9 +109,11 @@ class Kaguya:
         fallback_roots: list[Path | str] | tuple[Path | str, ...] = (),
         source: KaguyaFileSource | None = None,
         download: DownloadMode | None = None,
+        view: View | None = None,
     ) -> None:
         self.download = resolve_download_mode(download)
         self.store = store or Store()
+        self.view = view
         if source is None:
             local_root = (
                 Path(data_root)
@@ -130,6 +133,16 @@ class Kaguya:
         self.lrs: LrsInstrument = LrsInstrument(self)
         self.orbit: OrbitInstrument = OrbitInstrument(self)
         self.sza: GeometryArrayEndpoint = self.orbit.sza
+
+    @classmethod
+    def from_view(cls, view: View) -> Kaguya:
+        """Build a mission whose endpoints default to the view's time and context."""
+
+        return cls(
+            store=view.project.store,
+            download=cast("DownloadMode | None", view.context.download),
+            view=view,
+        )
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -332,8 +345,11 @@ fig = plot_result.fig
         )
 
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         return LoadPlan(
             dataset_id=self.dataset_id,
             time=time,
@@ -341,8 +357,11 @@ fig = plot_result.fig
         )
 
     def pipeline(self, time: TimeRange | None = None) -> Pipeline:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         return Pipeline(
             source=self.dataset_id,
             time=time,
@@ -362,8 +381,11 @@ fig = plot_result.fig
         dataset_id: str | None = None,
         layer: str = "features",
     ) -> Any:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         validate_coverage_freq(freq)
         _validate_cache_mode(cache)
         resolved_dataset_id = dataset_id or coverage_dataset_id(self.dataset_id)
@@ -447,8 +469,11 @@ fig = plot_result.fig
         missing: MissingMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> SopranArray:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         kwargs: dict[str, Any] = {"download": download}
         if missing is not None:
             kwargs["missing"] = missing
@@ -506,8 +531,11 @@ fig = plot_result.fig
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> PlotItem:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         from sopran.core.plotting import line
 
         return line(
@@ -536,8 +564,11 @@ fig = plot_result.fig
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> PlotItem:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         from sopran.core.plotting import lines
 
         return lines(
@@ -574,8 +605,11 @@ fig = plot_result.fig
         cache: CacheMode | None = None,
         calibration: PaceCalibration | Literal["auto"] | None = "auto",
     ) -> PlotItem:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         from sopran.core.plotting import spectrogram
 
         return spectrogram(
@@ -620,8 +654,11 @@ fig = plot_result.fig
         dataset_id: str | None = None,
         layer: str = "features",
     ) -> Any:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         if magnetic_field is None:
             raise TypeError("pitch_angle_spectrum() requires magnetic_field=...")
         if self.name not in {"counts", "energy_flux"}:
@@ -834,8 +871,15 @@ class GeometryArrayEndpoint:
         backend: str | None = None,
         missing: MissingMode = "empty",
     ) -> SopranArray:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.orbit.{self.name}")
+        time = _bound_time(self.instrument.mission, time, f"Kaguya.orbit.{self.name}")
+        view = self.instrument.mission.view
+        if view is not None:
+            if context is None:
+                context = view.context
+            if not spice_kernels and view.context.spice_kernels:
+                spice_kernels = tuple(
+                    Path(path).as_posix() for path in view.context.spice_kernels
+                )
         _validate_cache_mode(cache)
         resolved_download = (
             self.instrument.mission.download
@@ -964,6 +1008,48 @@ class GeometryArrayEndpoint:
         kwargs.setdefault("time_range", product.time)
         kwargs.setdefault("frame", self._schema.frame)
         return product.plot(**kwargs)
+
+    def line(
+        self,
+        time: TimeRange | None = None,
+        *,
+        x: str = "time",
+        name: str | None = None,
+        **load_kwargs: Any,
+    ) -> PlotItem:
+        """Plot item for a scalar orbit product; ``load_kwargs`` go to ``load``."""
+
+        from sopran.core.plotting import line
+
+        time = _bound_time(self.instrument.mission, time, f"Kaguya.orbit.{self.name}")
+        return line(
+            lambda: self.load(time, **load_kwargs).to_xarray(),
+            x=x,
+            name=name or self.name,
+        )
+
+    def lines(
+        self,
+        time: TimeRange | None = None,
+        *,
+        x: str = "time",
+        components: str | tuple[str, ...] | list[str] | None = None,
+        component_dim: str = "component",
+        name: str | None = None,
+        **load_kwargs: Any,
+    ) -> PlotItem:
+        """Plot item for a vector orbit product; ``load_kwargs`` go to ``load``."""
+
+        from sopran.core.plotting import lines
+
+        time = _bound_time(self.instrument.mission, time, f"Kaguya.orbit.{self.name}")
+        return lines(
+            lambda: self.load(time, **load_kwargs).to_xarray(),
+            x=x,
+            components=components,
+            component_dim=component_dim,
+            name=name or self.name,
+        )
 
 
 def _default_sza_spice_kernels(
@@ -1454,8 +1540,7 @@ fig = plot_result.fig
         return kaguya_pace_schema(self.sensor)
 
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.name}")
+        time = _bound_time(self.mission, time, f"Kaguya.{self.name}")
         return LoadPlan(
             dataset_id=f"kaguya.{self.sensor.lower()}",
             time=time,
@@ -1470,8 +1555,7 @@ fig = plot_result.fig
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
     ) -> KaguyaPaceData:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.name}")
+        time = _bound_time(self.mission, time, f"Kaguya.{self.name}")
         _validate_missing_mode(missing)
         if calibration == "auto":
             calibration = self.load_calibration(download=download)
@@ -2285,8 +2369,7 @@ plot_result = spn.stack(item).plot()
         *,
         kind: str = "all",
     ) -> LoadPlan:
-        if time is None:
-            raise _missing_time_error("Kaguya.LRS")
+        time = _bound_time(self.mission, time, "Kaguya.LRS")
         return LoadPlan(
             dataset_id=f"kaguya.lrs.{kind.lower()}",
             time=time,
@@ -2344,8 +2427,7 @@ plot_result = spn.stack(item).plot()
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
     ) -> KaguyaLrsData:
-        if time is None:
-            raise _missing_time_error("Kaguya.LRS")
+        time = _bound_time(self.mission, time, "Kaguya.LRS")
         _validate_missing_mode(missing)
         remote_files = self.remote_files_for_period(time, kind=kind)
         files = _resolve_kaguya_files(self, remote_files, download=download)
@@ -2397,8 +2479,11 @@ class LrsVariableEndpoint(VariableEndpoint):
         self.kind = kind
 
     def plan(self, time: TimeRange | None = None) -> LoadPlan:
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         return LoadPlan(
             dataset_id=self.dataset_id,
             time=time,
@@ -2415,8 +2500,11 @@ class LrsVariableEndpoint(VariableEndpoint):
         calibration: PaceCalibration | Literal["auto"] | None = None,
     ) -> Any:
         _ = calibration
-        if time is None:
-            raise _missing_time_error(f"Kaguya.{self.instrument.name}.{self.name}")
+        time = _bound_time(
+            self.instrument.mission,
+            time,
+            f"Kaguya.{self.instrument.name}.{self.name}",
+        )
         _validate_cache_mode(cache)
         if cache == "use":
             cached = _read_cached_lrs_array(
@@ -2531,8 +2619,7 @@ plot_result = spn.stack(item).plot()
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
     ) -> KaguyaLmagData:
-        if time is None:
-            raise _missing_time_error("Kaguya.LMAG")
+        time = _bound_time(self.mission, time, "Kaguya.LMAG")
         _validate_missing_mode(missing)
         files: list[Path] = []
         missing_remote_files: list[str] = []
@@ -2587,8 +2674,7 @@ class LmagConnectionEndpoint:
         download: DownloadMode | None = None,
         missing: MissingMode = "empty",
     ) -> Any:
-        if time is None:
-            raise _missing_time_error("Kaguya.LMAG.magnetic_connection")
+        time = _bound_time(self.instrument.mission, time, "Kaguya.LMAG.magnetic_connection")
         _validate_cache_mode(cache)
         _validate_connection_direction(direction)
         variant_id = connection_variant_id(
@@ -2826,6 +2912,16 @@ def _jsonable_metadata(value: Any) -> Any:
     if callable(tolist):
         return _jsonable_metadata(tolist())
     return str(value)
+
+
+def _bound_time(mission: Kaguya, time: TimeRange | None, endpoint: str) -> TimeRange:
+    """Return ``time``, else the time of the view the mission is bound to."""
+
+    if time is not None:
+        return time
+    if mission.view is not None and mission.view.time is not None:
+        return mission.view.time
+    raise _missing_time_error(endpoint)
 
 
 def _missing_time_error(endpoint: str) -> ValueError:

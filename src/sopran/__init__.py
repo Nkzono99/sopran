@@ -57,6 +57,7 @@ from sopran.core import (
     year,
 )
 from sopran.core.project import Project
+from sopran.core.sources import source_names
 from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
 from sopran.maps import RasterLayer, RasterSpec, Region
 from sopran.missions.artemis import Artemis
@@ -85,9 +86,14 @@ def __getattr__(name: str) -> Any:
         from importlib import import_module
 
         return getattr(import_module("sopran.schema_docs"), name)
-    if name in {"kaguya", "artemis", "moon", "omni"}:
-        return getattr(Project.default().view(), name)
+    if name in source_names():
+        # A fresh default view per access, so config changes apply immediately.
+        return Project.default().view().source(name)
     raise AttributeError(f"module 'sopran' has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted({*globals(), *__all__, *source_names()})
 
 
 __all__ = [

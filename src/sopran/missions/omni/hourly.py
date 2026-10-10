@@ -17,6 +17,8 @@ import pandas as pd
 if TYPE_CHECKING:
     import xarray as xr
 
+    from sopran.core.view import View
+
 from sopran.core.config import DownloadMode, resolve_download_mode
 from sopran.core.data import SopranArray
 from sopran.core.plotting import PlotItem, PlotResult
@@ -207,6 +209,16 @@ class Omni:
         self.ae: OmniVariable = OmniVariable(self, "ae")
         self.beta: OmniVariable = OmniVariable(self, "beta")
         self.alfven_mach: OmniVariable = OmniVariable(self, "alfven_mach")
+
+    @classmethod
+    def from_view(cls, view: View) -> Omni:
+        """Build OMNI access whose loads default to the view's time."""
+
+        return cls(
+            store=view.project.store,
+            download=cast("DownloadMode | None", view.context.download),
+            time=view.time,
+        )
 
     def variable(self, name: str) -> OmniVariable:
         if name not in _COLUMNS and name != "magnetic_field":

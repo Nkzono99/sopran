@@ -15,6 +15,7 @@ from sopran.core.time import TimeRange, _filter_polars_time
 
 if TYPE_CHECKING:
     from sopran.core.plotting import PlotItem
+    from sopran.core.view import View
 
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/missions/artemis/"
@@ -48,10 +49,17 @@ ARTEMIS_ESA_SCHEMA = InstrumentSchema(
 class Artemis:
     """Object-oriented entry point for ARTEMIS probes."""
 
-    def __init__(self, *, store: Store | None = None) -> None:
+    def __init__(self, *, store: Store | None = None, view: View | None = None) -> None:
         self.store = store or Store()
+        self.view = view
         self.p1: ArtemisProbe = ArtemisProbe(self, "p1")
         self.p2: ArtemisProbe = ArtemisProbe(self, "p2")
+
+    @classmethod
+    def from_view(cls, view: View) -> Artemis:
+        """Build a mission whose endpoints default to the view's time."""
+
+        return cls(store=view.project.store, view=view)
 
     def info(self) -> InfoPage:
         return InfoPage(
@@ -306,16 +314,14 @@ plot_result = spn.stack(item).plot()
         )
 
     def plan(self, time: TimeRange | None = None) -> ArtemisLoadPlan:
-        if time is None:
-            raise _missing_time_error(self)
+        time = _bound_time(self, time)
         return ArtemisLoadPlan(
             dataset_id=f"{self.instrument.dataset_prefix}.{self.name}",
             time=time,
         )
 
     def load(self, time: TimeRange | None = None) -> SopranArray:
-        if time is None:
-            raise _missing_time_error(self)
+        time = _bound_time(self, time)
         dataset_id = f"{self.instrument.dataset_prefix}.{self.name}"
         try:
             frame = self.instrument.probe.mission.store.scan_dataset(
@@ -342,8 +348,7 @@ plot_result = spn.stack(item).plot()
         x: str = "time",
         name: str | None = None,
     ) -> PlotItem:
-        if time is None:
-            raise _missing_time_error(self)
+        time = _bound_time(self, time)
         from sopran.core.plotting import line
 
         return line(
@@ -361,8 +366,7 @@ plot_result = spn.stack(item).plot()
         component_dim: str = "component",
         name: str | None = None,
     ) -> PlotItem:
-        if time is None:
-            raise _missing_time_error(self)
+        time = _bound_time(self, time)
         from sopran.core.plotting import lines
 
         return lines(
@@ -382,8 +386,7 @@ plot_result = spn.stack(item).plot()
         name: str | None = None,
         log_color: bool = False,
     ) -> PlotItem:
-        if time is None:
-            raise _missing_time_error(self)
+        time = _bound_time(self, time)
         from sopran.core.plotting import spectrogram
 
         return spectrogram(
@@ -461,6 +464,17 @@ def _unknown_variable_error(
         f"  art.{probe_path}.{instrument_path}.info()\n"
         f"  art.{probe_path}.{instrument_path}.{suggestion}.load(time)"
     )
+
+
+def _bound_time(endpoint: ArtemisVariableEndpoint, time: TimeRange | None) -> TimeRange:
+    """Return ``time``, else the time of the view the mission is bound to."""
+
+    if time is not None:
+        return time
+    view = endpoint.instrument.probe.mission.view
+    if view is not None and view.time is not None:
+        return cast(TimeRange, view.time)
+    raise _missing_time_error(endpoint)
 
 
 def _missing_time_error(endpoint: ArtemisVariableEndpoint) -> ValueError:

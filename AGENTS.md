@@ -35,6 +35,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 ## APIと実装の境界
 
 - 日常の入口は `spn.kaguya` / `spn.artemis` / `spn.moon` / `spn.omni`。時刻・領域は `spn.view(...)`、永続的な研究条件は `Project` / `Case`、独立したStore/source設定は明示的なmissionオブジェクトで扱う。
+- mission・天体は各パッケージで `sopran.core.sources.register_source` に登録し、`View` が渡す時刻・文脈を既定値として持つ実体（`Kaguya.from_view` など）を返す。`core` から missions/bodies を実行時importしない。
 - プロセスの既定値は `spn.config.use(...)`、一時変更は `spn.config.using(...)`。設定は既存config/Project/View経由で解決し、Store生成でグローバル設定を変えたり、機器ごとに別のグローバル状態を作ったりしない。
 - 公開APIには返り値型・単位・座標系・時刻・ビン情報を付ける。外部ライブラリとの型境界を明確にし、`Any` の連鎖を避ける。
 - 加工データは既存product/cacheで取得・計算・保存・再読込する。入力と設定を区別できるキー、または明示保存を使い、異なる設定の結果を同じStore項目として再利用しない。
