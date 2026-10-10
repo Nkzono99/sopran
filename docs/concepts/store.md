@@ -3,7 +3,7 @@
 `Store` は物理データの置き場所です。解析 workspace を表す `Project` とは分けます。
 
 ```python
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 ```
 
 ## root の決め方
@@ -16,8 +16,8 @@ store = spn.Store("F:/sopran_data")
 | cache root | 明示引数 > `SOPRAN_CACHE_ROOT` > `<data root>/cache` |
 
 ```powershell
-$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
-$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+$env:SOPRAN_DATA_ROOT = "/path/to/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "/path/to/sopran_cache"
 ```
 
 `Project("workspace")` から作る場合は、環境変数が `sopran.toml` の `[store]` より優先されます。
@@ -73,9 +73,9 @@ Store rootの下はファイルのまま`rsync`で運べる。次の約束で、
   同期の既定はこれだけを対象にする。試行錯誤のdatasetは名前を指定して選ぶ。
 
 ```powershell
-sopran-store --data-root F:/sopran_data sync-list > files.txt
-sopran-store --data-root F:/sopran_data sync-list --dataset kaguya.er.paired_distributions --raw spice > files.txt
-rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ host:/data/sopran_data/
+sopran-store --data-root /path/to/sopran_data sync-list > files.txt
+sopran-store --data-root /path/to/sopran_data sync-list --dataset experimental.kaguya.er.paired_distributions --raw spice > files.txt
+rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ host:/data/sopran_data/
 ssh host sopran-store --data-root /data/sopran_data rebuild
 ssh host sopran-store --data-root /data/sopran_data verify
 ```

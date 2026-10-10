@@ -122,7 +122,7 @@ separate work.
 ```python
 import sopran as spn
 
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 kg = spn.Kaguya(store=store)
 esa1 = kg.esa1.load(spn.day("2008-01-01"))
 

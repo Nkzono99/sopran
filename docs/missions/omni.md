@@ -10,7 +10,7 @@ NASA OMNI2の**1時間値**を読み込み、共通の `SopranArray` で可視�
 ```python
 import sopran as spn
 
-spn.config.use(store="F:/sopran_data", download="missing")
+spn.config.use(store="/path/to/sopran_data", download="missing")
 time = spn.day("2008-05-01")
 
 data = spn.omni.load(time)
@@ -25,7 +25,7 @@ v = spn.view(time=time)
 result = v.omni.pressure.plot()
 
 # 設定を独立させる場合
-omni = spn.Omni(store=spn.Store("F:/sopran_data"), download="never")
+omni = spn.Omni(store=spn.Store("/path/to/sopran_data"), download="never")
 ```
 
 ## 変数

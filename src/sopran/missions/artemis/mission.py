@@ -76,7 +76,7 @@ class Artemis:
 ```python
 import sopran as spn
 
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 art = spn.Artemis(store=store)
 time = spn.day("2011-07-01")
 

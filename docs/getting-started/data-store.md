@@ -4,7 +4,7 @@
 root の下で管理します。
 
 ```python
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 ```
 
 この書き方は Store object を作るだけで、`spn.kaguya` などの shortcut が使う
@@ -12,7 +12,7 @@ store = spn.Store("F:/sopran_data")
 `spn.config.use(...)` を使います。
 
 ```python
-spn.config.use(store="F:/sopran_data")
+spn.config.use(store="/path/to/sopran_data")
 spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
 ```
 
@@ -21,14 +21,14 @@ spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
 個人環境の既定保存先は環境変数で固定できます。
 
 ```powershell
-$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
-$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+$env:SOPRAN_DATA_ROOT = "/path/to/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "/path/to/sopran_cache"
 ```
 
 | 作り方 | data root | cache root |
 | --- | --- | --- |
-| `spn.Store("F:/data")` | `F:/data` | `F:/data/cache` |
-| `spn.config.use(store="F:/data")` + `spn.Store()` | `F:/data` | `F:/data/cache` |
+| `spn.Store("/path/to/data")` | `/path/to/data` | `/path/to/data/cache` |
+| `spn.config.use(store="/path/to/data")` + `spn.Store()` | `/path/to/data` | `/path/to/data/cache` |
 | `spn.Store()` + env | `SOPRAN_DATA_ROOT` | `SOPRAN_CACHE_ROOT` |
 | `spn.Project(...)` | session > env > `[store].data_root` > `project/data` | session > env > `[store].cache_root` > `<data root>/cache` |
 
@@ -48,7 +48,7 @@ $env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
 Provider のディレクトリやファイル名は保ちます。
 
 ```text
-F:/sopran_data/raw/kaguya/pds3/
+/path/to/sopran_data/raw/kaguya/pds3/
   sln-l-pace-3-pbf1-v3.0/20080101/data/IPACE_PBF1_080101_ESA1_V003.dat.gz
 ```
 

@@ -8,8 +8,8 @@ machine-local and excluded.
 
 Typical use (``sopran-store`` is ``python -m sopran.core.sync``)::
 
-    sopran-store --data-root F:/sopran_data sync-list > files.txt
-    rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ host:/data/sopran_data/
+    sopran-store --data-root /path/to/sopran_data sync-list > files.txt
+    rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ host:/data/sopran_data/
     ssh host sopran-store --data-root /data/sopran_data rebuild
     ssh host sopran-store --data-root /data/sopran_data verify
 

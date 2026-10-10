@@ -166,7 +166,6 @@ exclude = [
   "src/sopran/*.pdb",
 ]
 include = [
-  { path = "AGENTS.md", format = "sdist" },
   { path = "LICENSE", format = "sdist" },
   { path = "NOTICE", format = "sdist" },
   { path = "README.md", format = "sdist" },

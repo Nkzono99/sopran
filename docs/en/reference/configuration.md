@@ -57,21 +57,21 @@ Use `spn.config.use(...)` when a notebook should change the defaults used by
 ```python
 import sopran as spn
 
-spn.config.use(store="F:/sopran_data", download="never")
+spn.config.use(store="/path/to/sopran_data", download="never")
 
 time = spn.day("2008-02-01")
 spn.kaguya.esa1.energy_flux.plot(time, log_color=True)
 
-with spn.config.using(store="F:/other_data"):
+with spn.config.using(store="/path/to/other_data"):
     spn.kaguya.esa1.counts.load(time)
 ```
 
-`spn.Store("F:/sopran_data")` only creates a store object. It does not change
+`spn.Store("/path/to/sopran_data")` only creates a store object. It does not change
 the store used by `spn.kaguya`; use `spn.config.use(store=...)` for that.
 Persist user defaults with `spn.config.save_user(...)`.
 
 ```python
-spn.config.save_user(store="F:/sopran_data", download="missing")
+spn.config.save_user(store="/path/to/sopran_data", download="missing")
 ```
 
 ## User Global Config
@@ -85,8 +85,8 @@ legacy path.
 
 ```toml
 [store]
-data_root = "F:/sopran_data"
-cache_root = "F:/sopran_cache"
+data_root = "/path/to/sopran_data"
+cache_root = "/path/to/sopran_cache"
 
 [defaults]
 frame = "SSE"
@@ -118,6 +118,6 @@ counts = spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
 | `SOPRAN_DOWNLOAD_MODE` | Mission download policy. Defaults to `missing` |
 | `SOPRAN_OFFLINE` | Truthy values force the default download policy to `never` |
 
-Explicit roots such as `spn.Store("F:/data")` take precedence over environment
+Explicit roots such as `spn.Store("/path/to/data")` take precedence over environment
 variables. When `spn.Project("workspace")` creates a store automatically,
 environment variables take precedence over `[store]`.

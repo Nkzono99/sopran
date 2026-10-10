@@ -91,6 +91,6 @@ python -m mkdocs build --strict
 `spn.Store()` の既定 root は `SOPRAN_DATA_ROOT` で指定できます。
 
 ```powershell
-$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
-$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+$env:SOPRAN_DATA_ROOT = "/path/to/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "/path/to/sopran_cache"
 ```

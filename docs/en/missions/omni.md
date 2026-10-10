@@ -9,7 +9,7 @@ to `Store.raw_path("omni", "omni2_YYYY.dat")`. Existing ER-run caches are reusab
 ```python
 import sopran as spn
 
-spn.config.use(store="F:/sopran_data", download="missing")
+spn.config.use(store="/path/to/sopran_data", download="missing")
 time = spn.day("2008-05-01")
 data = spn.omni.load(time)
 frame = data.to_dataframe()  # scalar variables, UTC pandas index

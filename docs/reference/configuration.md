@@ -57,20 +57,20 @@ notebook で `spn.kaguya` や `spn.Store()` の既定値を一時的に変えた
 ```python
 import sopran as spn
 
-spn.config.use(store="F:/sopran_data", download="never")
+spn.config.use(store="/path/to/sopran_data", download="never")
 
 time = spn.day("2008-02-01")
 spn.kaguya.esa1.energy_flux.plot(time, log_color=True)
 
-with spn.config.using(store="F:/other_data"):
+with spn.config.using(store="/path/to/other_data"):
     spn.kaguya.esa1.counts.load(time)
 ```
 
-`spn.Store("F:/sopran_data")` は Store object を作るだけで、`spn.kaguya` の既定
+`spn.Store("/path/to/sopran_data")` は Store object を作るだけで、`spn.kaguya` の既定
 store は変更しません。永続化したい場合は `spn.config.save_user(...)` を使います。
 
 ```python
-spn.config.save_user(store="F:/sopran_data", download="missing")
+spn.config.save_user(store="/path/to/sopran_data", download="missing")
 ```
 
 ## user global config
@@ -83,8 +83,8 @@ project directory を作らずに使う場合、`spn.view(...)`、`spn.kaguya`�
 
 ```toml
 [store]
-data_root = "F:/sopran_data"
-cache_root = "F:/sopran_cache"
+data_root = "/path/to/sopran_data"
+cache_root = "/path/to/sopran_cache"
 
 [defaults]
 frame = "SSE"
@@ -116,7 +116,7 @@ counts = spn.kaguya.esa1.counts.load(spn.day("2008-02-01"))
 | `SOPRAN_DOWNLOAD_MODE` | mission download policy。未指定時は `missing` |
 | `SOPRAN_OFFLINE` | truthy のとき download policy を `never` にする |
 
-`spn.Store("F:/data")` のように明示 root を渡した場合は、環境変数よりも明示引数が優先されます。
+`spn.Store("/path/to/data")` のように明示 root を渡した場合は、環境変数よりも明示引数が優先されます。
 `spn.Project("workspace")` が store を自動生成する場合は、環境変数が `[store]` より優先されます。
 
 不正な設定は `ConfigError` を送出します。

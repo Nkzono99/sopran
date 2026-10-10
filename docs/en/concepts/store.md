@@ -4,7 +4,7 @@
 represented by `Project`.
 
 ```python
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 ```
 
 ## Root Resolution
@@ -17,8 +17,8 @@ When `Store()` receives no explicit root, it reads environment variables.
 | Cache root | Explicit argument > `SOPRAN_CACHE_ROOT` > `<data root>/cache` |
 
 ```powershell
-$env:SOPRAN_DATA_ROOT = "F:/sopran_data"
-$env:SOPRAN_CACHE_ROOT = "F:/sopran_cache"
+$env:SOPRAN_DATA_ROOT = "/path/to/sopran_data"
+$env:SOPRAN_CACHE_ROOT = "/path/to/sopran_cache"
 ```
 
 When a store is created through `Project("workspace")`, environment variables take
@@ -70,8 +70,8 @@ the root lives:
   synchronized by default; research datasets are selected by name.
 
 ```bash
-sopran-store --data-root F:/sopran_data sync-list > files.txt
-rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ host:/data/sopran_data/
+sopran-store --data-root /path/to/sopran_data sync-list > files.txt
+rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ host:/data/sopran_data/
 ssh host sopran-store --data-root /data/sopran_data rebuild
 ssh host sopran-store --data-root /data/sopran_data verify
 ```

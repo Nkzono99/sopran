@@ -19,7 +19,7 @@ project/user configuration and do not require constructing mission objects.
 ```python
 import sopran as spn
 
-spn.config.use(store="F:/sopran_data", download="never")
+spn.config.use(store="/path/to/sopran_data", download="never")
 time = spn.day("2008-02-01")
 
 counts = spn.kaguya.esa1.counts.load(time)
@@ -67,7 +67,7 @@ Use explicit mission objects only when you need to override store/source state
 directly.
 
 ```python
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 kg = spn.Kaguya(store=store, download="never")
 counts = kg.esa1.counts.load(time)
 ```
@@ -94,13 +94,13 @@ and package defaults.
 For notebooks, set process-local defaults once:
 
 ```python
-spn.config.use(store="F:/sopran_data", download="never")
+spn.config.use(store="/path/to/sopran_data", download="never")
 
-with spn.config.using(store="F:/other_data"):
+with spn.config.using(store="/path/to/other_data"):
     spn.kaguya.esa1.counts.load(time)
 ```
 
-`spn.Store("F:/sopran_data")` only creates a store object. It does not change
+`spn.Store("/path/to/sopran_data")` only creates a store object. It does not change
 the store used by `spn.kaguya`; use `spn.config.use(store=...)` for that.
 
 User global config is read from the OS user config directory, or from the
@@ -109,8 +109,8 @@ Set `SOPRAN_CONFIG` to choose a specific file.
 
 ```toml
 [store]
-data_root = "F:/sopran_data"
-cache_root = "F:/sopran_cache"
+data_root = "/path/to/sopran_data"
+cache_root = "/path/to/sopran_cache"
 
 [defaults]
 download = "missing"
@@ -209,9 +209,6 @@ python -m mypy src
 cargo fmt --check
 cargo test
 ```
-
-The old exploratory repository is at `F:\idl\lunarsat` and is read-only
-reference material for this rewrite.
 
 ## License
 

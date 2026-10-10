@@ -43,7 +43,7 @@ USGS の LRO LOLA 118m DEM は直接 URL があるため、Store の `raw/moon/d
 ファイルは約 8 GB です。
 
 ```python
-store = spn.Store(r"F:/sopran-data")
+store = spn.Store("/path/to/sopran_data")
 moon = spn.Moon()
 
 dem_path = moon.dem.download(source="lro.lola.dem_118m", store=store)

@@ -4,7 +4,7 @@
 root.
 
 ```text
-F:/sopran_data/
+/path/to/sopran_data/
   raw/
   normalized/
   features/

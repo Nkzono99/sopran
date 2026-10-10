@@ -524,15 +524,15 @@ raw、normalized、features、models、databases、cache の場所と registry �
 from sopran import Store
 
 store = Store(
-    root="F:/sopran_data",
-    cache_root="F:/sopran_cache",
+    root="/path/to/sopran_data",
+    cache_root="/path/to/sopran_cache",
 )
 ```
 
 標準レイアウト案:
 
 ```text
-F:/sopran_data/
+/path/to/sopran_data/
   raw/              # 公式配布データ。provider path と checksum を保つ
   normalized/       # decoded / cleaned parquet, arrow, zarr
   features/         # PAD, moment, spectrum, orbit context など再利用する高レベル指標
@@ -540,7 +540,7 @@ F:/sopran_data/
   databases/        # ユーザー定義または研究テーマ単位の採用DB
   registry/         # dataset registry, manifest index
 
-F:/sopran_cache/
+/path/to/sopran_cache/
   downloads/
   tmp/
   logs/
@@ -590,7 +590,7 @@ Case
 基本形:
 
 ```python
-store = spn.Store("F:/sopran_data")
+store = spn.Store("/path/to/sopran_data")
 prj = spn.Project("projects/lunar_wake", store=store)
 case = prj.case("wake_20080201")
 
