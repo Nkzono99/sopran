@@ -14,6 +14,7 @@ Import the specific model or adapter explicitly. Importing `sopran` or
 | `kaguya.er_batch` | Day-sharded full-period fits, frozen run identity, Slurm-ready CLI | Pilot agreement on the target cluster and a completed full-period run |
 | `kaguya.er` | Shared ESA/LMAG/SPICE input preparation and explicit estimator calls | Calibration, pairing, exposure, geometry and reader regression tests |
 | `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels and instrument comparisons |
+| `moon.svm3d` | Tsunakawa SVM3D shell grid, native RK4 tracing through a uniform external field, interpolation accuracy report | Documented grid build and accuracy limits; a field-line connection contract that is independent of ER |
 
 ER inventory reviewed: 2026-10-02; finite-bin count likelihood added 2026-10-10. Finite-bin and Halekas are the retained
 estimators. Paired-count, binary, joint, global-joint and incident models,

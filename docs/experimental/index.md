@@ -14,6 +14,7 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | KAGUYAのER入力・2手法への呼出し | `sopran.experimental.kaguya.er.KaguyaErInstrument` |
 | 波動候補・ridge・clustering | `sopran.experimental.waves` |
 | KAGUYA WFCの候補抽出preset・品質処理 | `sopran.experimental.kaguya.waves` |
+| Tsunakawa SVM3Dのshell格子・磁力線トレース | `sopran.experimental.moon.svm3d` |
 
 - [ERの利用方法と限界](electron-reflectometry.md)
 - [ER手法とコードの一覧](er-methods.md)
@@ -26,7 +27,7 @@ PACE・LMAG・LRSの取得、校正、nativeビン、座標変換、Store、Plot
 ERの型やfit関数も`spn`直下には再公開しません。
 
 旧`sopran.analysis.electron_reflection`、`sopran.analysis.waves`、
-`sopran.missions.kaguya.er*`の試作は上記へ移動しました。互換aliasはありません。
+`sopran.missions.kaguya.er*`、`sopran.bodies.moon.svm3d`の試作は上記へ移動しました。互換aliasはありません。
 共有の磁場補間は通常側の`missions.kaguya.magnetic_geometry`にあります。
 
 ERの推定器はfinite-binとHalekasです。結果は型付きのfit結果として返し、

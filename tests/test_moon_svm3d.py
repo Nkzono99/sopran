@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import sopran.bodies.moon.svm3d as svm3d_module
-from sopran.bodies.moon.svm3d import (
+import sopran.experimental.moon.svm3d as svm3d_module
+from sopran.experimental.moon.svm3d import (
     MOON_MEAN_RADIUS_KM,
     SVM3DShellGrid,
     SVM3DTraceSettings,
