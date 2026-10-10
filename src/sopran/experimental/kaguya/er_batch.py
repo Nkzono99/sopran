@@ -43,7 +43,7 @@ import numpy as np
 import polars as pl
 
 from sopran.core.schema import InstrumentSchema, VariableSchema
-from sopran.core.store import Store
+from sopran.core.store import TEMP_MARKER, Store
 from sopran.core.time import TimeRange, day
 
 INPUT_DATASET = "kaguya.er.paired_distributions"
@@ -180,7 +180,7 @@ def shard_checksum(path: Path) -> str:
 
 def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(path.name + TEMP_MARKER)
     tmp.write_text(json.dumps(value, indent=1, default=str), encoding="utf-8")
     os.replace(tmp, path)
 
@@ -191,7 +191,7 @@ def read_json(path: Path) -> Any:
 
 def write_parquet(frame: pl.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(path.name + TEMP_MARKER)
     frame.write_parquet(tmp, compression="zstd")
     os.replace(tmp, path)
 
@@ -393,8 +393,10 @@ def export_catalog(
         time_coverage=day_range([e["day"] for e in index]),
         shards=shards,
         producer="sopran.experimental.kaguya.er_batch.export_catalog",
+        managed=True,
         provenance=dict(
-            catalog=dict(path=str(catalog), bytes=stat.st_size, mtime_ns=stat.st_mtime_ns),
+            # Origin hint only; inputs are identified by the shard checksums.
+            catalog=dict(origin_path=str(catalog), bytes=stat.st_size, mtime_ns=stat.st_mtime_ns),
             days_sha256=sha256_file(root / "days.json"),
         ),
         parameters=dict(

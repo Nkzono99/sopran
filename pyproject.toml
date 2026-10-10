@@ -40,6 +40,7 @@ dependencies = [
 [project.scripts]
 sopran-env-check = "sopran.env_check:main"
 sopran-schema-docs = "sopran.schema_docs:main"
+sopran-store = "sopran.core.sync:main"
 
 [project.optional-dependencies]
 analysis = [

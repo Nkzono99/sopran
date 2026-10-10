@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -26,6 +27,25 @@ _LAYERS = ("raw", "normalized", "features", "models", "databases")
 _DATASET_SCHEMA_VERSION = "0.1"
 _DATASET_STATUSES = ("scratch", "candidate", "adopted", "deprecated")
 _CATALOG_SHARD_STATUSES = ("pending", "running", "complete", "failed", "skipped")
+_SHARD_FIELDS = ("path", "schema_version", "start", "stop", "row_count", "checksum", "status")
+
+# Sync contract: everything under the Store root is addressed by root-relative
+# paths; files with these markers, ``registry/``, ``cache/`` and dataset ``work/``
+# directories are machine-local and never synchronized.
+TEMP_MARKER = ".sopran-tmp"
+BACKUP_MARKER = ".sopran-bak"
+# Each shard ``<path>`` has ``<path>.sopran.json``; these sidecars are the source of
+# truth, and ``catalog.parquet`` is an index rebuilt from them.
+SHARD_SIDECAR_SUFFIX = ".sopran.json"
+LOCAL_DIRECTORIES = ("registry", "cache")
+DATASET_WORK_DIRECTORY = "work"
+SYNC_EXCLUDES = (
+    f"*{TEMP_MARKER}*",
+    f"*{BACKUP_MARKER}*",
+    "/registry/",
+    "/cache/",
+    f"{DATASET_WORK_DIRECTORY}/",
+)
 
 
 @dataclass(frozen=True)
@@ -144,9 +164,9 @@ class Store:
 
     def rebuild_raw_file_registry(self) -> Any:
         path = self.registry_path("raw_files.parquet")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        manifests = _raw_manifest_paths(self._root)
         frame = _raw_file_index_frame(_raw_file_index_rows(self._root))
-        frame.write_parquet(path)
+        _write_registry(frame, path, _files_signature(manifests, self._root))
         return frame.sort("path")
 
     def raw_files(
@@ -164,7 +184,9 @@ class Store:
         import polars as pl
 
         index_path = self.registry_path("raw_files.parquet")
-        if refresh or not index_path.exists():
+        # The registry is a machine-local index; rebuild it whenever manifests change.
+        signature = _files_signature(_raw_manifest_paths(self._root), self._root)
+        if refresh or not _registry_current(index_path, signature):
             frame = self.rebuild_raw_file_registry()
         else:
             frame = pl.read_parquet(index_path)
@@ -281,7 +303,15 @@ class Store:
         storage_layout: dict[str, Any] | None = None,
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
+        managed: bool = False,
+        _prune_shard_sidecars: bool = True,
     ) -> DatasetRecord:
+        """Write manifest, schema and catalog; ``shards`` is the complete shard list.
+
+        ``managed=True`` marks datasets that sopran creates and reuses on its own
+        (caches and pipeline products with content-derived variants); they are
+        synchronized by default. Shard sidecars not in ``shards`` are removed.
+        """
         _validate_dataset_status(status)
         source_files = _normalize_store_source_files(self._root, source_files)
         record = DatasetRecord(
@@ -309,6 +339,7 @@ class Store:
             "software": _software_metadata(),
             "parameters": parameters or {},
             "partitioning": list(partitioning),
+            "managed": bool(managed),
         }
         if storage_layout is not None:
             manifest["storage_layout"] = storage_layout
@@ -323,6 +354,7 @@ class Store:
             manifest=manifest,
             schema_payload=_schema_to_json(schema),
             shards=shards,
+            prune_sidecars=_prune_shard_sidecars,
         )
         return record
 
@@ -352,7 +384,13 @@ class Store:
         status: str = "candidate",
         dataset_version: str = "1",
         partitioning: tuple[str, ...] = (),
+        managed: bool = False,
     ) -> DatasetRecord:
+        """Write one shard; ``append`` keeps the other shards (catalog and sidecars).
+
+        Appends never delete other shards' sidecars, so concurrent writers of the
+        same dataset lose at most catalog rows, which ``rebuild_catalog`` restores.
+        """
         if append and overwrite:
             raise ValueError("append and overwrite cannot both be true")
         _validate_dataset_status(status)
@@ -365,7 +403,7 @@ class Store:
                 variant_id=variant_id,
             )
         )
-        existing_shards = _read_catalog_shards(record.catalog_path) if append else ()
+        existing_shards = _merged_shards(record) if append else ()
         manifest_time_coverage = (
             _merge_time_coverage(record.manifest_path, time_coverage) if append else time_coverage
         )
@@ -384,8 +422,8 @@ class Store:
             raise FileExistsError(f"Parquet shard already exists: {target}")
         target.parent.mkdir(parents=True, exist_ok=True)
         target_preexisting = target.exists()
-        temp_target = target.with_name(f"{target.name}.tmp")
-        backup_target = _sibling_temp_path(target, ".bak")
+        temp_target = target.with_name(f"{target.name}{TEMP_MARKER}")
+        backup_target = _sibling_temp_path(target, BACKUP_MARKER)
         if temp_target.exists():
             temp_target.unlink()
         new_target_written = False
@@ -426,6 +464,8 @@ class Store:
                 status=status,
                 dataset_version=dataset_version,
                 partitioning=partitioning,
+                managed=managed,
+                _prune_shard_sidecars=not append,
             )
         except Exception:
             if new_target_written and target.exists():
@@ -500,10 +540,43 @@ class Store:
 
     def rebuild_registry(self) -> Any:
         path = self.registry_path("datasets.parquet")
-        path.parent.mkdir(parents=True, exist_ok=True)
+        manifests = _dataset_manifest_paths(self._root)
         frame = _dataset_index_frame(_dataset_index_rows(self._root))
-        frame.write_parquet(path)
+        _write_registry(frame, path, _files_signature(manifests, self._root))
         return frame.sort(["layer", "dataset_id"])
+
+    def dataset_records(self, *, layer: str | None = None) -> tuple[DatasetRecord, ...]:
+        """Every dataset (manifest) in the Store, optionally of one layer."""
+        layers = _LAYERS if layer is None else (layer,)
+        paths = [
+            p
+            for p in _dataset_manifest_paths(self._root)
+            if p.relative_to(self._root).parts[0] in layers
+        ]
+        return tuple(DatasetRecord(root=path.parent) for path in sorted(paths))
+
+    def rebuild(self, *, layer: str | None = None) -> dict[str, Any]:
+        """Rebuild every dataset catalog from shard sidecars, then the registries.
+
+        Run after copying datasets between machines (e.g. with ``rsync``).
+        """
+        datasets = {}
+        for record in self.dataset_records(layer=layer):
+            datasets[record.root.relative_to(self._root).as_posix()] = record.rebuild_catalog()
+        self.rebuild_registry()
+        self.rebuild_raw_file_registry()
+        return datasets
+
+    def file_reference(self, path: Path | str) -> dict[str, Any]:
+        """Portable reference to a file: Store-relative path when inside the Store,
+        otherwise only an external hint; identity is the content checksum."""
+        target = Path(path)
+        reference = file_content_reference(target)
+        try:
+            reference["store_path"] = target.resolve().relative_to(self._root.resolve()).as_posix()
+        except ValueError:
+            reference["external_path"] = target.as_posix()
+        return reference
 
     def datasets(
         self,
@@ -524,7 +597,9 @@ class Store:
         import polars as pl
 
         index_path = self.registry_path("datasets.parquet")
-        if refresh or not index_path.exists():
+        # The registry is a machine-local index; rebuild it whenever manifests change.
+        signature = _files_signature(_dataset_manifest_paths(self._root), self._root)
+        if refresh or not _registry_current(index_path, signature):
             frame = self.rebuild_registry()
         else:
             frame = pl.read_parquet(index_path)
@@ -613,6 +688,10 @@ class DatasetRecord:
     def failed_shards(self) -> tuple[dict[str, Any], ...]:
         return self.shards(status="failed")
 
+    def files(self) -> list[Path]:
+        """Files of this dataset, excluding nested datasets, ``work/`` and temporaries."""
+        return _owned_files(self.root)
+
     def replace_shard(
         self,
         shard_path: str | Path,
@@ -621,49 +700,30 @@ class DatasetRecord:
         time_coverage: TimeRange,
         compression: str = "zstd",
     ) -> DatasetRecord:
-        import polars as pl
-
         path_text = Path(shard_path).as_posix()
-        catalog = self.catalog()
-        if path_text not in catalog.select("path").to_series().to_list():
+        shards = [dict(shard) for shard in _merged_shards(self)]
+        if path_text not in {shard["path"] for shard in shards}:
             raise KeyError(f"Shard not found in catalog: {path_text}")
 
         target = _resolve_child(self.root, path_text)
         target.parent.mkdir(parents=True, exist_ok=True)
-        backup_target = _sibling_temp_path(target, ".bak")
-        temp_target = _sibling_temp_path(target, ".tmp")
+        backup_target = _sibling_temp_path(target, BACKUP_MARKER)
+        temp_target = _sibling_temp_path(target, TEMP_MARKER)
         try:
             frame.write_parquet(temp_target, compression=compression)
             if target.exists():
                 target.replace(backup_target)
             temp_target.replace(target)
-            row_count = _frame_row_count(frame)
-            checksum = _sha256_file(target)
-            updated = catalog.with_columns(
-                [
-                    pl.when(pl.col("path") == path_text)
-                    .then(pl.lit(time_coverage.start_iso))
-                    .otherwise(pl.col("start"))
-                    .alias("start"),
-                    pl.when(pl.col("path") == path_text)
-                    .then(pl.lit(time_coverage.stop_iso))
-                    .otherwise(pl.col("stop"))
-                    .alias("stop"),
-                    pl.when(pl.col("path") == path_text)
-                    .then(pl.lit(row_count))
-                    .otherwise(pl.col("row_count"))
-                    .alias("row_count"),
-                    pl.when(pl.col("path") == path_text)
-                    .then(pl.lit(checksum))
-                    .otherwise(pl.col("checksum"))
-                    .alias("checksum"),
-                    pl.when(pl.col("path") == path_text)
-                    .then(pl.lit("complete"))
-                    .otherwise(pl.col("status"))
-                    .alias("status"),
-                ]
-            )
-            updated_shards = tuple(updated.to_dicts())
+            for shard in shards:
+                if shard["path"] == path_text:
+                    shard.update(
+                        start=time_coverage.start_iso,
+                        stop=time_coverage.stop_iso,
+                        row_count=_frame_row_count(frame),
+                        checksum=_sha256_file(target),
+                        status="complete",
+                    )
+            updated_shards = tuple(shards)
             manifest = self.manifest()
             manifest["time_coverage"] = _time_coverage_to_json(
                 _time_coverage_from_shards(updated_shards)
@@ -673,6 +733,7 @@ class DatasetRecord:
                 manifest=manifest,
                 schema_payload=self.schema(),
                 shards=updated_shards,
+                prune_sidecars=False,
             )
         except Exception:
             if target.exists():
@@ -710,22 +771,82 @@ class DatasetRecord:
                 return False
         return True
 
+    def verify_shards(self) -> dict[str, list[str]]:
+        """Compare complete shards of catalog and sidecars with the files on disk.
+
+        Returns lists of shard paths that are ``missing``, have a different
+        ``checksum``, or are known only to the catalog or only to sidecars (rerun
+        ``rebuild_catalog`` for the latter two, e.g. after a sync).
+        """
+        catalog = {shard["path"]: shard for shard in _read_catalog_shards(self.catalog_path)}
+        sidecars = {shard["path"]: shard for shard in _read_shard_sidecars(self.root)}
+        report: dict[str, list[str]] = {
+            "missing": [],
+            "checksum": [],
+            "catalog_only": sorted(set(catalog) - set(sidecars)),
+            "sidecar_only": sorted(set(sidecars) - set(catalog)),
+        }
+        for path, shard in sorted({**catalog, **sidecars}.items()):
+            if shard.get("status") != "complete":
+                continue
+            target = _resolve_child(self.root, path)
+            if not target.exists():
+                report["missing"].append(path)
+            elif shard.get("checksum") != _sha256_file(target):
+                report["checksum"].append(path)
+        return report
+
+    def rebuild_catalog(self) -> dict[str, int]:
+        """Rebuild ``catalog.parquet`` from shard sidecars merged with the catalog.
+
+        Sidecars win over catalog rows for the same path; catalog-only rows are
+        kept and receive sidecars, so datasets written before sidecars existed are
+        migrated. Use after copying shards from another machine or job.
+        """
+        catalog = _read_catalog_shards(self.catalog_path)
+        sidecars = _read_shard_sidecars(self.root)
+        shards = _merged_shards(self)
+        manifest = self.manifest()
+        coverage = _time_coverage_from_shards(shards)
+        if coverage is not None:
+            manifest["time_coverage"] = _time_coverage_to_json(coverage)
+        _write_dataset_metadata(
+            self,
+            manifest=manifest,
+            schema_payload=self.schema(),
+            shards=shards,
+            prune_sidecars=False,
+        )
+        return {
+            "shards": len(shards),
+            "catalog_rows": len(catalog),
+            "sidecars": len(sidecars),
+            "added_from_sidecars": len({s["path"] for s in shards} - {s["path"] for s in catalog}),
+        }
+
     def update_shard_status(self, shard_path: str | Path, status: str) -> DatasetRecord:
         _validate_catalog_shard_status(status)
-        import polars as pl
-
         path_text = Path(shard_path).as_posix()
-        catalog = self.catalog()
-        if path_text not in catalog.select("path").to_series().to_list():
+        shards = [dict(shard) for shard in _merged_shards(self)]
+        if path_text not in {shard["path"] for shard in shards}:
             raise KeyError(f"Shard not found in catalog: {path_text}")
-        updated = catalog.with_columns(
-            pl.when(pl.col("path") == path_text)
-            .then(pl.lit(status))
-            .otherwise(pl.col("status"))
-            .alias("status")
+        for shard in shards:
+            if shard["path"] == path_text:
+                shard["status"] = status
+        _write_dataset_metadata(
+            self,
+            manifest=self.manifest(),
+            schema_payload=self.schema(),
+            shards=tuple(shards),
+            prune_sidecars=False,
         )
-        _write_parquet(updated, self.catalog_path)
         return self
+
+
+def remove_shard_files(path: Path) -> None:
+    """Delete a shard file and its sidecar (for shards dropped from a dataset)."""
+    path.unlink(missing_ok=True)
+    path.with_name(path.name + SHARD_SIDECAR_SUFFIX).unlink(missing_ok=True)
 
 
 @dataclass(frozen=True)
@@ -906,7 +1027,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = _sibling_temp_path(path, ".tmp")
+    temp_path = _sibling_temp_path(path, TEMP_MARKER)
     try:
         temp_path.write_text(text, encoding="utf-8")
         temp_path.replace(path)
@@ -918,7 +1039,7 @@ def _write_text(path: Path, text: str) -> None:
 
 def _write_parquet(frame: Any, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = _sibling_temp_path(path, ".tmp")
+    temp_path = _sibling_temp_path(path, TEMP_MARKER)
     try:
         frame.write_parquet(temp_path)
         temp_path.replace(path)
@@ -934,10 +1055,11 @@ def _write_dataset_metadata(
     manifest: dict[str, Any],
     schema_payload: dict[str, Any],
     shards: tuple[dict[str, Any], ...],
+    prune_sidecars: bool = True,
 ) -> None:
-    temp_manifest = _sibling_temp_path(record.manifest_path, ".tmp")
-    temp_schema = _sibling_temp_path(record.schema_path, ".tmp")
-    temp_catalog = _sibling_temp_path(record.catalog_path, ".tmp")
+    temp_manifest = _sibling_temp_path(record.manifest_path, TEMP_MARKER)
+    temp_schema = _sibling_temp_path(record.schema_path, TEMP_MARKER)
+    temp_catalog = _sibling_temp_path(record.catalog_path, TEMP_MARKER)
     temp_paths = (temp_manifest, temp_schema, temp_catalog)
     backups: list[tuple[Path, Path]] = []
     committed: list[Path] = []
@@ -950,7 +1072,7 @@ def _write_dataset_metadata(
             (record.catalog_path, temp_catalog),
             (record.manifest_path, temp_manifest),
         ):
-            backup = _sibling_temp_path(target, ".bak")
+            backup = _sibling_temp_path(target, BACKUP_MARKER)
             if target.exists():
                 target.replace(backup)
                 backups.append((target, backup))
@@ -971,6 +1093,121 @@ def _write_dataset_metadata(
         if backup.exists():
             with suppress(OSError):
                 backup.unlink(missing_ok=True)
+    _sync_shard_sidecars(record.root, shards, prune=prune_sidecars)
+
+
+def _shard_row(shard: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "path": Path(str(shard.get("path") or "")).as_posix(),
+        "schema_version": str(shard.get("schema_version") or _DATASET_SCHEMA_VERSION),
+        "start": str(shard.get("start") or ""),
+        "stop": str(shard.get("stop") or ""),
+        "row_count": int(shard.get("row_count") or 0),
+        "checksum": str(shard.get("checksum") or ""),
+        "status": str(shard.get("status") or "pending"),
+    }
+
+
+def _sidecar_path(root: Path, shard_path: str) -> Path:
+    return _resolve_child(root, shard_path + SHARD_SIDECAR_SUFFIX)
+
+
+def _sync_shard_sidecars(root: Path, shards: tuple[dict[str, Any], ...], *, prune: bool) -> None:
+    """Write changed sidecars; with ``prune`` delete sidecars of unlisted shards."""
+    listed = set()
+    for shard in shards:
+        row = _shard_row(shard)
+        if not row["path"]:
+            continue
+        listed.add(row["path"])
+        target = _sidecar_path(root, row["path"])
+        if target.exists():
+            with suppress(OSError, ValueError):
+                if json.loads(target.read_text(encoding="utf-8")) == row:
+                    continue
+        _write_json(target, row)
+    if prune:
+        for sidecar in _owned_sidecars(root):
+            shard_path = sidecar.relative_to(root).as_posix()[: -len(SHARD_SIDECAR_SUFFIX)]
+            if shard_path not in listed:
+                sidecar.unlink(missing_ok=True)
+
+
+def _owned_files(root: Path) -> list[Path]:
+    """Files of one dataset: skips nested datasets, ``work/`` and temporary files."""
+    files: list[Path] = []
+    for directory, subdirectories, names in os.walk(root):
+        current = Path(directory)
+        subdirectories[:] = sorted(
+            name
+            for name in subdirectories
+            if not (current / name / "dataset.json").exists()
+            and not (current == root and name == DATASET_WORK_DIRECTORY)
+            and not (current == root and name == "variants")
+        )
+        files.extend(
+            current / name
+            for name in sorted(names)
+            if TEMP_MARKER not in name and BACKUP_MARKER not in name
+        )
+    return files
+
+
+def _owned_sidecars(root: Path) -> list[Path]:
+    return [path for path in _owned_files(root) if path.name.endswith(SHARD_SIDECAR_SUFFIX)]
+
+
+def _read_shard_sidecars(root: Path) -> tuple[dict[str, Any], ...]:
+    rows = []
+    for sidecar in _owned_sidecars(root):
+        with suppress(OSError, ValueError):
+            row = _shard_row(json.loads(sidecar.read_text(encoding="utf-8")))
+            expected = sidecar.relative_to(root).as_posix()[: -len(SHARD_SIDECAR_SUFFIX)]
+            if row["path"] == expected:
+                rows.append(row)
+    return tuple(rows)
+
+
+def _merged_shards(record: DatasetRecord) -> tuple[dict[str, Any], ...]:
+    """Catalog rows updated by sidecars (sidecars win), ordered by start and path."""
+    merged = {
+        row["path"]: row for row in map(_shard_row, _read_catalog_shards(record.catalog_path))
+    }
+    merged.update({row["path"]: row for row in _read_shard_sidecars(record.root)})
+    return tuple(sorted(merged.values(), key=lambda row: (row["start"], row["path"])))
+
+
+def _files_signature(paths: list[Path], root: Path) -> str:
+    digest = sha256()
+    for path in sorted(paths):
+        stat = path.stat()
+        key = f"{path.relative_to(root).as_posix()}|{stat.st_mtime_ns}|{stat.st_size}\n"
+        digest.update(key.encode())
+    return digest.hexdigest()
+
+
+def _dataset_manifest_paths(root: Path) -> list[Path]:
+    paths: list[Path] = []
+    for layer in _LAYERS:
+        layer_root = root / layer
+        if layer_root.exists():
+            paths.extend(layer_root.rglob("dataset.json"))
+    return paths
+
+
+def _registry_current(index_path: Path, signature: str) -> bool:
+    signature_path = index_path.with_name(index_path.name + ".signature")
+    return (
+        index_path.exists()
+        and signature_path.exists()
+        and signature_path.read_text(encoding="utf-8").strip() == signature
+    )
+
+
+def _write_registry(frame: Any, index_path: Path, signature: str) -> None:
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_parquet(frame, index_path)
+    _write_text(index_path.with_name(index_path.name + ".signature"), signature)
 
 
 def _write_catalog(path: Path, shards: tuple[dict[str, Any], ...]) -> None:
@@ -1223,6 +1460,7 @@ def _dataset_index_rows(root: Path) -> tuple[dict[str, Any], ...]:
                     "start": str(time_coverage.get("start") or ""),
                     "stop": str(time_coverage.get("stop") or ""),
                     "path": dataset_root.relative_to(root).as_posix(),
+                    "managed": bool(manifest.get("managed", False)),
                 }
             )
     return tuple(rows)
@@ -1245,10 +1483,29 @@ def _dataset_index_frame(rows: tuple[dict[str, Any], ...]) -> Any:
         "start": pl.Utf8,
         "stop": pl.Utf8,
         "path": pl.Utf8,
+        "managed": pl.Boolean,
     }
     if not rows:
         return pl.DataFrame(schema=schema)
     return pl.DataFrame(rows, schema=schema)
+
+
+def _raw_manifest_paths(root: Path) -> list[Path]:
+    raw_root = root / "raw"
+    return list(raw_root.rglob("*.sopran.json")) if raw_root.exists() else []
+
+
+@lru_cache(maxsize=4096)
+def _cached_content_reference(path: str, size: int, mtime_ns: int) -> tuple[str, str, int]:
+    return Path(path).name, _sha256_file(Path(path)), size
+
+
+def file_content_reference(path: Path | str) -> dict[str, Any]:
+    """Machine-independent identity of a file: name, sha256 checksum and size."""
+    target = Path(path).resolve()
+    stat = target.stat()
+    name, checksum, size = _cached_content_reference(str(target), stat.st_size, stat.st_mtime_ns)
+    return {"name": name, "checksum": checksum, "size_bytes": size}
 
 
 def _raw_file_index_rows(root: Path) -> tuple[dict[str, Any], ...]:

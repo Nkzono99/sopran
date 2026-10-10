@@ -43,11 +43,43 @@ raw files -> decode -> normalized shards -> catalog.parquet -> scan()
 ## Dataset Contents
 
 ```text
-dataset.json      # dataset ID, time coverage, provenance
+dataset.json      # dataset ID, time coverage, provenance, managed
 schema.json       # variables, dims, units, frame
-catalog.parquet   # shard path, start/stop, row count, checksum, status
-shards/           # parquet files
+catalog.parquet   # shard path, start/stop, row count, checksum, status (index)
+shards/           # parquet files and <shard>.sopran.json sidecars (source of truth)
 ```
+
+## Synchronizing Between Machines (rsync)
+
+The Store root is copied as plain files. These rules keep datasets usable wherever
+the root lives:
+
+- Every reference inside the Store is root-relative. Files outside it are recorded
+  only as a checksum plus an origin hint and are never used for lookup.
+- Variant IDs of caches that sopran creates depend on settings and input content
+  (e.g. raw-manifest checksums), so the same work has the same ID on every machine
+  and copied results are reused.
+- Shards are written to a temporary file and renamed. Each shard's sidecar
+  (`<shard>.sopran.json`) is the source of truth; `catalog.parquet` is an index rebuilt
+  from them, so shards written by other machines or jobs merge after a rebuild.
+- `registry/`, `cache/`, dataset `work/` directories, `*.sopran-tmp*` and
+  `*.sopran-bak*` are machine-local and not synchronized. Registries rebuild
+  themselves when manifests change.
+- `managed=True` datasets are those sopran creates and reuses itself (coverage, orbit
+  and geometry, magnetic connection, LRS and pitch-angle-spectrum caches). They are
+  synchronized by default; research datasets are selected by name.
+
+```bash
+sopran-store --data-root F:/sopran_data sync-list > files.txt
+rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ host:/data/sopran_data/
+ssh host sopran-store --data-root /data/sopran_data rebuild
+ssh host sopran-store --data-root /data/sopran_data verify
+```
+
+`sopran-store` equals `python -m sopran.core.sync`; add `--dataset ID` (id or prefix)
+or `--raw PREFIX` to the list. `rebuild` also gives sidecars to datasets written
+before sidecars existed. In Python use `store.rebuild()`, `record.rebuild_catalog()`,
+`record.verify_shards()` and `store.file_reference(path)`.
 
 ## Common Operations
 

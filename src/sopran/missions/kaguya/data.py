@@ -19,7 +19,7 @@ from sopran.core.data import (
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
-from sopran.core.store import DatasetRecord, Store
+from sopran.core.store import DatasetRecord, Store, remove_shard_files
 from sopran.core.time import TimeRange, _filter_polars_time, period
 from sopran.missions.kaguya.magnetic_geometry import GEOMETRY_POLICY
 from sopran.missions.kaguya.pace import (
@@ -1104,11 +1104,12 @@ def _write_pitch_angle_spectrum_store(
         append=append,
         source_datasets=(f"kaguya.{instrument_id}.{value}",),
         producer="sopran.kaguya.pace.pitch_angle_spectrum",
+        managed=True,
         parameters=_metadata_with_operations({}, product.operations),
         status="candidate",
     )
     for path in obsolete_shards:
-        path.unlink(missing_ok=True)
+        remove_shard_files(path)
     return record
 
 

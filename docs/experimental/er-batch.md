@@ -70,8 +70,14 @@ profileはRm±1 dexの13点で、95%区間と`minimum_fit`を出す。
 プログラムは`srun`で起動する（[KUDPCのバッチ処理マニュアル](https://web.kudpc.kyoto-u.ac.jp/manual/en/run/batch)）。
 雛形はこの書式に合わせたが、キュー名・上限値・array jobの環境変数は、最初のパイロットで確かめる。
 
-1. **データを運ぶ。** 手元の`F:/sopran_data/features/kaguya/er/paired_distributions/`を、
-   スパコン側の`$SOPRAN_DATA_ROOT/features/kaguya/er/paired_distributions/`へ`rsync -av`で写す（約15 GB）。
+1. **データを運ぶ。** 入力datasetは`managed`なので、Storeの同期手順でそのまま運べる（約13 GB）。
+
+   ```bash
+   sopran-store --data-root F:/sopran_data sync-list --dataset kaguya.er.paired_distributions > files.txt
+   rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ <host>:$SOPRAN_DATA_ROOT/
+   ```
+
+   転送後に送り先で`sopran-store rebuild`と`verify-inputs`を行う。
 2. **ログインノードで環境を作る。** sopranをgitで取得し、次を実行する。
    uvとRustを`$HOME`に入れ、版を固定したvenvにsopranを非editableでbuildする。
 
@@ -99,7 +105,7 @@ profileはRm±1 dexの13点で、95%区間と`minimum_fit`を出す。
    `ENV_ROOT`・`SOPRAN_DATA_ROOT`・`RUN_VARIANT`をexportして`sbatch`する。
    時間切れになったtaskは、同じコマンドで再投入すれば続きから処理する。
 6. **集める。** `status`で完了を確かめ、`finalize`でcatalogに登録する。
-   `models/kaguya/er/finite_bin_fits/variants/<run>/`を手元へ`rsync`で戻す。
+   `sopran-store sync-list --dataset kaguya.er.finite_bin_fits --variant <run>`の一覧で手元へ戻し、手元で`sopran-store rebuild`を行う。
 
 ## 検証
 

@@ -429,6 +429,7 @@ fig = plot_result.fig
                 source_datasets=(self.dataset_id,),
                 overwrite=True,
                 producer="sopran.kaguya.coverage",
+                managed=True,
                 parameters={
                     "coverage": {
                         "freq": freq,
@@ -919,6 +920,7 @@ class GeometryArrayEndpoint:
                 source_datasets=("kaguya.lmag",),
                 overwrite=True,
                 producer=f"sopran.kaguya.orbit.{self.name}",
+                managed=True,
             )
         return cast(
             "SopranArray",
@@ -2645,6 +2647,7 @@ class LmagConnectionEndpoint:
                 source_datasets=("kaguya.lmag.magnetic_field", "kaguya.orbit.position"),
                 overwrite=True,
                 producer="sopran.kaguya.lmag.magnetic_connection",
+                managed=True,
             )
         return product
 
@@ -2790,6 +2793,7 @@ def _write_lrs_array_cache(
         source_datasets=("kaguya.lrs.raw",),
         overwrite=True,
         producer=f"sopran.kaguya.lrs.{endpoint.name}",
+        managed=True,
         parameters={
             "kind": endpoint.kind,
             "coordinates": _lrs_cache_coordinates(array),

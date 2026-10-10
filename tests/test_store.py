@@ -722,7 +722,7 @@ def test_store_parquet_writer_removes_new_shard_when_registration_fails(
 
     dataset_root = store.dataset_path("kaguya.esa1.counts", layer="normalized")
     assert not (dataset_root / "shards" / "part-000.parquet").exists()
-    assert not (dataset_root / "shards" / "part-000.parquet.tmp").exists()
+    assert not list((dataset_root / "shards").glob("part-000.parquet.sopran-tmp*"))
 
 
 def test_store_parquet_writer_restores_overwritten_shard_when_registration_fails(
@@ -865,7 +865,7 @@ def test_store_register_dataset_keeps_existing_metadata_when_catalog_write_fails
     assert dataset.manifest() == original_manifest
     assert dataset.schema() == original_schema
     assert dataset.catalog().to_dicts() == original_catalog
-    assert not list(dataset.root.glob("*.tmp*"))
+    assert not list(dataset.root.glob("*.sopran-tmp*"))
 
 
 def test_store_register_dataset_keeps_commit_when_backup_cleanup_fails(
@@ -889,7 +889,7 @@ def test_store_register_dataset_keeps_commit_when_backup_cleanup_fails(
     real_unlink = Path.unlink
 
     def flaky_unlink(self, *args, **kwargs):
-        if str(self.name).endswith(".bak0"):
+        if str(self.name).endswith(".sopran-bak0"):
             raise PermissionError("backup locked")
         return real_unlink(self, *args, **kwargs)
 

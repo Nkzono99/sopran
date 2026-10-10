@@ -65,8 +65,10 @@ with `srun` ([KUDPC batch manual](https://web.kudpc.kyoto-u.ac.jp/manual/en/run/
 The template follows that syntax; confirm queue names, limits and array variables
 with the first pilot.
 
-1. **Move data:** `rsync -av` `F:/sopran_data/features/kaguya/er/paired_distributions/`
-   to `$SOPRAN_DATA_ROOT/features/kaguya/er/paired_distributions/` (about 15 GB).
+1. **Move data:** the input dataset is managed, so the Store sync recipe applies
+   (about 13 GB): `sopran-store sync-list --dataset kaguya.er.paired_distributions > files.txt`,
+   `rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ <host>:$SOPRAN_DATA_ROOT/`,
+   then `sopran-store rebuild` and `verify-inputs` on the cluster.
 2. **Build on a login node:**
    `SOPRAN_SRC=$HOME/src/sopran ENV_ROOT=/LARGE0/grXXXXX/$USER/sopran-env bash scripts/hpc/kyoto/setup_env.sh`
    installs uv and Rust under `$HOME` and builds sopran non-editable into a pinned venv.
@@ -80,8 +82,9 @@ with the first pilot.
 5. **Submit:** edit `-p`, `-t`, `--rsc` and `-a 0-(G-1)` in `er_fit.sbatch`, export
    `ENV_ROOT`, `SOPRAN_DATA_ROOT`, `RUN_VARIANT`, and `sbatch` it. Resubmit timed-out
    tasks with the same command; they resume.
-6. **Collect:** check `status`, run `finalize`, and `rsync` the run directory
-   `models/kaguya/er/finite_bin_fits/variants/<run>/` back.
+6. **Collect:** check `status`, run `finalize`, list the run with
+   `sopran-store sync-list --dataset kaguya.er.finite_bin_fits --variant <run>`,
+   copy it back with `rsync --files-from`, and run `sopran-store rebuild` locally.
 
 ## Verification
 

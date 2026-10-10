@@ -566,7 +566,7 @@ def variant_metadata(
     elif sun_frame is not None:
         metadata["sun_source"] = "spice"
         metadata["sun_frame"] = "MOON_ME"
-        metadata["spice_kernels"] = [Path(path).as_posix() for path in spice_kernels]
+        metadata["spice_kernels"] = _kernel_references(spice_kernels)
         metadata["sun_transform"] = _transform_metadata(context=context, backend=backend)
     return metadata
 
@@ -859,10 +859,22 @@ def _array_token(value: Any) -> str:
     return digest.hexdigest()[:12]
 
 
+def _kernel_references(paths: Any) -> list[dict[str, Any]]:
+    """Location-independent kernel identities (name, checksum, size), sorted."""
+    from sopran.core.store import file_content_reference
+
+    references = []
+    for path in paths:
+        try:
+            references.append(file_content_reference(path))
+        except FileNotFoundError:
+            references.append({"name": Path(path).name, "checksum": None, "size_bytes": None})
+    return sorted(references, key=lambda ref: (ref["name"], str(ref["checksum"])))
+
+
 def _path_tuple_token(paths: tuple[str | Path, ...]) -> str:
-    encoded = json.dumps([Path(path).as_posix() for path in paths], sort_keys=True).encode(
-        "utf-8"
-    )
+    # Content, not location: the same kernels give the same variant on any machine.
+    encoded = json.dumps(_kernel_references(paths), sort_keys=True).encode("utf-8")
     return sha256(encoded).hexdigest()[:12]
 
 
@@ -879,12 +891,33 @@ def _transform_metadata(*, context: Any | None, backend: str | None) -> dict[str
         return metadata
     context_metadata = getattr(context, "metadata", None)
     if callable(context_metadata):
-        metadata["context"] = context_metadata()
+        metadata["context"] = _portable_context_metadata(context_metadata(), backend)
     else:
         metadata["context"] = {
             "type": f"{type(context).__module__}.{type(context).__qualname__}"
         }
     return metadata
+
+
+# Lists of installed or planned backends describe the machine, not the transform.
+_MACHINE_CONTEXT_KEYS = (
+    "available_backends",
+    "implemented_backends",
+    "planned_backends",
+    "backend_available",
+)
+
+
+def _portable_context_metadata(raw: dict[str, Any], backend: str | None) -> dict[str, Any]:
+    """Context identity without paths or installed-package listings."""
+    portable = {key: value for key, value in raw.items() if key not in _MACHINE_CONTEXT_KEYS}
+    if "spice_kernels" in raw:
+        portable["spice_kernels"] = _kernel_references(raw["spice_kernels"])
+    selected = backend or raw.get("backend")
+    versions = raw.get("available_backends") or raw.get("implemented_backends") or {}
+    if selected is not None and isinstance(versions, dict):
+        portable["backend_version"] = versions.get(selected)
+    return portable
 
 
 def _none_if_nan(value: Any) -> Any:

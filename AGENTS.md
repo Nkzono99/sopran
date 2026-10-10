@@ -39,6 +39,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 - 公開APIには返り値型・単位・座標系・時刻・ビン情報を付ける。外部ライブラリとの型境界を明確にし、`Any` の連鎖を避ける。
 - 加工データは既存product/cacheで取得・計算・保存・再読込する。入力と設定を区別できるキー、または明示保存を使い、異なる設定の結果を同じStore項目として再利用しない。
 - ファイル探索はStore/layout/provider経由とし、ローカル絶対パスをパッケージへ埋め込まない。欠損・ゼロ・未取得・校正・品質フラグを区別する。
+- Storeはrsyncで運べる形を保つ。manifest・catalogにはroot相対パスだけを書き、cacheのvariant IDは設定と入力の内容から作る（絶対パスや環境の一覧を混ぜない）。sopranが自動で作るcacheには`managed=True`を付け、shardの付属JSON（`*.sopran.json`）を正本とする。
 - 任意依存は利用する経路で読み込み、`import sopran` に全ミッションの依存を要求しない。依存・build・extrasは `pyproject.toml` を正とする。
 - 通常APIからexperimentalへ依存せず、試作を機器やルートへ再公開しない。試作にも型・単位・テストを付け、Storeキーを通常productと分ける。未確定点と正式化の条件は `src/sopran/experimental/README.md` で管理し、リリース前に棚卸しする。未公開APIの互換aliasやshimは作らない。
 - 可視化は既存plot APIを使い、軸とカラーに物理量・単位を示す。科学画像は実データから作り、NaNとゼロ、候補解と採択解を区別する。
