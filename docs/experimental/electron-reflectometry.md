@@ -123,15 +123,15 @@ inactive energy行の再構成はNaNで残します。
 loss coneなし（$\rho=1$）とfit値のloss coneを、同じbeamで比べます。
 energyだけの段差はどちらでも説明できるため、この差はpitch方向の構造が必要かを表します。
 `loss_cone_delta_bic`はRm・$\rho$・ΔUのうち可変な数$k$について$k\ln N$を引いた値です。
-KAGUYAの288窓では21%が`loss_cone_unsupported`で、その割合はRm≤1で33%、Rm>1で11%でした。
+実データでも一定の割合の窓が`loss_cone_unsupported`になり、その割合はRm≤1の解で高くなります。
 
 フラグがfalseでも識別性の証明にはならないため、磁場の採択には`profile_mirror_ratio`を使います。
 Rmを格子（既定は±1 dex、21点）に固定し、他のパラメータを近傍から再最適化します。
 count損失では$\Delta$`objective`$\le3.84$を95%区間とし、端は格子間で補間します。
 `interval_bounded=False`は区間が格子の端に届いたことを示します。
 `improved_minimum=True`はfitが良い谷を逃したことを示し、`minimum_fit`にその解を返します。
-例えば2008-02-10 03:03:36 UTCの窓では、beta-binomialの解は124.7 nTです。
-その95%区間は15.7〜124.7 nTで、Huberで見つかった約17 nTの解も含みます。
+count損失とHuber損失の解が別の谷にある窓では、count損失のprofile区間が両方の解を含むことがあります。
+その場合、点推定の差ではなく区間の幅で磁場の識別性を判断します。
 
 `evaluate`で固定パラメータを評価した結果の`local_converged`はfalseです。
 新APIはStoreへ自動保存せず、結果に設定を保持します。

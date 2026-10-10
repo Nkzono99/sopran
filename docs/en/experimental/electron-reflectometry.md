@@ -96,15 +96,16 @@ boundary) or `loss_cone_unsupported` (count losses with `loss_cone_delta_bic <= 
 `loss_cone_delta_objective` compares free per-energy levels without (rho = 1) and
 with the fitted loss cone at the fitted beam, so an energy-only step does not count
 as pitch structure; `loss_cone_delta_bic` subtracts k ln N for the free Rm/rho/DeltaU.
-In 288 KAGUYA windows 21% were flagged (33% with Rm <= 1, 11% with Rm > 1).
+A sizeable share of real windows is flagged, more often for Rm <= 1 solutions.
 
 A false flag does not certify identification; use `profile_mirror_ratio` before
 adopting a field. It fixes Rm on a grid (default ±1 dex, 21 points) and refits the
 rest from neighbours. For count losses delta objective <= 3.84 gives a 95%
 interval with interpolated ends; `interval_bounded=False` means the interval
 reached the grid end, and `improved_minimum=True` means the fit missed a better
-basin, returned as `minimum_fit`. For example, 2008-02-10 03:03:36 UTC fits
-124.7 nT with a 95% interval of 15.7–124.7 nT that includes the ~17 nT Huber solution.
+basin, returned as `minimum_fit`. When count and Huber losses land in different
+basins, the count-loss interval can contain both; judge identification by the
+interval width, not by the point estimates.
 Fixed-parameter `evaluate` has `local_converged=False`. Settings are retained;
 Store saving is explicit.
 
