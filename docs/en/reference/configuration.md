@@ -41,6 +41,7 @@ lon_domain = "0_360"
 | Store root | Explicit argument > session config > environment variable > project `[store]` > user global `[store]` > default |
 | Artifact root | Explicit argument > session config > `SOPRAN_ARTIFACT_ROOT` > project `[project]` > user global `[project]` > project root |
 | Defaults | Explicit override > session config > project `[defaults]` > user global `[defaults]` > package default |
+| Download (mission objects) | Explicit argument > session config > `SOPRAN_OFFLINE` > `SOPRAN_DOWNLOAD_MODE` > user global `[defaults].download` > `missing` |
 | Backend | Explicit override > session config > project `[backends]` > user global `[backends]` > `auto` |
 | Case region | `[cases.<name>.region]` > `[defaults.region]` |
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 from urllib.error import HTTPError
 
 from sopran.core import Store
+from sopran.core.config import DownloadMode, resolve_download_mode
 from sopran.core.coverage import (
     coverage_bins,
     coverage_dataset_id,
@@ -88,7 +88,6 @@ if TYPE_CHECKING:
     from sopran.core.data import SopranArray
     from sopran.core.plotting import PlotItem, PlotResult
 
-DownloadMode = Literal["never", "missing", "always"]
 MissingMode = Literal["empty", "warn", "error"]
 CacheMode = Literal["use", "refresh", "never"]
 _GUIDE_LANGUAGES = ("ja", "en")
@@ -110,7 +109,7 @@ class Kaguya:
         source: KaguyaFileSource | None = None,
         download: DownloadMode | None = None,
     ) -> None:
-        self.download = _default_download_mode(download)
+        self.download = resolve_download_mode(download)
         self.store = store or Store()
         if source is None:
             local_root = (
@@ -1519,17 +1518,6 @@ def _validate_missing_mode(missing: str) -> None:
         raise ValueError("missing must be 'empty', 'warn', or 'error'")
 
 
-def _default_download_mode(download: DownloadMode | None) -> DownloadMode:
-    if download is None:
-        if _truthy_env("SOPRAN_OFFLINE"):
-            download = "never"
-        else:
-            download = _coerce_download_mode(
-                os.environ.get("SOPRAN_DOWNLOAD_MODE", "missing")
-            )
-    return _coerce_download_mode(download)
-
-
 def _missing_raw_files_message(instrument: Any, time: TimeRange) -> str:
     expected = ", ".join(instrument.remote_files_for_period(time))
     return (
@@ -1668,10 +1656,6 @@ def _kaguya_data_version(remote_file: str) -> str | None:
             if version:
                 return f"v{version}"
     return None
-
-
-def _truthy_env(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _load_endpoint_plot_array(

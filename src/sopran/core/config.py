@@ -8,11 +8,14 @@ from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 from sopran.core.errors import ConfigError
 
 _TOML_BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+
+DownloadMode = Literal["never", "missing", "always"]
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,30 @@ def current_session_config() -> SessionConfig:
     """Return the active process-local config."""
 
     return _SESSION_CONFIG
+
+
+def resolve_download_mode(value: str | None = None) -> DownloadMode:
+    """Resolve the download policy of a mission object.
+
+    An explicit value wins, then ``spn.config.use(download=...)``, then
+    ``SOPRAN_OFFLINE`` (``never``) and ``SOPRAN_DOWNLOAD_MODE``, then
+    ``[defaults] download`` in the user config, and finally ``missing``.
+    """
+
+    if value is None:
+        value = current_session_config().download
+    if value is None:
+        if os.environ.get("SOPRAN_OFFLINE", "").strip().lower() in _TRUTHY:
+            value = "never"
+        else:
+            value = os.environ.get("SOPRAN_DOWNLOAD_MODE") or None
+    if value is None:
+        configured = config_section(read_user_config()[0], "defaults").get("download")
+        value = None if configured is None else str(configured)
+    if value is None:
+        value = "missing"
+    _validate_download(value)
+    return cast(DownloadMode, value)
 
 
 def reset_session_config() -> SessionConfig:

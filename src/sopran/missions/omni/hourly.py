@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import calendar
-import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
 from shutil import copyfileobj
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.error import ContentTooShortError
 from urllib.request import urlopen
 
@@ -18,14 +17,13 @@ import pandas as pd
 if TYPE_CHECKING:
     import xarray as xr
 
-from sopran.core.config import current_session_config
+from sopran.core.config import DownloadMode, resolve_download_mode
 from sopran.core.data import SopranArray
 from sopran.core.plotting import PlotItem, PlotResult
 from sopran.core.schema import VariableSchema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, day, period
 
-DownloadMode = Literal["never", "missing", "always"]
 BASE_URL = "https://spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/"
 DOCUMENTATION = "https://omniweb.gsfc.nasa.gov/html/ow_data.html"
 
@@ -194,7 +192,7 @@ class Omni:
         if not isfinite(timeout_seconds) or timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be finite and positive")
         self.store = store or Store()
-        self.download = _download_mode(download)
+        self.download = resolve_download_mode(download)
         self.time = time
         self.timeout_seconds = timeout_seconds
         self.pressure: OmniVariable = OmniVariable(self, "pressure")
@@ -225,7 +223,7 @@ class Omni:
         import xarray as xr
 
         interval = _time_range(time if time is not None else self.time, stop)
-        policy = self.download if download is None else _download_mode(download)
+        policy = self.download if download is None else resolve_download_mode(download)
         final_year = (pd.Timestamp(interval.stop) - pd.Timedelta(microseconds=1)).year
         records = [self._year(y, policy) for y in range(interval.start.year, final_year + 1)]
         frame = pd.concat([row[1] for row in records])
@@ -338,17 +336,3 @@ def _time_range(time: object | None, stop: object | None) -> TimeRange:
             raise ValueError("stop cannot be combined with a TimeRange")
         return time
     return day(time) if stop is None else period(time, stop)
-
-
-def _download_mode(value: str | None) -> DownloadMode:
-    if value is None:
-        value = current_session_config().download
-    if value is None:
-        value = (
-            "never"
-            if os.environ.get("SOPRAN_OFFLINE", "").lower() in {"1", "true", "yes", "on"}
-            else os.environ.get("SOPRAN_DOWNLOAD_MODE", "missing")
-        )
-    if value not in {"never", "missing", "always"}:
-        raise ValueError("download must be never, missing, or always")
-    return cast(DownloadMode, value)

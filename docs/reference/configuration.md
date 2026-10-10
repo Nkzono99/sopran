@@ -38,6 +38,7 @@ lon_domain = "0_360"
 | --- | --- |
 | Project root | 明示引数 > session config > 親方向に見つかった `sopran.toml` > user global `[project].root` > current directory |
 | Store root | 明示引数 > session config > 環境変数 > project `[store]` > user global `[store]` > default |
+| Download（mission objectの既定） | 明示引数 > session config > `SOPRAN_OFFLINE` > `SOPRAN_DOWNLOAD_MODE` > user global `[defaults].download` > `missing` |
 | artifact root | 明示引数 > session config > `SOPRAN_ARTIFACT_ROOT` > project `[project]` > user global `[project]` > project root |
 | defaults | 明示 override > session config > project `[defaults]` > user global `[defaults]` > package default |
 | backend | 明示 override > session config > project `[backends]` > user global `[backends]` > `auto` |

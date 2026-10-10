@@ -619,6 +619,25 @@ def test_kaguya_reads_default_download_policy_from_environment(tmp_path, monkeyp
     assert offline.download == "never"
 
 
+def test_kaguya_and_omni_follow_session_and_user_download_defaults(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.delenv("SOPRAN_DOWNLOAD_MODE", raising=False)
+    monkeypatch.delenv("SOPRAN_OFFLINE", raising=False)
+    config = tmp_path / "config.toml"
+    config.write_text('[defaults]\ndownload = "always"\n', encoding="utf-8")
+    monkeypatch.setenv("SOPRAN_CONFIG", str(config))
+    store = Store(tmp_path / "store")
+
+    assert spn.Kaguya(store=store).download == "always"
+    with spn.config.using(download="never"):
+        assert spn.Kaguya(store=store).download == "never"
+        assert spn.Omni(store=store).download == "never"
+        assert spn.Kaguya(store=store, download="missing").download == "missing"
+    monkeypatch.setenv("SOPRAN_OFFLINE", "1")
+    assert spn.Kaguya(store=store).download == "never"
+
+
 def test_kaguya_esa1_exposes_core_variable_endpoints(tmp_path) -> None:
     kg = spn.Kaguya(store=Store(tmp_path / "store"), download="never")
     time = spn.period("2008-02-01", "2008-02-02")
