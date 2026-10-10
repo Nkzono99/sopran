@@ -788,6 +788,12 @@ def _energy_flux_attrs(
         "calibration_status": status,
         "physical_validity": "calibrated" if applied else "placeholder",
     }
+    if not applied:
+        attrs["usage_hint"] = (
+            "Use the calibrated endpoint instead, for example kg.esa1.energy_flux.plot(time) "
+            "or kg.esa1.energy_flux.load(time), with downloads enabled if the calibration "
+            "tables are not local."
+        )
     if efficiency is not None:
         attrs["efficiency"] = efficiency
         attrs["formula"] = "counts / (integ_t * gfactor * efficiency)"

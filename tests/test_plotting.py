@@ -669,6 +669,7 @@ def test_loaded_array_rejects_placeholder_energy_flux_visualization(tmp_path) ->
             "units": "eV/(cm^2 s sr eV)",
             "physical_validity": "placeholder",
             "calibration_status": "not_loaded",
+            "usage_hint": "Use kg.esa1.energy_flux.plot(time) with downloads enabled.",
         },
     )
     loaded = SopranArray(
@@ -688,6 +689,9 @@ def test_loaded_array_rejects_placeholder_energy_flux_visualization(tmp_path) ->
         loaded.spectrogram(y="energy")
     with pytest.raises(ValueError, match="kg.esa1.energy_flux.plot"):
         loaded.quicklook("energy_flux", root=tmp_path)
+    array.attrs.pop("usage_hint")
+    with pytest.raises(ValueError, match="Load the calibrated product instead"):
+        loaded.plot()
 
 
 def test_loaded_array_to_polars_uses_array_layout_for_dense_data_by_default() -> None:

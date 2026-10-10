@@ -583,10 +583,9 @@ class SopranArray:
         dims = set(_dims(array))
         if pitch_dim not in dims and "look" in dims:
             raise ValueError(
-                "pitch_spectrogram requires pitch_angle-binned data. "
-                "Convert PACE look bins first with pitch_angle_spectrum(...), "
-                "for example kg.esa1.energy_flux.pitch_angle_spectrum(time, "
-                "magnetic_field=...)."
+                "pitch_spectrogram requires pitch_angle-binned data; this array has "
+                "detector 'look' bins. Convert them first with the endpoint's "
+                "pitch_angle_spectrum(time, magnetic_field=...)."
             )
         _require_dims(array, (x, pitch_dim), "pitch_spectrogram")
         if energy is not None:
@@ -778,12 +777,10 @@ class SopranArray:
         if str(attrs.get("physical_validity", "")) != "placeholder":
             return
         calibration_status = attrs.get("calibration_status", "unknown")
+        hint = attrs.get("usage_hint") or "Load the calibrated product instead."
         raise ValueError(
             f"{self.name} is an uncalibrated placeholder "
-            f"(calibration_status={calibration_status!r}) and cannot be plotted. "
-            "Use the calibrated endpoint instead, for example "
-            "kg.esa1.energy_flux.plot(time) or kg.esa1.energy_flux.load(time), "
-            "with downloads enabled if the calibration tables are not local."
+            f"(calibration_status={calibration_status!r}) and cannot be plotted. {hint}"
         )
 
 
