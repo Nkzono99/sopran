@@ -7,8 +7,8 @@ Store datasets split into daily Parquet shards, so `rsync` moves them as they ar
 
 | dataset | layer | variant | content |
 |---|---|---|---|
-| `kaguya.er.paired_distributions` | `features` | input build (e.g. `halekas-mission-20260912`) | folded counts, exposures and record per window; one shard per day |
-| `kaguya.er.finite_bin_fits` | `models` | run name (e.g. `bb-default-kyoto`) | fit, profile and candidate per window; one shard per day |
+| `experimental.kaguya.er.paired_distributions` | `features` | input build | folded counts, exposures and record per window; one shard per day |
+| `experimental.kaguya.er.finite_bin_fits` | `models` | run name | fit, profile and candidate per window; one shard per day |
 
 Use `python -m sopran.experimental.kaguya.er_batch [--data-root ROOT] <command>`.
 Without `--data-root` the Store comes from `SOPRAN_DATA_ROOT` or the sopran config.
@@ -29,6 +29,14 @@ export-catalog -> verify-inputs -> prepare -> run (parallel, resumable) -> statu
 | `status --run-variant R` | completed days and heartbeats |
 | `finalize --run-variant R` | re-hash complete shards and register them in the Store catalog |
 | `compare --run-variant R --reference FILE...` | objective, Beff and candidate agreement with another run's day Parquet |
+
+**Input contract.** SOPRAN does not build the input. It reads a SQLite catalog with one
+table `windows(sample_id TEXT, day TEXT, record TEXT, maps BLOB)`. `record` is the
+window record as JSON (`time`, `b_sc_nT`, `affected_side`, `field_connection_status`,
+`field_radial_abs_cosine_min`, `magnetic_direction_max_deviation_deg`, `reason`).
+`maps` is an `.npz` with the `FLOAT_ARRAYS` and `BOOL_ARRAYS` arrays (folded arrays
+`energy x pitch_folded`, `global_*` arrays `energy x pitch`), or NULL for a window
+without a distribution.
 
 **Export.** Each window's npz blob becomes row-major flattened list columns: folded
 counts and exposures, `fit_valid`, `pair_observed`, full-pitch counts and exposures,
@@ -66,30 +74,28 @@ The template follows that syntax; confirm queue names, limits and array variable
 with the first pilot.
 
 1. **Move data:** the input dataset is managed, so the Store sync recipe applies
-   (about 13 GB): `sopran-store sync-list --dataset kaguya.er.paired_distributions > files.txt`,
-   `rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ <host>:$SOPRAN_DATA_ROOT/`,
+   `sopran-store sync-list --dataset experimental.kaguya.er.paired_distributions > files.txt`,
+   `rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ <host>:$SOPRAN_DATA_ROOT/`,
    then `sopran-store rebuild` and `verify-inputs` on the cluster.
 2. **Build on a login node:**
    `SOPRAN_SRC=$HOME/src/sopran ENV_ROOT=/LARGE0/grXXXXX/$USER/sopran-env bash scripts/hpc/kyoto/setup_env.sh`
    installs uv and Rust under `$HOME` and builds sopran non-editable into a pinned venv.
    A manylinux x86_64 wheel from CI (`publish.yml`) installed with `--no-deps` also works.
 3. **Verify and freeze on the login node:** `verify-inputs`, then
-   `prepare --run-variant bb-default-kyoto --groups 16`.
-4. **Pilot:** prepare a run with `--days 2009-02-17`, run it as one task (`-a 0`), and
-   `compare` it with that day from the local run. Linux and Windows maths libraries
+   `prepare --input-variant <build> --run-variant <run> --groups 16`.
+4. **Pilot:** prepare a run with `--days` set to one day finished locally, run it as
+   one task (`-a 0`), and `compare` it with that day from the local run. Linux and Windows maths libraries
    differ, so expect small objective differences rather than bit equality; candidates
    should agree.
 5. **Submit:** edit `-p`, `-t`, `--rsc` and `-a 0-(G-1)` in `er_fit.sbatch`, export
    `ENV_ROOT`, `SOPRAN_DATA_ROOT`, `RUN_VARIANT`, and `sbatch` it. Resubmit timed-out
    tasks with the same command; they resume.
 6. **Collect:** check `status`, run `finalize`, list the run with
-   `sopran-store sync-list --dataset kaguya.er.finite_bin_fits --variant <run>`,
+   `sopran-store sync-list --dataset experimental.kaguya.er.finite_bin_fits --variant <run>`,
    copy it back with `rsync --files-from`, and run `sopran-store rebuild` locally.
 
 ## Verification
 
 - `tests/test_er_batch.py`: lossless export, prepare→run→finalize→scan, part resume,
   STOP, refusal after code changes, balanced groups, spawned vs in-process equality.
-- On 2026-10-10, 46 windows of 2009-02-17 from the local full-period run (which read the
-  catalog directly) matched fits through the day shards exactly: Beff, objective,
-  profile interval and candidate.
+- Real-data agreement is checked with `compare`; keep each run's record under `working/`.

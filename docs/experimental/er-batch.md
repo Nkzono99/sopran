@@ -6,8 +6,8 @@
 
 | dataset | layer | variant | 中身 |
 |---|---|---|---|
-| `kaguya.er.paired_distributions` | `features` | 入力のbuild名（例 `halekas-mission-20260912`） | 窓ごとのfold済みcount・exposure・record。1日1 shard |
-| `kaguya.er.finite_bin_fits` | `models` | run名（例 `bb-default-kyoto`） | 窓ごとのfit・profile・candidate。1日1 shard |
+| `experimental.kaguya.er.paired_distributions` | `features` | 入力のbuild名 | 窓ごとのfold済みcount・exposure・record。1日1 shard |
+| `experimental.kaguya.er.finite_bin_fits` | `models` | run名 | 窓ごとのfit・profile・candidate。1日1 shard |
 
 コマンドは `python -m sopran.experimental.kaguya.er_batch [--data-root ROOT] <command>` の形で使う。
 `--data-root`を省くと`SOPRAN_DATA_ROOT`（またはsopranの設定）のStoreを使う。
@@ -29,12 +29,26 @@ export-catalog -> verify-inputs -> prepare -> run（並列・再開可） -> sta
 | `finalize --run-variant R` | 完了shardのchecksumを再計算し、Storeのcatalogに登録する |
 | `compare --run-variant R --reference FILE...` | 別runの日別Parquetと、同じ窓の目的関数・Beff・candidateを比べる |
 
+### 入力の契約
+
+入力はpaired分布を窓ごとに保存したSQLite catalogです。SOPRANはcatalogを生成しません。
+研究側の処理で作ったcatalogを、次の形で渡します。
+
+| 列 | 型 | 内容 |
+|---|---|---|
+| `sample_id` | TEXT | 16 s窓のID |
+| `day` | TEXT | UTC日（`YYYY-MM-DD`） |
+| `record` | TEXT | 窓のrecord（JSON）。`time`・`b_sc_nT`・`affected_side`・`field_connection_status`・`field_radial_abs_cosine_min`・`magnetic_direction_max_deviation_deg`・`reason`を読む |
+| `maps` | BLOB | `.npz`。分布のない窓はNULL |
+
+表名は`windows`です。`maps`には`FLOAT_ARRAYS`・`BOOL_ARRAYS`の配列を入れます。
+fold済みの配列は`energy x pitch_folded`、`global_*`は`energy x pitch`の形です。
+
 ### 入力の変換
 
-```powershell
-python -m sopran.experimental.kaguya.er_batch --data-root F:/sopran_data export-catalog `
-  --catalog C:/.../halekas-mission-20260912/all-period/catalog.sqlite `
-  --input-variant halekas-mission-20260912 --workers 3
+```bash
+python -m sopran.experimental.kaguya.er_batch --data-root /path/to/sopran_data export-catalog \
+  --catalog /path/to/catalog.sqlite --input-variant <build> --workers 3
 ```
 
 catalogの窓ごとのnpz blobから、fold済みのcount・exposure・`fit_valid`・`pair_observed`・
@@ -70,11 +84,12 @@ profileはRm±1 dexの13点で、95%区間と`minimum_fit`を出す。
 プログラムは`srun`で起動する（[KUDPCのバッチ処理マニュアル](https://web.kudpc.kyoto-u.ac.jp/manual/en/run/batch)）。
 雛形はこの書式に合わせたが、キュー名・上限値・array jobの環境変数は、最初のパイロットで確かめる。
 
-1. **データを運ぶ。** 入力datasetは`managed`なので、Storeの同期手順でそのまま運べる（約13 GB）。
+1. **データを運ぶ。** 入力datasetは`managed`なので、Storeの同期手順でそのまま運べる。
 
    ```bash
-   sopran-store --data-root F:/sopran_data sync-list --dataset kaguya.er.paired_distributions > files.txt
-   rsync -av --delay-updates --files-from=files.txt F:/sopran_data/ <host>:$SOPRAN_DATA_ROOT/
+   sopran-store --data-root /path/to/sopran_data sync-list \
+     --dataset experimental.kaguya.er.paired_distributions > files.txt
+   rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ <host>:$SOPRAN_DATA_ROOT/
    ```
 
    転送後に送り先で`sopran-store rebuild`と`verify-inputs`を行う。
@@ -92,12 +107,12 @@ profileはRm±1 dexの13点で、95%区間と`minimum_fit`を出す。
    ```bash
    source $ENV_ROOT/venv/bin/activate
    export SOPRAN_DATA_ROOT=/LARGE0/grXXXXX/$USER/sopran_data
-   python -m sopran.experimental.kaguya.er_batch verify-inputs --input-variant halekas-mission-20260912
-   python -m sopran.experimental.kaguya.er_batch prepare --input-variant halekas-mission-20260912 \
-     --run-variant bb-default-kyoto --groups 16
+   python -m sopran.experimental.kaguya.er_batch verify-inputs --input-variant <build>
+   python -m sopran.experimental.kaguya.er_batch prepare --input-variant <build> \
+     --run-variant <run> --groups 16
    ```
 
-4. **パイロットで手元と一致するか確かめる。** `--days 2009-02-17`だけの別runを作り、1 task（`-a 0`）で実行する。
+4. **パイロットで手元と一致するか確かめる。** 手元で完了した1日だけを`--days`で指定した別runを作り、1 task（`-a 0`）で実行する。
    手元のrunで完了したその日のParquetを転送し、`compare`で比べる。
    LinuxとWindowsでは指数・対数関数の実装が違うため、完全一致は前提にしない。
    目的関数の相対差が小さく、candidateが一致することを確かめる。
@@ -105,11 +120,10 @@ profileはRm±1 dexの13点で、95%区間と`minimum_fit`を出す。
    `ENV_ROOT`・`SOPRAN_DATA_ROOT`・`RUN_VARIANT`をexportして`sbatch`する。
    時間切れになったtaskは、同じコマンドで再投入すれば続きから処理する。
 6. **集める。** `status`で完了を確かめ、`finalize`でcatalogに登録する。
-   `sopran-store sync-list --dataset kaguya.er.finite_bin_fits --variant <run>`の一覧で手元へ戻し、手元で`sopran-store rebuild`を行う。
+   `sopran-store sync-list --dataset experimental.kaguya.er.finite_bin_fits --variant <run>`の一覧で手元へ戻し、手元で`sopran-store rebuild`を行う。
 
 ## 検証
 
 - `tests/test_er_batch.py`：変換の無損失性、prepare→run→finalize→scan、part再開、STOP、
   コード変更の拒否、日の均等割り、spawn workerとプロセス内実行の一致。
-- 2026-10-10に、手元の全期間run（catalogを直接読む実装）で完了した2009-02-17から46窓を選んで照合した。
-  本モジュールで日別shard経由でfitした結果と、Beff・目的関数・profile区間・candidateが完全に一致した。
+- 実データでの照合は`compare`で行い、結果は各runの記録として`working/`に残す。

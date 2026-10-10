@@ -2,11 +2,19 @@
 
 Two Store datasets carry the work:
 
-- ``kaguya.er.paired_distributions`` (layer ``features``): one Parquet shard per UTC
-  day with the folded paired counts, exposures and window record of every 16 s
-  window, exported from a frozen paired-distribution SQLite catalog.
-- ``kaguya.er.finite_bin_fits`` (layer ``models``): one Parquet shard per day of
-  finite-bin fits and Rm profiles, keyed by a run variant.
+- ``experimental.kaguya.er.paired_distributions`` (layer ``features``): one Parquet
+  shard per UTC day with the folded paired counts, exposures and window record of
+  every 16 s window, exported from a frozen paired-distribution SQLite catalog.
+- ``experimental.kaguya.er.finite_bin_fits`` (layer ``models``): one Parquet shard per
+  day of finite-bin fits and Rm profiles, keyed by a run variant.
+
+The input catalog is a contract, not a SOPRAN product: SOPRAN does not build it.
+It holds one table ``windows(sample_id TEXT, day TEXT, record TEXT, maps BLOB)``.
+``record`` is a JSON window record (``time``, ``b_sc_nT``, ``affected_side``,
+``field_connection_status``, ``field_radial_abs_cosine_min``,
+``magnetic_direction_max_deviation_deg``, ``reason``); ``maps`` is an ``.npz`` with
+the arrays in ``FLOAT_ARRAYS`` and ``BOOL_ARRAYS`` (``energy x pitch_folded``; the
+``global_*`` arrays ``energy x pitch``), or NULL for a window without a distribution.
 
 ``prepare`` freezes the fit settings, the input catalog and the code/environment
 identity in ``run.json``. Each ``run`` invocation processes whole days, spreading the
@@ -46,9 +54,34 @@ from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import TEMP_MARKER, Store
 from sopran.core.time import TimeRange, day
 
-INPUT_DATASET = "kaguya.er.paired_distributions"
+__all__ = [
+    "BOOL_ARRAYS",
+    "FIT_COLUMNS",
+    "FIT_DATASET",
+    "FIT_FORMAT",
+    "FIT_LAYER",
+    "FIT_SCHEMA",
+    "FLOAT_ARRAYS",
+    "INPUT_DATASET",
+    "INPUT_FORMAT",
+    "INPUT_LAYER",
+    "INPUT_SCHEMA",
+    "RunConfig",
+    "compare_runs",
+    "export_catalog",
+    "finalize_run",
+    "load_run",
+    "main",
+    "prepare_run",
+    "run_days",
+    "run_status",
+    "scan_run",
+    "verify_inputs",
+]
+
+INPUT_DATASET = "experimental.kaguya.er.paired_distributions"
 INPUT_LAYER = "features"
-FIT_DATASET = "kaguya.er.finite_bin_fits"
+FIT_DATASET = "experimental.kaguya.er.finite_bin_fits"
 FIT_LAYER = "models"
 INPUT_FORMAT = "er_paired_distribution_day_v1"
 FIT_FORMAT = "er_finite_bin_fit_day_v1"

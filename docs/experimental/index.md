@@ -14,10 +14,12 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | KAGUYAのER入力・2手法への呼出し | `sopran.experimental.kaguya.er.KaguyaErInstrument` |
 | 波動候補・ridge・clustering | `sopran.experimental.waves` |
 | KAGUYA WFCの候補抽出preset・品質処理 | `sopran.experimental.kaguya.waves` |
+| ERの全期間バッチ（日別shard・Slurm） | `python -m sopran.experimental.kaguya.er_batch` |
 | Tsunakawa SVM3Dのshell格子・磁力線トレース | `sopran.experimental.moon.svm3d` |
 
 - [ERの利用方法と限界](electron-reflectometry.md)
 - [ER手法とコードの一覧](er-methods.md)
+- [ERの全期間バッチ](er-batch.md)
 - [波動候補の利用方法と限界](waves.md)
 
 ## 通常APIとの境界

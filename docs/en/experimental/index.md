@@ -14,9 +14,11 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | KAGUYA ER adapter | `sopran.experimental.kaguya.er.KaguyaErInstrument` |
 | Wave candidates, ridges and clusters | `sopran.experimental.waves` |
 | WFC presets and candidate quality rules | `sopran.experimental.kaguya.waves` |
+| Full-period ER batch (day shards, Slurm) | `python -m sopran.experimental.kaguya.er_batch` |
 | Tsunakawa SVM3D shell grid and field-line tracing | `sopran.experimental.moon.svm3d` |
 
-See [ER usage](electron-reflectometry.md) and [wave candidates](waves.md).
+See [ER usage](electron-reflectometry.md), [the ER batch](er-batch.md) and
+[wave candidates](waves.md).
 The [ER method inventory](er-methods.md) distinguishes estimator entry points and objectives.
 Instrument readers, calibration, native bins, frames, Store and plotting remain
 in the standard API. `Kaguya.er` and root-level ER symbols have been removed.

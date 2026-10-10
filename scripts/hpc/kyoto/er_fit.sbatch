@@ -4,7 +4,7 @@
 #
 #   ENV_ROOT=/LARGE0/grXXXXX/$USER/sopran-env \
 #   SOPRAN_DATA_ROOT=/LARGE0/grXXXXX/$USER/sopran_data \
-#   RUN_VARIANT=bb-default-kyoto sbatch scripts/hpc/kyoto/er_fit.sbatch
+#   RUN_VARIANT=<run> sbatch scripts/hpc/kyoto/er_fit.sbatch
 #
 # Kyoto's Slurm takes resources as --rsc p=PROCS:t=THREADS:c=CORES:m=MEMORY and sets
 # OMP_NUM_THREADS from it; the worker pool uses that many processes (each forced to one
