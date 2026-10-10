@@ -105,7 +105,7 @@ def build_pitch_angle_spectrum(
     integration_time_rows = []
     data_mode_rows = []
     data_type_rows = []
-    record_metadata = {key: [] for key in (
+    record_metadata: dict[str, list[float]] = {key: [] for key in (
         "pace_submode", "pace_svs_tbl", "pace_data_quality", "record_duration_seconds"
     )}
     exposure_modes = []
@@ -266,8 +266,8 @@ def build_combined_pitch_angle_spectrum(
     energy_rows: list[np.ndarray] = []
     exposure_rows: list[np.ndarray] = []
     time_rows: list[np.datetime64] = []
-    sensor_mode_rows = {pace.sensor_name: [] for pace in available}
-    sensor_type_rows = {pace.sensor_name: [] for pace in available}
+    sensor_mode_rows: dict[str, list[int]] = {pace.sensor_name: [] for pace in available}
+    sensor_type_rows: dict[str, list[int]] = {pace.sensor_name: [] for pace in available}
     for indices in matches:
         combined = _combine_spectrum_rows(arrays, indices, energy_bins=energy_bins)
         if combined is None:
@@ -422,7 +422,7 @@ def build_aligned_pitch_angle_spectra(
     for sensor_index, (pace, spectrum, array) in enumerate(
         zip(available, spectra, arrays, strict=True)
     ):
-        indices = slice(None)
+        indices: slice | list[int] = slice(None)
         if align:
             indices = [match[sensor_index] for match in matches] if matches else slice(0, 0)
         selected_array = array.isel(time=indices).assign_attrs(
@@ -942,7 +942,7 @@ def _aligned_sampled_paces(
     times = [
         np.asarray([float(header["time"]) for _record, header in records]) for records in selected
     ]
-    used = [set() for _pace in paces]
+    used: list[set[int]] = [set() for _pace in paces]
     pairs: list[tuple[int, ...]] = []
     for reference_index, instant in enumerate(times[0]):
         indices = [reference_index]
@@ -968,14 +968,14 @@ def _aligned_sampled_paces(
             pairs.append(tuple(indices))
     if cadence_seconds is not None:
         sampled: dict[int, tuple[float, tuple[int, ...]]] = {}
-        for indices in pairs:
-            instant = float(times[0][indices[0]])
+        for pair in pairs:
+            instant = float(times[0][pair[0]])
             bucket = int(np.floor(instant / cadence_seconds))
             center = (bucket + 0.5) * cadence_seconds
             distance = abs(instant - center)
             current = sampled.get(bucket)
             if current is None or distance < current[0]:
-                sampled[bucket] = (distance, indices)
+                sampled[bucket] = (distance, pair)
         pairs = [sampled[bucket][1] for bucket in sorted(sampled)]
     out = []
     for sensor_index, pace in enumerate(paces):
@@ -1007,7 +1007,7 @@ def _match_spectrum_times(
     ]
     tolerance_ns = int(round(max_time_offset_seconds * 1_000_000_000.0))
     matches: list[tuple[int, ...]] = []
-    used = [set() for _array in arrays]
+    used: list[set[int]] = [set() for _array in arrays]
     for reference_index, instant in enumerate(times[0]):
         indices = [reference_index]
         valid = True
@@ -1273,11 +1273,11 @@ def _pitch_spectrum_array(
         array.coords["integration_time_seconds"].attrs.update(
             {"units": "s", "long_name": "PACE integration time per detector look"}
         )
-    for name in array.coords:
-        if name.startswith("pace_data_mode"):
-            array.coords[name].attrs.update({"long_name": "PACE data mode command"})
-        elif name.startswith("pace_data_type"):
-            array.coords[name].attrs.update({"long_name": "PACE record data type"})
+    for coord_name in array.coords:
+        if str(coord_name).startswith("pace_data_mode"):
+            array.coords[coord_name].attrs.update({"long_name": "PACE data mode command"})
+        elif str(coord_name).startswith("pace_data_type"):
+            array.coords[coord_name].attrs.update({"long_name": "PACE record data type"})
     for name, label in (
         ("pace_submode", "PACE sensor sub-data mode"),
         ("pace_svs_tbl", "PACE energy sweep RAM table"),

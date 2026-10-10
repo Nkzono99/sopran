@@ -46,11 +46,14 @@ class KaguyaFileSource:
         temp = _temporary_download_path(target)
         try:
             with urlopen(self.remote_url(remote_file), timeout=timeout_seconds) as response:
-                expected_size = response.headers.get("Content-Length")
+                headers = response.headers
+                expected_size = headers.get("Content-Length")
                 with temp.open("wb") as stream:
                     copyfileobj(response, stream)
             if expected_size is not None and temp.stat().st_size < int(expected_size):
-                raise ContentTooShortError("Download ended before Content-Length bytes", None)
+                raise ContentTooShortError(
+                    "Download ended before Content-Length bytes", (str(temp), headers)
+                )
             temp.replace(target)
         except Exception:
             temp.unlink(missing_ok=True)

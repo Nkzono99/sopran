@@ -304,7 +304,11 @@ class KaguyaPaceData:
             frame_context=frame_context,
         )
         if cache != "never" and target_store is not None and self.missing_reason is None:
-            if resolved_dataset_id is None or resolved_variant_id is None:
+            if (
+                resolved_dataset_id is None
+                or resolved_variant_id is None
+                or variant_metadata is None
+            ):
                 raise RuntimeError("pitch_angle_spectrum cache target was not resolved")
             exists = _pitch_angle_spectrum_store_exists(
                 target_store,
