@@ -5,12 +5,8 @@ from pathlib import Path
 
 from packaging.requirements import Requirement
 
-WINDOWS_PY314_SOURCE_BACKENDS = {
-    "aacgmv2",
-    "apexpy",
-    "cartopy",
-    "geoviews",
-}
+# Required on a code path without a direct import: polars.DataFrame.to_pandas().
+INDIRECT_REQUIREMENTS = {"pyarrow"}
 
 
 def test_default_runtime_dependencies_stay_lightweight_for_editable_install() -> None:
@@ -49,83 +45,36 @@ def test_package_build_uses_maturin_for_integrated_native_extension() -> None:
     assert pyproject["tool"]["maturin"]["features"] == ["extension-module"]
 
 
-def test_optional_extras_include_space_map_and_viz_backends() -> None:
+def test_extras_list_only_packages_that_sopran_imports() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     optional_dependencies = pyproject["project"]["optional-dependencies"]
+    imported = _imported_top_level_modules(Path("src/sopran"))
 
-    assert {
-        "aacgmv2",
-        "apexpy",
-        "cartopy",
-        "cdasws",
-        "datashader",
-        "geopandas",
-        "hapiclient",
-        "holoviews",
-        "hvplot",
-        "pdr",
-        "pds4-tools",
-        "pyproj",
-        "pyspedas",
-        "rasterio",
-        "rioxarray",
-        "shapely",
-        "spacepy",
-        "spiceypy",
-    } <= _dependency_names(optional_dependencies["full"])
-    assert {
-        "cartopy",
-        "geopandas",
-        "pyogrio",
-        "pyproj",
-        "rasterio",
-        "rioxarray",
-        "shapely",
-    } <= _dependency_names(optional_dependencies["moon"])
-    assert {"aacgmv2", "apexpy", "plasmapy", "spacepy", "sunpy"} <= _dependency_names(
-        optional_dependencies["geospace"]
+    assert set(optional_dependencies) == {
+        "analysis",
+        "artemis",
+        "dev",
+        "docs",
+        "experimental",
+        "full",
+        "kaguya",
+        "moon",
+        "viz",
+    }
+    runtime_extras = set(optional_dependencies) - {"dev", "docs"}
+    for extra in runtime_extras:
+        names = _dependency_names(optional_dependencies[extra]) - INDIRECT_REQUIREMENTS
+        assert names <= imported, (extra, sorted(names - imported))
+    union = set().union(
+        *(_dependency_names(optional_dependencies[extra]) for extra in runtime_extras - {"full"})
     )
-    assert {"cdasws", "hapiclient", "pyspedas", "spacepy"} <= _dependency_names(
-        optional_dependencies["artemis"]
-    )
-    assert {"pdr", "pds4-tools", "spiceypy"} <= _dependency_names(
-        optional_dependencies["kaguya"]
-    )
-    assert {"scipy"} <= _dependency_names(optional_dependencies["analysis"])
-    assert {"scipy"} <= _dependency_names(optional_dependencies["experimental"])
-    assert "scipy" in _dependency_names(optional_dependencies["kaguya"])
-    assert {"datashader", "geoviews", "holoviews", "hvplot", "panel"} <= _dependency_names(
-        optional_dependencies["viz"]
-    )
+    assert _dependency_names(optional_dependencies["full"]) == union
+    assert {"cdflib", "spiceypy", "scipy"} <= _dependency_names(optional_dependencies["kaguya"])
+    assert {"rasterio", "spiceypy"} <= _dependency_names(optional_dependencies["moon"])
+    assert {"matplotlib", "panel"} <= _dependency_names(optional_dependencies["viz"])
 
 
-def test_source_build_backends_are_marked_out_for_windows_python314() -> None:
-    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-    optional_dependencies = pyproject["project"]["optional-dependencies"]
-
-    for extra, names in {
-        "full": WINDOWS_PY314_SOURCE_BACKENDS,
-        "geospace": {"aacgmv2", "apexpy"},
-        "moon": {"cartopy"},
-        "viz": {"geoviews"},
-    }.items():
-        requirements = _requirements_by_name(optional_dependencies[extra])
-        for name in names:
-            requirement = requirements[name]
-
-            assert requirement.marker is not None
-            assert not _marker_allows(
-                requirement, platform_system="Windows", python_version="3.14"
-            )
-            assert _marker_allows(
-                requirement, platform_system="Windows", python_version="3.13"
-            )
-            assert _marker_allows(
-                requirement, platform_system="Linux", python_version="3.14"
-            )
-
-
-def test_install_docs_describe_full_and_windows_native_toolchain_paths() -> None:
+def test_install_docs_describe_full_extra_and_rust_toolchain() -> None:
     docs = [
         Path("docs/getting-started/installation.md").read_text(encoding="utf-8"),
         Path("docs/en/getting-started/installation.md").read_text(encoding="utf-8"),
@@ -133,9 +82,30 @@ def test_install_docs_describe_full_and_windows_native_toolchain_paths() -> None
 
     for document in docs:
         assert 'pip install -e ".[full]"' in document
-        assert 'pip install -e ".[full,native]"' in document
-        assert "visualstudio2022buildtools visualstudio2022-workload-vctools" in document
-        assert "Python 3.14" in document
+        assert "rust visualstudio2022buildtools visualstudio2022-workload-vctools" in document
+        assert "sopran-env-check.exe --native" in document
+
+
+def _imported_top_level_modules(root: Path) -> set[str]:
+    import ast
+
+    modules: set[str] = set()
+    for path in root.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                modules.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                modules.add(node.module.split(".")[0])
+            elif (
+                isinstance(node, ast.Call)
+                and getattr(node.func, "attr", getattr(node.func, "id", None))
+                == "import_module"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                modules.add(node.args[0].value.split(".")[0])
+    return modules
 
 
 def _dependency_names(dependencies: list[str]) -> set[str]:
@@ -143,26 +113,3 @@ def _dependency_names(dependencies: list[str]) -> set[str]:
         Requirement(dependency).name
         for dependency in dependencies
     }
-
-
-def _requirements_by_name(dependencies: list[str]) -> dict[str, Requirement]:
-    return {
-        Requirement(dependency).name: Requirement(dependency)
-        for dependency in dependencies
-    }
-
-
-def _marker_allows(
-    requirement: Requirement,
-    *,
-    platform_system: str,
-    python_version: str,
-) -> bool:
-    if requirement.marker is None:
-        return True
-    return requirement.marker.evaluate(
-        {
-            "platform_system": platform_system,
-            "python_version": python_version,
-        }
-    )

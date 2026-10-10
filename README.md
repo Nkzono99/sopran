@@ -171,8 +171,9 @@ python -m pip install -e .
 python -m pip install -e ".[dev]"
 ```
 
-Optional extras are split by area: `analysis`, `kaguya`, `artemis`, `moon`, `viz`,
-`geospace`, `native`, `docs`, and `full`.
+Optional extras are split by area: `analysis`, `experimental`, `kaguya`, `artemis`,
+`moon`, `viz`, `docs`, and `full`. Each lists only the packages SOPRAN imports on
+that path.
 
 ```powershell
 python -m pip install -e ".[moon,viz]"

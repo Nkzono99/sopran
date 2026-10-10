@@ -43,6 +43,7 @@ sopran-schema-docs = "sopran.schema_docs:main"
 sopran-store = "sopran.core.sync:main"
 
 [project.optional-dependencies]
+# Each extra lists only packages that SOPRAN imports on that path.
 analysis = [
   "scipy>=1.11",
 ]
@@ -51,8 +52,6 @@ experimental = [
 ]
 kaguya = [
   "cdflib>=1.3",
-  "pdr>=0.7.1",
-  "pds4-tools>=1.4",
   "polars>=1.0",
   "pyarrow>=15.0",
   "scipy>=1.11",
@@ -60,46 +59,17 @@ kaguya = [
   "xarray>=2024.3",
 ]
 artemis = [
-  "cdasws>=1.8",
-  "cdflib>=1.3",
-  "hapiclient>=0.2",
   "polars>=1.0",
-  "pyspedas>=2.0",
-  "spacepy>=0.7",
+  "pyarrow>=15.0",
   "xarray>=2024.3",
 ]
 moon = [
-  "cartopy>=0.23; platform_system != 'Windows' or python_version < '3.14'",
-  "geopandas>=1.0",
-  "pyogrio>=0.10",
-  "pyproj>=3.7",
   "rasterio>=1.4",
-  "rioxarray>=0.18",
-  "shapely>=2.0",
   "spiceypy>=6.0",
 ]
 viz = [
-  "bokeh>=3.4",
-  "dask>=2024.1",
-  "datashader>=0.16",
-  "geoviews>=1.12; platform_system != 'Windows' or python_version < '3.14'",
-  "holoviews>=1.19",
-  "hvplot>=0.10",
   "matplotlib>=3.8",
   "panel>=1.4",
-]
-geospace = [
-  "aacgmv2>=2.7; platform_system != 'Windows' or python_version < '3.14'",
-  "apexpy>=2.1; platform_system != 'Windows' or python_version < '3.14'",
-  "plasmapy>=2024.10",
-  "spacepy>=0.7",
-  "sunpy>=5.0",
-]
-native = [
-  "aacgmv2>=2.7",
-  "apexpy>=2.1",
-  "cartopy>=0.23",
-  "geoviews>=1.12",
 ]
 docs = [
   "mkdocs>=1.6",
@@ -108,41 +78,15 @@ docs = [
   "pymdown-extensions>=10.8",
 ]
 full = [
-  "aacgmv2>=2.7; platform_system != 'Windows' or python_version < '3.14'",
-  "apexpy>=2.1; platform_system != 'Windows' or python_version < '3.14'",
-  "astroquery>=0.4.7",
-  "astropy>=6.0",
-  "bokeh>=3.4",
-  "cartopy>=0.23; platform_system != 'Windows' or python_version < '3.14'",
   "cdflib>=1.3",
-  "cdasws>=1.8",
-  "dask>=2024.1",
-  "datashader>=0.16",
-  "geopandas>=1.0",
-  "geoviews>=1.12; platform_system != 'Windows' or python_version < '3.14'",
-  "hapiclient>=0.2",
-  "holoviews>=1.19",
-  "hvplot>=0.10",
   "matplotlib>=3.8",
   "panel>=1.4",
-  "pdr>=0.7.1",
-  "pds4-tools>=1.4",
-  "plasmapy>=2024.10",
   "polars>=1.0",
   "pyarrow>=15.0",
-  "pyogrio>=0.10",
-  "pyproj>=3.7",
-  "pyspedas>=2.0",
   "rasterio>=1.4",
-  "requests>=2.32",
-  "rioxarray>=0.18",
   "scipy>=1.11",
-  "shapely>=2.0",
-  "spacepy>=0.7",
   "spiceypy>=6.0",
-  "sunpy>=5.0",
   "xarray>=2024.3",
-  "zarr>=2.18",
 ]
 dev = [
   "build>=1.2",

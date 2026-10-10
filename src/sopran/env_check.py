@@ -7,10 +7,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from shutil import which
 
-WINDOWS_PY314_NATIVE_BACKENDS = ("aacgmv2", "apexpy", "cartopy", "geoviews")
+RUST_INSTALL_GUIDANCE = "Install Rust with rustup: https://rustup.rs"
 WINDOWS_TOOLCHAIN_COMMAND = (
-    "choco install -y visualstudio2022buildtools "
-    "visualstudio2022-workload-vctools mingw"
+    "choco install -y rust visualstudio2022buildtools visualstudio2022-workload-vctools"
 )
 
 
@@ -44,26 +43,11 @@ def evaluate_environment(
     *,
     native: bool = False,
 ) -> EnvironmentReport:
+    """Check prerequisites; ``native`` checks a source build of ``sopran._native``."""
+
     items: list[CheckItem] = []
-    if _is_windows_python314(probe):
-        items.append(
-            CheckItem(
-                ok=True,
-                warning=True,
-                message=(
-                    "Windows/Python 3.14 marker-gates native backends: "
-                    + ", ".join(WINDOWS_PY314_NATIVE_BACKENDS)
-                ),
-                guidance=(
-                    'Use pip install -e ".[full]" for the wheel-oriented stack, '
-                    'or pip install -e ".[full,native]" after preparing native tools.'
-                ),
-            )
-        )
-
-    if native and probe.platform_system == "Windows":
-        items.extend(_windows_native_checks(probe))
-
+    if native:
+        items.extend(_native_build_checks(probe))
     if not items:
         items.append(CheckItem(ok=True, message="No SOPRAN environment issues detected."))
     return EnvironmentReport(items=tuple(items))
@@ -74,9 +58,8 @@ def current_probe() -> EnvironmentProbe:
         platform_system=platform.system(),
         python_version=".".join(platform.python_version_tuple()[:2]),
         executables={
+            "cargo": which("cargo"),
             "cl": which("cl"),
-            "gcc": which("gcc"),
-            "gfortran": which("gfortran"),
         },
         visual_studio_path=_visual_studio_path(),
     )
@@ -84,12 +67,12 @@ def current_probe() -> EnvironmentProbe:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Check SOPRAN optional dependency toolchain readiness."
+        description="Check prerequisites for building SOPRAN from source."
     )
     parser.add_argument(
         "--native",
         action="store_true",
-        help="check source-build native backend prerequisites",
+        help="check the Rust toolchain for building the sopran._native extension",
     )
     args = parser.parse_args(argv)
 
@@ -106,46 +89,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     return report.exit_code
 
 
-def _windows_native_checks(probe: EnvironmentProbe) -> tuple[CheckItem, ...]:
-    has_msvc = bool(probe.executables.get("cl") or probe.visual_studio_path)
-    has_gcc = bool(probe.executables.get("gcc"))
-    has_gfortran = bool(probe.executables.get("gfortran"))
-    return (
+def _native_build_checks(probe: EnvironmentProbe) -> tuple[CheckItem, ...]:
+    has_cargo = bool(probe.executables.get("cargo"))
+    items = [
         CheckItem(
-            ok=has_msvc,
-            message="MSVC build tools detected."
-            if has_msvc
-            else "MSVC build tools are required for Windows native builds.",
-            guidance="" if has_msvc else WINDOWS_TOOLCHAIN_COMMAND,
-        ),
-        CheckItem(
-            ok=has_gcc and has_gfortran,
-            message="gcc and gfortran detected."
-            if has_gcc and has_gfortran
-            else "gcc and gfortran are required for Fortran-backed native builds.",
-            guidance="" if has_gcc and has_gfortran else WINDOWS_TOOLCHAIN_COMMAND,
-        ),
-        CheckItem(
-            ok=True,
-            warning=True,
-            message="Cartopy source builds may also need GEOS/PROJ headers.",
-            guidance=(
-                "If cartopy fails on Python 3.14, use a Python version with a "
-                "Cartopy wheel or a conda-forge environment."
-            ),
-        ),
-    )
-
-
-def _is_windows_python314(probe: EnvironmentProbe) -> bool:
-    return probe.platform_system == "Windows" and _version_tuple(
-        probe.python_version
-    ) >= (3, 14)
-
-
-def _version_tuple(version: str) -> tuple[int, int]:
-    major, minor, *_ = version.split(".")
-    return int(major), int(minor)
+            ok=has_cargo,
+            message="Rust toolchain (cargo) detected."
+            if has_cargo
+            else "Rust toolchain (cargo) is required to build sopran._native from source.",
+            guidance="" if has_cargo else RUST_INSTALL_GUIDANCE,
+        )
+    ]
+    if probe.platform_system == "Windows":
+        has_msvc = bool(probe.executables.get("cl") or probe.visual_studio_path)
+        items.append(
+            CheckItem(
+                ok=has_msvc,
+                message="MSVC build tools detected."
+                if has_msvc
+                else "MSVC build tools are required to link the Rust extension on Windows.",
+                guidance="" if has_msvc else WINDOWS_TOOLCHAIN_COMMAND,
+            )
+        )
+    return tuple(items)
 
 
 def _visual_studio_path() -> str | None:
