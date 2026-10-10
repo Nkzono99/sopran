@@ -6,12 +6,9 @@ import pytest
 import sopran as spn
 from sopran.core.data import SopranArray
 from sopran.core.schema import VariableSchema
-from sopran.experimental.kaguya.er import _vectors_at
+from sopran.experimental.kaguya.er import _vectors_at, load_lmag_with_margin
 from sopran.missions.kaguya import pitch
-from sopran.missions.kaguya.magnetic_geometry import (
-    interpolate_vectors,
-    load_lmag_with_margin,
-)
+from sopran.missions.kaguya.magnetic_geometry import interpolate_vectors
 from sopran.missions.kaguya.pace import PaceData, PaceRecord
 
 xr = pytest.importorskip("xarray")

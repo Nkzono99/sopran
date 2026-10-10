@@ -1,35 +1,15 @@
-"""Bounded magnetic-vector interpolation and radial hemisphere geometry."""
+"""Bounded magnetic-vector interpolation shared by pitch-angle products."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-if TYPE_CHECKING:
-    from sopran.core.time import TimeRange
-    from sopran.missions.kaguya.lmag import KaguyaLmagData
-    from sopran.missions.kaguya.mission import DownloadMode, LmagInstrument
-
 GEOMETRY_POLICY = "bounded_geometry_v2"
 # The public LMAG series has 4 s cadence; allow one missing sample, not long gaps.
 MAX_GEOMETRY_GAP_SECONDS = 8.0
-
-
-def load_lmag_with_margin(
-    instrument: LmagInstrument, time: TimeRange, *, download: DownloadMode | None = None,
-) -> KaguyaLmagData:
-    """Require the requested data, but permit missing optional boundary files."""
-    from sopran.core.time import TimeRange
-
-    instrument.load(time, download=download, missing="error")
-    margin = timedelta(seconds=MAX_GEOMETRY_GAP_SECONDS)
-    return instrument.load(
-        TimeRange(time.start - margin, time.stop + margin), download=download, missing="empty"
-    )
 
 
 @dataclass(frozen=True)
@@ -82,15 +62,3 @@ def interpolate_vectors(
     for component in range(3):
         result[valid, component] = np.interp(target[valid], source, values[:, component])
     return VectorInterpolation(result, bracket, nearest, valid)
-
-
-def geometry_support(
-    magnetic: ArrayLike, position: ArrayLike,
-) -> tuple[NDArray[np.bool_], NDArray[np.str_], NDArray[np.float64]]:
-    """Return valid rows, outgoing hemispheres and B/r cosine (not connectivity)."""
-    b, r = np.asarray(magnetic, dtype=float), np.asarray(position, dtype=float)
-    norm = np.linalg.norm(b, axis=1) * np.linalg.norm(r, axis=1)
-    cosine = np.divide(np.sum(b * r, axis=1), norm, out=np.full(len(b), np.nan), where=norm > 0)
-    valid = np.isfinite(cosine) & (cosine != 0)
-    sides = np.where(valid, np.where(cosine > 0, "low", "high"), "unknown")
-    return valid, sides, np.clip(cosine, -1, 1)

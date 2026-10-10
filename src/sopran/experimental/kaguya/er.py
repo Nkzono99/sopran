@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -24,7 +25,7 @@ from sopran.experimental.electron_reflection import (
     fit_halekas_distribution,
     profile_mirror_ratio,
 )
-from sopran.missions.kaguya.magnetic_geometry import MAX_GEOMETRY_GAP_SECONDS, load_lmag_with_margin
+from sopran.missions.kaguya.magnetic_geometry import MAX_GEOMETRY_GAP_SECONDS
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData
 from sopran.missions.kaguya.pitch import (
     CountCorrection,
@@ -37,7 +38,8 @@ if TYPE_CHECKING:
     import xarray as xr
 
     from sopran.frames import FrameContext
-    from sopran.missions.kaguya.mission import Kaguya
+    from sopran.missions.kaguya.lmag import KaguyaLmagData
+    from sopran.missions.kaguya.mission import Kaguya, LmagInstrument
 
 AffectedSide = Literal["low", "high", "auto"]
 ResolvedSide = Literal["low", "high"]
@@ -109,6 +111,17 @@ class EffectiveFieldEndpoint:
         """Fit the fixed-backscatter full distribution with hard/probit edge."""
         return fit_halekas_distribution(counts, settings=settings)
 
+
+
+def load_lmag_with_margin(
+    instrument: LmagInstrument, time: TimeRange, *, download: DownloadMode | None = None,
+) -> KaguyaLmagData:
+    """Require the requested data, but permit missing optional boundary files."""
+    instrument.load(time, download=download, missing="error")
+    margin = timedelta(seconds=MAX_GEOMETRY_GAP_SECONDS)
+    return instrument.load(
+        TimeRange(time.start - margin, time.stop + margin), download=download, missing="empty"
+    )
 
 @dataclass(frozen=True)
 class _PitchInputs:
