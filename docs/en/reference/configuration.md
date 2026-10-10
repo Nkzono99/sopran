@@ -45,8 +45,9 @@ lon_domain = "0_360"
 | Backend | Explicit override > session config > project `[backends]` > user global `[backends]` > `auto` |
 | Case region | `[cases.<name>.region]` > `[defaults.region]` |
 
-Normal use does not require backend selection. With `auto`, SOPRAN selects
-libraries such as `spiceypy` or `spacepy` based on the operation. Pin a backend
+Normal use does not require backend selection. With `auto`, SOPRAN selects a
+backend per frame pair. `spiceypy` is implemented; `spacepy` for GSE, GSM and SM
+is planned. Pin a backend
 only when a study needs it.
 
 ## Session Config

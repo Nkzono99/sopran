@@ -43,8 +43,10 @@ zoom.kaguya.esa1.counts.plot()
 | selection | `time`, `region`, `mission`, `instrument`, `product`, `quality` | 何を切り出すか |
 | context | `frame`, `cache`, `download`, `backends`, `spice_kernels`, `time_scale` | どう処理・変換するか |
 
-通常利用では backend を指定しません。`FrameContext` などが用途に応じて `spiceypy`、
-`spacepy` などを自動選択します。研究上 backend を固定したいときだけ override します。
+通常利用では backend を指定しません。`FrameContext` などが用途に応じて backend を選びます。
+現在実装済みの座標変換 backend は `spiceypy` です。GSE・GSM・SM 間に予定している `spacepy` は
+未実装で、`FrameContext.plan()` は `planned` を返し、変換は `FrameTransformError` になります。
+研究上 backend を固定したいときだけ override します。
 
 ```python
 view = project.view(

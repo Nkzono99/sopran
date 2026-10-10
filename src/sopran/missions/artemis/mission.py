@@ -331,8 +331,11 @@ plot_result = spn.stack(item).plot()
         except DatasetNotFoundError as exc:
             probe = self.instrument.probe.probe.upper()
             instrument = str(self.instrument.instrument_id).upper()
-            raise NotImplementedError(
-                f"ARTEMIS {probe} {instrument} load is not implemented yet"
+            raise DatasetNotFoundError(
+                f"ARTEMIS {probe} {instrument} data is not in the Store: "
+                f"no normalized dataset {dataset_id!r}.\n"
+                "SOPRAN does not download ARTEMIS data yet; it reads normalized Parquet "
+                "written with Store.write_parquet_dataset(..., layer='normalized')."
             ) from exc
         return SopranArray(
             name=self.name,

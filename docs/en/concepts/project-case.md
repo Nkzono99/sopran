@@ -37,8 +37,9 @@ zoom.kaguya.esa1.counts.plot()
 | selection | `time`, `region`, `mission`, `instrument`, `product`, `quality` | What to extract |
 | context | `frame`, `cache`, `download`, `backends`, `spice_kernels`, `time_scale` | How to process it |
 
-Backends default to `auto`. SOPRAN chooses libraries such as `spiceypy` or
-`spacepy` where appropriate. Pin a backend only when a study needs it.
+Backends default to `auto`. The implemented frame backend is `spiceypy`; `spacepy`
+for GSE, GSM and SM is planned, so `FrameContext.plan()` reports `planned` and the
+transform raises `FrameTransformError`. Pin a backend only when a study needs it.
 
 ## Cases And sopran.toml
 

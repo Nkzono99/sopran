@@ -379,10 +379,10 @@ def test_guide_page_show_includes_language_switcher(capsys) -> None:
     assert capsys.readouterr().out.startswith("Lang: 日本語/English\n\n# SOPRAN docs")
 
 
-def test_artemis_load_is_explicitly_not_implemented_yet() -> None:
-    art = spn.Artemis()
+def test_artemis_load_reports_missing_normalized_dataset(tmp_path) -> None:
+    art = spn.Artemis(store=spn.Store(tmp_path / "store"))
 
-    with pytest.raises(NotImplementedError) as exc:
+    with pytest.raises(spn.DatasetNotFoundError) as exc:
         art.p1.fgm.magnetic_field.load(spn.day("2011-07-01"))
 
     assert "ARTEMIS P1 FGM" in str(exc.value)
@@ -668,8 +668,12 @@ stop = "2011-07-02T00:00:00"
     assert plan.time == case.time
 
 
-def test_top_level_load_dispatches_artemis_dataset_id() -> None:
-    with pytest.raises(NotImplementedError) as exc:
-        spn.load("artemis.p1.fgm.magnetic_field", spn.day("2011-07-01"))
+def test_top_level_load_dispatches_artemis_dataset_id(tmp_path) -> None:
+    with pytest.raises(spn.DatasetNotFoundError) as exc:
+        spn.load(
+            "artemis.p1.fgm.magnetic_field",
+            spn.day("2011-07-01"),
+            store=spn.Store(tmp_path / "store"),
+        )
 
     assert "ARTEMIS P1 FGM" in str(exc.value)

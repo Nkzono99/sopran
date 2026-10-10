@@ -45,7 +45,8 @@ lon_domain = "0_360"
 | case region | `[cases.<name>.region]` > `[defaults.region]` |
 
 通常の解析では backend を指定する必要はありません。`auto` のままにすると、座標変換なら
-frame pair に応じて `spiceypy` や `spacepy` などが選ばれます。backend を固定したい解析だけ
+frame pair に応じて backend が選ばれます。実装済みは `spiceypy` で、GSE・GSM・SM 間の
+`spacepy` は予定（`planned`）です。backend を固定したい解析だけ
 `project.view(..., backend={"frames": "spiceypy"})` のように override します。
 
 ## session config
