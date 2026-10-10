@@ -22,8 +22,12 @@ counts.to_polars()
 | `kg.esa1.quality` | `time` | Flag panel, masks, alignment |
 
 `energy_flux` uses the Python reference formula
-`counts / (integ_t * gfactor * efficiency)`, with default `efficiency=0.6`.
-INFO calibration tables are loaded automatically by default. If they are
+`counts / (integ_t * gfactor * efficiency)`, with default `efficiency=0.6`, the
+uniform value of SPEDAS `kgy_esa{1,2}_get3d.pro`. For another value call
+`kg.esa1.load(time).to_energy_flux(efficiency=...)`. INFO calibration tables are
+loaded automatically by default from the distribution point that SPEDAS
+`kgy_read_inf.pro` / `kgy_read_fov.pro` use (HTTP only); each table is registered
+in the Store raw registry with its URL and sha256. If they are
 unavailable, `kg.esa1.energy_flux.load(...)` raises an actionable error. The
 `energy` coordinate is the INFO-table energy center in eV, and the original
 channel is preserved as `energy_channel`. Use `missing="empty"`, `"warn"`, or

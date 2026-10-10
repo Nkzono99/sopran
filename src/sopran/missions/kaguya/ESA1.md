@@ -106,7 +106,8 @@ cal.coverage("ESA1")
 ```
 
 SOPRAN computes `energy_flux` with `counts / (integ_t * gfactor * efficiency)`,
-where the default efficiency is 0.6. The endpoint form loads tables
+where the default efficiency is 0.6, the uniform value of SPEDAS
+`kgy_esa{1,2}_get3d.pro`. The endpoint form loads tables
 automatically:
 
 ```python

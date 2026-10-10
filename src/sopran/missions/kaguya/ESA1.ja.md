@@ -103,7 +103,8 @@ cal.coverage("ESA1")
 ```
 
 SOPRAN は `counts / (integ_t * gfactor * efficiency)` で `energy_flux` を計算します。
-既定の `efficiency` は 0.6 です。endpoint からも table は自動で読みます。
+既定の `efficiency` は 0.6 で、SPEDAS の `kgy_esa{1,2}_get3d.pro` と同じ一様値です。
+endpoint からも table は自動で読みます。
 
 ```python
 flux = kg.esa1.energy_flux.load(time)

@@ -37,6 +37,9 @@ from sopran.missions.kaguya.pitch import (
 from sopran.missions.kaguya.schema import kaguya_pace_schema
 
 PitchCacheMode = Literal["use", "refresh", "never"]
+# Uniform detector efficiency, as in SPEDAS kgy_esa{1,2}_get3d.pro
+# ("eff = replicate(0.6, ...) ;- to be replaced by eff tbl").
+PACE_DEFAULT_EFFICIENCY = 0.6
 
 
 @dataclass(frozen=True)
@@ -341,7 +344,7 @@ class KaguyaPaceData:
     def pas(self, magnetic_field: Any, **kwargs: Any) -> SopranArray:
         return self.pitch_angle_spectrum(magnetic_field, **kwargs)
 
-    def to_energy_flux(self, *, efficiency: float = 0.6) -> SopranArray:
+    def to_energy_flux(self, *, efficiency: float = PACE_DEFAULT_EFFICIENCY) -> SopranArray:
         try:
             import numpy as np
             import xarray as xr
@@ -474,13 +477,13 @@ class KaguyaPaceData:
             self.calibration,
             self.instrument,
             np,
-            efficiency=0.6,
+            efficiency=PACE_DEFAULT_EFFICIENCY,
         )
         energy_flux_attrs = _energy_flux_attrs(
             energy_flux_schema,
             calibration,
             applied=not np.isnan(energy_flux).all(),
-            efficiency=0.6,
+            efficiency=PACE_DEFAULT_EFFICIENCY,
         )
         counts = counts[:, energy_coords.order, :]
         energy_flux = energy_flux[:, energy_coords.order, :]

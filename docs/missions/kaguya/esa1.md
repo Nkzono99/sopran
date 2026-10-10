@@ -22,7 +22,11 @@ counts.to_polars()
 | `kg.esa1.quality` | `time` | flag panel、mask、alignment |
 
 `energy_flux` は `counts / (integ_t * gfactor * efficiency)` を使う Python reference
-実装です。既定の `efficiency` は 0.6 です。INFO table は既定で自動ロードされます。
+実装です。既定の `efficiency` は 0.6 で、SPEDAS の `kgy_esa{1,2}_get3d.pro` と同じ一様値です。
+別の値を使う場合は `kg.esa1.load(time).to_energy_flux(efficiency=...)` を呼びます。
+INFO table は既定で自動ロードされます。取得元は SPEDAS の `kgy_read_inf.pro` /
+`kgy_read_fov.pro` と同じ配布元（HTTP のみ）で、取得した table は URL と sha256 を
+Store の raw registry に記録します。
 INFO table が無い場合は `kg.esa1.energy_flux.load(...)` は明示エラーになります。
 `energy` 座標は INFO table 由来の eV center になり、元の channel は `energy_channel`
 に残ります。

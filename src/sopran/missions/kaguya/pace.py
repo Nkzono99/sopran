@@ -41,6 +41,9 @@ SENSOR_RAM_COUNTS = {
     3: 4,
 }
 
+# FOV and INFORMATION tables come from the distribution point that the SPEDAS KAGUYA
+# plugin uses (kgy_read_fov.pro, kgy_read_inf.pro). The host serves HTTP only, so each
+# downloaded table is registered in the Store raw registry with its URL and sha256.
 PACE_CALIBRATION_BASE_URL = "http://step0ku.kugi.kyoto-u.ac.jp/~haraday/data/kaguya/"
 
 PACE_FOV_LAYOUT = {
