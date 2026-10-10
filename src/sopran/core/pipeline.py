@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal
 from uuid import uuid4
 
+from sopran.core.errors import PipelineError
 from sopran.core.time import TimeRange
 
 PipelineRunMode = Literal["create", "append", "replace"]
@@ -106,6 +108,44 @@ class PipelineResult:
         return self.to_text()
 
 
+class PipelineBackend:
+    """Executes the pipelines of one data source.
+
+    A data endpoint's ``pipeline(time)`` attaches its backend. Subclasses override
+    the operations their source supports; the rest raise :class:`PipelineError`.
+    ``stream_pipeline`` falls back to splitting ``scan_pipeline`` by day.
+    """
+
+    def scan_pipeline(self, pipeline: Pipeline) -> Any:
+        raise PipelineError(f"{pipeline.source} does not support Pipeline.scan()")
+
+    def stream_pipeline(
+        self, pipeline: Pipeline, *, partition: PipelineStreamPartition
+    ) -> Iterator[Any]:
+        if partition == "all":
+            yield self.scan_pipeline(pipeline).collect()
+            return
+        if partition == "day":
+            yield from _stream_frame_by_day(self.scan_pipeline(pipeline).collect())
+            return
+        raise PipelineError(
+            f"{pipeline.source} does not support Pipeline.stream(partition={partition!r})"
+        )
+
+    def run_pipeline(
+        self,
+        pipeline: Pipeline,
+        *,
+        mode: PipelineRunMode,
+        run_id: str,
+        resume: bool,
+        only_failed: bool,
+        on_error: PipelineOnError,
+        download: PipelineDownloadMode | None,
+    ) -> PipelineResult:
+        raise PipelineError(f"{pipeline.source} does not support Pipeline.run()")
+
+
 @dataclass(frozen=True)
 class Pipeline:
     source: str
@@ -114,7 +154,7 @@ class Pipeline:
     output_dataset: str | None = None
     output_layer: str | None = None
     output_target: Any = None
-    context: Any = None
+    backend: PipelineBackend | None = None
     default_variable: str | None = None
 
     def download(self) -> Pipeline:
@@ -189,7 +229,7 @@ class Pipeline:
             output_dataset=dataset_id,
             output_layer=output_layer,
             output_target=None if isinstance(dataset, str) else dataset,
-            context=self.context,
+            backend=self.backend,
             default_variable=self.default_variable,
         )
 
@@ -203,29 +243,13 @@ class Pipeline:
         )
 
     def scan(self) -> Any:
-        scanner = getattr(self.context, "_scan_pipeline", None)
-        if scanner is not None:
-            return scanner(self)
-        raise NotImplementedError("Pipeline.scan() backend is not implemented yet")
+        return self._backend().scan_pipeline(self)
 
     def collect(self) -> Any:
         return self.scan().collect()
 
-    def stream(self, *, partition: PipelineStreamPartition = "all") -> Any:
-        streamer = getattr(self.context, "_stream_pipeline", None)
-        if streamer is not None:
-            yield from streamer(self, partition=partition)
-            return
-
-        if partition == "all":
-            yield self.collect()
-            return
-        if partition == "day":
-            yield from _stream_frame_by_day(self.collect())
-            return
-        raise NotImplementedError(
-            "Pipeline.stream() partition='shard' and partition='orbit' require a backend"
-        )
+    def stream(self, *, partition: PipelineStreamPartition = "all") -> Iterator[Any]:
+        return self._backend().stream_pipeline(self, partition=partition)
 
     def run(
         self,
@@ -267,21 +291,26 @@ class Pipeline:
                 run_id=run_id,
                 run_parameters=run_parameters,
             )
-        runner = getattr(self.context, "_run_pipeline", None)
-        if runner is not None:
-            result = runner(
-                self,
-                mode=mode,
-                run_id=run_id,
-                resume=resume,
-                only_failed=only_failed,
-                on_error=on_error,
-                download=download,
+        result = self._backend().run_pipeline(
+            self,
+            mode=mode,
+            run_id=run_id,
+            resume=resume,
+            only_failed=only_failed,
+            on_error=on_error,
+            download=download,
+        )
+        if isinstance(result, PipelineResult) and not result.run_parameters:
+            return replace(result, run_parameters=run_parameters)
+        return result
+
+    def _backend(self) -> PipelineBackend:
+        if self.backend is None:
+            raise PipelineError(
+                f"Pipeline for {self.source} has no execution backend; "
+                "build it from a data endpoint with endpoint.pipeline(time)"
             )
-            if isinstance(result, PipelineResult) and not result.run_parameters:
-                return replace(result, run_parameters=run_parameters)
-            return cast(PipelineResult, result)
-        raise NotImplementedError("Pipeline.run() execution backend is not implemented yet")
+        return self.backend
 
     def _with_stage(self, stage_name: str, **parameters: Any) -> Pipeline:
         return Pipeline(
@@ -291,7 +320,7 @@ class Pipeline:
             output_dataset=self.output_dataset,
             output_layer=self.output_layer,
             output_target=self.output_target,
-            context=self.context,
+            backend=self.backend,
             default_variable=self.default_variable,
         )
 

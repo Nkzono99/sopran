@@ -45,4 +45,14 @@ frame = (
 )
 ```
 
+## Execution Backend
+
+Build a `Pipeline` from a data endpoint with `pipeline(time)`. Its source's
+`PipelineBackend` executes scan, stream and run. KAGUYA PACE (`kg.esa1` and the
+other sensors) has a backend, implemented in `sopran.missions.kaguya.pipeline`.
+Endpoints without one (such as LRS) and hand-built pipelines raise `PipelineError`
+when executed. A new source subclasses `PipelineBackend` and overrides only the
+operations it supports; `stream(partition="all" | "day")` falls back to
+`scan_pipeline`.
+
 Backend coverage is tracked in [Status](../reference/status.md).

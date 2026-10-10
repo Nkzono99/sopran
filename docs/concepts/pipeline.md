@@ -52,4 +52,13 @@ for day_frame in pipe.stream(partition="day"):
     process(day_frame)
 ```
 
+## 実行 backend
+
+`Pipeline` はデータ endpoint の `pipeline(time)` から作ります。scan・stream・run は、
+その source の `PipelineBackend` が実行します。現在 backend を持つのは KAGUYA PACE
+（`kg.esa1` など）で、実装は `sopran.missions.kaguya.pipeline` にあります。
+backend のない endpoint（LRS など）や、直接作った `Pipeline` の実行は `PipelineError` になります。
+新しい source は `PipelineBackend` を継承し、対応する操作だけを override します。
+`stream(partition="all" | "day")` は `scan_pipeline` から自動で分割されます。
+
 実装済み backend と未実装 backend の一覧は [実装状況](../reference/status.md) に集約しています。

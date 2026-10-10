@@ -7,12 +7,18 @@ import polars as pl
 import pytest
 
 import sopran as spn
-from sopran.core.pipeline import Pipeline, PipelinePlan, PipelineResult, PipelineStage
+from sopran.core.pipeline import (
+    Pipeline,
+    PipelineBackend,
+    PipelinePlan,
+    PipelineResult,
+    PipelineStage,
+)
 
 
 def test_pipeline_stream_partitions_scanned_rows_by_day() -> None:
-    class ScanContext:
-        def _scan_pipeline(self, pipeline: Pipeline):
+    class ScanContext(PipelineBackend):
+        def scan_pipeline(self, pipeline: Pipeline):
             return pl.DataFrame(
                 {
                     "time": [
@@ -27,7 +33,7 @@ def test_pipeline_stream_partitions_scanned_rows_by_day() -> None:
     pipe = Pipeline(
         source="test.source",
         time=spn.period("2008-02-01", "2008-02-03"),
-        context=ScanContext(),
+        backend=ScanContext(),
     )
 
     chunks = list(pipe.stream(partition="day"))
@@ -39,14 +45,14 @@ def test_pipeline_stream_partitions_scanned_rows_by_day() -> None:
 
 
 def test_pipeline_stream_delegates_to_backend_when_available() -> None:
-    class StreamContext:
-        def _stream_pipeline(self, pipeline: Pipeline, *, partition: str):
+    class StreamContext(PipelineBackend):
+        def stream_pipeline(self, pipeline: Pipeline, *, partition):
             yield {"source": pipeline.source, "partition": partition}
 
     pipe = Pipeline(
         source="test.source",
         time=spn.day("2008-02-01"),
-        context=StreamContext(),
+        backend=StreamContext(),
     )
 
     assert list(pipe.stream(partition="orbit")) == [
@@ -55,14 +61,14 @@ def test_pipeline_stream_delegates_to_backend_when_available() -> None:
 
 
 def test_pipeline_run_forwards_on_error_policy_to_backend() -> None:
-    class RunContext:
-        def _run_pipeline(self, pipeline: Pipeline, *, on_error: str, **kwargs):
+    class RunContext(PipelineBackend):
+        def run_pipeline(self, pipeline: Pipeline, *, on_error, **kwargs):
             return {"source": pipeline.source, "on_error": on_error, "kwargs": kwargs}
 
     pipe = Pipeline(
         source="test.source",
         time=spn.day("2008-02-01"),
-        context=RunContext(),
+        backend=RunContext(),
     )
 
     result = pipe.run(on_error="continue")
@@ -73,14 +79,14 @@ def test_pipeline_run_forwards_on_error_policy_to_backend() -> None:
 
 
 def test_pipeline_run_forwards_download_policy_to_backend() -> None:
-    class RunContext:
-        def _run_pipeline(self, pipeline: Pipeline, *, download: str | None, **kwargs):
+    class RunContext(PipelineBackend):
+        def run_pipeline(self, pipeline: Pipeline, *, download, **kwargs):
             return {"source": pipeline.source, "download": download, "kwargs": kwargs}
 
     pipe = Pipeline(
         source="test.source",
         time=spn.day("2008-02-01"),
-        context=RunContext(),
+        backend=RunContext(),
     )
 
     result = pipe.run(download="always")
@@ -88,6 +94,15 @@ def test_pipeline_run_forwards_download_policy_to_backend() -> None:
     assert result["source"] == "test.source"
     assert result["download"] == "always"
     assert result["kwargs"]["mode"] == "create"
+
+
+def test_pipeline_without_backend_reports_how_to_build_one() -> None:
+    pipe = Pipeline(source="test.source", time=spn.day("2008-02-01"))
+
+    with pytest.raises(spn.PipelineError, match="endpoint.pipeline"):
+        pipe.collect()
+    with pytest.raises(spn.PipelineError, match="no execution backend"):
+        pipe.run()
 
 
 def test_pipeline_run_validates_on_error_policy() -> None:
@@ -213,3 +228,17 @@ def test_pipeline_result_to_dict_summarizes_outputs(tmp_path) -> None:
             },
         },
     ]
+
+
+def test_endpoint_pipelines_attach_their_instrument_backend(tmp_path) -> None:
+    from sopran.missions.kaguya.pipeline import PacePipelineBackend
+
+    kg = spn.Kaguya(store=spn.Store(tmp_path / "store"), download="never")
+    time = spn.day("2008-02-01")
+
+    assert isinstance(kg.esa1.counts.pipeline(time).backend, PacePipelineBackend)
+    assert isinstance(kg.esa1.pipeline(time).backend, PacePipelineBackend)
+    lrs = kg.lrs.wfc_ey_power_spectral_density.pipeline(time)
+    assert lrs.backend is None
+    with pytest.raises(spn.PipelineError, match="no execution backend"):
+        lrs.run()
