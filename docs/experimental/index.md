@@ -16,6 +16,7 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | KAGUYA WFCの候補抽出preset・品質処理 | `sopran.experimental.kaguya.waves` |
 | ERの全期間バッチ（日別shard・Slurm） | `python -m sopran.experimental.kaguya.er_batch` |
 | Tsunakawa SVM3Dのshell格子・磁力線トレース | `sopran.experimental.moon.svm3d` |
+| ER入力の部品（窓・paired map・SVM3D接続判定） | `sopran.experimental.kaguya.er_windows`・`electron_reflection.maps`・`moon.connection` |
 
 - [ERの利用方法と限界](electron-reflectometry.md)
 - [ER手法とコードの一覧](er-methods.md)

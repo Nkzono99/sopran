@@ -30,7 +30,7 @@ export-catalog -> verify-inputs -> prepare -> run (parallel, resumable) -> statu
 | `finalize --run-variant R` | re-hash complete shards and register them in the Store catalog |
 | `compare --run-variant R --reference FILE...` | objective, Beff and candidate agreement with another run's day Parquet |
 
-**Input contract.** SOPRAN does not build the input. It reads a SQLite catalog with one
+**Input contract.** A SQLite catalog, built outside SOPRAN, has one
 table `windows(sample_id TEXT, day TEXT, record TEXT, maps BLOB)`. `record` is the
 window record as JSON (`time`, `b_sc_nT`, `affected_side`, `field_connection_status`,
 `field_radial_abs_cosine_min`, `magnetic_direction_max_deviation_deg`, `reason`).
@@ -45,6 +45,30 @@ Products of earlier fits (`observed_log_ratio`, `fitted_log_ratio`, `beam_ratio`
 dropped. The window record (JSON) and the sha256 of record plus blob (`source_sha256`)
 are kept. `days.json` lists every day, including days without input, with window and
 distribution counts and checksums.
+
+**Building inputs with SOPRAN parts.** Instead of a SQLite catalog, input shards can
+be built from raw data with these parts; their defaults follow the 2026-09
+full-period run (`halekas_mission_v1`). Parallelizing days, resuming and logging a
+full-period build stay in the caller's script.
+
+| step | parts |
+|---|---|
+| one day of native records with LMAG geometry | `KaguyaErInstrument(mission).native_records(day)` |
+| 16 s windows and diagnostics | `er_windows.calendar_windows`, `window_record`, `window_input_diagnostic` |
+| SVM3D connection | `moon.connection.trace_connection`, `classify_connection` (`ConnectionPolicy`) |
+| paired map | `er_windows.window_pitch_records` then `electron_reflection.maps.build_paired_map` |
+| write and register | `er_batch.window_input_row` then `er_batch.write_input_days` |
+
+`window_record` takes the field-direction spread from LMAG samples in the window
+and `field_radial_abs_cosine_min` from the B/r cosine at the records.
+`build_paired_map` orients each record so the affected side is at low pitch,
+redistributes it by bin overlap onto a 20-1500 eV, 24 energy x 16 pitch grid,
+sums counts and exposure, and folds into affected and reference halves;
+`fit_valid` needs positive exposure on both sides, counts, and at least three
+cells per energy row. The connection traces SVM3D plus a uniform residual at
+0.5 km steps to a 6.1 km stop altitude within 1000 km; a window is
+`model_connected` when every inward trace reaches the shell, no reverse trace
+does, and the sign does not change. The Japanese page has a full example.
 
 **Prepare and run.** `prepare` records the `FiniteBinFitSettings()` defaults with
 `--fit-setting` overrides, the input catalog checksum, sha256 of the fit code and

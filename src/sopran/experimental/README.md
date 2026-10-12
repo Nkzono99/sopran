@@ -13,6 +13,9 @@ Import the specific model or adapter explicitly. Importing `sopran` or
 | `electron_reflection.common` | Shared paired-count input, exposure validation and boundary convention | Preserve input units, masks, zero/missing distinctions |
 | `kaguya.er_batch` | Day-sharded full-period fits, frozen run identity, Slurm-ready CLI | Pilot agreement on the target cluster and a completed full-period run |
 | `kaguya.er` | Shared ESA/LMAG/SPICE input preparation and explicit estimator calls | Calibration, pairing, exposure, geometry and reader regression tests |
+| `electron_reflection.maps` | Bin-overlap redistribution of native pitch records onto a common grid, affected/reference fold, `fit_valid` | Stated redistribution assumption checked against an independent rebinning; grid choice documented per use |
+| `kaguya.er_windows` | Native-record union, record geometry, 16 s calendar windows and their coverage/geometry/mode records | Window rules reviewed with the ER method; reproduces the 2026-09 mission run (checked per day against its export) |
+| `moon.connection` | `svm3d_native_connection_v1` connection screening on SVM3D traces | Same as `moon.svm3d`, plus a connection definition independent of the uniform-residual assumption |
 | `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels and instrument comparisons |
 | `moon.svm3d` | Tsunakawa SVM3D shell grid, native RK4 tracing through a uniform external field, interpolation accuracy report | Documented grid build and accuracy limits; a field-line connection contract that is independent of ER |
 

@@ -16,6 +16,7 @@ python -m pip install "sopran[kaguya,viz,experimental]"
 | WFC presets and candidate quality rules | `sopran.experimental.kaguya.waves` |
 | Full-period ER batch (day shards, Slurm) | `python -m sopran.experimental.kaguya.er_batch` |
 | Tsunakawa SVM3D shell grid and field-line tracing | `sopran.experimental.moon.svm3d` |
+| ER input parts (windows, paired maps, SVM3D connection) | `sopran.experimental.kaguya.er_windows`, `electron_reflection.maps`, `moon.connection` |
 
 See [ER usage](electron-reflectometry.md), [the ER batch](er-batch.md) and
 [wave candidates](waves.md).

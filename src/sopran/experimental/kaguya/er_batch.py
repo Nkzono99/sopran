@@ -8,8 +8,10 @@ Two Store datasets carry the work:
 - ``experimental.kaguya.er.finite_bin_fits`` (layer ``models``): one Parquet shard per
   day of finite-bin fits and Rm profiles, keyed by a run variant.
 
-The input catalog is a contract, not a SOPRAN product: SOPRAN does not build it.
-It holds one table ``windows(sample_id TEXT, day TEXT, record TEXT, maps BLOB)``.
+Inputs come either from a SQLite catalog built outside SOPRAN (``export-catalog``) or
+from window records and paired maps built with ``er_windows``, ``maps`` and
+``moon.connection`` (``window_input_row`` and ``write_input_days``). The catalog
+holds one table ``windows(sample_id TEXT, day TEXT, record TEXT, maps BLOB)``.
 ``record`` is a JSON window record (``time``, ``b_sc_nT``, ``affected_side``,
 ``field_connection_status``, ``field_radial_abs_cosine_min``,
 ``magnetic_direction_max_deviation_deg``, ``reason``); ``maps`` is an ``.npz`` with
@@ -39,7 +41,7 @@ import shutil
 import sqlite3
 import sys
 import time
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -48,6 +50,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import polars as pl
 
 from sopran.core.schema import InstrumentSchema, VariableSchema
@@ -77,6 +80,8 @@ __all__ = [
     "run_status",
     "scan_run",
     "verify_inputs",
+    "window_input_row",
+    "write_input_days",
 ]
 
 INPUT_DATASET = "experimental.kaguya.er.paired_distributions"
@@ -269,38 +274,179 @@ def _connect(catalog: Path) -> sqlite3.Connection:
 
 
 def input_row(sample_id: str, day_label: str, record_text: str, blob: bytes | None) -> dict:
-    """One input row; raises if an array cannot be represented without loss."""
+    """One input row from a catalog record and .npz blob; lossless or it raises."""
+    maps = None
+    if blob is not None:
+        with np.load(io.BytesIO(blob), allow_pickle=False) as data:
+            maps = {name: data[name] for name in data.files}
+    source = hashlib.sha256(record_text.encode() + (blob or b"")).hexdigest()
+    return _row(sample_id, day_label, record_text, maps, source)
+
+
+def window_input_row(record: Mapping[str, Any], maps: Any | None) -> dict:
+    """One input row from a window record and its paired map (or None).
+
+    ``record`` needs ``sample_id`` (``YYYYMMDD-HHMMSS``) and the fields the fit
+    reads: ``time``, ``b_sc_nT``, ``affected_side``, ``field_connection_status``,
+    ``field_radial_abs_cosine_min``, ``magnetic_direction_max_deviation_deg`` and,
+    for windows without a map, ``reason``. ``maps`` is a
+    :class:`~sopran.experimental.electron_reflection.maps.PairedMap` or a mapping
+    with the arrays of ``FLOAT_ARRAYS`` and ``BOOL_ARRAYS``.
+    """
+    sample_id = str(record["sample_id"])
+    day_label = f"{sample_id[0:4]}-{sample_id[4:6]}-{sample_id[6:8]}"
+    record_text = json.dumps(_jsonable(record), allow_nan=False, separators=(",", ":"))
+    arrays = None if maps is None else dict(maps.arrays() if hasattr(maps, "arrays") else maps)
+    digest = hashlib.sha256(record_text.encode())
+    for name in sorted(arrays or {}):
+        value = np.ascontiguousarray(arrays[name])  # type: ignore[index]
+        digest.update(f"{name}:{value.dtype.str}:{value.shape}".encode())
+        digest.update(value.tobytes())
+    return _row(sample_id, day_label, record_text, arrays, digest.hexdigest())
+
+
+def _row(
+    sample_id: str,
+    day_label: str,
+    record_text: str,
+    maps: Mapping[str, Any] | None,
+    source_sha256: str,
+) -> dict:
     record = json.loads(record_text)
     row: dict[str, Any] = dict.fromkeys(INPUT_SCHEMA)
     row.update(
         sample_id=sample_id,
         day=day_label,
         time=record.get("time"),
-        has_distribution=blob is not None,
+        has_distribution=maps is not None,
         record_json=record_text,
-        source_sha256=hashlib.sha256(record_text.encode() + (blob or b"")).hexdigest(),
+        source_sha256=source_sha256,
         b_sc_nT=record.get("b_sc_nT"),
     )
-    if blob is None:
+    if maps is None:
         return row
-    with np.load(io.BytesIO(blob), allow_pickle=False) as data:
-        maps = {name: data[name] for name in data.files}
-    folded = maps["affected_counts"].shape
+    folded = np.shape(maps["affected_counts"])
     row.update(
         n_energy=int(folded[0]),
         n_pitch_folded=int(folded[1]),
-        n_pitch_full=int(maps["global_counts"].shape[1]) if "global_counts" in maps else None,
+        n_pitch_full=int(np.shape(maps["global_counts"])[1]) if "global_counts" in maps else None,
     )
     for name in (*FLOAT_ARRAYS, *BOOL_ARRAYS):
         if name not in maps:
             continue
-        original = maps[name]
+        original = np.asarray(maps[name])
         kind = bool if name in BOOL_ARRAYS else float
         converted = np.asarray(original, dtype=kind)
         if not np.array_equal(converted, original, equal_nan=kind is float):
             raise ValueError(f"{sample_id}: {name} is not representable as {kind.__name__}")
         row[name] = converted.ravel().tolist()
     return row
+
+
+def write_input_days(
+    store: Store,
+    input_variant: str,
+    days: Mapping[str, Sequence[Mapping[str, Any]]],
+    *,
+    provenance: Mapping[str, Any] | None = None,
+    log: Any = print,
+) -> Path:
+    """Write day shards of input rows and (re)register the input dataset.
+
+    ``days`` maps ``YYYY-MM-DD`` to rows from :func:`window_input_row`. Days
+    written earlier stay; a day given again is replaced. This is the path for
+    inputs built with SOPRAN's window and map pieces, without a SQLite catalog.
+    """
+    root = input_root(store, input_variant)
+    index_path = root / "days.json"
+    index = {e["day"]: e for e in read_json(index_path)} if index_path.exists() else {}
+    for day_label, rows in sorted(days.items()):
+        if any(row["day"] != day_label for row in rows):
+            raise ValueError(f"rows of {day_label} belong to another day")
+        relative = f"shards/day={day_label}.parquet"
+        if rows:
+            frame = pl.DataFrame(list(rows), schema=INPUT_SCHEMA, orient="row").sort("sample_id")
+            write_parquet(frame, root / relative)
+        index[day_label] = dict(
+            day=day_label,
+            source_status="built",
+            windows=len(rows),
+            distributions=sum(bool(row["has_distribution"]) for row in rows),
+            path=relative if rows else None,
+            checksum=shard_checksum(root / relative) if rows else None,
+        )
+        log(f"{now()} wrote {day_label} windows={len(rows)}")
+    _register_inputs(
+        store,
+        root,
+        input_variant,
+        [index[d] for d in sorted(index)],
+        producer="sopran.experimental.kaguya.er_batch.write_input_days",
+        provenance=dict(provenance or {}),
+    )
+    log(f"{now()} registered {INPUT_DATASET} variant={input_variant} days={len(index)}")
+    return root
+
+
+def _register_inputs(
+    store: Store,
+    root: Path,
+    input_variant: str,
+    index: list[dict[str, Any]],
+    *,
+    producer: str,
+    provenance: dict[str, Any],
+) -> None:
+    write_json(root / "days.json", index)
+    shards = tuple(
+        dict(
+            path=e["path"],
+            start=day(e["day"]).start_iso,
+            stop=day(e["day"]).stop_iso,
+            row_count=e["windows"],
+            checksum=e["checksum"],
+            status="complete",
+        )
+        for e in index
+        if e["path"]
+    )
+    store.register_dataset(
+        dataset_id=INPUT_DATASET,
+        layer=INPUT_LAYER,
+        variant_id=input_variant,
+        mission="kaguya",
+        instrument="esa",
+        product="paired_distributions",
+        schema=_input_instrument_schema(),
+        time_coverage=day_range([e["day"] for e in index]),
+        shards=shards,
+        producer=producer,
+        managed=True,
+        provenance=dict(provenance, days_sha256=sha256_file(root / "days.json")),
+        parameters=dict(
+            format=INPUT_FORMAT,
+            float_arrays=list(FLOAT_ARRAYS),
+            bool_arrays=list(BOOL_ARRAYS),
+            dropped_arrays=list(DROPPED_ARRAYS),
+            layout="row-major flattened (n_energy, n_pitch_folded|n_pitch_full)",
+        ),
+    )
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, np.generic):
+        return _jsonable(value.item())
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return value.isoformat()
+    if isinstance(value, Path):
+        return str(value)
+    return value
 
 
 def export_day(catalog: Path, root: Path, day_label: str) -> dict:
@@ -401,46 +547,19 @@ def export_catalog(
             checksum=shard_checksum(path) if windows else None,
         )
         index.append(entry)
-    write_json(root / "days.json", index)
     stat = catalog.stat()
-    shards = tuple(
-        dict(
-            path=e["path"],
-            start=day(e["day"]).start_iso,
-            stop=day(e["day"]).stop_iso,
-            row_count=e["windows"],
-            checksum=e["checksum"],
-            status="complete",
-        )
-        for e in index
-        if e["path"]
-    )
-    store.register_dataset(
-        dataset_id=INPUT_DATASET,
-        layer=INPUT_LAYER,
-        variant_id=input_variant,
-        mission="kaguya",
-        instrument="esa",
-        product="paired_distributions",
-        schema=_input_instrument_schema(),
-        time_coverage=day_range([e["day"] for e in index]),
-        shards=shards,
+    _register_inputs(
+        store,
+        root,
+        input_variant,
+        index,
         producer="sopran.experimental.kaguya.er_batch.export_catalog",
-        managed=True,
+        # Origin hint only; inputs are identified by the shard checksums.
         provenance=dict(
-            # Origin hint only; inputs are identified by the shard checksums.
-            catalog=dict(origin_path=str(catalog), bytes=stat.st_size, mtime_ns=stat.st_mtime_ns),
-            days_sha256=sha256_file(root / "days.json"),
-        ),
-        parameters=dict(
-            format=INPUT_FORMAT,
-            float_arrays=list(FLOAT_ARRAYS),
-            bool_arrays=list(BOOL_ARRAYS),
-            dropped_arrays=list(DROPPED_ARRAYS),
-            layout="row-major flattened (n_energy, n_pitch_folded|n_pitch_full)",
+            catalog=dict(origin_path=str(catalog), bytes=stat.st_size, mtime_ns=stat.st_mtime_ns)
         ),
     )
-    log(f"{now()} registered {INPUT_DATASET} variant={input_variant} shards={len(shards)}")
+    log(f"{now()} registered {INPUT_DATASET} variant={input_variant} days={len(index)}")
     return root
 
 

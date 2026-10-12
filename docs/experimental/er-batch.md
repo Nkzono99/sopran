@@ -31,8 +31,8 @@ export-catalog -> verify-inputs -> prepare -> run（並列・再開可） -> sta
 
 ### 入力の契約
 
-入力はpaired分布を窓ごとに保存したSQLite catalogです。SOPRANはcatalogを生成しません。
-研究側の処理で作ったcatalogを、次の形で渡します。
+入力は、窓ごとのpaired分布を保存したSQLite catalogを変換するか、
+下のSOPRANの部品で生データから作ります。catalogは次の形で渡します。
 
 | 列 | 型 | 内容 |
 |---|---|---|
@@ -57,6 +57,72 @@ catalogの窓ごとのnpz blobから、fold済みのcount・exposure・`fit_vali
 旧fitの派生量（`observed_log_ratio`・`fitted_log_ratio`・`beam_ratio`）は持たない。
 窓のrecord（JSON）と、record＋blobのsha256（`source_sha256`）も残す。
 `days.json`に全日（入力なしの日を含む）の窓数・分布数・checksumを書く。
+
+### SOPRANの部品で入力を作る
+
+SQLite catalogを使わず、生データから入力shardを作る部品もあります。
+既定値は2026-09の全期間run（`halekas_mission_v1`）の規則と同じです。
+日の並列化・再開・ログなど全期間runの組み立ては、利用者側のスクリプトで行います。
+
+| 段階 | 部品 |
+|---|---|
+| 1日のnative記録とLMAG幾何 | `KaguyaErInstrument(mission).native_records(day)` |
+| 16 s窓の集計と診断 | `er_windows.calendar_windows`・`window_record`・`window_input_diagnostic` |
+| SVM3Dによる接続判定 | `moon.connection.trace_connection`・`classify_connection`（`ConnectionPolicy`） |
+| paired map | `er_windows.window_pitch_records` → `electron_reflection.maps.build_paired_map` |
+| 書き出しと登録 | `er_batch.window_input_row` → `er_batch.write_input_days` |
+
+```python
+import numpy as np
+import sopran as spn
+from sopran.experimental.electron_reflection.maps import build_paired_map
+from sopran.experimental.kaguya import er_batch
+from sopran.experimental.kaguya.er import KaguyaErInstrument
+from sopran.experimental.kaguya.er_windows import (
+    calendar_windows, usable_record_indices, window_input_diagnostic,
+    window_pitch_records, window_record,
+)
+from sopran.experimental.moon.connection import (
+    classify_connection, trace_connection, unconnected_window,
+)
+from sopran.experimental.moon.svm3d import SVM3DShellGrid
+
+day = spn.day("2008-02-10")
+records = KaguyaErInstrument(spn.Kaguya(download="never")).native_records(day)
+usable = np.unique(np.concatenate(
+    [usable_record_indices(a, np.arange(records.times.size)) for a in records.arrays.values()]
+))
+traces = trace_connection(
+    SVM3DShellGrid.load("svm3d_shell.npz"),
+    records.position_km[usable], records.magnetic_field_nT[usable],
+)
+connection = classify_connection(
+    traces, records.times[usable].astype("datetime64[s]").astype(int) // 16
+)
+
+rows = []
+for window_id, indices in calendar_windows(records.times, day):
+    record = window_record(window_id, indices, records)
+    record.update(connection.get(window_id, unconnected_window()))
+    record["joint_input_diagnostic"] = window_input_diagnostic(indices, records.arrays)
+    usable_here = any(usable_record_indices(a, indices).size for a in records.arrays.values())
+    reason = "no_records" if not indices.size else None if usable_here else "no_usable_geometry"
+    if reason is None and not record["connection_eligible"]:
+        reason = "connection_" + record["field_connection_status"]
+    if reason:
+        record["reason"] = reason
+    maps = None if reason else build_paired_map(window_pitch_records(records, indices))
+    rows.append(er_batch.window_input_row(record, maps))
+er_batch.write_input_days(spn.Store(), "<build>", {"2008-02-10": rows})
+```
+
+`window_record`は窓内のLMAGサンプルから磁場方向の最大偏差を、記録時刻のB/r余弦から
+`field_radial_abs_cosine_min`を求める。`build_paired_map`は各記録を影響側が低ピッチ側に
+来る向きにそろえ、20–1500 eV・24 energy×16 pitchの格子へビンの重なりで配分して
+countとexposureを足し、影響側と参照側に折り返す。`fit_valid`はペアの両側でexposureが正で
+countがあり、energy行あたり3 cell以上ある範囲である。接続判定は一様残差を足したSVM3D場を
+0.5 km刻み・停止高度6.1 km・最大1000 kmで追跡し、内向きがshellに届き逆向きが届かず、
+符号が窓内で変わらない窓を`model_connected`とする。
 
 ### runの固定と実行
 

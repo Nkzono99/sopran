@@ -25,6 +25,12 @@ from sopran.experimental.electron_reflection import (
     fit_halekas_distribution,
     profile_mirror_ratio,
 )
+from sopran.experimental.kaguya.er_windows import (
+    NativeEsaRecords,
+    attach_record_geometry,
+    field_radial_geometry,
+    native_record_arrays,
+)
 from sopran.missions.kaguya.magnetic_geometry import MAX_GEOMETRY_GAP_SECONDS
 from sopran.missions.kaguya.pace import PaceCalibration, PaceData
 from sopran.missions.kaguya.pitch import (
@@ -148,6 +154,7 @@ class KaguyaErInstrument:
                 "pitch_angle_spectrum: combined ESA1+ESA2 full-FOV counts",
                 "pitch_angle_spectra: separate ESA1/ESA2 sensor counts",
                 "paired_counts: fold one sample with exposure and outgoing geometry",
+                "native_records: day of native ESA records with LMAG geometry for windows",
             ),
         )
 
@@ -296,6 +303,74 @@ class KaguyaErInstrument:
             align=align,
         )
 
+
+    def native_records(
+        self,
+        time: TimeRange,
+        *,
+        pitch_bins: int = 16,
+        count_correction: CountCorrection = "event_trash",
+        download: DownloadMode | None = None,
+        frame_context: FrameContext | None = None,
+        max_time_offset_seconds: float = 1.0,
+    ) -> NativeEsaRecords:
+        """ESA1/ESA2 raw-count records on their own native times, with LMAG geometry.
+
+        This is the input of the window pieces in
+        :mod:`sopran.experimental.kaguya.er_windows`. Both sensors are required and
+        exposure must be calibrated. Field and position come from bounded LMAG
+        interpolation at each record time.
+        """
+        from sopran.missions.kaguya.geometry import lmag_position
+
+        spectra = self.pitch_angle_spectra(
+            time,
+            cadence_seconds=None,
+            pitch_bins=pitch_bins,
+            count_correction=count_correction,
+            download=download,
+            frame_context=frame_context,
+            max_time_offset_seconds=max_time_offset_seconds,
+            align=False,
+        )
+        arrays = native_record_arrays({name: s.to_xarray() for name, s in spectra.items()})
+        if len(arrays) != 2:
+            raise ValueError("Both ESA sensors are required")
+        times = np.asarray(next(iter(arrays.values())).time.values, dtype="datetime64[ns]")
+        if times.size and any(
+            np.any(a.record_present.values) and a.exposure.attrs.get("mode") != "calibrated"
+            for a in arrays.values()
+        ):
+            raise ValueError("Calibrated exposure is required")
+        if not times.size and any(
+            a.attrs.get("joint_input_status") == "no_valid_pitch_records" for a in arrays.values()
+        ):
+            raise ValueError("Science records exist but no valid pitch records could be built")
+        resolved = self.mission.download if download is None else download
+        lmag = load_lmag_with_margin(self.mission.lmag, time, download=resolved)
+        positions = lmag_position(lmag)
+        for array, units in ((positions, "km"), (lmag.magnetic_field, "nT")):
+            attrs = array.to_xarray().attrs
+            if attrs.get("frame") != "MOON_ME" or attrs.get("units") != units:
+                raise ValueError("record geometry requires MOON_ME position [km] and field [nT]")
+        magnetic = _vectors_at(lmag.magnetic_field, times, "magnetic_field")
+        position = _vectors_at(positions, times, "position")
+        _, _, sides = field_radial_geometry(magnetic, position)
+        files = tuple(
+            dict.fromkeys(
+                (*[Path(p) for s in spectra.values() for p in s.files], *map(Path, lmag.files))
+            )
+        )
+        return NativeEsaRecords(
+            arrays=attach_record_geometry(arrays, magnetic, position),
+            times=times,
+            position_km=position,
+            magnetic_field_nT=magnetic,
+            field_nT=np.linalg.norm(magnetic, axis=1),
+            affected_side=sides,
+            magnetic_field=lmag.magnetic_field.to_xarray(),
+            files=files,
+        )
 
 def _paired_event(
     *,
