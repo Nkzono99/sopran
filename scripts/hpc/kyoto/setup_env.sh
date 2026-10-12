@@ -9,6 +9,8 @@
 # virtual environment with a pinned numerical stack, and builds sopran (non-editable,
 # release Rust extension) from the checkout. Rerun after pulling new commits; use a
 # new ENV_ROOT for a new run so that prepared runs keep their code identity.
+# An existing cargo (e.g. the system one) is used as is. To keep caches off $HOME,
+# export UV_CACHE_DIR, UV_PYTHON_INSTALL_DIR and CARGO_HOME (e.g. under /LARGE0) first.
 set -euo pipefail
 
 SOPRAN_SRC=${SOPRAN_SRC:?set SOPRAN_SRC to the sopran git checkout}
@@ -22,9 +24,9 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 if ! command -v cargo >/dev/null 2>&1; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+  # shellcheck disable=SC1091
+  source "${CARGO_HOME:-$HOME/.cargo}/env"
 fi
-# shellcheck disable=SC1091
-source "$HOME/.cargo/env"
 
 mkdir -p "$ENV_ROOT"
 uv venv --python "$PYTHON_VERSION" "$ENV_ROOT/venv"
