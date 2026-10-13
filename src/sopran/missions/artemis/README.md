@@ -1,41 +1,30 @@
 # ARTEMIS
 
-ARTEMIS provides lunar-orbiting THEMIS probes P1 and P2 as a mission-first API.
-The initial SOPRAN interface focuses on the FGM magnetic field endpoint and the
-ESA ion energy flux endpoint, with store-backed normalized parquet loading as
-the first backend boundary.
+ARTEMIS operates THEMIS P1 (THEMIS-B) and P2 (THEMIS-C) in lunar orbit.
+SOPRAN retrieves the daily Level 2 CDF files from NASA SPDF (CDAWeb) into the Store and reads FGM and ESA quantities.
 
-## Endpoints
+## Entry points
 
-- `p1.fgm.magnetic_field`: P1 fluxgate magnetic field vector.
-- `p2.fgm.magnetic_field`: P2 fluxgate magnetic field vector.
-- `p1.esa.ion_energy_flux`: P1 ESA ion differential energy flux.
-- `p2.esa.ion_energy_flux`: P2 ESA ion differential energy flux.
+- `p1.fgm.magnetic_field`: spin-resolution (~3 s) field vector (GSE, nT).
+- `p1.esa.ion_energy_flux`, `p1.esa.electron_energy_flux`: differential energy flux.
+  The energy is the per-record coordinate `energy` (`time, energy_bin`).
+- `p1.esa.ion_density`, `p1.esa.ion_velocity` (GSE), `p1.esa.electron_density`: ground-processed moments.
+- `p2` has the same layout. ESA accepts `mode="reduced"` (default), `"full"`, or `"burst"`.
 
-## Examples
+## Example
 
 ```python
 import sopran as spn
 
-art = spn.Artemis()
-time = spn.day("2011-07-01")
-plan = art.p1.fgm.magnetic_field.plan(time)
-ion_plan = art.p1.esa.ion_energy_flux.plan(time)
+art = spn.artemis
+time = spn.period("2011-07-01T06:00", "2011-07-01T08:00")
 
 stack = spn.stack(
-    art.p1.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True),
+    art.p1.esa.ion_energy_flux.spectrogram(time),
     art.p1.fgm.magnetic_field.lines(time, components="xyz"),
 )
 plot_result = stack.plot()
-fig = plot_result.fig
 ```
 
-`art.example()`, `art.p1.fgm.example()`, `art.p1.esa.example()`, and variable
-endpoint `example()` methods return short `GuidePage` snippets for notebook and
-terminal use.
-
-## Next Work
-
-- Connect CDAWeb/HAPI discovery and raw download policy.
-- Expand store-backed normalized parquet loading.
-- Preserve coordinate frame, vector component, and energy-bin metadata.
+`download=` (`missing`, `never`, `always`) sets the retrieval policy and `missing=` (`empty`, `warn`, `error`) the handling of days without a file.
+See the ARTEMIS page of the public documentation for details.

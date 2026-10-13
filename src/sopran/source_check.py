@@ -11,6 +11,7 @@ import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Literal
 from urllib.error import HTTPError, URLError
@@ -60,6 +61,7 @@ def default_probes() -> tuple[SourceProbe, ...]:
     """Return one probe per archive, using the loaders' own URL builders."""
 
     from sopran.bodies.moon.sources import SURFACE_SOURCE_INFO
+    from sopran.missions.artemis.cdaweb import artemis_filename, artemis_remote_dir
     from sopran.missions.kaguya.files import (
         KaguyaFileSource,
         iter_public_paths,
@@ -109,6 +111,12 @@ def default_probes() -> tuple[SourceProbe, ...]:
         ),
         SourceProbe("spice.generic_kernels", "NASA NAIF", MOON_ME_SPICE_KERNELS[0].url),
         SourceProbe("omni.hourly", "NASA SPDF", OMNI_BASE_URL + "omni2_2008.dat"),
+        SourceProbe(
+            "artemis.fgm",
+            "NASA SPDF",
+            artemis_remote_dir("thb", "fgm", 2011)
+            + artemis_filename("thb", "fgm", date(2011, 7, 1), 1),
+        ),
         SourceProbe("omni.hro", "NASA SPDF", hro_remote_url("hro_1min", 2008, 2)),
     ]
     probes.extend(

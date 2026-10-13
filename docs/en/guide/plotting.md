@@ -31,7 +31,7 @@ Adjust the visible range and scales with:
 | coordinate on y | `y="energy"` |
 
 Quantities spanning many decades, such as energy flux, use logarithmic color and energy axes by default, as set in the schema (`log_scale`, `log_dims`).
-PACE `energy_flux` and ARTEMIS `ion_energy_flux` carry these hints today. Pass `yscale="linear"` and `log_color=False` for linear scales.
+PACE `energy_flux` and ARTEMIS `ion_energy_flux` and `electron_energy_flux` carry these hints today. Pass `yscale="linear"` and `log_color=False` for linear scales.
 The defaults are the same for array `plot()`, `quicklook()`, and `spectrogram()` and for the endpoint call `spn.kaguya.esa1.energy_flux.plot(time)`.
 
 ## Stack several instruments

@@ -10,7 +10,7 @@ Each data page describes variable dimensions, units, and frames, where the data 
 | [KAGUYA PACE](kaguya/pace.md) | `spn.kaguya.esa1` etc. | Yes, DARTS | Yes | Energy flux, pitch-angle spectra | Yes | Yes |
 | [KAGUYA LMAG and orbit](kaguya/lmag-orbit.md) | `spn.kaguya.lmag`, `spn.kaguya.orbit` | Yes, DARTS | Yes | Orbit geometry, solar zenith angle, field-line connection | Yes | — |
 | [KAGUYA LRS](kaguya/lrs.md) | `spn.kaguya.lrs` | Yes, DARTS | Yes | Electric field level, power spectral density | Yes | — |
-| [ARTEMIS](artemis.md) | `spn.artemis` | — | Parquet placed in the Store only | — | — | — |
+| [ARTEMIS](artemis.md) | `spn.artemis` | ○ SPDF | ○ | — | Source files only | — |
 | [OMNI](omni.md) | `spn.omni` | Yes, SPDF | Yes | Matching to observation times | Source files only | — |
 | [Moon maps](moon/index.md) | `spn.moon` | DEM only | Yes | Solar zenith angle, illumination, shadow | — | — |
 | [Magnetic anomaly catalog](moon/magnetic-anomalies.md) | `spn.moon.magnetic_anomalies()` | Not needed (bundled) | Yes | — | — | — |

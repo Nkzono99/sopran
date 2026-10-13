@@ -1,21 +1,38 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from difflib import get_close_matches
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal, cast
 
+from sopran.core.config import DownloadMode, resolve_download_mode
 from sopran.core.data import SopranArray
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.pages import GuidePage, InfoPage, public_doc_urls
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import Store
-from sopran.core.time import TimeRange, _filter_polars_time
+from sopran.core.time import TimeRange
+
+from .cdaweb import (
+    PROBE_IDS,
+    ArtemisFileSource,
+    EsaMode,
+    artemis_remote_dir,
+    read_esa_variable,
+    read_fgm_field,
+)
 
 if TYPE_CHECKING:
+    import xarray as xr
+
     from sopran.core.plotting import PlotItem
     from sopran.core.view import View
+
+MissingMode = Literal["empty", "warn", "error"]
 
 _GUIDE_LANGUAGES = ("ja", "en")
 _PUBLIC_DOC_URLS = public_doc_urls("data/artemis/")
@@ -25,7 +42,8 @@ ARTEMIS_MAGNETIC_FIELD = VariableSchema(
     aliases=("b", "fgm"),
     dims=("time", "component"),
     units="nT",
-    description="ARTEMIS fluxgate magnetic field vector.",
+    frame="GSE",
+    description="FGM spin-resolution (~3 s, FGS) magnetic field vector in GSE.",
 )
 ARTEMIS_FGM_SCHEMA = InstrumentSchema(
     mission="artemis",
@@ -35,40 +53,104 @@ ARTEMIS_FGM_SCHEMA = InstrumentSchema(
 ARTEMIS_ION_ENERGY_FLUX = VariableSchema(
     name="ion_energy_flux",
     aliases=("ion_eflux", "esa"),
-    dims=("time", "energy"),
+    dims=("time", "energy_bin"),
     units="eV/(cm^2 s sr eV)",
-    description="ARTEMIS ESA ion differential energy flux.",
+    description=(
+        "ESA ion differential energy flux; the energy table is the per-record "
+        "(time, energy_bin) coordinate 'energy' in eV."
+    ),
     log_scale=True,
     log_dims=("energy",),
+)
+ARTEMIS_ELECTRON_ENERGY_FLUX = VariableSchema(
+    name="electron_energy_flux",
+    aliases=("electron_eflux",),
+    dims=("time", "energy_bin"),
+    units="eV/(cm^2 s sr eV)",
+    description=(
+        "ESA electron differential energy flux; the energy table is the per-record "
+        "(time, energy_bin) coordinate 'energy' in eV."
+    ),
+    log_scale=True,
+    log_dims=("energy",),
+)
+ARTEMIS_ION_DENSITY = VariableSchema(
+    name="ion_density",
+    dims=("time",),
+    units="cm^-3",
+    description="ESA ground-processed ion density moment.",
+)
+ARTEMIS_ION_VELOCITY = VariableSchema(
+    name="ion_velocity",
+    aliases=("ion_bulk_velocity",),
+    dims=("time", "component"),
+    units="km/s",
+    frame="GSE",
+    description="ESA ground-processed ion bulk velocity moment in GSE.",
+)
+ARTEMIS_ELECTRON_DENSITY = VariableSchema(
+    name="electron_density",
+    dims=("time",),
+    units="cm^-3",
+    description="ESA ground-processed electron density moment.",
 )
 ARTEMIS_ESA_SCHEMA = InstrumentSchema(
     mission="artemis",
     instrument="esa",
-    variables=(ARTEMIS_ION_ENERGY_FLUX,),
+    variables=(
+        ARTEMIS_ION_ENERGY_FLUX,
+        ARTEMIS_ELECTRON_ENERGY_FLUX,
+        ARTEMIS_ION_DENSITY,
+        ARTEMIS_ION_VELOCITY,
+        ARTEMIS_ELECTRON_DENSITY,
+    ),
 )
+
+# variable name -> (species, CDF quantity)
+_ESA_QUANTITIES: dict[str, tuple[Literal["i", "e"], Any]] = {
+    "ion_energy_flux": ("i", "en_eflux"),
+    "electron_energy_flux": ("e", "en_eflux"),
+    "ion_density": ("i", "density"),
+    "ion_velocity": ("i", "velocity_gse"),
+    "electron_density": ("e", "density"),
+}
 
 
 class Artemis:
-    """Object-oriented entry point for ARTEMIS probes."""
+    """Object-oriented entry point for ARTEMIS probes (P1 = THEMIS-B, P2 = THEMIS-C)."""
 
-    def __init__(self, *, store: Store | None = None, view: View | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        store: Store | None = None,
+        download: DownloadMode | None = None,
+        view: View | None = None,
+        timeout_seconds: float = 120.0,
+    ) -> None:
         self.store = store or Store()
+        self.download = resolve_download_mode(download)
         self.view = view
+        self.files = ArtemisFileSource(self.store, timeout_seconds=timeout_seconds)
         self.p1: ArtemisProbe = ArtemisProbe(self, "p1")
         self.p2: ArtemisProbe = ArtemisProbe(self, "p2")
 
     @classmethod
     def from_view(cls, view: View) -> Artemis:
-        """Build a mission whose endpoints default to the view's time."""
+        """Build a mission whose endpoints default to the view's time, Store and policy."""
 
-        return cls(store=view.project.store, view=view)
+        return cls(
+            store=view.project.store,
+            download=cast("DownloadMode | None", view.context.download),
+            view=view,
+        )
 
     def info(self) -> InfoPage:
         return InfoPage(
             title="ARTEMIS",
             lines=(
-                "p1: ARTEMIS P1 probe",
-                "p2: ARTEMIS P2 probe",
+                "p1: ARTEMIS P1 probe (THEMIS-B)",
+                "p2: ARTEMIS P2 probe (THEMIS-C)",
+                "source: NASA SPDF/CDAWeb THEMIS Level 2 CDF files",
             ),
         )
 
@@ -86,12 +168,11 @@ class Artemis:
 ```python
 import sopran as spn
 
-store = spn.Store("/path/to/sopran_data")
-art = spn.Artemis(store=store)
+art = spn.artemis
 time = spn.day("2011-07-01")
 
 stack = spn.stack(
-    art.p1.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True),
+    art.p1.esa.ion_energy_flux.spectrogram(time),
     art.p1.fgm.magnetic_field.lines(time, components="xyz"),
 )
 plot_result = stack.plot()
@@ -105,6 +186,7 @@ class ArtemisProbe:
     def __init__(self, mission: Artemis, probe: str) -> None:
         self.mission = mission
         self.probe = probe
+        self.probe_id = PROBE_IDS[probe]
         self.fgm: ArtemisFgmInstrument = ArtemisFgmInstrument(self)
         self.esa: ArtemisEsaInstrument = ArtemisEsaInstrument(self)
 
@@ -112,6 +194,7 @@ class ArtemisProbe:
         return InfoPage(
             title=f"ARTEMIS.{self.probe.upper()}",
             lines=(
+                f"spacecraft: THEMIS-{self.probe_id[-1].upper()} ({self.probe_id})",
                 "fgm: fluxgate magnetometer",
                 "esa: electrostatic analyzer",
             ),
@@ -127,18 +210,12 @@ class ArtemisProbe:
         return self.mission.example()
 
 
-class ArtemisFgmInstrument:
+class _ArtemisInstrument:
+    instrument_id: str
+    schema_definition: InstrumentSchema
+
     def __init__(self, probe: ArtemisProbe) -> None:
         self.probe = probe
-        self.magnetic_field: ArtemisVariableEndpoint = ArtemisVariableEndpoint(
-            instrument=self,
-            schema=ARTEMIS_MAGNETIC_FIELD,
-        )
-        self.b: ArtemisVariableEndpoint = self.magnetic_field
-
-    @property
-    def instrument_id(self) -> str:
-        return "fgm"
 
     @property
     def dataset_prefix(self) -> str:
@@ -146,99 +223,38 @@ class ArtemisFgmInstrument:
 
     def info(self) -> InfoPage:
         return InfoPage(
-            title=f"ARTEMIS.{self.probe.probe.upper()}.FGM",
-            lines=(f"{ARTEMIS_MAGNETIC_FIELD.name}: {ARTEMIS_MAGNETIC_FIELD.description}",),
-        )
-
-    def schema(self) -> InstrumentSchema:
-        return ARTEMIS_FGM_SCHEMA
-
-    def guide(self, *, language: str = "ja") -> GuidePage:
-        return self.probe.guide(language=language).with_schema(ARTEMIS_FGM_SCHEMA)
-
-    def help(self, *, language: str = "ja") -> GuidePage:
-        return self.guide(language=language)
-
-    def example(self) -> GuidePage:
-        probe = self.probe.probe
-        return _example_page(
-            f"ARTEMIS {probe.upper()} FGM Example",
-            f"""# ARTEMIS {probe.upper()} FGM Example
-
-```python
-import sopran as spn
-
-art = spn.Artemis()
-time = spn.day("2011-07-01")
-
-magnetic_field = art.{probe}.fgm.magnetic_field.load(time)
-item = art.{probe}.fgm.magnetic_field.lines(time, components="xyz")
-plot_result = spn.stack(item).plot()
-```
-""",
-        )
-
-    def __getattr__(self, name: str) -> Any:
-        if name.startswith("__"):
-            raise AttributeError(name)
-        raise _unknown_variable_error(
-            probe=self.probe.probe,
-            instrument=self.instrument_id,
-            name=name,
-            schema=ARTEMIS_FGM_SCHEMA,
-        )
-
-
-class ArtemisEsaInstrument:
-    def __init__(self, probe: ArtemisProbe) -> None:
-        self.probe = probe
-        self.ion_energy_flux: ArtemisVariableEndpoint = ArtemisVariableEndpoint(
-            instrument=self,
-            schema=ARTEMIS_ION_ENERGY_FLUX,
-        )
-        self.ion_eflux: ArtemisVariableEndpoint = self.ion_energy_flux
-
-    @property
-    def instrument_id(self) -> str:
-        return "esa"
-
-    @property
-    def dataset_prefix(self) -> str:
-        return f"artemis.{self.probe.probe}.{self.instrument_id}"
-
-    def info(self) -> InfoPage:
-        return InfoPage(
-            title=f"ARTEMIS.{self.probe.probe.upper()}.ESA",
-            lines=(
-                f"{ARTEMIS_ION_ENERGY_FLUX.name}: "
-                f"{ARTEMIS_ION_ENERGY_FLUX.description}",
+            title=f"ARTEMIS.{self.probe.probe.upper()}.{self.instrument_id.upper()}",
+            lines=tuple(
+                f"{variable.name}: {variable.description}"
+                for variable in self.schema_definition.variables
             ),
         )
 
     def schema(self) -> InstrumentSchema:
-        return ARTEMIS_ESA_SCHEMA
+        return self.schema_definition
 
     def guide(self, *, language: str = "ja") -> GuidePage:
-        return self.probe.guide(language=language).with_schema(ARTEMIS_ESA_SCHEMA)
+        return self.probe.guide(language=language).with_schema(self.schema_definition)
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def example(self) -> GuidePage:
         probe = self.probe.probe
+        instrument = self.instrument_id
+        first = self.schema_definition.variables[0].name
         return _example_page(
-            f"ARTEMIS {probe.upper()} ESA Example",
-            f"""# ARTEMIS {probe.upper()} ESA Example
+            f"ARTEMIS {probe.upper()} {instrument.upper()} Example",
+            f"""# ARTEMIS {probe.upper()} {instrument.upper()} Example
 
 ```python
 import sopran as spn
 
-art = spn.Artemis()
+art = spn.artemis
 time = spn.day("2011-07-01")
 
-ion_energy_flux = art.{probe}.esa.ion_energy_flux.load(time)
-item = art.{probe}.esa.ion_energy_flux.spectrogram(time, y="energy", log_color=True)
-plot_result = spn.stack(item).plot()
+{first} = art.{probe}.{instrument}.{first}.load(time)
+plot_result = art.{probe}.{instrument}.{first}.plot(time)
 ```
 """,
         )
@@ -250,54 +266,111 @@ plot_result = spn.stack(item).plot()
             probe=self.probe.probe,
             instrument=self.instrument_id,
             name=name,
-            schema=ARTEMIS_ESA_SCHEMA,
+            schema=self.schema_definition,
         )
+
+
+class ArtemisFgmInstrument(_ArtemisInstrument):
+    instrument_id = "fgm"
+    schema_definition = ARTEMIS_FGM_SCHEMA
+
+    def __init__(self, probe: ArtemisProbe) -> None:
+        super().__init__(probe)
+        probe_id = probe.probe_id
+        self.magnetic_field: ArtemisVariableEndpoint = ArtemisVariableEndpoint(
+            self,
+            ARTEMIS_MAGNETIC_FIELD,
+            lambda path, _mode: read_fgm_field(path, probe_id),
+        )
+        self.b: ArtemisVariableEndpoint = self.magnetic_field
+
+
+class ArtemisEsaInstrument(_ArtemisInstrument):
+    instrument_id = "esa"
+    schema_definition = ARTEMIS_ESA_SCHEMA
+
+    def __init__(self, probe: ArtemisProbe) -> None:
+        super().__init__(probe)
+        endpoints = {
+            variable.name: ArtemisVariableEndpoint(
+                self, variable, _esa_reader(probe.probe_id, variable.name), esa=True
+            )
+            for variable in ARTEMIS_ESA_SCHEMA.variables
+        }
+        self.ion_energy_flux: ArtemisVariableEndpoint = endpoints["ion_energy_flux"]
+        self.electron_energy_flux: ArtemisVariableEndpoint = endpoints["electron_energy_flux"]
+        self.ion_density: ArtemisVariableEndpoint = endpoints["ion_density"]
+        self.ion_velocity: ArtemisVariableEndpoint = endpoints["ion_velocity"]
+        self.electron_density: ArtemisVariableEndpoint = endpoints["electron_density"]
+        self.ion_eflux: ArtemisVariableEndpoint = self.ion_energy_flux
+        self.electron_eflux: ArtemisVariableEndpoint = self.electron_energy_flux
+
+
+def _esa_reader(probe_id: str, name: str) -> Callable[[Path, EsaMode], xr.DataArray]:
+    species, quantity = _ESA_QUANTITIES[name]
+
+    def read(path: Path, mode: EsaMode) -> xr.DataArray:
+        return read_esa_variable(path, probe_id, species=species, mode=mode, quantity=quantity)
+
+    return read
 
 
 @dataclass(frozen=True)
 class ArtemisLoadPlan:
     dataset_id: str
     time: TimeRange
+    remote_directories: tuple[str, ...] = ()
 
 
 class ArtemisVariableEndpoint:
-    def __init__(self, instrument: Any, schema: VariableSchema) -> None:
+    def __init__(
+        self,
+        instrument: _ArtemisInstrument,
+        schema: VariableSchema,
+        reader: Callable[[Path, EsaMode], xr.DataArray],
+        *,
+        esa: bool = False,
+    ) -> None:
         self.instrument = instrument
         self._schema = schema
+        self._reader = reader
+        self._esa = esa
         self.name = schema.name
 
+    @property
+    def dataset_id(self) -> str:
+        return f"{self.instrument.dataset_prefix}.{self.name}"
+
     def info(self) -> InfoPage:
-        return InfoPage(
-            title=f"{self.instrument.dataset_prefix}.{self.name}",
-            lines=(
-                f"description: {self._schema.description}",
-                f"dims: {self._schema.dims}",
-                f"units: {self._schema.units}",
-                f"aliases: {', '.join(self._schema.aliases) or 'none'}",
-            ),
-        )
+        lines = [
+            f"description: {self._schema.description}",
+            f"dims: {self._schema.dims}",
+            f"units: {self._schema.units}",
+            f"frame: {self._schema.frame or 'none'}",
+            f"aliases: {', '.join(self._schema.aliases) or 'none'}",
+        ]
+        if self._esa:
+            lines.append("mode: 'reduced' (default, ~3 s), 'full', or 'burst'")
+        return InfoPage(title=self.dataset_id, lines=tuple(lines))
 
     def schema(self) -> VariableSchema:
         return self._schema
 
     def guide(self, *, language: str = "ja") -> GuidePage:
-        return cast(GuidePage, self.instrument.guide(language=language))
+        return self.instrument.guide(language=language)
 
     def help(self, *, language: str = "ja") -> GuidePage:
         return self.guide(language=language)
 
     def example(self) -> GuidePage:
         probe = self.instrument.probe.probe
-        instrument = str(self.instrument.instrument_id)
-        if instrument == "fgm":
-            plot_line = (
-                f"item = art.{probe}.fgm.{self.name}.lines(time, components=\"xyz\")"
-            )
+        instrument = self.instrument.instrument_id
+        if "component" in self._schema.dims:
+            plot_line = f'item = art.{probe}.{instrument}.{self.name}.lines(time, components="xyz")'
+        elif "energy_bin" in self._schema.dims:
+            plot_line = f"item = art.{probe}.{instrument}.{self.name}.spectrogram(time)"
         else:
-            plot_line = (
-                f"item = art.{probe}.esa.{self.name}.spectrogram("
-                'time, y="energy", log_color=True)'
-            )
+            plot_line = f"item = art.{probe}.{instrument}.{self.name}.line(time)"
         return _example_page(
             f"ARTEMIS {probe.upper()} {instrument.upper()} {self.name} Example",
             f"""# ARTEMIS {probe.upper()} {instrument.upper()} {self.name} Example
@@ -305,7 +378,7 @@ class ArtemisVariableEndpoint:
 ```python
 import sopran as spn
 
-art = spn.Artemis()
+art = spn.artemis
 time = spn.day("2011-07-01")
 
 {self.name} = art.{probe}.{instrument}.{self.name}.load(time)
@@ -317,34 +390,82 @@ plot_result = spn.stack(item).plot()
 
     def plan(self, time: TimeRange | None = None) -> ArtemisLoadPlan:
         time = _bound_time(self, time)
+        probe_id = self.instrument.probe.probe_id
+        years = sorted({int(day[:4]) for day in time.days()})
         return ArtemisLoadPlan(
-            dataset_id=f"{self.instrument.dataset_prefix}.{self.name}",
+            dataset_id=self.dataset_id,
             time=time,
+            remote_directories=tuple(
+                artemis_remote_dir(probe_id, self.instrument.instrument_id, year)
+                for year in years
+            ),
         )
 
-    def load(self, time: TimeRange | None = None) -> SopranArray:
+    def load(
+        self,
+        time: TimeRange | None = None,
+        *,
+        download: DownloadMode | None = None,
+        mode: EsaMode = "reduced",
+        missing: MissingMode = "empty",
+    ) -> SopranArray:
+        """Read the daily Level 2 files for ``time``, retrieving missing ones per ``download``.
+
+        ``mode`` selects the ESA mode (``reduced``, ``full`` or ``burst``) and is
+        ignored for FGM. Days without a file give an empty result by default;
+        ``missing="warn"`` or ``"error"`` reports them.
+        """
+
         time = _bound_time(self, time)
-        dataset_id = f"{self.instrument.dataset_prefix}.{self.name}"
-        try:
-            frame = self.instrument.probe.mission.store.scan_dataset(
-                dataset_id,
-                layer="normalized",
-            ).collect()
-        except DatasetNotFoundError as exc:
-            probe = self.instrument.probe.probe.upper()
-            instrument = str(self.instrument.instrument_id).upper()
-            raise DatasetNotFoundError(
-                f"ARTEMIS {probe} {instrument} data is not in the Store: "
-                f"no normalized dataset {dataset_id!r}.\n"
-                "SOPRAN does not download ARTEMIS data yet; it reads normalized Parquet "
-                "written with Store.write_parquet_dataset(..., layer='normalized')."
-            ) from exc
+        if missing not in ("empty", "warn", "error"):
+            raise ValueError("missing must be 'empty', 'warn', or 'error'")
+        mission = self.instrument.probe.mission
+        policy = mission.download if download is None else resolve_download_mode(download)
+        probe_id = self.instrument.probe.probe_id
+        arrays: list[xr.DataArray] = []
+        paths: list[Path] = []
+        missing_days: list[str] = []
+        for day in time.days():
+            path = mission.files.file_for_day(
+                probe_id, self.instrument.instrument_id, date.fromisoformat(day), download=policy
+            )
+            if path is None:
+                missing_days.append(day)
+                continue
+            paths.append(path)
+            arrays.append(self._reader(path, mode))
+        if missing_days:
+            message = self._missing_message(missing_days, policy)
+            if missing == "error":
+                raise DatasetNotFoundError(message)
+            if missing == "warn":
+                warnings.warn(message, UserWarning, stacklevel=2)
+        array = _combine(arrays, self._schema, time)
+        array.name = self.name
+        array.attrs.update(
+            {
+                "units": self._schema.units,
+                "description": self._schema.description,
+                "spacecraft": probe_id,
+                "source": "NASA SPDF/CDAWeb THEMIS Level 2",
+            }
+        )
+        if self._schema.frame:
+            array.attrs["frame"] = self._schema.frame
+        if self._esa:
+            array.attrs["esa_mode"] = mode
+        array.attrs.pop("source_file", None)
         return SopranArray(
             name=self.name,
             time=time,
             schema=self._schema,
-            xr=_frame_to_data_array(frame, self._schema, time),
+            files=tuple(paths),
+            xr=array,
         )
+
+    def plot(self, time: TimeRange | None = None, **kwargs: Any) -> Any:
+        load_options = _pop_load_options(kwargs)
+        return self.load(time, **load_options).plot(**kwargs)
 
     def line(
         self,
@@ -352,12 +473,13 @@ plot_result = spn.stack(item).plot()
         *,
         x: str = "time",
         name: str | None = None,
+        **load_options: Any,
     ) -> PlotItem:
         time = _bound_time(self, time)
         from sopran.core.plotting import line
 
         return line(
-            lambda: self.load(time).to_xarray(),
+            lambda: self.load(time, **load_options).to_xarray(),
             x=x,
             name=name or self.name,
         )
@@ -370,12 +492,13 @@ plot_result = spn.stack(item).plot()
         components: str | tuple[str, ...] | list[str] | None = None,
         component_dim: str = "component",
         name: str | None = None,
+        **load_options: Any,
     ) -> PlotItem:
         time = _bound_time(self, time)
         from sopran.core.plotting import lines
 
         return lines(
-            lambda: self.load(time).to_xarray(),
+            lambda: self.load(time, **load_options).to_xarray(),
             x=x,
             components=components,
             component_dim=component_dim,
@@ -386,24 +509,83 @@ plot_result = spn.stack(item).plot()
         self,
         time: TimeRange | None = None,
         *,
-        y: str,
+        y: str = "energy",
         x: str = "time",
         name: str | None = None,
         log_color: bool | None = None,
         yscale: str | None = None,
+        **load_options: Any,
     ) -> PlotItem:
         time = _bound_time(self, time)
         from sopran.core.plotting import spectrogram
 
         schema = self.schema()
         return spectrogram(
-            lambda: self.load(time).to_xarray(),
+            lambda: self.load(time, **load_options).to_xarray(),
             x=x,
             y=y,
             name=name or self.name,
             log_color=schema.log_scale if log_color is None else bool(log_color),
             yscale=yscale or schema.default_yscale(y),
         )
+
+    def _missing_message(self, days: list[str], policy: DownloadMode) -> str:
+        probe = self.instrument.probe.probe.upper()
+        instrument = self.instrument.instrument_id.upper()
+        shown = ", ".join(days[:5]) + (" ..." if len(days) > 5 else "")
+        hint = (
+            "Downloads are disabled (download='never'); retry with download='missing'."
+            if policy == "never"
+            else "The SPDF archive has no file for these days."
+        )
+        return (
+            f"ARTEMIS {probe} {instrument} has no Level 2 file for {len(days)} day(s): "
+            f"{shown}. {hint}"
+        )
+
+
+def _pop_load_options(kwargs: dict[str, Any]) -> dict[str, Any]:
+    return {key: kwargs.pop(key) for key in ("download", "mode", "missing") if key in kwargs}
+
+
+def _combine(arrays: list[xr.DataArray], schema: VariableSchema, time: TimeRange) -> xr.DataArray:
+    import numpy as np
+    import xarray as xr
+
+    if not arrays:
+        return _empty_array(schema)
+    combined = arrays[0] if len(arrays) == 1 else xr.concat(arrays, dim="time")
+    combined = combined.sortby("time")
+    times = combined["time"].values
+    keep = np.concatenate(([True], times[1:] != times[:-1])) if times.size else times.astype(bool)
+    start = np.datetime64(time.start.replace(tzinfo=None), "ns")
+    stop = np.datetime64(time.stop.replace(tzinfo=None), "ns")
+    keep &= (times >= start) & (times < stop)
+    return combined.isel(time=np.flatnonzero(keep))
+
+
+def _empty_array(schema: VariableSchema) -> xr.DataArray:
+    import numpy as np
+    import xarray as xr
+
+    times = np.array([], dtype="datetime64[ns]")
+    if schema.dims == ("time",):
+        return xr.DataArray(np.empty(0), dims=("time",), coords={"time": times})
+    if "component" in schema.dims:
+        return xr.DataArray(
+            np.empty((0, 3)),
+            dims=("time", "component"),
+            coords={"time": times, "component": ["x", "y", "z"]},
+        )
+    return xr.DataArray(
+        np.empty((0, 0)),
+        dims=("time", "energy_bin"),
+        coords={
+            "time": times,
+            "energy_bin": np.arange(0),
+            "energy": (("time", "energy_bin"), np.empty((0, 0)), {"units": "eV"}),
+        },
+    )
 
 
 def _read_guide(*, title: str, language: str = "ja") -> GuidePage:
@@ -499,64 +681,3 @@ def _missing_time_error(endpoint: ArtemisVariableEndpoint) -> ValueError:
         "Or use a Project case:\n"
         f"  case.artemis.{probe_path}.{instrument_path}.{variable}.load()"
     )
-
-
-def _frame_to_data_array(frame: Any, schema: VariableSchema, time: TimeRange) -> Any:
-    try:
-        import numpy as np
-        import xarray as xr
-    except ImportError as exc:
-        raise RuntimeError("xarray is required for ARTEMIS FGM load()") from exc
-
-    if frame.is_empty():
-        secondary_dim = schema.dims[1] if len(schema.dims) > 1 else "value"
-        return xr.DataArray(
-            np.empty((0, 0)),
-            dims=schema.dims,
-            coords={"time": [], secondary_dim: []},
-            name=schema.name,
-            attrs={"units": schema.units, "description": schema.description},
-        )
-
-    if "time" in frame.columns:
-        frame = _filter_polars_time(frame, time)
-
-    secondary_dim = schema.dims[1]
-    rows = frame.sort(["time", secondary_dim]).to_dicts()
-    times = _unique(row["time"] for row in rows)
-    secondary_values = _unique(row[secondary_dim] for row in rows)
-    values = np.full((len(times), len(secondary_values)), np.nan)
-    time_index = {value: index for index, value in enumerate(times)}
-    secondary_index = {value: index for index, value in enumerate(secondary_values)}
-    for row in rows:
-        values[time_index[row["time"]], secondary_index[row[secondary_dim]]] = row[
-            schema.name
-        ]
-
-    return xr.DataArray(
-        values,
-        dims=schema.dims,
-        coords={"time": _datetime64_values(times), secondary_dim: secondary_values},
-        name=schema.name,
-        attrs={"units": schema.units, "description": schema.description},
-    )
-
-
-def _datetime64_values(values: Sequence[Any]) -> Any:
-    import pandas as pd
-
-    return (
-        pd.to_datetime(list(values), utc=True)
-        .tz_convert(None)
-        .to_numpy(dtype="datetime64[ns]")
-    )
-
-
-def _unique(values: Any) -> list[Any]:
-    seen: set[Any] = set()
-    output: list[Any] = []
-    for value in values:
-        if value not in seen:
-            seen.add(value)
-            output.append(value)
-    return output

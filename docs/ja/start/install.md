@@ -42,7 +42,7 @@ python3.14 -m venv .venv
 | extra | 使う場面 | 入るパッケージ |
 |---|---|---|
 | `kaguya` | PACE・LMAG・LRSの読み込み、SPICEによる幾何計算 | `cdflib`, `polars`, `pyarrow`, `scipy`, `spiceypy`, `xarray` |
-| `artemis` | Storeに置いたARTEMISデータの読み込み | `polars`, `pyarrow`, `xarray` |
+| `artemis` | ARTEMIS（THEMIS-B・C）のCDFの取得と読み込み | `cdflib`, `xarray` |
 | `moon` | GeoTIFFの月面地図、SPICEによる太陽方向 | `rasterio`, `spiceypy` |
 | `viz` | 図の作成、PlotStackの対話表示 | `matplotlib`, `panel` |
 | `analysis`, `experimental` | 補間、試作モデル | `scipy` |

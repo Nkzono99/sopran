@@ -104,13 +104,17 @@ aliases, and description.
 
 | name | dims | units | dtype | frame | aliases | description |
 | --- | --- | --- | --- | --- | --- | --- |
-| magnetic_field | time, component | nT |  |  | b, fgm | ARTEMIS fluxgate magnetic field vector. |
+| magnetic_field | time, component | nT |  | GSE | b, fgm | FGM spin-resolution (~3 s, FGS) magnetic field vector in GSE. |
 
 ## artemis / esa
 
 | name | dims | units | dtype | frame | aliases | description |
 | --- | --- | --- | --- | --- | --- | --- |
-| ion_energy_flux | time, energy | eV/(cm^2 s sr eV) |  |  | ion_eflux, esa | ARTEMIS ESA ion differential energy flux. |
+| ion_energy_flux | time, energy_bin | eV/(cm^2 s sr eV) |  |  | ion_eflux, esa | ESA ion differential energy flux; the energy table is the per-record (time, energy_bin) coordinate 'energy' in eV. |
+| electron_energy_flux | time, energy_bin | eV/(cm^2 s sr eV) |  |  | electron_eflux | ESA electron differential energy flux; the energy table is the per-record (time, energy_bin) coordinate 'energy' in eV. |
+| ion_density | time | cm^-3 |  |  |  | ESA ground-processed ion density moment. |
+| ion_velocity | time, component | km/s |  | GSE | ion_bulk_velocity | ESA ground-processed ion bulk velocity moment in GSE. |
+| electron_density | time | cm^-3 |  |  |  | ESA ground-processed electron density moment. |
 
 ## moon / surface
 

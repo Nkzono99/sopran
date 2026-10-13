@@ -41,7 +41,7 @@ but nothing else. Each extra contains only the packages SOPRAN actually imports 
 | Extra | Use it for | Packages |
 |---|---|---|
 | `kaguya` | Loading PACE, LMAG, and LRS; SPICE geometry | `cdflib`, `polars`, `pyarrow`, `scipy`, `spiceypy`, `xarray` |
-| `artemis` | Loading ARTEMIS data stored in a Store | `polars`, `pyarrow`, `xarray` |
+| `artemis` | Retrieving and reading ARTEMIS (THEMIS-B, C) CDF files | `cdflib`, `xarray` |
 | `moon` | GeoTIFF Moon maps, SPICE Sun direction | `rasterio`, `spiceypy` |
 | `viz` | Plots and interactive PlotStack views | `matplotlib`, `panel` |
 | `analysis`, `experimental` | Interpolation and experimental models | `scipy` |

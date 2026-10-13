@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+from email.message import Message
+from io import BytesIO
+
 import numpy as np
-import polars as pl
 import pytest
 
 import sopran as spn
 from sopran.core.schema import InstrumentSchema
-from sopran.missions.artemis.mission import (
-    ARTEMIS_ION_ENERGY_FLUX,
-    ARTEMIS_MAGNETIC_FIELD,
-)
+from sopran.missions.artemis.mission import ARTEMIS_MAGNETIC_FIELD
 
 
 def test_artemis_probe_fgm_endpoint_exposes_schema_and_plan() -> None:
@@ -38,7 +37,7 @@ def test_artemis_probe_esa_endpoint_exposes_schema_and_plan() -> None:
     assert "esa" in str(art.p1.info())
     assert "ion_energy_flux" in str(art.p1.esa.info())
     assert art.p1.esa.schema().instrument == "esa"
-    assert endpoint.schema().dims == ("time", "energy")
+    assert endpoint.schema().dims == ("time", "energy_bin")
     assert endpoint.schema().units == "eV/(cm^2 s sr eV)"
     assert plan.dataset_id == "artemis.p1.esa.ion_energy_flux"
     assert plan.time == time
@@ -125,7 +124,7 @@ def test_artemis_endpoint_spectrogram_requires_time_with_actionable_message() ->
     art = spn.Artemis()
 
     with pytest.raises(ValueError) as exc:
-        art.p1.esa.ion_energy_flux.spectrogram(y="energy")
+        art.p1.esa.ion_energy_flux.spectrogram()
 
     message = str(exc.value)
     assert "Time range is required for ARTEMIS.P1.ESA.ion_energy_flux" in message
@@ -143,14 +142,14 @@ def test_artemis_guides_return_markdown_pages() -> None:
 
     assert mission_guide.language == "ja"
     assert "# ARTEMIS" in mission_guide.to_markdown()
-    assert "ARTEMIS は" in mission_guide.to_markdown()
+    assert "ARTEMISは" in mission_guide.to_markdown()
     assert "FGM" in fgm_guide.to_markdown()
     assert "| name | dims | units | dtype | frame | aliases | description |" in (
         fgm_guide.to_markdown()
     )
     assert "| magnetic_field | time, component | nT |" in fgm_guide.to_markdown()
     assert "b, fgm" in fgm_guide.to_markdown()
-    assert "| ion_energy_flux | time, energy | eV/(cm^2 s sr eV) |" in (
+    assert "| ion_energy_flux | time, energy_bin | eV/(cm^2 s sr eV) |" in (
         esa_guide.to_markdown()
     )
     assert art.help() == mission_guide
@@ -172,7 +171,7 @@ def test_artemis_examples_return_markdown_pages() -> None:
     variable_example = art.p1.esa.ion_energy_flux.example().to_markdown()
 
     assert "ARTEMIS Example" in mission_example
-    assert "spn.Artemis" in mission_example
+    assert "spn.artemis" in mission_example
     assert "ARTEMIS P1 FGM Example" in fgm_example
     assert "magnetic_field" in fgm_example
     assert "ARTEMIS P1 ESA Example" in esa_example
@@ -196,7 +195,7 @@ def test_artemis_guides_can_switch_language() -> None:
     assert mission_ja.with_language("en").url == (
         "https://nkzono99.github.io/sopran/en/data/artemis/"
     )
-    assert "ARTEMIS は" in mission_ja.to_markdown()
+    assert "ARTEMISは" in mission_ja.to_markdown()
     assert "lunar-orbiting THEMIS probes" in mission_en.to_markdown()
     assert "FGM" in fgm_ja.to_markdown()
     assert "| name | dims | units | dtype | frame | aliases | description |" in (
@@ -379,52 +378,149 @@ def test_guide_page_show_includes_language_switcher(capsys) -> None:
     assert capsys.readouterr().out.startswith("Lang: 日本語/English\n\n# SOPRAN docs")
 
 
-def test_artemis_load_reports_missing_normalized_dataset(tmp_path) -> None:
-    art = spn.Artemis(store=spn.Store(tmp_path / "store"))
+def _write_cdf(path, variables) -> None:
+    from cdflib.cdfwrite import CDF as CdfWriter
 
-    with pytest.raises(spn.DatasetNotFoundError) as exc:
-        art.p1.fgm.magnetic_field.load(spn.day("2011-07-01"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    writer = CdfWriter(str(path), cdf_spec={"Compressed": False})
+    for name, (data_type, values, attrs) in variables.items():
+        array = np.asarray(values)
+        writer.write_var(
+            {
+                "Variable": name,
+                "Data_Type": data_type,
+                "Num_Elements": 1,
+                "Rec_Vary": True,
+                "Dim_Sizes": list(array.shape[1:]),
+            },
+            var_attrs=attrs,
+            var_data=array,
+        )
+    writer.close()
 
-    assert "ARTEMIS P1 FGM" in str(exc.value)
+
+def _unix(text: str) -> float:
+    return float(np.datetime64(text, "ns").astype("int64")) / 1e9
 
 
-def test_artemis_load_reads_normalized_magnetic_field_from_store(tmp_path) -> None:
+def _write_artemis_day(store: spn.Store, day: str = "2011-07-01", *, version: int = 1) -> None:
+    from cdflib.cdfwrite import CDF as CdfWriter
+
+    stamp = day.replace("-", "")
+    times = np.array([_unix(f"{day}T00:00:00"), _unix(f"{day}T00:00:00.5"), _unix(f"{day}T12:00")])
+    fgm_dir = store.raw_path("artemis", "themis", "thb", "l2", "fgm", day[:4])
+    _write_cdf(
+        fgm_dir / f"thb_l2_fgm_{stamp}_v{version:02d}.cdf",
+        {
+            "thb_fgs_time": (CdfWriter.CDF_DOUBLE, times, {"UNITS": "sec"}),
+            "thb_fgs_gse": (
+                CdfWriter.CDF_FLOAT,
+                np.array([[1, 2, 3], [-1e30, -1e30, -1e30], [4, 5, 6]], dtype=np.float32),
+                {"FILLVAL": np.float32(-1e30), "UNITS": "nT GSE"},
+            ),
+        },
+    )
+    energy = np.array([[3000.0, 300.0], [3100.0, 310.0], [3200.0, np.nan]], dtype=np.float32)
+    flux = np.array([[10.0, 30.0], [11.0, 31.0], [12.0, np.nan]])
+    esa = {}
+    for species in ("i", "e"):
+        prefix = f"thb_pe{species}r"
+        scale = 1.0 if species == "i" else 100.0
+        esa[f"{prefix}_time"] = (CdfWriter.CDF_DOUBLE, times, {})
+        esa[f"{prefix}_en_eflux"] = (CdfWriter.CDF_DOUBLE, flux * scale, {"FILLVAL": np.nan})
+        esa[f"{prefix}_en_eflux_yaxis"] = (CdfWriter.CDF_FLOAT, energy, {})
+        esa[f"{prefix}_density"] = (CdfWriter.CDF_DOUBLE, np.array([4.0, 4.5, 5.0]) * scale, {})
+        esa[f"{prefix}_velocity_gse"] = (
+            CdfWriter.CDF_DOUBLE,
+            np.array([[-400.0, 10.0, 5.0], [-410.0, 11.0, 6.0], [np.nan] * 3]),
+            {},
+        )
+    esa["thb_peif_time"] = (CdfWriter.CDF_DOUBLE, times[:1], {})
+    esa["thb_peif_en_eflux"] = (CdfWriter.CDF_DOUBLE, flux[:1] * 2, {})
+    esa["thb_peif_en_eflux_yaxis"] = (CdfWriter.CDF_FLOAT, energy[:1], {})
+    esa_dir = store.raw_path("artemis", "themis", "thb", "l2", "esa", day[:4])
+    _write_cdf(esa_dir / f"thb_l2_esa_{stamp}_v{version:02d}.cdf", esa)
+
+
+def _project_case(tmp_path, store: spn.Store):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "sopran.toml").write_text(
+        """
+[defaults]
+download = "never"
+
+[cases.wake]
+start = "2011-07-01T00:00:00"
+stop = "2011-07-02T00:00:00"
+""".strip(),
+        encoding="utf-8",
+    )
+    return spn.Project(project_root, store=store).case("wake")
+
+
+def test_artemis_load_reads_fgm_field_in_gse_from_the_level2_file(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
+    _write_artemis_day(store)
 
-    magnetic_field = spn.Artemis(store=store).p1.fgm.magnetic_field.load(time)
+    magnetic_field = spn.Artemis(store=store, download="never").p1.fgm.magnetic_field.load(
+        spn.day("2011-07-01")
+    )
     array = magnetic_field.to_xarray()
 
     assert magnetic_field.name == "magnetic_field"
     assert array.dims == ("time", "component")
-    assert np.issubdtype(array.coords["time"].dtype, np.datetime64)
+    assert array.attrs["frame"] == "GSE" and array.attrs["spacecraft"] == "thb"
     assert array.coords["component"].values.tolist() == ["x", "y", "z"]
-    assert array.values.tolist() == [[1.0, 2.0, 3.0]]
+    np.testing.assert_array_equal(array.values[0], [1.0, 2.0, 3.0])
+    assert np.isnan(array.values[1]).all()  # FILLVAL -1e30 becomes NaN
+    assert magnetic_field.files[0].name == "thb_l2_fgm_20110701_v01.cdf"
 
 
-def test_artemis_load_filters_string_times_with_subsecond_range(tmp_path) -> None:
+def test_artemis_load_keeps_the_half_open_time_range(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
-    time = spn.period("2011-07-01T00:00:00Z", "2011-07-01T00:00:00.000001Z")
-    _write_artemis_fgm_dataset(store, time)
+    _write_artemis_day(store)
 
-    magnetic_field = spn.Artemis(store=store).p1.fgm.magnetic_field.load(time)
+    magnetic_field = spn.Artemis(store=store, download="never").p1.fgm.magnetic_field.load(
+        spn.period("2011-07-01T00:00:00Z", "2011-07-01T00:00:00.5Z")
+    )
 
     assert magnetic_field.to_xarray().values.tolist() == [[1.0, 2.0, 3.0]]
 
 
-def test_artemis_load_reads_normalized_ion_energy_flux_from_store(tmp_path) -> None:
+def test_artemis_esa_energy_flux_keeps_the_per_record_energy_table(tmp_path) -> None:
     store = spn.Store(tmp_path / "store")
+    _write_artemis_day(store)
+    esa = spn.Artemis(store=store, download="never").p1.esa
     time = spn.day("2011-07-01")
-    _write_artemis_esa_dataset(store, time)
 
-    ion_flux = spn.Artemis(store=store).p1.esa.ion_energy_flux.load(time)
-    array = ion_flux.to_xarray()
+    ion = esa.ion_energy_flux.load(time).to_xarray()
+    electron = esa.electron_energy_flux.load(time).to_xarray()
+    full = esa.ion_energy_flux.load(time, mode="full").to_xarray()
 
-    assert ion_flux.name == "ion_energy_flux"
-    assert array.dims == ("time", "energy")
-    assert array.coords["energy"].values.tolist() == [100.0, 300.0]
-    assert array.values.tolist() == [[10.0, 30.0]]
+    assert ion.dims == ("time", "energy_bin")
+    assert ion.coords["energy"].dims == ("time", "energy_bin")
+    assert ion.coords["energy"].attrs["units"] == "eV"
+    np.testing.assert_allclose(ion.coords["energy"].values[1], [3100.0, 310.0])
+    np.testing.assert_allclose(ion.values[0], [10.0, 30.0])
+    np.testing.assert_allclose(electron.values[0], [1000.0, 3000.0])
+    assert ion.attrs["esa_mode"] == "reduced" and full.shape == (1, 2)
+
+
+def test_artemis_esa_moments_load_with_units_and_frame(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    _write_artemis_day(store)
+    esa = spn.Artemis(store=store, download="never").p1.esa
+    time = spn.day("2011-07-01")
+
+    density = esa.ion_density.load(time)
+    velocity = esa.ion_velocity.load(time).to_xarray()
+
+    assert density.schema.units == "cm^-3"
+    np.testing.assert_allclose(density.to_xarray().values, [4.0, 4.5, 5.0])
+    assert velocity.attrs["frame"] == "GSE"
+    np.testing.assert_allclose(velocity.values[0], [-400.0, 10.0, 5.0])
+    np.testing.assert_allclose(esa.electron_density.load(time).to_xarray().values[0], 400.0)
 
 
 def test_artemis_esa_endpoint_builds_spectrogram_plot_item(tmp_path) -> None:
@@ -432,248 +528,147 @@ def test_artemis_esa_endpoint_builds_spectrogram_plot_item(tmp_path) -> None:
 
     matplotlib.use("Agg")
     store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_esa_dataset(store, time)
+    _write_artemis_day(store)
 
-    item = spn.Artemis(store=store).p1.esa.ion_energy_flux.spectrogram(
-        time,
-        y="energy",
-        log_color=True,
+    item = spn.Artemis(store=store, download="never").p1.esa.ion_energy_flux.spectrogram(
+        spn.day("2011-07-01")
     )
     result = spn.stack(item).plot()
 
-    assert item.name == "ion_energy_flux"
-    assert item.kind == "spectrogram"
-    assert item.y == "energy"
-    assert item.log_color is True
-    assert len(result.axes) == 1
+    assert item.kind == "spectrogram" and item.y == "energy"
+    assert item.log_color is True and item.yscale == "log"
+    assert result.axes[0].get_ylabel() == "energy [eV]"
 
 
-def test_artemis_variable_endpoint_builds_line_plot_item(tmp_path) -> None:
+def test_artemis_variable_endpoint_builds_line_plot_items(tmp_path) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     store = spn.Store(tmp_path / "store")
+    _write_artemis_day(store)
+    endpoint = spn.Artemis(store=store, download="never").p1.fgm.magnetic_field
     time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
 
-    item = spn.Artemis(store=store).p1.fgm.magnetic_field.line(time)
-    fig = spn.stack(item).plot()
+    every = spn.stack(endpoint.line(time)).plot()
+    some = spn.stack(endpoint.lines(time, components="xz")).plot()
 
-    assert item.name == "magnetic_field"
-    assert len(fig.axes[0].lines) == 3
+    assert len(every.axes[0].lines) == 3
+    assert len(some.axes[0].lines) == 2
 
 
-def test_artemis_variable_endpoint_builds_component_lines_plot_item(tmp_path) -> None:
+def test_artemis_missing_days_follow_the_missing_option(tmp_path) -> None:
+    art = spn.Artemis(store=spn.Store(tmp_path / "store"), download="never")
+    time = spn.day("2011-07-01")
+
+    empty = art.p1.fgm.magnetic_field.load(time)
+    with pytest.warns(UserWarning, match="download='never'"):
+        art.p1.fgm.magnetic_field.load(time, missing="warn")
+    with pytest.raises(spn.DatasetNotFoundError, match="ARTEMIS P1 FGM"):
+        art.p1.fgm.magnetic_field.load(time, missing="error")
+
+    assert empty.to_xarray().shape == (0, 3)
+    assert empty.files == ()
+
+
+class _Response(BytesIO):
+    def __init__(self, payload: bytes) -> None:
+        super().__init__(payload)
+        self.headers = Message()
+        self.headers["Content-Length"] = str(len(payload))
+
+    def __enter__(self) -> _Response:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
+
+def test_artemis_downloads_the_newest_version_and_registers_it(tmp_path, monkeypatch) -> None:
+    from sopran.missions.artemis import cdaweb
+
+    source_store = spn.Store(tmp_path / "source")
+    _write_artemis_day(source_store, version=2)
+    cdf_bytes = next(
+        source_store.raw_path("artemis", "themis", "thb", "l2", "fgm", "2011").iterdir()
+    ).read_bytes()
+    listing = (
+        b'<a href="thb_l2_fgm_20110701_v01.cdf">v1</a>'
+        b'<a href="thb_l2_fgm_20110701_v02.cdf">v2</a>'
+        b'<a href="thb_l2_fgm_20110702_v01.cdf">next day</a>'
+    )
+    urls: list[str] = []
+
+    def fake_urlopen(url: str, timeout: float) -> _Response:
+        urls.append(url)
+        return _Response(listing if url.endswith("/") else cdf_bytes)
+
+    monkeypatch.setattr(cdaweb, "urlopen", fake_urlopen)
+    store = spn.Store(tmp_path / "store")
+    endpoint = spn.Artemis(store=store, download="missing").p1.fgm.magnetic_field
+
+    loaded = endpoint.load(spn.day("2011-07-01"))
+    again = endpoint.load(spn.day("2011-07-01"))
+
+    base = "https://spdf.gsfc.nasa.gov/pub/data/themis/thb/l2/fgm/2011/"
+    assert urls == [base, base + "thb_l2_fgm_20110701_v02.cdf"]
+    assert loaded.files[0].name == "thb_l2_fgm_20110701_v02.cdf"
+    assert again.files == loaded.files
+    registered = store.raw_files(mission="artemis", provider="nasa-spdf")
+    assert registered.height == 1
+
+
+def test_top_level_load_reads_artemis_files_from_the_store(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    _write_artemis_day(store)
+
+    magnetic_field = spn.load(
+        "artemis.p1.fgm.magnetic_field", spn.day("2011-07-01"), store=store, download="never"
+    )
+    ion_flux = spn.load(
+        "artemis.p1.esa.ion_energy_flux", spn.day("2011-07-01"), store=store, download="never"
+    )
+
+    assert magnetic_field.to_xarray().shape == (3, 3)
+    assert ion_flux.to_xarray().shape == (3, 2)
+
+
+def test_project_case_artemis_uses_the_project_store_and_policy(tmp_path) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
+    _write_artemis_day(store)
+    case = _project_case(tmp_path, store)
 
-    item = spn.Artemis(store=store).p1.fgm.magnetic_field.lines(
-        time,
-        components="xz",
-    )
-    fig = spn.stack(item).plot()
-
-    assert item.name == "magnetic_field"
-    assert len(fig.axes[0].lines) == 2
-
-
-def test_top_level_load_reads_artemis_dataset_from_store(tmp_path) -> None:
-    store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
-
-    magnetic_field = spn.load("artemis.p1.fgm.magnetic_field", time, store=store)
-
-    assert magnetic_field.to_xarray().values.tolist() == [[1.0, 2.0, 3.0]]
-
-
-def test_top_level_load_reads_artemis_esa_dataset_from_store(tmp_path) -> None:
-    store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_esa_dataset(store, time)
-
-    ion_flux = spn.load("artemis.p1.esa.ion_energy_flux", time, store=store)
-
-    assert ion_flux.to_xarray().values.tolist() == [[10.0, 30.0]]
-
-
-def test_project_case_artemis_uses_project_store_for_load(tmp_path) -> None:
-    store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    (project_root / "sopran.toml").write_text(
-        """
-[cases.wake]
-start = "2011-07-01T00:00:00"
-stop = "2011-07-02T00:00:00"
-""".strip(),
-        encoding="utf-8",
+    assert case.artemis.download == "never"
+    magnetic_field = case.artemis.p1.fgm.magnetic_field.load()
+    stack = case.stack(
+        case.artemis.p1.fgm.magnetic_field.lines(components="xz"),
+        case.artemis.p1.esa.ion_energy_flux.spectrogram(),
     )
 
-    magnetic_field = spn.Project(project_root, store=store).case(
-        "wake"
-    ).artemis.p1.fgm.magnetic_field.load()
-
-    assert magnetic_field.to_xarray().values.tolist() == [[1.0, 2.0, 3.0]]
-
-
-def test_project_case_artemis_endpoint_builds_line_plot_item(tmp_path) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
-    store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    (project_root / "sopran.toml").write_text(
-        """
-[cases.wake]
-start = "2011-07-01T00:00:00"
-stop = "2011-07-02T00:00:00"
-""".strip(),
-        encoding="utf-8",
-    )
-    case = spn.Project(project_root, store=store).case("wake")
-
-    stack = case.stack(case.artemis.p1.fgm.magnetic_field.line())
-
-    assert stack.plan().items == ("magnetic_field",)
-    assert len(stack.plot().axes[0].lines) == 3
-
-
-def test_project_case_artemis_endpoint_builds_component_lines_plot_item(
-    tmp_path,
-) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
-    store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_fgm_dataset(store, time)
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    (project_root / "sopran.toml").write_text(
-        """
-[cases.wake]
-start = "2011-07-01T00:00:00"
-stop = "2011-07-02T00:00:00"
-""".strip(),
-        encoding="utf-8",
-    )
-    case = spn.Project(project_root, store=store).case("wake")
-
-    stack = case.stack(case.artemis.p1.fgm.magnetic_field.lines(components="xz"))
-
-    assert stack.plan().items == ("magnetic_field",)
-    assert len(stack.plot().axes[0].lines) == 2
-
-
-def test_project_case_artemis_esa_endpoint_builds_spectrogram_plot_item(tmp_path) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
-    store = spn.Store(tmp_path / "store")
-    time = spn.day("2011-07-01")
-    _write_artemis_esa_dataset(store, time)
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    (project_root / "sopran.toml").write_text(
-        """
-[cases.wake]
-start = "2011-07-01T00:00:00"
-stop = "2011-07-02T00:00:00"
-""".strip(),
-        encoding="utf-8",
-    )
-    case = spn.Project(project_root, store=store).case("wake")
-
-    stack = case.stack(case.artemis.p1.esa.ion_energy_flux.spectrogram(y="energy"))
-
-    assert stack.plan().items == ("ion_energy_flux",)
-    assert len(stack.plot().axes) == 1
-
-
-def _write_artemis_fgm_dataset(store: spn.Store, time: spn.TimeRange) -> None:
-    frame = pl.DataFrame(
-        {
-            "time": ["2011-07-01T00:00:00Z"] * 3,
-            "component": ["x", "y", "z"],
-            "magnetic_field": [1.0, 2.0, 3.0],
-        }
-    )
-    store.write_parquet_dataset(
-        dataset_id="artemis.p1.fgm.magnetic_field",
-        layer="normalized",
-        mission="artemis",
-        instrument="p1.fgm",
-        product="magnetic_field",
-        schema=InstrumentSchema(
-            mission="artemis",
-            instrument="p1.fgm",
-            variables=(ARTEMIS_MAGNETIC_FIELD,),
-        ),
-        time_coverage=time,
-        frame=frame,
-    )
-
-
-def _write_artemis_esa_dataset(store: spn.Store, time: spn.TimeRange) -> None:
-    frame = pl.DataFrame(
-        {
-            "time": ["2011-07-01T00:00:00Z"] * 2,
-            "energy": [100.0, 300.0],
-            "ion_energy_flux": [10.0, 30.0],
-        }
-    )
-    store.write_parquet_dataset(
-        dataset_id="artemis.p1.esa.ion_energy_flux",
-        layer="normalized",
-        mission="artemis",
-        instrument="p1.esa",
-        product="ion_energy_flux",
-        schema=InstrumentSchema(
-            mission="artemis",
-            instrument="p1.esa",
-            variables=(ARTEMIS_ION_ENERGY_FLUX,),
-        ),
-        time_coverage=time,
-        frame=frame,
-    )
+    assert magnetic_field.to_xarray().shape == (3, 3)
+    assert stack.plan().items == ("magnetic_field", "ion_energy_flux")
+    assert len(stack.plot().axes) == 2
 
 
 def test_project_case_supplies_time_to_artemis_endpoint(tmp_path) -> None:
-    project_root = tmp_path / "project"
-    project_root.mkdir()
-    (project_root / "sopran.toml").write_text(
-        """
-[cases.wake]
-start = "2011-07-01T00:00:00"
-stop = "2011-07-02T00:00:00"
-""".strip(),
-        encoding="utf-8",
-    )
-
-    case = spn.Project(project_root).case("wake")
+    case = _project_case(tmp_path, spn.Store(tmp_path / "store"))
     plan = case.artemis.p1.fgm.magnetic_field.plan()
 
     assert plan.dataset_id == "artemis.p1.fgm.magnetic_field"
     assert plan.time == case.time
+    assert plan.remote_directories == (
+        "https://spdf.gsfc.nasa.gov/pub/data/themis/thb/l2/fgm/2011/",
+    )
 
 
 def test_top_level_load_dispatches_artemis_dataset_id(tmp_path) -> None:
-    with pytest.raises(spn.DatasetNotFoundError) as exc:
+    with pytest.raises(spn.DatasetNotFoundError, match="ARTEMIS P1 FGM"):
         spn.load(
             "artemis.p1.fgm.magnetic_field",
             spn.day("2011-07-01"),
             store=spn.Store(tmp_path / "store"),
+            download="never",
+            missing="error",
         )
-
-    assert "ARTEMIS P1 FGM" in str(exc.value)

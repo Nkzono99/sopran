@@ -31,7 +31,7 @@ xarrayの`plot()`を直接使いたいときは`mode="raw"`を指定します。
 | 縦軸に使う座標 | `y="energy"` |
 
 エネルギーフラックスのように何桁にもまたがる量は、スキーマの指定（`log_scale`、`log_dims`）に従って、色とエネルギー軸を既定で対数表示にします。
-現在はPACEの`energy_flux`とARTEMISの`ion_energy_flux`がこの指定を持ちます。線形に戻すときは`yscale="linear"`、`log_color=False`を渡します。
+現在はPACEの`energy_flux`とARTEMISの`ion_energy_flux`・`electron_energy_flux`がこの指定を持ちます。線形に戻すときは`yscale="linear"`、`log_color=False`を渡します。
 既定は配列の`plot()`・`quicklook()`・`spectrogram()`でも、エンドポイントの`spn.kaguya.esa1.energy_flux.plot(time)`でも同じです。
 
 ## 複数の機器を並べる
