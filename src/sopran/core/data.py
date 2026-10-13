@@ -370,7 +370,7 @@ class SopranArray:
         y: str | None = None,
         pitch: Any | None = None,
         energy: Any | None = None,
-        log_color: bool = False,
+        log_color: bool | None = None,
         yscale: str | None = None,
         ylim: tuple[float, float] | None = None,
         vmin: float | None = None,
@@ -425,7 +425,7 @@ class SopranArray:
         y: str | None = None,
         pitch: Any | None = None,
         energy: Any | None = None,
-        log_color: bool = False,
+        log_color: bool | None = None,
         yscale: str | None = None,
         ylim: tuple[float, float] | None = None,
         vmin: float | None = None,
@@ -569,7 +569,7 @@ class SopranArray:
         energy_dim: str = "energy",
         energy: Any | None = None,
         reduction: str = "sum",
-        log_color: bool = False,
+        log_color: bool | None = None,
         yscale: str | None = None,
         ylim: tuple[float, float] | None = None,
         vmin: float | None = None,
@@ -599,8 +599,8 @@ class SopranArray:
             y=pitch_dim,
             name=name or f"{self.name}_pitch",
             value_label=_label_with_units(self.name, self.schema.units),
-            log_color=log_color,
-            yscale=yscale,
+            log_color=self._log_color(log_color),
+            yscale=yscale or self.schema.default_yscale(pitch_dim),
             ylim=ylim,
             vmin=vmin,
             vmax=vmax,
@@ -614,7 +614,7 @@ class SopranArray:
         pitch_dim: str = "pitch_angle",
         pitch: Any | None = None,
         reduction: str = "sum",
-        log_color: bool = False,
+        log_color: bool | None = None,
         yscale: str | None = None,
         ylim: tuple[float, float] | None = None,
         vmin: float | None = None,
@@ -637,8 +637,8 @@ class SopranArray:
             y=energy_dim,
             name=name or f"{self.name}_energy",
             value_label=_label_with_units(self.name, self.schema.units),
-            log_color=log_color,
-            yscale=yscale,
+            log_color=self._log_color(log_color),
+            yscale=yscale or self.schema.default_yscale(energy_dim),
             ylim=ylim,
             vmin=vmin,
             vmax=vmax,
@@ -653,7 +653,7 @@ class SopranArray:
         backend: str = "matplotlib",
         x: str = "time",
         y: str | None = None,
-        log_color: bool = False,
+        log_color: bool | None = None,
         yscale: str | None = None,
         ylim: tuple[float, float] | None = None,
         vmin: float | None = None,
@@ -725,7 +725,7 @@ class SopranArray:
         name: str | None = None,
         reduce_dims: tuple[str, ...] | None = None,
         reduction: str = "sum",
-        log_color: bool = False,
+        log_color: bool | None = None,
         yscale: str | None = None,
         ylim: tuple[float, float] | None = None,
         vmin: float | None = None,
@@ -746,8 +746,8 @@ class SopranArray:
             y=y,
             name=resolved_name,
             value_label=_label_with_units(resolved_name, self.schema.units),
-            log_color=log_color,
-            yscale=yscale,
+            log_color=self._log_color(log_color),
+            yscale=yscale or self.schema.default_yscale(y),
             ylim=ylim,
             vmin=vmin,
             vmax=vmax,
@@ -771,6 +771,11 @@ class SopranArray:
             operations=operations,
             xr=array,
         )
+
+    def _log_color(self, log_color: bool | None) -> bool:
+        """Explicit choice, else the schema's ``log_scale`` hint."""
+
+        return self.schema.log_scale if log_color is None else bool(log_color)
 
     def _raise_if_placeholder_visualization(self) -> None:
         attrs = getattr(self.to_xarray(), "attrs", {})

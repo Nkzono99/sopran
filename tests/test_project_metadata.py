@@ -76,8 +76,8 @@ def test_extras_list_only_packages_that_sopran_imports() -> None:
 
 def test_install_docs_describe_full_extra_and_rust_toolchain() -> None:
     docs = [
-        Path("docs/getting-started/installation.md").read_text(encoding="utf-8"),
-        Path("docs/en/getting-started/installation.md").read_text(encoding="utf-8"),
+        Path("docs/ja/start/install.md").read_text(encoding="utf-8"),
+        Path("docs/en/start/install.md").read_text(encoding="utf-8"),
     ]
 
     for document in docs:

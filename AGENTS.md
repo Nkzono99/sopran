@@ -12,7 +12,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 - 観測事実と作業仮説を区別する。証拠の強さと検証コストから有力な仮説を選び、見直しの条件と必要最小限の検証を示す。
 - 低優先度の候補は保留し、有力な仮説の検証に集中する。具体的な反証や判断を変える新しい証拠が得られたら見直す。
 - 結果は「現時点で何を採用し、次に何を調べるか」まで示し、許可された可逆的な作業はその判断に沿って進める。
-- 会話・日本語文書は日本語、`docs/en/` は英語で書く。API名・外部仕様名は原名を保つ。数式は `$...$` / `$$...$$`、画像はMarkdownで埋め込む。
+- 会話・日本語文書は日本語、`docs/en/` は英語で書く（`docs/ja/` と同じパスの対訳）。API名・外部仕様名は原名を保つ。数式は `$...$` / `$$...$$`、画像はMarkdownで埋め込む。
 
 ## 実装と記録の置き場所
 
@@ -26,7 +26,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 | `crates/sopran-native/` | `sopran._native` として呼ぶRust拡張 |
 | `tests/` | 合成データ・fixture中心の回帰テスト |
 | `scripts/hpc/` | スパコン用の環境構築・ジョブ雛形（京大Slurmは `scripts/hpc/kyoto/`） |
-| `docs/`, `docs/en/` | 公開APIの仕様・利用方法。ナビゲーションは `mkdocs.yml` |
+| `docs/ja/`, `docs/en/` | 公開ドキュメント。構成と書き方は `docs/ja/development/documentation.md`、ナビゲーションは `mkdocs.yml` |
 | `working/`, `_handoff/` | Git管理外の個別研究・試行錯誤・生成物・進捗・ログ |
 
 個別研究のテーマ設定・文献調査・run単位の評価は `working/` に置き、公開docsのナビゲーションへ追加しません。
@@ -67,7 +67,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 | 関連テスト / 全体テスト | `python -m pytest -q tests/test_omni.py` / `python -m pytest -q` |
 | 構文・lint・型 | `python -m compileall -q src` / `python -m ruff check src tests` / `python -m mypy src` |
 | Rust変更 | `cargo test -p sopran-native` / `cargo fmt --all --check` |
-| schema変更 | `python -m sopran.schema_docs --check docs/reference/schemas.md` / `python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md` |
+| schema変更 | `python -m sopran.schema_docs --check docs/ja/reference/schemas.md` / `python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md` |
 | docs変更 | `python -m mkdocs build` |
 
 CIの依存セット・手順は `.github/workflows/ci.yml`、docsとwheel配布は同ディレクトリの `docs.yml` / `publish.yml` を確認します。

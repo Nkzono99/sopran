@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from sopran.core.pages import GuidePage
+from sopran.core.pages import GuidePage, public_doc_urls
 
 from .models import SurfaceSource
 from .schema import MOON_SURFACE_SCHEMA, surface_product_schema
 
 GUIDE_LANGUAGES = ("ja", "en")
-PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/maps/moon/"
+PUBLIC_DOC_URLS = public_doc_urls("data/moon/")
 
 MOON_GUIDES = {
     "en": """# Moon Maps
@@ -109,7 +109,7 @@ def moon_guide(*, language: str = "ja") -> GuidePage:
         source="sopran.bodies.moon",
         markdowns=MOON_GUIDES,
         language=language,
-        url=PUBLIC_DOC_URL,
+        urls=PUBLIC_DOC_URLS,
     ).with_schema(MOON_SURFACE_SCHEMA)
 
 
@@ -119,7 +119,7 @@ def surface_guide(product: str, label: str, *, language: str = "ja") -> GuidePag
         source=f"sopran.bodies.moon.{product}",
         markdowns=SURFACE_GUIDES.get(product, MOON_GUIDES),
         language=language,
-        url=PUBLIC_DOC_URL,
+        urls=PUBLIC_DOC_URLS,
     ).with_schema(surface_product_schema(product))
 
 
@@ -135,7 +135,7 @@ def acquisition_guide_page(
         source=f"sopran.bodies.moon.{source.product}.acquisition",
         markdowns=markdowns,
         language=language,
-        url=source.landing_page,
+        urls={language: source.landing_page for language in GUIDE_LANGUAGES},
     )
 
 
@@ -145,7 +145,7 @@ def guide_page(
     source: str,
     markdowns: dict[str, str],
     language: str,
-    url: str | None = None,
+    urls: dict[str, str | None] | None = None,
 ) -> GuidePage:
     if language not in GUIDE_LANGUAGES:
         raise ValueError(f"Moon guide language is not available: {language}")
@@ -153,7 +153,8 @@ def guide_page(
         title=title,
         markdown=markdowns[language],
         source=source,
-        url=url,
+        url=None if urls is None else urls[language],
+        urls=urls,
         language=language,
         available_languages=GUIDE_LANGUAGES,
         translations={

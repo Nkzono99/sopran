@@ -9,7 +9,7 @@ description: SOPRANの電子反射法（ER）のfit、実データ評価、可�
 
 パスはリポジトリルートからの相対パスです。必要なものだけ読む。
 
-- 試作APIと制約: `docs/experimental/electron-reflectometry.md`、
+- 試作APIと制約: `docs/ja/experimental/er.md`、`er-models.md`、`er-batch.md`、
   `src/sopran/experimental/electron_reflection/`。
 - 機器データからの構成: `src/sopran/experimental/kaguya/er.py`。
   通常の`Kaguya`からは再公開しない。明示的な`KaguyaErInstrument`を使う。

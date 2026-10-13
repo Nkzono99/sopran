@@ -1296,6 +1296,8 @@ def _pitch_spectrum_array(
         units=units,
         frame=normalize_frame(options.look_frame),
         description=f"KAGUYA PACE {sensor_label} energy spectrum binned by pitch angle.",
+        log_scale=options.value == "energy_flux",
+        log_dims=("energy",) if options.value == "energy_flux" else (),
     )
     parameters: dict[str, Any] = {
         "value": options.value,

@@ -1,142 +1,142 @@
-# KAGUYA LRS/WFC Wave-Event Extraction
+# Wave Candidates
 
-> Experimental API. No backward-compatibility or physical-identification guarantee.
+This experiment extracts **candidate intervals** of wave events from KAGUYA LRS/WFC spectra.
+It covers the detection preset `KAGUYA_WFC_V1`, the quality mask, the validation intervals, and how to define the denominator of occurrence rates.
+Labels obtained here are automatic detection candidates, not confirmed physical phenomena.
 
-This document defines the `KAGUYA_WFC_V1` preset used to extract **candidate
-intervals** from KAGUYA LRS/WFC spectra, together with its validation and
-aggregation boundaries. Its labels are automated candidates, not confirmed
-physical phenomena.
+## Minimal example
 
-## Scope And Preset
+```python
+import sopran as spn
+from sopran.experimental.waves import detect_wave_candidates
+from sopran.experimental.kaguya.waves import KAGUYA_WFC_V1, build_kaguya_wfc_quality_mask
 
-The expected input is WFC-H Ex/Ey power spectral density. Times are UTC and
-intervals are half-open `[start, stop)`. The standard window is 120 seconds
-with a 60-second step.
+time = spn.day("2008-01-10")
+data = spn.Kaguya().lrs.load(time, kind="WFC")
+spectrum = data.wfc_ey_power_spectral_density.to_xarray()
+quality = build_kaguya_wfc_quality_mask(
+    spectrum.values,
+    mode=data.wfc_mode.to_xarray().values,
+    gain=data.wfc_gain.to_xarray().values,
+    fband=data.wfc_fband.to_xarray().values,
+    postgap=data.wfc_postgap.to_xarray().values,
+)
+result = detect_wave_candidates(
+    spectrum.time.values,
+    spectrum.frequency.values,
+    spectrum.values,
+    input_scale="linear_power",
+    config=KAGUYA_WFC_V1,
+    valid_time=quality.valid_time,
+    component="Ey",
+    source_dataset="kaguya.lrs.wfc_ey_power_spectral_density",
+)
 
-| Purpose | Frequency band (kHz) | Intent |
-| --- | ---: | --- |
-| `low_broadband` | 0.1--10 | Low-frequency broadband enhancement |
-| `low_fpe` | 2--30 | Low-frequency peak candidate; do not always mask 30 kHz |
-| `ridge` | 10--100 | Ridges, drift, and shifts |
-| `radio` | 100--500 | Broadband radio candidates |
-| `high` | 500--1000 | High-frequency diagnostics |
+window_features = result.features_to_polars()
+events = result.events_to_polars(mission="kaguya", instrument="lrs_wfc_h")
+```
 
-Fixed lines are not removed unconditionally from every band.
+`confidence` is currently an uncalibrated heuristic built from thresholds. Use the raw `score` for comparison and ranking, and do not read it as a probability.
+
+## Preset `KAGUYA_WFC_V1`
+
+The input is the WFC-H Ex/Ey power spectral density. Times are UTC and intervals are half-open `[start, stop)`.
+Windows are 120 s long with a 60 s step. Features are computed in these bands:
+
+| Use | Band (kHz) | Intent |
+|---|---:|---|
+| `low_broadband` | 0.1–10 | Low-frequency broadband enhancement |
+| `low_fpe` | 2–30 | Low-frequency peak candidates (the 30 kHz line is not masked uniformly) |
+| `ridge` | 10–100 | Ridges, drift, frequency shifts |
+| `radio` | 100–500 | Broadband radio candidates |
+| `high` | 500–1000 | High-frequency diagnostics |
+
+### Fixed lines
+
+Instrumental fixed-frequency lines are not removed from every band unconditionally. Each use treats them as follows.
 
 | Center | Half width | Use | Treatment |
-| ---: | ---: | --- | --- |
-| 30 kHz | 2 kHz | `ridge` / `tracker` | Mask from ridge scores and tracking paths, but not every standalone `low_fpe` peak |
-| 200 kHz | 12 kHz | `radio` | Mask from broad radio scores and retain as a separate RFI diagnostic |
-| 957 kHz | 3 kHz | `high` | Mask from high-band derived features and clustering, but retain in raw summaries and RFI diagnostics |
-| 30/200/957 kHz | 3 kHz each | `clustering` | Exclude or separate them so raw peak locations do not dominate clusters |
+|---:|---:|---|---|
+| 30 kHz | 2 kHz | `ridge`, tracking | Masked from ridge scores and tracking paths; not applied uniformly to single-peak decisions in `low_fpe` |
+| 200 kHz | 12 kHz | `radio` | Masked from the broadband radio score; kept for separate radio-frequency interference (RFI) diagnostics |
+| 957 kHz | 3 kHz | `high` | Masked from high-band derived features and cluster inputs; kept in raw summaries and RFI diagnostics |
+| 30/200/957 kHz | 3 kHz each | Clustering | Excluded or turned into separate features so raw peak positions do not dominate clusters |
 
-The legacy 30 kHz tracker mask is +/-2 kHz, while common raw-spectrum
-clustering uses +/-3 kHz. They must not silently share one `FixedLine` object.
-The 200 and 957 kHz lines are separated from physical-candidate scores rather
-than making their data disappear. In particular, a 957 kHz maximum must not be
-reported as the representative frequency of an event that occurs in the low
-kHz range. Every shard stores the preset and feature definitions together with
-`feature_spec_hash`.
+The earlier tracker masked 30 kHz by ±2 kHz and raw-spectrum clustering uses a common ±3 kHz mask; the same `FixedLine` is not reused.
+200 kHz and 957 kHz remain in detection, with physical candidate scores and fixed-line diagnostics kept separate.
+In particular, never use the 957 kHz maximum as the representative frequency of an event that occurred at low frequencies.
+The preset and feature definitions are stored in shards together with `feature_spec_hash`.
 
-## Quality Mask
+## Quality mask
 
-`build_kaguya_wfc_quality_mask` returns per-sample `sample_valid`, per-record
-`record_valid`, and state-transition warnings.
+`build_kaguya_wfc_quality_mask` returns per-value `sample_valid`, per-time `record_valid`, and warnings for state changes.
 
-- NaN, infinity, and CDF pad values (`254`, `65534`) are hard-invalid spectral samples.
-- NaN or pad values in `Mode`, `Gain`, `Fband`, and `PostGap` make a record hard invalid.
-- Finite state values and their transitions produce warnings; they do not alone discard observations.
-- A record with only some missing frequency bins remains usable through `sample_valid` and `finite_fraction`. A record with every bin missing is hard invalid.
-- Windows containing warnings remain available to the review queue, with warning counts retained in detector metadata.
+- Spectral values that are NaN, inf, or CDF pad values (`254`, `65534`) are invalid.
+- Times where `Mode`, `Gain`, `Fband`, or `PostGap` is NaN or a pad value are invalid.
+- Finite `Mode`, `Gain`, `Fband`, or `PostGap` values, or changes in them, never discard observations on their own; they only produce warnings,
+  because stable non-default modes are scientifically usable.
+- Times where only some frequency bins are missing keep `record_valid` so the usable bins remain, and report the gap through `sample_valid` and
+  `finite_fraction`. Times where every bin is missing are invalid.
+- Windows with warnings are not rejected automatically; the detector metadata keeps warning counts so people can review them.
 
-Raw `Mode` values may be passed directly. With decoded flags, evaluate `xymode`
-and `omode` as separate quality series and pass `fband` through its dedicated
-argument. Do not interpolate in ways that change the meaning of instrument
-states.
+`Mode` may be passed as raw values. When using decoded flags, evaluate `xymode` and `omode` as separate quality series
+and pass `fband` to its dedicated argument. No interpolation that changes the meaning of a state is applied.
 
-## Strict And Review Gold Intervals
+## Validation intervals
 
-`tests/fixtures/kaguya_wfc_wave_gold.json` is a small regression anchor set, not a
-complete event catalog.
+`tests/fixtures/kaguya_wfc_wave_gold.json` is a small anchor set for catching detector regressions. It cannot serve as a complete event catalog.
 
-- `strict_intervals` are relatively clear in quality and spectral shape and should remain candidates after preset changes.
-- `review_intervals` require human review of transitions, gaps, saturation, fixed lines, or solar-radio context. Detection alone does not determine test success.
-- Candidate classes in the gold data are not scientific identifications. Review plots and features before updating the manifest after threshold or background changes.
-- Short spikes may be suppressed by a 120-second median. Evaluate leakage into
-  physical labels separately from short-timescale detection performance.
+- `strict_intervals` have relatively clear quality and spectral shape, and candidates are expected to survive preset changes.
+- `review_intervals` are for people to recheck context such as state changes, data gaps, saturation, fixed lines, and solar radio bursts.
+  Tests do not fail on detection alone there.
+- The "candidate type" given to intervals is not a scientific identification. When thresholds or background estimates change, review figures and features before updating.
+- Short spikes may be suppressed by the 120 s median. Misclassification into physical candidates by the main detector and the performance of short-duration detectors are evaluated separately.
 
-## Coverage-Normalized Rates
+## Rate denominators
 
-The rate denominator is **eligible exposure**, not calendar time or file count.
-For each detector, component, frequency band, and preset hash, accumulate only
-times where coverage, `record_valid`, and required frequency bins permit a
-decision.
+The denominator of occurrence rates is the **eligible exposure**: the time the detector could actually decide, not calendar time or file counts.
+For each detector, component, band, and preset hash, accumulate only the time that has data, is `record_valid`, and has the required frequency bins.
 
-With 120-second windows stepped every 60 seconds, summing window durations
-double-counts overlap. Assign one step of time to valid window centers and clip
-at coverage boundaries, or compute the union of valid intervals, and store the
-result as `exposure_seconds`. `finite_sample_count` depends on sample cadence
-and frequency-bin count and is not an exposure substitute.
+With 120 s windows stepped by 60 s, summing window lengths double-counts overlaps. The basic implementation assigns one step of time to each valid window center,
+and stores as `exposure_seconds` either that non-overlapping time clipped at data boundaries or the union of valid time intervals.
+`finite_sample_count` depends on the sampling period and the number of frequency bins, so it is not used as exposure.
 
 ```text
 event_rate_per_hour = event_count / (exposure_seconds / 3600)
 ```
 
-When `exposure_seconds == 0`, the result is unobserved, not zero events at zero
-rate. Daily shards store event count, eligible/invalid/warning seconds, source
-product, component, detector name, and preset/feature hashes. Final catalogs
-deduplicate connected events crossing day boundaries by event ID and half-open
-interval.
+`exposure_seconds == 0` means "not observed", not zero events or a zero rate. Daily shards store, besides event counts, the eligible, invalid,
+and warning seconds, the source product, component, detector name, and preset and feature hashes. To avoid double-counting events that span day boundaries,
+the final catalog deduplicates by event ID and half-open interval. The Store event catalog's `rates()` follows the same approach
+([Storing Data](../guide/store.md#event-catalogs)).
 
-## WFC-H And WFC-L Boundary
+## WFC-H and WFC-L
 
-WFC-H spectra support labels such as `BBN/ESW candidate`, broadband
-enhancement, ridge, and radio candidate. Confirming an ESW requires a WFC-L
-waveform showing a bipolar pulse and its temporal shape. Do not label a WFC-H
-broadband spectrum alone as `ESW confirmed`.
+WFC-H spectra support statements up to `BBN/ESW candidate`, broadband enhancement, ridges, and radio candidates.
+Confirming electrostatic solitary waves (ESW) requires checking bipolar pulses and the time waveform in WFC-L.
+Never mark `ESW confirmed` based only on WFC-H broadband spectra.
 
-WFC-H and WFC-L retain separate readers, source products, coverage, and quality
-conditions. A WFC-H candidate may be stored when WFC-L is unavailable, but its
-verification state remains `unverified`. Later matching uses a shared event ID
-or overlapping UTC intervals; absence of WFC-L coverage is not a negative
-example.
+WFC-H and WFC-L have separate readers, source products, data availability, and quality conditions. WFC-H candidates can be saved without WFC-L,
+but their confirmation status stays `unverified`. Later matching uses a common event ID or overlapping UTC intervals, and times without WFC-L are not treated as negatives.
 
-The public `sln-l-lrs-4-wfc-spectrum-v1.0` CDF product and the SPEDAS
-`idl/projects/kaguya/lrs/kgy_lrs_load.pro` loader cover WFC-H spectra. WFC-L is
-a 10 Hz--100 kHz waveform receiver and is distinct from both that public
-spectrum product and the subsurface-sounding `sln-l-lrs-2-sndr-waveform-*`
-products. The current reader does not acquire natural-wave WFC-L waveforms.
-Do not register guessed paths in the dataset registry.
+The public CDF `sln-l-lrs-4-wfc-spectrum-v1.0` and SPEDAS `kgy_lrs_load.pro` cover WFC-H spectra.
+WFC-L is a 10 Hz–100 kHz waveform receiver, a different product from these public spectra and from the subsurface sounder `sln-l-lrs-2-sndr-waveform-*`.
+The current reader does not support WFC-L waveforms, and no guessed paths are registered as datasets.
 
-`PDC-TI` is not UTC. It is a 48-bit spacecraft time counter stored as high,
-middle, and low `uint16` words. The public API preserves both the exactly
-representable scalar count and the three raw words, while CDF `Epoch` supplies
-UTC. Do not convert the counter to time without a TI--UT correlation table.
-CDF `FILLVAL=0` is distinct from sparse default pads: WFC support variables
-treat UINT1 value 254 as missing, and PDC-TI treats `[65534, 0, 65534]` as
-missing.
+## Shards and clustering
 
-## Shards And Clustering
+The first shard stores not only candidate intervals but also background differences, per-band statistics, ridge slopes and continuity, fixed-line diagnostics,
+quality warnings, and data availability and exposure. Clustering takes these reproducible feature shards as input and never calls mission-specific readers or raw CDF directly.
+Raw peaks at 30/200/957 kHz are excluded or separated into dedicated RFI features, and shards with different preset or feature hashes are never mixed silently.
 
-Initial shards retain candidate intervals, background residuals, band
-statistics, ridge slope and continuity, fixed-line diagnostics, quality
-warnings, coverage, and exposure. Clustering consumes this reproducible feature
-shard and does not call mission-specific readers or raw CDF files directly.
-Raw 30/200/957 kHz peaks are removed or separated into dedicated RFI features,
-and shards with different preset or feature hashes are never mixed implicitly.
-`fit_background_residual_clustering(result.windows.normalized_z)` returns
-exploratory integer IDs scoped by `cluster_run_id`; these IDs are not physical
-phenomena or noise labels.
+Exploratory clusters come from `fit_background_residual_clustering(result.windows.normalized_z)`.
+The returned integer IDs are local to each fit, so always store them with `cluster_run_id`.
+Clusters are never promoted automatically to phenomenon names or noise decisions; only interpreted labels are written to the event catalog as a separate detector version.
 
 ## References
 
-- Y. Kasahara et al., "Plasma wave observation using waveform capture in the
-  Lunar Radar Sounder on board the SELENE spacecraft," *Earth, Planets and
-  Space* 60, 341--351 (2008), DOI
-  [10.1186/BF03352799](https://doi.org/10.1186/BF03352799). See the WFC-H/WFC-L
-  instrument boundary and the 12-digit hexadecimal TI-counter description on
-  p. 350.
-- NASA/SPDF, [CDF User's Guide](https://spdf.gsfc.nasa.gov/pub/software/cdf/doc/cdf_User_Guide.pdf),
-  for the CDF_UINT1/CDF_UINT2 default pad values.
-- [DARTS KAGUYA archive](https://darts.isas.jaxa.jp/en/missions/kaguya), used
-  to verify the public product boundary.
+- Y. Kasahara et al., "Plasma wave observation using waveform capture in the Lunar Radar Sounder on board the SELENE spacecraft,"
+  *Earth, Planets and Space* 60, 341–351 (2008). [doi:10.1186/BF03352799](https://doi.org/10.1186/BF03352799).
+  Used for the WFC-H/WFC-L instrument boundary and the 12-digit hexadecimal TI counter description on p. 350.
+- NASA/SPDF, [CDF User's Guide](https://spdf.gsfc.nasa.gov/pub/software/cdf/doc/cdf_User_Guide.pdf). Used for the default pad values of CDF_UINT1 and CDF_UINT2.
+- [DARTS KAGUYA archive](https://darts.isas.jaxa.jp/en/missions/kaguya). Used to confirm public product boundaries.

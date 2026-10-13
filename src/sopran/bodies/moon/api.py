@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+from sopran.core.config import DownloadMode, resolve_download_mode
 from sopran.core.pages import GuidePage, InfoPage
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import Store
@@ -30,8 +31,18 @@ class Moon:
 
     name = "moon"
 
-    def __init__(self, *, view: View | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        store: Store | None = None,
+        download: DownloadMode | None = None,
+        view: View | None = None,
+    ) -> None:
         self.view = view
+        self.store = store or (view.project.store if view is not None else Store())
+        self.download = resolve_download_mode(
+            download if download is not None else (view.context.download if view else None)
+        )
         self.dem = SurfaceEndpoint(
             self,
             "dem",
@@ -56,7 +67,7 @@ class Moon:
 
     @classmethod
     def from_view(cls, view: View) -> Moon:
-        """Build Moon endpoints whose plans default to the view's region, time and kernels."""
+        """Build Moon endpoints that default to the view's region, time, kernels and Store."""
 
         return cls(view=view)
 
@@ -227,16 +238,23 @@ class SurfaceEndpoint:
         return loaders.download_surface_source(
             self.source_info(source),
             product=self.product,
-            store=store,
+            store=store if store is not None else self.body.store,
             target=target,
             overwrite=overwrite,
         )
 
     def load(self, **parameters: Any) -> RasterLayer:
-        return cast(
-            RasterLayer,
-            loaders.load_surface_raster(self, **self._with_view_defaults(parameters)),
-        )
+        """Load the raster from ``path=`` or the Store.
+
+        Without ``path=``, the file is read from ``raw/moon/<product>/`` of ``store=``
+        (default: the body's Store) and retrieved first when the download policy
+        (``download=``, default: the body's policy) allows it.
+        """
+
+        parameters = self._with_view_defaults(parameters)
+        parameters.setdefault("store", self.body.store)
+        parameters.setdefault("download", self.body.download)
+        return cast(RasterLayer, loaders.load_surface_raster(self, **parameters))
 
     def compute(self, **parameters: Any) -> RasterLayer:
         plan = self.plan(**parameters)

@@ -204,7 +204,7 @@ def test_gold_manifest_has_ordered_utc_strict_and_review_intervals() -> None:
 
 def test_wave_documentation_records_exposure_and_wfc_product_boundaries() -> None:
     text = (
-        Path(__file__).parents[1] / "docs" / "experimental" / "waves.md"
+        Path(__file__).parents[1] / "docs" / "ja" / "experimental" / "waves.md"
     ).read_text(encoding="utf-8")
     assert "exposure_seconds" in text
     assert "二重計上" in text

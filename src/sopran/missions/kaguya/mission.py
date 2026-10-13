@@ -21,7 +21,7 @@ from sopran.core.coverage import (
     validate_coverage_freq,
 )
 from sopran.core.errors import DatasetNotFoundError
-from sopran.core.pages import GuidePage, InfoPage
+from sopran.core.pages import GuidePage, InfoPage, public_doc_urls
 from sopran.core.pipeline import Pipeline, PipelineBackend
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.time import TimeRange, _filter_polars_time, period
@@ -89,9 +89,9 @@ if TYPE_CHECKING:
 MissingMode = Literal["empty", "warn", "error"]
 CacheMode = Literal["use", "refresh", "never"]
 _GUIDE_LANGUAGES = ("ja", "en")
-_PUBLIC_DOC_URLS = {
-    "README.md": "https://nkzono99.github.io/sopran/missions/kaguya/",
-    "ESA1.md": "https://nkzono99.github.io/sopran/missions/kaguya/esa1/",
+_PUBLIC_DOC_PATHS = {
+    "README.md": "data/kaguya/",
+    "ESA1.md": "data/kaguya/pace/",
 }
 
 
@@ -501,9 +501,6 @@ fig = plot_result.fig
             cache=cache,
             calibration=calibration,
         )
-        if self.name == "energy_flux":
-            kwargs.setdefault("log_color", True)
-            kwargs.setdefault("yscale", "log")
         kwargs.setdefault("dataset_id", self.dataset_id)
         kwargs.setdefault("time_range", loaded.time)
         kwargs.setdefault("frame", self._schema.frame)
@@ -627,8 +624,8 @@ fig = plot_result.fig
             x=x,
             y=y,
             name=name or self.name,
-            log_color=bool(log_color if log_color is not None else self.name == "energy_flux"),
-            yscale=yscale or ("log" if self.name == "energy_flux" else None),
+            log_color=self._schema.log_scale if log_color is None else bool(log_color),
+            yscale=yscale or self._schema.default_yscale(y),
             ylim=ylim,
             vmin=vmin,
             vmax=vmax,
@@ -745,7 +742,7 @@ fig = plot_result.fig
         layer: str = "features",
         energy: Any | None = None,
         reduction: str = "sum",
-        log_color: bool = False,
+        log_color: bool | None = None,
         name: str | None = None,
     ) -> PlotItem:
         spectrum = self.pitch_angle_spectrum(
@@ -2386,11 +2383,14 @@ def _read_guide(name: str, *, title: str, language: str = "ja") -> GuidePage:
             translation = package.joinpath(name)
         translations[available_language] = translation.read_text(encoding="utf-8")
         sources[available_language] = f"sopran.missions.kaguya/{translation_name}"
+    doc_path = _PUBLIC_DOC_PATHS.get(name)
+    doc_urls = public_doc_urls(doc_path) if doc_path is not None else {}
     return GuidePage(
         title=title,
         markdown=markdown,
         source=f"sopran.missions.kaguya/{resource_name}",
-        url=_PUBLIC_DOC_URLS.get(name),
+        url=doc_urls.get(language),
+        urls=doc_urls,
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,

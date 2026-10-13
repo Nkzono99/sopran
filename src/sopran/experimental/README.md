@@ -22,7 +22,7 @@ Import the specific model or adapter explicitly. Importing `sopran` or
 ER inventory reviewed: 2026-10-02; finite-bin count likelihood added 2026-10-10. Finite-bin and Halekas are the retained
 estimators. Paired-count, binary, joint, global-joint and incident models,
 their dedicated research helpers and the former standalone JSONL CLI are retired.
-See `docs/experimental/er-methods.md`.
+See `docs/ja/experimental/er.md` (English: `docs/en/experimental/er.md`).
 Historical runners, source snapshots and saved products stay under `working/`.
 No ER fit or wave candidate is promoted by this cleanup.
 
@@ -41,4 +41,4 @@ No ER fit or wave candidate is promoted by this cleanup.
   does not imply physical accuracy.
 - Removed experimental imports have no compatibility aliases or fallback.
 
-Usage: `docs/experimental/`.
+Usage: `docs/ja/experimental/` and `docs/en/experimental/`.

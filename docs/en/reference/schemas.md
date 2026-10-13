@@ -1,7 +1,10 @@
 # Schemas
 
-This page is generated from SOPRAN runtime schema objects.
-Update the schema objects first, then regenerate this page.
+This page is generated from the SOPRAN schema definitions (`InstrumentSchema`).
+Do not edit it by hand: change the schema in code, then regenerate it with
+`python -m sopran.schema_docs --language en docs/en/reference/schemas.md`.
+The columns are the variable name, dimensions, units, data type, frame,
+aliases, and description.
 
 ## kaguya / esa1
 
@@ -80,7 +83,7 @@ Update the schema objects first, then regenerate this page.
 | subpoint | time, component | deg |  | MOON_ME |  | Spherical Moon subpoint longitude and latitude. |
 | sza | time | deg |  | MOON_ME |  | Solar zenith angle at the spherical Moon subpoint, computed from SPICE Sun geometry unless an explicit Sun direction vector is supplied. |
 
-## kaguya / lmag
+## kaguya / lmag / magnetic_connection
 
 | name | dims | units | dtype | frame | aliases | description |
 | --- | --- | --- | --- | --- | --- | --- |

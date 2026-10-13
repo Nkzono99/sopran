@@ -1,38 +1,43 @@
 # Experimental APIs
 
-`sopran.experimental` contains opt-in, reusable research models and adapters.
-Names, defaults and storage formats may change or disappear without compatibility
-aliases. Importing `sopran` does not load these implementations.
+`sopran.experimental` holds research models and analysis steps that are organized well enough to try on other data.
+Unlike the regular instrument APIs, names, defaults, and storage formats may change or disappear without notice, and the physical correctness of results is not guaranteed.
 
-```shell
-python -m pip install "sopran[kaguya,viz,experimental]"
+```bash
+python -m pip install -e ".[kaguya,viz,experimental]"
 ```
 
-| Scope | Import |
-|---|---|
-| ER estimators | `sopran.experimental.electron_reflection` |
-| KAGUYA ER adapter | `sopran.experimental.kaguya.er.KaguyaErInstrument` |
-| Wave candidates, ridges and clusters | `sopran.experimental.waves` |
-| WFC presets and candidate quality rules | `sopran.experimental.kaguya.waves` |
-| Full-period ER batch (day shards, Slurm) | `python -m sopran.experimental.kaguya.er_batch` |
-| Tsunakawa SVM3D shell grid and field-line tracing | `sopran.experimental.moon.svm3d` |
-| ER input parts (windows, paired maps, SVM3D connection) | `sopran.experimental.kaguya.er_windows`, `electron_reflection.maps`, `moon.connection` |
+`import sopran` alone does not load any experiment. Import the module you need explicitly.
 
-See [ER usage](electron-reflectometry.md), [the ER batch](er-batch.md) and
-[wave candidates](waves.md).
-The [ER method inventory](er-methods.md) distinguishes estimator entry points and objectives.
-Instrument readers, calibration, native bins, frames, Store and plotting remain
-in the standard API. `Kaguya.er` and root-level ER symbols have been removed.
-Former `sopran.analysis`, `sopran.missions.kaguya.er*` and `sopran.bodies.moon.svm3d`
-imports have no shims.
-Shared magnetic interpolation remains in `missions.kaguya.magnetic_geometry`.
+## Inventory
 
-ER retains finite-bin and Halekas. Each returns a typed fit result for callers
-to save with settings and provenance. Historical Store products remain
-accessible through the standard dataset reader.
+| Topic | Module | Page |
+|---|---|---|
+| Electron reflectometry (ER) estimators | `sopran.experimental.electron_reflection` | [Electron Reflectometry](er.md), [ER Model Definitions](er-models.md) |
+| KAGUYA ER input preparation and estimator calls | `sopran.experimental.kaguya.er.KaguyaErInstrument` | [Electron Reflectometry](er.md) |
+| ER input parts (16 s windows, paired distributions, SVM3D connection screening) | `sopran.experimental.kaguya.er_windows`, `electron_reflection.maps`, `moon.connection` | [ER Full-Period Batch](er-batch.md) |
+| ER full-period batch (daily shards, Slurm) | `python -m sopran.experimental.kaguya.er_batch` | [ER Full-Period Batch](er-batch.md) |
+| Tsunakawa SVM3D shell grid and field-line tracing | `sopran.experimental.moon.svm3d` | — |
+| Wave candidate detection, ridge tracking, clustering | `sopran.experimental.waves` | [Wave Candidates](waves.md) |
+| KAGUYA WFC detection presets and quality masks | `sopran.experimental.kaguya.waves` | [Wave Candidates](waves.md) |
 
-The inventory in `src/sopran/experimental/README.md` records open questions and
-promotion requirements. Review it before each release: promote, retain, or
-remove. Promotion needs typed contracts, units, provenance, regression tests and
-documented validation limits. Numerical agreement is not physical validation.
-Individual runs, research reports and literature reviews belong in `working/`.
+## Boundary with the regular API
+
+PACE, LMAG, and LRS retrieval, calibration, native bins, coordinate transforms, the Store, PlotStack, and Moon maps stay at the regular entry points.
+ER estimates are not instrument observations, so there is no `spn.kaguya.er` entry point, and ER types and functions are not re-exported under `spn`.
+
+Dependencies point one way, from experiments to the regular API. The regular API never imports experiments, and
+`tests/test_experimental_boundary.py` checks this boundary. When saving experimental results in the Store, use dataset IDs that start with
+`experimental.` so they never mix with regular products.
+
+Experiments that used to live in `sopran.analysis.electron_reflection`, `sopran.analysis.waves`, `sopran.missions.kaguya.er*`,
+and `sopran.bodies.moon.svm3d` have moved to the places above. No aliases for the old names remain.
+
+## Promote, keep, or retire
+
+The purpose, open questions, promotion requirements, and last review date of each experiment are tracked in
+`src/sopran/experimental/README.md`. They are reviewed before each release; experiments promoted to the regular API
+get types, units, sources, regression tests, and a stated validation scope.
+
+Runs over specific periods, comparison figures, interpretations of results, and literature surveys are recorded in each study's working directory
+(`working/`), not in the public documentation. This section covers only how to use the experimental APIs and their limits.

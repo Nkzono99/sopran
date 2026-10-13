@@ -4,9 +4,12 @@ repo_url: https://github.com/Nkzono99/sopran
 repo_name: Nkzono99/sopran
 site_url: https://nkzono99.github.io/sopran/
 strict: true
-not_in_nav: |
-  en/*.md
-  en/**/*.md
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
 
 theme:
   name: material
@@ -16,11 +19,71 @@ theme:
     - navigation.indexes
     - navigation.sections
     - navigation.tabs
+    - navigation.footer
     - toc.follow
     - content.code.copy
 
 plugins:
   - search
+  - i18n:
+      docs_structure: folder
+      fallback_to_default: true
+      reconfigure_material: true
+      languages:
+        - locale: ja
+          default: true
+          name: 日本語
+          build: true
+        - locale: en
+          name: English
+          build: true
+          site_description: Python library for retrieving, analyzing, visualizing, and storing satellite observations
+          nav_translations:
+            ホーム: Home
+            はじめる: Getting Started
+            インストール: Installation
+            最初の図を描く: First Plot
+            データの構造をたどる: Exploring Data
+            解析条件を残す: Reproducible Analysis
+            ガイド: User Guide
+            読み込んだ配列を扱う: Working With Arrays
+            可視化: Plotting
+            期間・領域・解析条件: Time, Regions, And Cases
+            設定: Configuration
+            Storeにデータを保存する: Storing Data
+            Storeを別マシンへ運ぶ: Moving A Store
+            時刻をそろえる: Time Alignment
+            座標変換: Coordinate Frames
+            バッチ処理: Batch Pipelines
+            データ: Data
+            データ一覧: Overview
+            概要: Overview
+            PACE ESAのmode判定: PACE ESA Mode Policy
+            LMAGと軌道: LMAG And Orbit
+            月面: Moon
+            月面マップ: Moon Maps
+            磁気異常カタログ: Magnetic Anomaly Catalog
+            試作API: Experimental
+            方針と一覧: Policy And Inventory
+            電子反射法: Electron Reflectometry
+            ERモデルの定義: ER Model Definitions
+            ER全期間バッチ: ER Full-Period Batch
+            波動候補の抽出: Wave Candidates
+            リファレンス: Reference
+            スキーマ: Schemas
+            Storeのファイル構造: Store Layout
+            コマンドライン: Command Line
+            用語集: Glossary
+            開発: Development
+            設計方針: Design Principles
+            開発環境と検証: Setup And Checks
+            データ源を追加する: Adding A Data Source
+            ドキュメントの書き方: Writing Documentation
+            リリース: Release
+            ライセンスと移植: License And Porting
+  # The ja and en builds render the same API objects; link each page to its own language.
+  - autorefs:
+      resolve_closest: true
   - mkdocstrings:
       handlers:
         python:
@@ -29,15 +92,10 @@ plugins:
           options:
             docstring_style: google
             show_source: false
+            show_root_heading: true
+            heading_level: 3
 
 extra:
-  alternate:
-    - name: 日本語
-      link: .
-      lang: ja
-    - name: English
-      link: en/
-      lang: en
   sopran_language_switcher:
     label: "Lang: 日本語/English"
     fallback_language: ja
@@ -53,6 +111,7 @@ markdown_extensions:
   - admonition
   - attr_list
   - md_in_html
+  - tables
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.arithmatex:
@@ -60,62 +119,56 @@ markdown_extensions:
   - pymdownx.superfences
   - toc:
       permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
 
 nav:
-  - Home: index.md
-  - Getting Started:
-      - Installation: getting-started/installation.md
-      - First Analysis: getting-started/first-analysis.md
-      - Data Store: getting-started/data-store.md
-  - Concepts:
-      - Design Principles: concepts/design-principles.md
-      - Object API: concepts/object-api.md
-      - Store: concepts/store.md
-      - Pipeline: concepts/pipeline.md
-      - Project And Case: concepts/project-case.md
-      - Products And Schemas: concepts/products-schemas.md
-      - Time, Units, And Frames: concepts/time-units-frames.md
-      - Plotting: concepts/plotting.md
-      - Maps: concepts/maps.md
-  - Missions:
-      - Overview: missions/index.md
-      - KAGUYA/SELENE:
-          - Overview: missions/kaguya/index.md
-          - PACE ESA1: missions/kaguya/esa1.md
-          - ESA Mode Policy: missions/kaguya/esa-mode-policy.md
-      - ARTEMIS:
-          - Overview: missions/artemis/index.md
-      - OMNI: missions/omni.md
-  - Experimental:
-      - Policy And Inventory: experimental/index.md
-      - Electron Reflectometry: experimental/electron-reflectometry.md
-      - ER Methods And Code: experimental/er-methods.md
-      - ER Full-Period Batch: experimental/er-batch.md
-      - Wave Candidates: experimental/waves.md
-  - How-to:
-      - Load KAGUYA ESA1: how-to/load-kaguya-esa1.md
-      - Load KAGUYA LRS: how-to/load-kaguya-lrs.md
-      - Visualize KAGUYA LMAG Geometry: how-to/visualize-kaguya-lmag.md
-      - Write Normalized Parquet: how-to/write-normalized-parquet.md
-      - Build A PlotStack: how-to/plotstack.md
-      - Plan A Pipeline: how-to/pipeline-plan.md
-      - Use Moon Maps: how-to/moon-maps.md
-  - Maps:
-      - Moon Maps: maps/moon.md
-  - Reference:
-      - API Reference: reference/api.md
-      - Schemas: reference/schemas.md
-      - Store Layout: reference/store-layout.md
-      - Pipeline Rules: reference/pipeline-rules.md
-      - Configuration: reference/configuration.md
-      - Status: reference/status.md
-      - Release: reference/release.md
-      - Design Notes: reference/design-notes.md
-      - Design Drafts:
-          - Overview: design/index.md
-          - API And Data Store Spec: design/spec.md
-          - Store Spec: design/store.md
-          - Pipeline Spec: design/pipeline.md
-          - Surface Spec: design/surface.md
-          - Plotting Spec: design/plotting.md
-      - License: reference/license.md
+  - ホーム: index.md
+  - はじめる:
+      - インストール: start/install.md
+      - 最初の図を描く: start/quickstart.md
+      - データの構造をたどる: start/explore.md
+      - 解析条件を残す: start/reproducible.md
+  - ガイド:
+      - 読み込んだ配列を扱う: guide/arrays.md
+      - 可視化: guide/plotting.md
+      - 期間・領域・解析条件: guide/views-cases.md
+      - 設定: guide/configuration.md
+      - Storeにデータを保存する: guide/store.md
+      - Storeを別マシンへ運ぶ: guide/store-sync.md
+      - 時刻をそろえる: guide/alignment.md
+      - 座標変換: guide/frames.md
+      - バッチ処理: guide/pipeline.md
+  - データ:
+      - データ一覧: data/index.md
+      - KAGUYA:
+          - 概要: data/kaguya/index.md
+          - PACE: data/kaguya/pace.md
+          - PACE ESAのmode判定: data/kaguya/esa-mode-policy.md
+          - LMAGと軌道: data/kaguya/lmag-orbit.md
+          - LRS: data/kaguya/lrs.md
+      - ARTEMIS: data/artemis.md
+      - OMNI: data/omni.md
+      - 月面:
+          - 月面マップ: data/moon/index.md
+          - 磁気異常カタログ: data/moon/magnetic-anomalies.md
+  - 試作API:
+      - 方針と一覧: experimental/index.md
+      - 電子反射法: experimental/er.md
+      - ERモデルの定義: experimental/er-models.md
+      - ER全期間バッチ: experimental/er-batch.md
+      - 波動候補の抽出: experimental/waves.md
+  - リファレンス:
+      - Python API: reference/api.md
+      - スキーマ: reference/schemas.md
+      - Storeのファイル構造: reference/store-layout.md
+      - コマンドライン: reference/cli.md
+      - 用語集: reference/glossary.md
+  - 開発:
+      - 設計方針: development/design.md
+      - 開発環境と検証: development/setup.md
+      - データ源を追加する: development/extending.md
+      - ドキュメントの書き方: development/documentation.md
+      - リリース: development/release.md
+      - ライセンスと移植: development/license.md

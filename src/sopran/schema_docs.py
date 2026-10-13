@@ -46,30 +46,50 @@ def schema_reference_markdown(
         lines = [
             "# スキーマ",
             "",
-            "このページは SOPRAN の runtime schema object から生成しています。",
-            "スキーマを変更する場合は、先に code 側の schema object を更新してから再生成します。",
+            "このページはSOPRANのスキーマ定義（`InstrumentSchema`）から自動生成しています。",
+            "手で編集せず、コードのスキーマを変えてから",
+            "`python -m sopran.schema_docs docs/ja/reference/schemas.md`で作り直してください。",
+            "列は変数名、次元、単位、データ型、座標系、別名、説明です。",
             "",
         ]
     elif language == "en":
         lines = [
             "# Schemas",
             "",
-            "This page is generated from SOPRAN runtime schema objects.",
-            "Update the schema objects first, then regenerate this page.",
+            "This page is generated from the SOPRAN schema definitions (`InstrumentSchema`).",
+            "Do not edit it by hand: change the schema in code, then regenerate it with",
+            "`python -m sopran.schema_docs --language en docs/en/reference/schemas.md`.",
+            "The columns are the variable name, dimensions, units, data type, frame,",
+            "aliases, and description.",
             "",
         ]
     else:
         raise ValueError(f"unsupported schema docs language: {language}")
-    for schema in selected:
+    for schema, title in zip(selected, _section_titles(selected), strict=True):
         lines.extend(
             (
-                f"## {schema.mission} / {schema.instrument}",
+                f"## {title}",
                 "",
                 _schema_table(schema),
                 "",
             )
         )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _section_titles(schemas: Sequence[InstrumentSchema]) -> list[str]:
+    """Return one unique heading per schema, naming the product when a pair repeats."""
+
+    from sopran.missions.kaguya.schema import KAGUYA_LMAG_CONNECTION_SCHEMA
+
+    titles: list[str] = []
+    for schema in schemas:
+        title = f"{schema.mission} / {schema.instrument}"
+        if schema is KAGUYA_LMAG_CONNECTION_SCHEMA:
+            title = f"{title} / magnetic_connection"
+        count = sum(existing.split(" (")[0] == title for existing in titles)
+        titles.append(title if count == 0 else f"{title} ({count + 1})")
+    return titles
 
 
 def write_schema_reference(
@@ -95,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "path",
         nargs="?",
-        default="docs/reference/schemas.md",
+        default="docs/ja/reference/schemas.md",
         help="Markdown output path.",
     )
     parser.add_argument(

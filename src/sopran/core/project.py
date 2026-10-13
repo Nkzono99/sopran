@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +12,11 @@ from sopran.core.config import (
     config_section,
     configured_path,
     current_session_config,
+    default_project_root,
+    read_project_config,
     read_user_config,
+    resolve_download_mode,
+    resolve_store_roots,
 )
 from sopran.core.errors import ConfigError
 from sopran.core.plotting import PlotItem, PlotStack, stack
@@ -54,7 +57,7 @@ class Project:
         artifact_root: Path | str | None = None,
     ) -> None:
         self.root = Path(root)
-        self.store = store or self._configured_store()
+        self.store = store or Store(*resolve_store_roots(project_root=self.root))
         self.artifact_root = self._configured_artifact_root(artifact_root)
 
     @classmethod
@@ -65,20 +68,8 @@ class Project:
         store: Store | None = None,
         artifact_root: Path | str | None = None,
     ) -> Project:
-        user_config, user_config_path = read_user_config()
-        project_config = config_section(user_config, "project")
-        resolved_root: Path | None
-        if root is not None:
-            resolved_root = Path(root)
-        else:
-            session_config = current_session_config()
-            discovered_root = _discover_project_root(Path.cwd())
-            resolved_root = session_config.project_root or discovered_root or configured_path(
-                user_config_path.parent,
-                project_config.get("root"),
-                default=Path.cwd(),
-            )
-        return cls(cast(Path, resolved_root), store=store, artifact_root=artifact_root)
+        resolved_root = Path(root) if root is not None else default_project_root()
+        return cls(resolved_root, store=store, artifact_root=artifact_root)
 
     @property
     def kaguya(self) -> Kaguya:
@@ -134,7 +125,7 @@ class Project:
         context = ViewContext(
             frame=frame if frame is not None else _optional_str(defaults.get("frame")),
             cache=bool(defaults.get("cache", False)) if cache is None else bool(cache),
-            download=download if download is not None else _optional_str(defaults.get("download")),
+            download=resolve_download_mode(download, project_root=self.root),
             backend_policy="auto",
             backends=context_backends,
             spice_kernels=(
@@ -217,40 +208,24 @@ class Project:
             start = case_config["start"] if start is None else start
             stop = case_config["stop"] if stop is None else stop
         defaults = self._case_defaults(config.get("defaults", {}), case_config)
+        case_context = case_config.get("context") or {}
+        # The case download is a file setting: the session and environment outrank it.
+        download = resolve_download_mode(
+            None,
+            case_value=case_config.get("download", case_context.get("download")),
+            project_root=self.root,
+        )
         return Case(
             project=self,
             name=name,
             time=period(start, stop),
             defaults=defaults,
             region=_case_region(defaults, case_config),
+            download=download,
         )
 
     def _read_config(self) -> dict[str, Any]:
-        path = self.root / "sopran.toml"
-        with path.open("rb") as handle:
-            return tomllib.load(handle)
-
-    def _configured_store(self) -> Store:
-        config = self._read_config() if (self.root / "sopran.toml").exists() else {}
-        user_config, user_config_path = read_user_config()
-        session_config = current_session_config()
-        store_config = config_section(config, "store")
-        user_store_config = config_section(user_config, "store")
-        root = _configured_path_by_precedence(
-            session_config.store_root,
-            os.environ.get("SOPRAN_DATA_ROOT"),
-            (self.root, store_config.get("data_root")),
-            (user_config_path.parent, user_store_config.get("data_root")),
-            default=self.root / "data",
-        )
-        cache_root = _configured_path_by_precedence(
-            session_config.cache_root,
-            os.environ.get("SOPRAN_CACHE_ROOT"),
-            (self.root, store_config.get("cache_root")),
-            (user_config_path.parent, user_store_config.get("cache_root")),
-            default=None,
-        )
-        return Store(root=root, cache_root=cache_root)
+        return read_project_config(self.root)
 
     def _configured_artifact_root(self, artifact_root: Path | str | None) -> Path:
         config = self._read_config() if (self.root / "sopran.toml").exists() else {}
@@ -354,6 +329,7 @@ class Case:
         time: TimeRange,
         defaults: dict[str, Any] | None = None,
         region: Region | None = None,
+        download: str | None = None,
     ) -> None:
         self.project = project
         self.name = name
@@ -363,6 +339,7 @@ class Case:
         self.frame = defaults.get("frame")
         self.cache = bool(defaults.get("cache", False))
         self.region = region
+        self.download = download
         self._view = self.to_view()
 
     @property
@@ -416,7 +393,7 @@ class Case:
             region=self.region,
             frame=self.frame,
             cache=self.cache,
-            download=_optional_str(self.defaults.get("download")),
+            download=self.download,
             backends=_case_backends(self.defaults),
             spice_kernels=None if spice_kernels is None else tuple(spice_kernels),
             time_scale=_optional_str(self.defaults.get("time_scale")),
@@ -448,15 +425,6 @@ def _case_region(
         lon_direction=cast(Any, region.get("lon_direction", "east_positive")),
         lat_type=cast(Any, region.get("lat_type", "planetocentric")),
     )
-
-
-def _discover_project_root(start: Path) -> Path | None:
-    current = start.resolve()
-    candidates = (current, *current.parents)
-    for candidate in candidates:
-        if (candidate / "sopran.toml").exists():
-            return candidate
-    return None
 
 
 def _project_child_path(root: Path, name: str | Path, *, suffix: str) -> Path:

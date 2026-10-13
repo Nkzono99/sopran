@@ -13,12 +13,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
-from sopran.core.config import (
-    config_section,
-    configured_path,
-    current_session_config,
-    read_user_config,
-)
+from sopran.core.config import resolve_store_roots
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.schema import InstrumentSchema, VariableSchema, validate_schema
 from sopran.core.time import TimeRange, period
@@ -56,46 +51,9 @@ class Store:
     cache_root: Path | str | None = None
 
     def __post_init__(self) -> None:
-        user_config, user_config_path = read_user_config()
-        store_config = config_section(user_config, "store")
-        config_base = user_config_path.parent
-        session_config = current_session_config()
-
-        env_root = os.environ.get("SOPRAN_DATA_ROOT")
-        env_cache_root = os.environ.get("SOPRAN_CACHE_ROOT")
-        root: Path
-        if self.root is not None:
-            root = Path(self.root)
-        elif session_config.store_root is not None:
-            root = session_config.store_root
-        elif env_root:
-            root = Path(env_root)
-        else:
-            root = cast(
-                Path,
-                configured_path(
-                config_base,
-                store_config.get("data_root"),
-                default=Path("sopran_data"),
-                ),
-            )
-
-        cache_root: Path | None
-        if self.cache_root is not None:
-            cache_root = Path(self.cache_root)
-        elif session_config.cache_root is not None:
-            cache_root = session_config.cache_root
-        elif env_cache_root:
-            cache_root = Path(env_cache_root)
-        else:
-            cache_root = configured_path(
-                config_base,
-                store_config.get("cache_root"),
-                default=None,
-            )
-        object.__setattr__(self, "root", Path(root))
-        cache_path = Path(cache_root) if cache_root else Path(root) / "cache"
-        object.__setattr__(self, "cache_root", cache_path)
+        root, cache_root = resolve_store_roots(self.root, self.cache_root)
+        object.__setattr__(self, "root", root)
+        object.__setattr__(self, "cache_root", cache_root)
 
     @property
     def _root(self) -> Path:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from sopran.core.data import SopranArray
 from sopran.core.errors import DatasetNotFoundError
-from sopran.core.pages import GuidePage, InfoPage
+from sopran.core.pages import GuidePage, InfoPage, public_doc_urls
 from sopran.core.schema import InstrumentSchema, VariableSchema
 from sopran.core.store import Store
 from sopran.core.time import TimeRange, _filter_polars_time
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from sopran.core.view import View
 
 _GUIDE_LANGUAGES = ("ja", "en")
-_PUBLIC_DOC_URL = "https://nkzono99.github.io/sopran/missions/artemis/"
+_PUBLIC_DOC_URLS = public_doc_urls("data/artemis/")
 
 ARTEMIS_MAGNETIC_FIELD = VariableSchema(
     name="magnetic_field",
@@ -38,6 +38,8 @@ ARTEMIS_ION_ENERGY_FLUX = VariableSchema(
     dims=("time", "energy"),
     units="eV/(cm^2 s sr eV)",
     description="ARTEMIS ESA ion differential energy flux.",
+    log_scale=True,
+    log_dims=("energy",),
 )
 ARTEMIS_ESA_SCHEMA = InstrumentSchema(
     mission="artemis",
@@ -387,17 +389,20 @@ plot_result = spn.stack(item).plot()
         y: str,
         x: str = "time",
         name: str | None = None,
-        log_color: bool = False,
+        log_color: bool | None = None,
+        yscale: str | None = None,
     ) -> PlotItem:
         time = _bound_time(self, time)
         from sopran.core.plotting import spectrogram
 
+        schema = self.schema()
         return spectrogram(
             lambda: self.load(time).to_xarray(),
             x=x,
             y=y,
             name=name or self.name,
-            log_color=log_color,
+            log_color=schema.log_scale if log_color is None else bool(log_color),
+            yscale=yscale or schema.default_yscale(y),
         )
 
 
@@ -424,7 +429,8 @@ def _read_guide(*, title: str, language: str = "ja") -> GuidePage:
         title=title,
         markdown=markdown,
         source=f"sopran.missions.artemis/{resource_name}",
-        url=_PUBLIC_DOC_URL,
+        url=_PUBLIC_DOC_URLS[language],
+        urls=_PUBLIC_DOC_URLS,
         language=language,
         available_languages=_GUIDE_LANGUAGES,
         translations=translations,

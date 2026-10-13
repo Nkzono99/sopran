@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, cast
 from uuid import uuid4
 
+from sopran.core.config import resolve_download_mode
 from sopran.core.errors import DatasetNotFoundError
 from sopran.core.store import Store
 
@@ -17,7 +18,7 @@ from .svm import read_tsunakawa_svm_npy, read_tsunakawa_svm_text
 
 def load_surface_raster(endpoint: Any, **parameters: Any) -> Any:
     store = parameters.pop("store", None)
-    download = str(parameters.pop("download", "never"))
+    download = resolve_download_mode(parameters.pop("download", None))
     path = parameters.pop("path", parameters.pop("filepath", None))
     plan = endpoint.plan(**parameters)
     source = str(plan.parameters.get("source", endpoint.default_source or ""))

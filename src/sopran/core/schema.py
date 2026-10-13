@@ -15,12 +15,21 @@ class VariableSchema:
     frame: str | None = None
     description: str = ""
     aliases: tuple[str, ...] = ()
+    #: Values span decades and are drawn on a logarithmic color or value scale by default.
+    log_scale: bool = False
+    #: Coordinates drawn on a logarithmic axis by default, such as ``("energy",)``.
+    log_dims: tuple[str, ...] = ()
 
     def __call__(self) -> VariableSchema:
         return self
 
+    def default_yscale(self, y: str | None) -> str | None:
+        """Default axis scale for coordinate ``y``: ``"log"`` when listed in ``log_dims``."""
+
+        return "log" if y is not None and y in self.log_dims else None
+
     def to_metadata(self) -> dict[str, Any]:
-        return {
+        metadata: dict[str, Any] = {
             "name": self.name,
             "dims": list(self.dims),
             "units": self.units,
@@ -29,6 +38,11 @@ class VariableSchema:
             "description": self.description,
             "aliases": list(self.aliases),
         }
+        if self.log_scale:
+            metadata["log_scale"] = True
+        if self.log_dims:
+            metadata["log_dims"] = list(self.log_dims)
+        return metadata
 
 
 @dataclass(frozen=True)

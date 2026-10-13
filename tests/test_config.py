@@ -96,3 +96,79 @@ def test_save_user_config_writes_store_and_defaults(
     assert config["defaults"]["download"] == "never"
     assert spn.Store().root == tmp_path / "saved_store"
     assert spn.Store().cache_root == tmp_path / "saved_cache"
+
+
+def _isolate_config(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SOPRAN_CONFIG", str(tmp_path / "missing-config.toml"))
+    for name in (
+        "SOPRAN_DATA_ROOT",
+        "SOPRAN_CACHE_ROOT",
+        "SOPRAN_OFFLINE",
+        "SOPRAN_DOWNLOAD_MODE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    spn.config.reset()
+
+
+def test_every_entry_point_defaults_to_the_same_store(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _isolate_config(tmp_path, monkeypatch)
+    expected = tmp_path / "sopran_data"
+
+    assert spn.Store().root.resolve() == expected.resolve()
+    assert spn.Store().cache_root.resolve() == (expected / "cache").resolve()
+    assert spn.Kaguya().store.root.resolve() == expected.resolve()
+    assert spn.Project.default().store.root.resolve() == expected.resolve()
+    assert spn.kaguya.store.root.resolve() == expected.resolve()
+
+
+def test_store_uses_the_discovered_project_store(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _isolate_config(tmp_path, monkeypatch)
+    (tmp_path / "sopran.toml").write_text(
+        '[store]\ndata_root = "data"\ncache_root = "cache"\n',
+        encoding="utf-8",
+    )
+    nested = tmp_path / "notebooks"
+    nested.mkdir()
+    monkeypatch.chdir(nested)
+
+    assert spn.Store().root.resolve() == (tmp_path / "data").resolve()
+    assert spn.Store().cache_root.resolve() == (tmp_path / "cache").resolve()
+    assert spn.Kaguya().store.root == spn.kaguya.store.root
+
+
+def test_environment_download_policy_outranks_file_defaults(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _isolate_config(tmp_path, monkeypatch)
+    user_config = tmp_path / "user.toml"
+    user_config.write_text('[defaults]\ndownload = "always"\n', encoding="utf-8")
+    monkeypatch.setenv("SOPRAN_CONFIG", str(user_config))
+    (tmp_path / "sopran.toml").write_text(
+        '[defaults]\ndownload = "missing"\n\n'
+        '[cases.c]\nstart = "2008-02-01"\nstop = "2008-02-02"\ndownload = "always"\n',
+        encoding="utf-8",
+    )
+
+    project = spn.Project(tmp_path)
+    assert spn.Kaguya().download == "missing"
+    assert spn.kaguya.download == "missing"
+    assert project.case("c").kaguya.download == "always"
+
+    monkeypatch.setenv("SOPRAN_OFFLINE", "1")
+    assert spn.Kaguya().download == "never"
+    assert spn.kaguya.download == "never"
+    assert spn.view().context.download == "never"
+    assert project.case("c").kaguya.download == "never"
+    assert spn.Kaguya(download="missing").download == "missing"
+
+    with spn.config.using(download="always"):
+        assert spn.kaguya.download == "always"
+        assert project.case("c").kaguya.download == "always"

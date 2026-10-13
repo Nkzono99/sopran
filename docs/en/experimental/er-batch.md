@@ -1,125 +1,198 @@
-# Full-Period ER Batch (Day Shards, Slurm)
+# ER Full-Period Batch
 
-`sopran.experimental.kaguya.er_batch` runs finite-bin fits and Rm profiles over saved
-paired distributions for the whole mission. The same commands run on a workstation
-and as Slurm array jobs on the Kyoto University supercomputer. Inputs and outputs are
-Store datasets split into daily Parquet shards, so `rsync` moves them as they are.
+`sopran.experimental.kaguya.er_batch` is a CLI that runs finite-bin fits and $R_m$ profiles over the full mission on saved paired distributions.
+The same commands run on a workstation and as Slurm array jobs on the Kyoto University supercomputer.
+Inputs and outputs are Store datasets split into daily Parquet, so `rsync` can move them as they are.
 
-| dataset | layer | variant | content |
+| Dataset | Layer | variant | Contents |
 |---|---|---|---|
-| `experimental.kaguya.er.paired_distributions` | `features` | input build | folded counts, exposures and record per window; one shard per day |
-| `experimental.kaguya.er.finite_bin_fits` | `models` | run name | fit, profile and candidate per window; one shard per day |
+| `experimental.kaguya.er.paired_distributions` | `features` | Input build name | Folded counts, exposures, and window records per 16 s window; one shard per day |
+| `experimental.kaguya.er.finite_bin_fits` | `models` | Run name | Fits, profiles, and candidates per window; one shard per day |
 
-Use `python -m sopran.experimental.kaguya.er_batch [--data-root ROOT] <command>`.
-Without `--data-root` the Store comes from `SOPRAN_DATA_ROOT` or the sopran config.
-It needs the `experimental` and `kaguya` extras (numpy, scipy, polars).
+Commands take the form `python -m sopran.experimental.kaguya.er_batch [--data-root ROOT] <command>`.
+Without `--data-root`, the Store from `SOPRAN_DATA_ROOT` (or the SOPRAN configuration) is used.
+It needs the `experimental` and `kaguya` extras.
 
-## Workflow
+## Flow
 
 ```text
-export-catalog -> verify-inputs -> prepare -> run (parallel, resumable) -> status -> finalize -> compare
+export-catalog → verify-inputs → prepare → run (parallel, resumable) → status → finalize → compare
 ```
 
-| command | purpose |
+| Command | Action |
 |---|---|
-| `export-catalog --catalog PATH --input-variant V [--workers N]` | SQLite catalog to day shards; existing days are skipped |
-| `verify-inputs --input-variant V` | re-hash input shards after a transfer |
-| `prepare --input-variant V --run-variant R [--groups G] [--fit-setting name=JSON]` | freeze settings, inputs and code/environment hashes in `run.json` |
-| `run --run-variant R [--group i \| --days D...] [--workers N]` | fit the selected days; only unfinished days run |
-| `status --run-variant R` | completed days and heartbeats |
-| `finalize --run-variant R` | re-hash complete shards and register them in the Store catalog |
-| `compare --run-variant R --reference FILE...` | objective, Beff and candidate agreement with another run's day Parquet |
+| `export-catalog --catalog PATH --input-variant V [--workers N]` | Convert a SQLite catalog to daily shards; existing days are skipped |
+| `verify-inputs --input-variant V` | Check input shard checksums after a transfer |
+| `prepare --input-variant V --run-variant R [--groups G] [--fit-setting name=JSON]` | Freeze settings, inputs, and code and environment hashes in `run.json` |
+| `run --run-variant R [--group i \| --days D...] [--workers N]` | Fit the given days; only unfinished days are processed |
+| `status --run-variant R` | Show completed days and heartbeats |
+| `finalize --run-variant R` | Recompute checksums of completed shards and register them in the Store catalog |
+| `compare --run-variant R --reference FILE...` | Compare objectives, $B_\mathrm{eff}$, and candidates of the same windows with daily Parquet from another run |
 
-**Input contract.** A SQLite catalog, built outside SOPRAN, has one
-table `windows(sample_id TEXT, day TEXT, record TEXT, maps BLOB)`. `record` is the
-window record as JSON (`time`, `b_sc_nT`, `affected_side`, `field_connection_status`,
-`field_radial_abs_cosine_min`, `magnetic_direction_max_deviation_deg`, `reason`).
-`maps` is an `.npz` with the `FLOAT_ARRAYS` and `BOOL_ARRAYS` arrays (folded arrays
-`energy x pitch_folded`, `global_*` arrays `energy x pitch`), or NULL for a window
-without a distribution.
+## Preparing inputs
 
-**Export.** Each window's npz blob becomes row-major flattened list columns: folded
-counts and exposures, `fit_valid`, `pair_observed`, full-pitch counts and exposures,
-and energy/pitch edges. Every array is checked to be lossless as float64/bool.
-Products of earlier fits (`observed_log_ratio`, `fitted_log_ratio`, `beam_ratio`) are
-dropped. The window record (JSON) and the sha256 of record plus blob (`source_sha256`)
-are kept. `days.json` lists every day, including days without input, with window and
-distribution counts and checksums.
+Inputs are either converted from a SQLite catalog of per-window paired distributions, or built from source data with the SOPRAN parts below.
 
-**Building inputs with SOPRAN parts.** Instead of a SQLite catalog, input shards can
-be built from raw data with these parts; their defaults follow the 2026-09
-full-period run (`halekas_mission_v1`). Parallelizing days, resuming and logging a
-full-period build stay in the caller's script.
+### Converting a SQLite catalog
 
-| step | parts |
+The catalog has one table, `windows`.
+
+| Column | Type | Contents |
+|---|---|---|
+| `sample_id` | TEXT | ID of the 16 s window |
+| `day` | TEXT | UTC day (`YYYY-MM-DD`) |
+| `record` | TEXT | Window record (JSON); `time`, `b_sc_nT`, `affected_side`, `field_connection_status`, `field_radial_abs_cosine_min`, `magnetic_direction_max_deviation_deg`, and `reason` are read |
+| `maps` | BLOB | `.npz`; NULL for windows without a distribution |
+
+`maps` holds the arrays in `FLOAT_ARRAYS` and `BOOL_ARRAYS`. Folded arrays are `energy × pitch_folded`,
+and `global_*` arrays are `energy × pitch`.
+
+```bash
+python -m sopran.experimental.kaguya.er_batch --data-root /path/to/sopran_data export-catalog \
+  --catalog /path/to/catalog.sqlite --input-variant <build> --workers 3
+```
+
+The conversion moves folded counts, exposures, `fit_valid`, and `pair_observed`, plus all-pitch counts, exposures,
+and energy and pitch edges, from each window's npz into row-major flattened list columns. It also checks that every array is representable losslessly as float64 or bool.
+Derived quantities of earlier fits (`observed_log_ratio`, `fitted_log_ratio`, `beam_ratio`) are not carried over.
+The window record (JSON) and the sha256 of record plus npz (`source_sha256`) are kept, and `days.json` lists window counts,
+distribution counts, and checksums for every day, including days without input.
+
+### Building from source data with SOPRAN parts
+
+Parts are also available to build input shards from source data without a SQLite catalog.
+Their defaults match the rules of the September 2026 full-period run (`halekas_mission_v1`).
+Assembling a full-period run (parallel days, resuming, logs) is left to your own script.
+
+| Stage | Part |
 |---|---|
-| one day of native records with LMAG geometry | `KaguyaErInstrument(mission).native_records(day)` |
-| 16 s windows and diagnostics | `er_windows.calendar_windows`, `window_record`, `window_input_diagnostic` |
-| SVM3D connection | `moon.connection.trace_connection`, `classify_connection` (`ConnectionPolicy`) |
-| paired map | `er_windows.window_pitch_records` then `electron_reflection.maps.build_paired_map` |
-| write and register | `er_batch.window_input_row` then `er_batch.write_input_days` |
+| Native records and LMAG geometry for one day | `KaguyaErInstrument(mission).native_records(day)` |
+| Aggregation into 16 s windows and diagnostics | `er_windows.calendar_windows`, `window_record`, `window_input_diagnostic` |
+| Connection screening with SVM3D | `moon.connection.trace_connection`, `classify_connection` (`ConnectionPolicy`) |
+| Paired distribution | `er_windows.window_pitch_records` → `electron_reflection.maps.build_paired_map` |
+| Writing and registration | `er_batch.window_input_row` → `er_batch.write_input_days` |
 
-`window_record` takes the field-direction spread from LMAG samples in the window
-and `field_radial_abs_cosine_min` from the B/r cosine at the records.
-`build_paired_map` orients each record so the affected side is at low pitch,
-redistributes it by bin overlap onto a 20-1500 eV, 24 energy x 16 pitch grid,
-sums counts and exposure, and folds into affected and reference halves;
-`fit_valid` needs positive exposure on both sides, counts, and at least three
-cells per energy row. The connection traces SVM3D plus a uniform residual at
-0.5 km steps to a 6.1 km stop altitude within 1000 km; a window is
-`model_connected` when every inward trace reaches the shell, no reverse trace
-does, and the sign does not change. The Japanese page has a full example.
+```python
+import numpy as np
+import sopran as spn
+from sopran.experimental.electron_reflection.maps import build_paired_map
+from sopran.experimental.kaguya import er_batch
+from sopran.experimental.kaguya.er import KaguyaErInstrument
+from sopran.experimental.kaguya.er_windows import (
+    calendar_windows, usable_record_indices, window_input_diagnostic,
+    window_pitch_records, window_record,
+)
+from sopran.experimental.moon.connection import (
+    classify_connection, trace_connection, unconnected_window,
+)
+from sopran.experimental.moon.svm3d import SVM3DShellGrid
 
-**Prepare and run.** `prepare` records the `FiniteBinFitSettings()` defaults with
-`--fit-setting` overrides, the input catalog checksum, sha256 of the fit code and
-native extension, and the Python/numpy/scipy/polars versions. `run` refuses to start
-when these differ from the current environment; a run name cannot change settings.
-`run` processes one day at a time and spreads its windows over spawned worker
-processes, each forced to one BLAS/OpenMP thread. `--workers` defaults to the
-allocated CPUs (affinity on Linux); `0` runs in-process. Every 256 windows a part is
-saved in `work/<day>/`; a finished day becomes `shards/day=<day>.parquet` plus
-`days/<day>.json`. Reruns skip finished days and reuse saved parts. Creating `STOP`
-in the run directory makes every invocation save and exit after its current window.
-Invocations write only their own days, so array tasks may run concurrently.
-`--groups G` splits days into G groups balanced by distribution count; `run --group i`
-processes group i.
+day = spn.day("2008-02-10")
+records = KaguyaErInstrument(spn.Kaguya(download="never")).native_records(day)
+usable = np.unique(np.concatenate(
+    [usable_record_indices(a, np.arange(records.times.size)) for a in records.arrays.values()]
+))
+traces = trace_connection(
+    SVM3DShellGrid.load("svm3d_shell.npz"),
+    records.position_km[usable], records.magnetic_field_nT[usable],
+)
+connection = classify_connection(
+    traces, records.times[usable].astype("datetime64[s]").astype(int) // 16
+)
 
-Each window gets the default count-likelihood fit. The Rm profile (±1 dex, 13 points;
-95% interval and `minimum_fit`) runs only for windows that pass the geometry gate (Bsc>0,
-direction deviation ≤20°, radial angle <80°, `model_connected`) and carry no field flag.
-`finalize` writes the column meanings to `schema.json`.
+rows = []
+for window_id, indices in calendar_windows(records.times, day):
+    record = window_record(window_id, indices, records)
+    record.update(connection.get(window_id, unconnected_window()))
+    record["joint_input_diagnostic"] = window_input_diagnostic(indices, records.arrays)
+    usable_here = any(usable_record_indices(a, indices).size for a in records.arrays.values())
+    reason = "no_records" if not indices.size else None if usable_here else "no_usable_geometry"
+    if reason is None and not record["connection_eligible"]:
+        reason = "connection_" + record["field_connection_status"]
+    if reason:
+        record["reason"] = reason
+    maps = None if reason else build_paired_map(window_pitch_records(records, indices))
+    rows.append(er_batch.window_input_row(record, maps))
+er_batch.write_input_days(spn.Store(), "<build>", {"2008-02-10": rows})
+```
 
-## Kyoto University supercomputer
+The parts follow these rules.
 
-Scripts are in `scripts/hpc/kyoto/`. Kyoto's Slurm is customized: resources are
-`--rsc p=PROCS:t=THREADS:c=CORES:m=MEMORY`, `-p QUEUE` is required, and programs start
-with `srun` ([KUDPC batch manual](https://web.kudpc.kyoto-u.ac.jp/manual/en/run/batch)).
-The template follows that syntax; confirm queue names, limits and array variables
-with the first pilot.
+- `window_record` derives the maximum field-direction deviation from the LMAG samples in the window, and `field_radial_abs_cosine_min`
+  from the cosine between $B$ and $r$ at the record times.
+- `build_paired_map` orients each record so the affected side is at low pitch angles, distributes it onto a 20–1500 eV, 24 energy × 16 pitch grid
+  by bin overlap, sums counts and exposures, and folds into affected and reference.
+  `fit_valid` marks the range where both sides of the pair have positive exposure and counts, with at least three cells per energy row.
+- Connection screening traces the SVM3D field plus a uniform residual in 0.5 km steps, stopping at 6.1 km altitude and at most 1000 km.
+  Windows where the inward trace reaches the shell, the opposite one does not, and the side does not change within the window are `model_connected`.
 
-1. **Move data:** the input dataset is managed, so the Store sync recipe applies
-   `sopran-store sync-list --dataset experimental.kaguya.er.paired_distributions > files.txt`,
-   `rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ <host>:$SOPRAN_DATA_ROOT/`,
-   then `sopran-store rebuild` and `verify-inputs` on the cluster.
-2. **Build on a login node:**
-   `SOPRAN_SRC=$HOME/src/sopran ENV_ROOT=/LARGE0/grXXXXX/$USER/sopran-env bash scripts/hpc/kyoto/setup_env.sh`
-   installs uv and Rust under `$HOME` and builds sopran non-editable into a pinned venv.
-   A manylinux x86_64 wheel from CI (`publish.yml`) installed with `--no-deps` also works.
-3. **Verify and freeze on the login node:** `verify-inputs`, then
-   `prepare --input-variant <build> --run-variant <run> --groups 16`.
-4. **Pilot:** prepare a run with `--days` set to one day finished locally, run it as
-   one task (`-a 0`), and `compare` it with that day from the local run. Linux and Windows maths libraries
-   differ, so expect small objective differences rather than bit equality; candidates
-   should agree.
-5. **Submit:** edit `-p`, `-t`, `--rsc` and `-a 0-(G-1)` in `er_fit.sbatch`, export
-   `ENV_ROOT`, `SOPRAN_DATA_ROOT`, `RUN_VARIANT`, and `sbatch` it. Resubmit timed-out
-   tasks with the same command; they resume.
-6. **Collect:** check `status`, run `finalize`, list the run with
-   `sopran-store sync-list --dataset experimental.kaguya.er.finite_bin_fits --variant <run>`,
-   copy it back with `rsync --files-from`, and run `sopran-store rebuild` locally.
+## Freezing and running
 
-## Verification
+`prepare` records in `run.json` the settings (defaults of `FiniteBinFitSettings()` plus `--fit-setting` overrides) and the input catalog checksum.
+It also records the sha256 of the fitting code and the Rust extension, and the versions of Python, numpy, scipy, and polars.
+`run` compares these with the current environment at startup and stops on any difference. To change settings, `prepare` a new run name.
 
-- `tests/test_er_batch.py`: lossless export, prepare→run→finalize→scan, part resume,
-  STOP, refusal after code changes, balanced groups, spawned vs in-process equality.
-- Real-data agreement is checked with `compare`; keep each run's record under `working/`.
+`run` processes days one at a time and spreads each day's windows over worker processes (spawn).
+Workers pin `OMP_NUM_THREADS` and similar variables to 1. `--workers` defaults to the allocated CPUs (affinity on Linux), and `0` runs in process.
+Every 256 windows are saved to `work/<day>/part-*.parquet`; when a day finishes, `shards/day=<day>.parquet` and `days/<day>.json` are written.
+Rerunning skips completed days and never recomputes saved parts.
+Creating a file named `STOP` in the run directory makes every invocation save and exit after its current window.
+Each invocation writes only its own days' files, so array jobs may run at the same time.
+`--groups G` splits days into G groups balanced by distribution count, and `run --group i` processes group i.
+
+Each window is fitted with the default count-likelihood settings. Profiles are computed only for windows that meet the geometry conditions
+($B_\mathrm{sc} > 0$, field-direction deviation ≤ 20°, angle to radial < 80°, `model_connected`) and have no `field_flags`.
+Profiles use 13 points over $R_m$ ±1 dex and give the 95% interval and `minimum_fit`. Column meanings are in the `schema.json` written by `finalize`.
+
+## Running on the Kyoto University supercomputer
+
+Scripts are in `scripts/hpc/kyoto/`. Kyoto's Slurm is extended: resources are requested with
+`--rsc p=PROCS:t=THREADS:c=CORES:m=MEMORY`, the `-p` queue is mandatory, and programs start with `srun`
+([KUDPC batch processing manual](https://web.kudpc.kyoto-u.ac.jp/manual/en/run/batch)).
+The templates follow this format, but confirm queue names, limits, and array-job environment variables in a first pilot.
+
+1. **Move the data.** Input datasets are managed and thus in the default list, but here only the inputs are selected by name.
+
+    ```bash
+    sopran-store --data-root /path/to/sopran_data sync-list \
+      --dataset experimental.kaguya.er.paired_distributions > files.txt
+    rsync -av --delay-updates --files-from=files.txt /path/to/sopran_data/ <host>:$SOPRAN_DATA_ROOT/
+    ```
+
+    After the transfer, run `sopran-store rebuild` and `verify-inputs` on the destination.
+
+2. **Build the environment on a login node.** Clone SOPRAN with git and run the following; it installs uv and Rust under `$HOME`
+   and builds SOPRAN (non-editable) into a version-pinned venv.
+
+    ```bash
+    SOPRAN_SRC=$HOME/src/sopran ENV_ROOT=/LARGE0/grXXXXX/$USER/sopran-env \
+      bash scripts/hpc/kyoto/setup_env.sh
+    ```
+
+    Alternatively, install the manylinux x86_64 wheel built by CI (`publish.yml`) with `--no-deps`.
+
+3. **Check and freeze on the login node.**
+
+    ```bash
+    source $ENV_ROOT/venv/bin/activate
+    export SOPRAN_DATA_ROOT=/LARGE0/grXXXXX/$USER/sopran_data
+    python -m sopran.experimental.kaguya.er_batch verify-inputs --input-variant <build>
+    python -m sopran.experimental.kaguya.er_batch prepare --input-variant <build> \
+      --run-variant <run> --groups 16
+    ```
+
+4. **Check agreement with a pilot.** Create a separate run with `--days` set to one day already completed locally, and run one task (`-a 0`).
+   Transfer that day's Parquet from the local run and compare with `compare`. Linux and Windows implement exponential and logarithm functions differently,
+   so exact agreement is not expected; check that relative objective differences are small and candidates agree.
+
+5. **Submit production.** Edit `-p`, `-t`, `--rsc`, and `-a 0-(G-1)` in `scripts/hpc/kyoto/er_fit.sbatch`,
+   export `ENV_ROOT`, `SOPRAN_DATA_ROOT`, and `RUN_VARIANT`, and `sbatch`. Tasks that time out continue where they stopped when resubmitted with the same command.
+
+6. **Collect results.** Confirm completion with `status` and register with `finalize`.
+   Bring results back with the list from `sopran-store sync-list --dataset experimental.kaguya.er.finite_bin_fits --variant <run>`, then run `sopran-store rebuild` locally.
+
+## Validation
+
+`tests/test_er_batch.py` checks that conversion is lossless, the prepare → run → finalize → scan flow, resuming from parts, `STOP`,
+rejection after code changes, balanced day groups, and agreement between spawn workers and in-process runs.
+Comparisons on real data use `compare`, and their results are recorded per run in `working/`.

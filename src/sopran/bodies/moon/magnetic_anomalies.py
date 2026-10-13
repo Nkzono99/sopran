@@ -3,7 +3,7 @@
 Numerical reference facts are transcribed from the corrected Table 1 of
 Blewett (2011), doi:10.1029/2011JE003852, and Table 1 of Oliveira & Wieczorek
 (2017), doi:10.1002/2016JE005199. No source prose, figures, or satellite
-payloads are bundled. See docs/maps/moon.md for coordinate semantics.
+payloads are bundled. See docs/ja/data/moon/magnetic-anomalies.md for coordinate semantics.
 """
 
 from __future__ import annotations

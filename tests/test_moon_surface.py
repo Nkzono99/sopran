@@ -744,7 +744,7 @@ def test_moon_surface_guides_return_markdown_pages() -> None:
     assert "| dem | lat, lon | m | float64 | Moon body-fixed |" in (
         moon.dem.guide().to_markdown()
     )
-    assert moon.guide().url == "https://nkzono99.github.io/sopran/maps/moon/"
+    assert moon.guide().url == "https://nkzono99.github.io/sopran/data/moon/"
     assert moon.dem.guide().url == moon.guide().url
     assert moon.help() == moon.guide()
     assert moon.dem.help() == moon.dem.guide()
@@ -802,7 +802,7 @@ def test_moon_surface_guides_can_switch_language() -> None:
     assert moon_ja.available_languages == ("ja", "en")
     assert moon_ja.language_switcher() == "Lang: 日本語/English"
     assert moon_ja.with_language("en").url == (
-        "https://nkzono99.github.io/sopran/maps/moon/"
+        "https://nkzono99.github.io/sopran/en/data/moon/"
     )
     assert "月面マップ" in moon_ja.to_markdown()
     assert "Moon Maps" in moon_en.to_markdown()
@@ -917,3 +917,37 @@ def test_surface_plan_rejects_unknown_shape_model() -> None:
 
     with pytest.raises(ValueError, match="shape"):
         moon.dem.plan(source="kaguya.tc.dem", shape="flat")
+
+
+def test_moon_load_follows_the_view_store_and_download_policy(tmp_path, monkeypatch) -> None:
+    import sopran.bodies.moon.loaders as moon_loaders
+    from sopran.core import DatasetNotFoundError
+
+    monkeypatch.setenv("SOPRAN_CONFIG", str(tmp_path / "missing-config.toml"))
+    for name in ("SOPRAN_DATA_ROOT", "SOPRAN_OFFLINE", "SOPRAN_DOWNLOAD_MODE"):
+        monkeypatch.delenv(name, raising=False)
+    store = spn.Store(tmp_path / "store")
+    project = spn.Project(tmp_path / "project", store=store)
+    calls = []
+
+    def fake_download_file(url, target, *, overwrite=False):
+        calls.append(url)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"downloaded")
+
+    monkeypatch.setattr(moon_loaders, "_download_file", fake_download_file)
+    monkeypatch.setattr(moon_loaders, "load_dem_raster", lambda endpoint, plan, path: path)
+    expected = store.raw_path("moon", "dem", "Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif")
+
+    offline = project.view(download="never").moon
+    assert offline.store is store
+    assert offline.download == "never"
+    with pytest.raises(DatasetNotFoundError):
+        offline.dem.load()
+    assert calls == []
+
+    online = project.view(download="missing").moon
+    assert online.dem.load() == expected
+    assert online.dem.load() == expected
+    assert len(calls) == 1
+    assert offline.dem.load() == expected

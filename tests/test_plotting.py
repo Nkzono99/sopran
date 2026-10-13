@@ -1667,3 +1667,42 @@ def test_plot_stack_quicklook_accepts_to_metadata_object_as_context(tmp_path) ->
     metadata = json.loads((tmp_path / "region_context.json").read_text(encoding="utf-8"))
     assert result.metadata["context"] == region.to_metadata()
     assert metadata["context"] == region.to_metadata()
+
+
+def test_array_plot_defaults_follow_schema_log_hints() -> None:
+    import numpy as np
+    import pandas as pd
+    import xarray as xr
+
+    from sopran.core.data import SopranArray
+    from sopran.missions.kaguya.schema import kaguya_pace_schema
+
+    schema = kaguya_pace_schema("ESA1")
+    times = pd.date_range("2008-02-01", periods=3, freq="16s")
+    values = np.ones((3, 2, 2))
+    coords = {"time": times, "energy": [10.0, 100.0], "look": [0, 1]}
+
+    def array(name: str) -> SopranArray:
+        return SopranArray(
+            name=name,
+            time=spn.period("2008-02-01T00:00:00", "2008-02-01T00:01:00"),
+            schema=schema.variable(name),
+            files=(),
+            xr=xr.DataArray(values, dims=("time", "energy", "look"), coords=coords),
+        )
+
+    flux = array("energy_flux").spectrogram(y="energy")
+    assert flux.log_color is True
+    assert flux.yscale == "log"
+
+    overridden = array("energy_flux").spectrogram(y="energy", log_color=False, yscale="linear")
+    assert overridden.log_color is False
+    assert overridden.yscale == "linear"
+
+    counts = array("counts").spectrogram(y="energy")
+    assert counts.log_color is False
+    assert counts.yscale is None
+
+    (auto,) = array("energy_flux").plot_items()
+    assert auto.log_color is True
+    assert auto.yscale == "log"

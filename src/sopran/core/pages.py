@@ -8,6 +8,18 @@ _LANGUAGE_LABELS = {
     "en": "English",
 }
 
+PUBLIC_DOCS_ROOT = "https://nkzono99.github.io/sopran/"
+
+
+def public_doc_urls(path: str) -> dict[str, str | None]:
+    """Return the Japanese and English URLs of a public documentation page.
+
+    ``path`` is the page path relative to the site root, such as ``"data/kaguya/"``.
+    Japanese pages are served at the root and English pages under ``en/``.
+    """
+
+    return {"ja": f"{PUBLIC_DOCS_ROOT}{path}", "en": f"{PUBLIC_DOCS_ROOT}en/{path}"}
+
 
 @dataclass(frozen=True)
 class InfoPage:

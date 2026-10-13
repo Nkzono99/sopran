@@ -40,7 +40,7 @@ jobs:
 
       - name: Check generated schema docs
         run: |
-          python -m sopran.schema_docs --check docs/reference/schemas.md
+          python -m sopran.schema_docs --check docs/ja/reference/schemas.md
           python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md
 
       - name: Lint

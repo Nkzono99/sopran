@@ -16,6 +16,7 @@ _TOML_BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
 
 DownloadMode = Literal["never", "missing", "always"]
+DEFAULT_STORE_DIRNAME = "sopran_data"
 
 
 @dataclass(frozen=True)
@@ -80,12 +81,20 @@ def current_session_config() -> SessionConfig:
     return _SESSION_CONFIG
 
 
-def resolve_download_mode(value: str | None = None) -> DownloadMode:
-    """Resolve the download policy of a mission object.
+def resolve_download_mode(
+    value: str | None = None,
+    *,
+    case_value: object | None = None,
+    project_root: Path | None = None,
+) -> DownloadMode:
+    """Resolve the download policy for every entry point in one order.
 
-    An explicit value wins, then ``spn.config.use(download=...)``, then
-    ``SOPRAN_OFFLINE`` (``never``) and ``SOPRAN_DOWNLOAD_MODE``, then
-    ``[defaults] download`` in the user config, and finally ``missing``.
+    An explicit value wins, then ``spn.config.use(download=...)``, then the
+    environment (``SOPRAN_OFFLINE`` forces ``never``, else ``SOPRAN_DOWNLOAD_MODE``),
+    then file settings: a project case, the project ``[defaults]``, and the user
+    ``[defaults]``. The fallback is ``missing``. Environment variables outrank
+    files so that an offline compute node stays offline whatever a config says.
+    ``project_root`` defaults to :func:`default_project_root`.
     """
 
     if value is None:
@@ -95,6 +104,12 @@ def resolve_download_mode(value: str | None = None) -> DownloadMode:
             value = "never"
         else:
             value = os.environ.get("SOPRAN_DOWNLOAD_MODE") or None
+    if value is None and case_value is not None:
+        value = str(case_value)
+    if value is None:
+        root = project_root if project_root is not None else default_project_root()
+        configured = config_section(read_project_config(root), "defaults").get("download")
+        value = None if configured is None else str(configured)
     if value is None:
         configured = config_section(read_user_config()[0], "defaults").get("download")
         value = None if configured is None else str(configured)
@@ -102,6 +117,108 @@ def resolve_download_mode(value: str | None = None) -> DownloadMode:
         value = "missing"
     _validate_download(value)
     return cast(DownloadMode, value)
+
+
+def discover_project_root(start: Path | None = None) -> Path | None:
+    """Return the nearest directory holding ``sopran.toml``, from ``start`` upward."""
+
+    current = (start if start is not None else Path.cwd()).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / "sopran.toml").exists():
+            return candidate
+    return None
+
+
+def default_project_root() -> Path:
+    """Root of the default project used by ``spn.kaguya``, ``spn.view()`` and ``Store()``.
+
+    The session ``project=`` wins, then the nearest ``sopran.toml`` above the current
+    directory, then ``[project].root`` in the user config, then the current directory.
+    """
+
+    session_root = current_session_config().project_root
+    if session_root is not None:
+        return session_root
+    discovered = discover_project_root()
+    if discovered is not None:
+        return discovered
+    user_config, user_path = read_user_config()
+    configured = configured_path(
+        user_path.parent,
+        config_section(user_config, "project").get("root"),
+        default=None,
+    )
+    return configured if configured is not None else Path.cwd()
+
+
+def read_project_config(root: Path) -> dict[str, Any]:
+    """Read ``<root>/sopran.toml``; an absent file is an empty config."""
+
+    path = Path(root) / "sopran.toml"
+    if not path.exists():
+        return {}
+    try:
+        with path.open("rb") as handle:
+            config = tomllib.load(handle)
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"Invalid SOPRAN project config: {path}") from exc
+    return config
+
+
+def resolve_store_roots(
+    root: Path | str | None = None,
+    cache_root: Path | str | None = None,
+    *,
+    project_root: Path | None = None,
+) -> tuple[Path, Path]:
+    """Resolve the Store data root and cache root for every entry point in one order.
+
+    Each root is taken from the argument, the session (``spn.config.use``), the
+    environment (``SOPRAN_DATA_ROOT`` / ``SOPRAN_CACHE_ROOT``), the project
+    ``[store]`` table, and the user ``[store]`` table, in that order. The data root
+    falls back to ``<project root>/sopran_data`` and the cache root to
+    ``<data root>/cache``. ``project_root`` defaults to :func:`default_project_root`,
+    so ``Store()`` and ``spn.kaguya`` resolve to the same Store.
+    """
+
+    session = current_session_config()
+    user_config, user_path = read_user_config()
+    user_store = config_section(user_config, "store")
+    project: Path | None = project_root
+    project_store: dict[str, Any] | None = None
+
+    def project_store_config() -> tuple[Path, dict[str, Any]]:
+        nonlocal project, project_store
+        if project is None:
+            project = default_project_root()
+        if project_store is None:
+            project_store = config_section(read_project_config(project), "store")
+        return project, project_store
+
+    def resolve(
+        explicit: Path | str | None,
+        session_value: Path | None,
+        env_name: str,
+        key: str,
+    ) -> Path | None:
+        if explicit is not None:
+            return Path(explicit)
+        if session_value is not None:
+            return session_value
+        env_value = os.environ.get(env_name)
+        if env_value:
+            return Path(env_value)
+        base, store_config = project_store_config()
+        if store_config.get(key) is not None:
+            return configured_path(base, store_config.get(key), default=None)
+        return configured_path(user_path.parent, user_store.get(key), default=None)
+
+    data_root = resolve(root, session.store_root, "SOPRAN_DATA_ROOT", "data_root")
+    if data_root is None:
+        base, _ = project_store_config()
+        data_root = base / DEFAULT_STORE_DIRNAME
+    resolved_cache = resolve(cache_root, session.cache_root, "SOPRAN_CACHE_ROOT", "cache_root")
+    return data_root, resolved_cache if resolved_cache is not None else data_root / "cache"
 
 
 def reset_session_config() -> SessionConfig:
