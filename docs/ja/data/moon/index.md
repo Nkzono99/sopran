@@ -19,6 +19,7 @@ shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
 |---|---|---|---|
 | `moon.dem` | `elevation`、`height` | m | 標高 |
 | `moon.svm` | `surface_vector_map`、`svm_tsunakawa2015` | nT | Tsunakawa et al. (2015)の表面磁場マップ。既定のSVM |
+| `moon.svm_ravat2020` | — | nT | Ravat et al. (2020)の表面磁場モデル。成分を選べる |
 | `moon.sza` | `solar_zenith_angle` | deg | 太陽天頂角 |
 | `moon.illumination` | `illumination_map` | fraction | 日照 |
 | `moon.shadow` | `shadow_map` | fraction | 影 |
@@ -80,6 +81,26 @@ Tsunakawa SVM（`LunarSVM_000_02_v02.dat`）は、安定した直接ダウンロ
 svm = moon.svm.load(path="/path/to/LunarSVM_000_02_v02.dat")
 svm = moon.svm.load(download="never")          # Storeの raw/moon/svm/ から読む
 svm.sample(lat=-0.5, lon=0.0)
+```
+
+Ravat et al. (2020)のモデル（`moon.svm_ravat2020`）は、Lunar ProspectorとKAGUYAの磁場の軌道方向の勾配から求めた表面磁場です。
+月の楕円体面（赤道半径1738.1 km、極半径1736.0 km）上の0.1度格子で、成分を`component=`で選びます。
+
+| `component` | 内容 |
+|---|---|
+| `"total"`（既定） | 全磁力 |
+| `"br"` | 動径成分（外向きが正） |
+| `"btheta"` | 余緯度方向の成分（南向きが正） |
+| `"bphi"` | 経度方向の成分（東向きが正） |
+
+配布元のケンタッキー大学のリポジトリ（[DOI 10.13023/9wpe-tt68](https://doi.org/10.13023/9wpe-tt68)、CC0）は、
+プログラムからの取得をブラウザ確認で止めるため、自動取得できません。ブラウザで本体の
+`Ravatetal_JGR2020_LunarL1MagneticModelFields_LPgrad.dat`（約88 MB）を取得し、Storeの`raw/moon/svm/`に置くか`path=`に渡してください。
+読み込みは約650万行の表から格子を組み立てるため、数秒かかります。
+
+```python
+br = moon.svm_ravat2020.load(component="br")    # Storeの raw/moon/svm/ から読む
+br.sample(lat=8.0, lon=302.0)                   # Reiner Gamma付近
 ```
 
 ## 太陽天頂角・日照・影

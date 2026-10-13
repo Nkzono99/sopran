@@ -21,11 +21,15 @@ MOON_SURFACE_SCHEMA = InstrumentSchema(
             units="nT",
             dtype="float64",
             frame="Moon body-fixed",
-            description="Tsunakawa lunar magnetic anomaly surface vector map.",
+            description=(
+                "Lunar crustal magnetic field at the surface: the Tsunakawa 2015 surface "
+                "vector map (total field) or the Ravat 2020 model (selectable component)."
+            ),
             aliases=(
                 "surface_vector_map",
                 "svm_tsunakawa2015",
                 "tsunakawa_svm2015",
+                "svm_ravat2020",
                 "lunar_magnetic_anomaly",
             ),
         ),

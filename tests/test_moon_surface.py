@@ -951,3 +951,53 @@ def test_moon_load_follows_the_view_store_and_download_policy(tmp_path, monkeypa
     assert online.dem.load() == expected
     assert len(calls) == 1
     assert offline.dem.load() == expected
+
+
+def _write_ravat_grid(path) -> None:
+    # Header text, then rows in an order that is neither lon- nor lat-major.
+    rows = []
+    for lat in (10.0, -10.0):
+        for lon in (20.0, 0.0, 10.0):
+            br = lon + lat
+            fields = (lon, lat, br, -lat, lon / 10, abs(br))
+            rows.append(" ".join(f"{value:9.3f}" for value in fields))
+    rows.reverse()
+    header = "Longitude Latitude Br Btheta Bphi Total\n"
+    path.write_text(header + "\n".join(rows) + "\n", encoding="utf-8")
+
+
+def test_moon_svm_ravat2020_reads_a_component_from_the_grid(tmp_path) -> None:
+    path = tmp_path / "ravat.dat"
+    _write_ravat_grid(path)
+    moon = spn.Moon(store=spn.Store(tmp_path / "store"), download="never")
+
+    total = moon.svm_ravat2020.load(path=path)
+    radial = moon.svm_ravat2020.load(path=path, component="br")
+
+    np.testing.assert_allclose(total.lon, [0.0, 10.0, 20.0])
+    np.testing.assert_allclose(total.lat, [-10.0, 10.0])
+    np.testing.assert_allclose(radial.values, [[-10.0, 0.0, 10.0], [10.0, 20.0, 30.0]])
+    np.testing.assert_allclose(total.values, np.abs(radial.values))
+    assert total.variable == "svm_ravat2020"
+    assert total.source == "ravat2020.l1"
+    assert radial.metadata["component"] == "br"
+    assert moon.map("svm_ravat2020") is moon.svm_ravat2020
+    assert moon.map("svm") is moon.svm_tsunakawa2015
+    with pytest.raises(ValueError, match="component must be one of"):
+        moon.svm_ravat2020.load(path=path, component="bx")
+
+
+def test_moon_svm_ravat2020_reads_the_store_and_needs_manual_download(tmp_path) -> None:
+    store = spn.Store(tmp_path / "store")
+    moon = spn.Moon(store=store, download="missing")
+    info = moon.svm_ravat2020.source_info()
+
+    assert info.url is None and info.landing_page == "https://doi.org/10.13023/9wpe-tt68"
+    with pytest.raises(DownloadError, match="browser"):
+        moon.svm_ravat2020.load()
+
+    target = store.raw_path("moon", "svm", info.filename)
+    target.parent.mkdir(parents=True)
+    _write_ravat_grid(target)
+
+    assert moon.svm_ravat2020.load(component="bphi").values.shape == (2, 3)

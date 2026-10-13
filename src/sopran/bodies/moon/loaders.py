@@ -13,7 +13,7 @@ from sopran.core.store import Store
 from .dem import load_dem_raster
 from .models import SurfaceSource
 from .sources import canonical_source_id
-from .svm import read_tsunakawa_svm_npy, read_tsunakawa_svm_text
+from .svm import read_ravat2020_grid, read_tsunakawa_svm_npy, read_tsunakawa_svm_text
 
 
 def load_surface_raster(endpoint: Any, **parameters: Any) -> Any:
@@ -39,6 +39,16 @@ def load_surface_raster(endpoint: Any, **parameters: Any) -> Any:
             store=store,
             download=download,
         )
+        source_id = canonical_source_id(source)
+        if source_id == "ravat2020.l1":
+            metadata = plan.to_metadata()["parameters"]
+            return read_ravat2020_grid(
+                data_path,
+                component=str(plan.parameters.get("component", "total")),
+                source=source_id,
+                body=endpoint.body.name,
+                metadata=metadata,
+            )
         if data_path.suffix.lower() == ".npy":
             return read_tsunakawa_svm_npy(
                 data_path,

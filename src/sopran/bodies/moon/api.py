@@ -60,6 +60,15 @@ class Moon:
             variable="svm_tsunakawa2015",
             units="nT",
         )
+        self.svm_ravat2020 = SurfaceEndpoint(
+            self,
+            "svm",
+            "Ravat 2020 surface field",
+            default_source="ravat2020.l1",
+            default_model="ravat2020",
+            variable="svm_ravat2020",
+            units="nT",
+        )
         self.svm = self.svm_tsunakawa2015
         self.shadow = SurfaceEndpoint(self, "shadow", "Shadow map")
         self.illumination = SurfaceEndpoint(self, "illumination", "Illumination map")
@@ -78,6 +87,7 @@ class Moon:
                 "dem: digital elevation model endpoint",
                 "svm: default Tsunakawa lunar magnetic anomaly SVM endpoint",
                 "svm_tsunakawa2015: explicit Tsunakawa SVM endpoint",
+                "svm_ravat2020: Ravat et al. 2020 surface field (component=total/br/btheta/bphi)",
                 "magnetic_anomalies(): cited reference locations and proximity search",
                 "shadow: SZA-threshold and terrain-ray shadow map endpoint",
                 "illumination: SZA-threshold illumination map endpoint",
@@ -122,10 +132,13 @@ class Moon:
             "dem": self.dem,
             "svm": self.svm,
             "svm_tsunakawa2015": self.svm_tsunakawa2015,
+            "svm_ravat2020": self.svm_ravat2020,
             "shadow": self.shadow,
             "illumination": self.illumination,
             "sza": self.sza,
         }
+        if product in endpoints:
+            return endpoints[product]
         try:
             canonical = MOON_SURFACE_SCHEMA.variable(product).name
             return endpoints[canonical]

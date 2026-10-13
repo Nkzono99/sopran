@@ -13,6 +13,7 @@ SURFACE_SOURCES = {
         "kaguya.lmag.svm_tsunakawa2015",
         "svm_tsunakawa2015",
         "kaguya.lism.svm",
+        "ravat2020.l1",
     ),
     "shadow": ("computed.terrain_ray", "legacy.shadowmap_sza"),
     "illumination": (),
@@ -70,6 +71,25 @@ SURFACE_SOURCE_INFO = {
             "Place the file under the store raw/moon/svm directory or pass path= explicitly."
         ),
     ),
+    "ravat2020.l1": SurfaceSource(
+        source_id="ravat2020.l1",
+        product="svm",
+        provider="uknowledge_uky",
+        filename="Ravatetal_JGR2020_LunarL1MagneticModelFields_LPgrad.dat",
+        description=(
+            "Ravat, Purucker & Olsen (2020) L1-norm lunar crustal field model from Lunar "
+            "Prospector and SELENE/Kaguya along-track gradients: Br, Btheta, Bphi and total "
+            "field on a 0.1 degree grid at the lunar ellipsoid surface (CC0)."
+        ),
+        landing_page="https://doi.org/10.13023/9wpe-tt68",
+        size="88 MB",
+        version="2020",
+        manual_note=(
+            "The University of Kentucky repository answers scripts with a browser check, so "
+            "SOPRAN cannot download it. Download the main .dat file in a web browser from the "
+            "landing page and place it under the store raw/moon/svm directory or pass path=."
+        ),
+    ),
 }
 
 SOURCE_ALIASES = {
@@ -78,6 +98,7 @@ SOURCE_ALIASES = {
     "svm_tsunakawa2015": "kaguya.lmag.svm_tsunakawa2015",
     "tsunakawa2015": "kaguya.lmag.svm_tsunakawa2015",
     "kaguya.lism.svm": "kaguya.lmag.svm_tsunakawa2015",
+    "ravat2020": "ravat2020.l1",
 }
 
 

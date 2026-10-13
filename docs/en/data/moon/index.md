@@ -19,6 +19,7 @@ shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
 |---|---|---|---|
 | `moon.dem` | `elevation`, `height` | m | Elevation |
 | `moon.svm` | `surface_vector_map`, `svm_tsunakawa2015` | nT | Tsunakawa et al. (2015) surface magnetic field map; the default SVM |
+| `moon.svm_ravat2020` | — | nT | Ravat et al. (2020) surface field model with a selectable component |
 | `moon.sza` | `solar_zenith_angle` | deg | Solar zenith angle |
 | `moon.illumination` | `illumination_map` | fraction | Illumination |
 | `moon.shadow` | `shadow_map` | fraction | Shadow |
@@ -80,6 +81,27 @@ Obtain it manually and pass `path=`, or place it in the Store's `raw/moon/svm/`.
 svm = moon.svm.load(path="/path/to/LunarSVM_000_02_v02.dat")
 svm = moon.svm.load(download="never")          # read from the Store's raw/moon/svm/
 svm.sample(lat=-0.5, lon=0.0)
+```
+
+The Ravat et al. (2020) model (`moon.svm_ravat2020`) is a surface field derived from along-track magnetic field gradients
+of Lunar Prospector and KAGUYA. It is given on a 0.1-degree grid on the lunar ellipsoid (equatorial radius 1738.1 km,
+polar radius 1736.0 km), and `component=` selects the component.
+
+| `component` | Meaning |
+|---|---|
+| `"total"` (default) | Total field |
+| `"br"` | Radial component (positive outward) |
+| `"btheta"` | Colatitudinal component (positive southward) |
+| `"bphi"` | Azimuthal component (positive eastward) |
+
+The University of Kentucky repository that distributes it ([DOI 10.13023/9wpe-tt68](https://doi.org/10.13023/9wpe-tt68), CC0)
+stops scripted downloads with a browser check, so SOPRAN cannot retrieve it. Download the main file
+`Ravatetal_JGR2020_LunarL1MagneticModelFields_LPgrad.dat` (about 88 MB) in a web browser and place it in the Store's `raw/moon/svm/`
+or pass it as `path=`. Loading builds the grid from about 6.5 million rows and takes a few seconds.
+
+```python
+br = moon.svm_ravat2020.load(component="br")    # read from the Store's raw/moon/svm/
+br.sample(lat=8.0, lon=302.0)                   # near Reiner Gamma
 ```
 
 ## Solar zenith angle, illumination, and shadow
