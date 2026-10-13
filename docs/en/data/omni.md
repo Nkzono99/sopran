@@ -73,17 +73,28 @@ use `at()` for the upstream conditions at 00:30. Missing values are detected wit
 Downloads use a timeout and a temporary file, and the content and year are verified before the file is replaced. On failure the previous file stays.
 Newly retrieved files have their checksum recorded in the Store registry. They live at `raw/omni/omni2_YYYY.dat`.
 
-## 5-minute (HRO) data and the velocity vector
+## 1-minute and 5-minute (HRO, HRO2) data and the velocity vector
 
-`spn.omni.hro` reads the 5-minute values from the monthly CDAWeb CDF files (`omni_hro_5min_YYYYMM01_v01.cdf`).
+SOPRAN reads the 1-minute and 5-minute values, time-shifted to the bow-shock nose, from the monthly CDAWeb CDF files.
 They include the solar-wind velocity vector `velocity` (GSE, km/s), absent from the hourly files, and the `bsn_x` and
-`timeshift` NASA used for the time shift. Reading needs `cdflib` (in `[kaguya]`). Files live under `raw/omni/hro_5min/YYYY/`.
+`timeshift` NASA used for the time shift. Reading needs `cdflib` (in `[kaguya]`).
+
+| Entry point | Resolution | Plasma source | File (`raw/omni/<directory>/YYYY/`) |
+|---|---|---|---|
+| `spn.omni.hro` | 5 min | Wind/SWE key parameters | `hro_5min/omni_hro_5min_YYYYMM01_v01.cdf` |
+| `spn.omni.hro_1min` | 1 min | Same | `hro_1min/omni_hro_1min_YYYYMM01_v01.cdf` |
+| `spn.omni.hro2` | 5 min | Definitive Wind/SWE data | `hro2_5min/omni_hro2_5min_YYYYMM01_v01.cdf` |
+| `spn.omni.hro2_1min` | 1 min | Same | `hro2_1min/omni_hro2_1min_YYYYMM01_v01.cdf` |
+
+HRO2 uses the definitive Wind/SWE data, so its plasma values are more reliable but gaps are more frequent
+(for 1-minute data on 2008-02-29, $V_x$ is missing 16% of the time in HRO and 24% in HRO2). Both have the same variables.
+`spn.omni.high_resolution("1min", product="hro2")` selects the same products.
 
 ```python
-hro = spn.omni.hro.load(spn.period("2008-04-01", "2008-04-03"))
+hro = spn.omni.hro_1min.load(spn.period("2008-04-01", "2008-04-03"))
 hro.to_dataframe()                     # vx_gse, vy_gse, vz_gse, speed, density, pressure, bsn_x, ...
 hro.velocity                           # SopranArray (time, component) in GSE
-hro.at(["2008-04-02T08:34:00Z"], tolerance_seconds=600)   # nearest sample, no interpolation
+hro.at(["2008-04-02T08:34:00Z"])       # nearest sample, no interpolation; default tolerance is two sample intervals
 ```
 
 The published $V_y$ has the Earth orbital aberration removed. Add `OMNI_ABERRATION_CORRECTION_KM_S` ($+29.8\,\mathrm{km/s}$)
@@ -95,7 +106,7 @@ handled by the [dHT frame](../experimental/dht.md).
 - OMNI describes near-Earth upstream conditions, not a direct measurement of the solar wind at the Moon.
   Additional time shifts to the Moon and whether the Moon is inside the magnetosphere are not handled by this API.
 - GSE and GSM values are returned as they are; setting a `View` `frame` does not rotate them.
-- 1-minute data, and the full variable sets of the hourly and 5-minute products, are not supported.
+- None of the hourly, 1-minute, or 5-minute readers covers every variable in the files (particle fluxes and RMS values are not read).
 
 Sources: [NASA OMNI specification](https://omniweb.gsfc.nasa.gov/html/ow_data.html),
 [NASA SPDF public files](https://spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/)

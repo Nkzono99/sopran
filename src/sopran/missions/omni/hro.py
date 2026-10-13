@@ -1,10 +1,13 @@
-"""NASA OMNI high-resolution (HRO) 5-minute data from monthly CDAWeb CDF files.
+"""NASA OMNI high-resolution (HRO) 1- and 5-minute data from monthly CDAWeb CDF files.
 
-The 5-minute product carries the solar-wind velocity vector in GSE, which the
-hourly OMNI2 text files do not. SOPRAN keeps the CDF values as published:
+The high-resolution products carry the solar-wind velocity vector in GSE, which
+the hourly OMNI2 text files do not. SOPRAN keeps the CDF values as published:
 velocities are time-shifted to the bow-shock nose and the GSE ``Vy`` component
 already has the mean Earth orbital aberration removed by NASA (see
 :data:`OMNI_ABERRATION_CORRECTION_KM_S`).
+
+``hro`` uses the Wind/SWE key-parameter plasma data; ``hro2`` uses the definitive
+Wind/SWE data instead, with somewhat shorter coverage. Both share one CDF layout.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from math import isfinite
 from pathlib import Path
 from shutil import copyfileobj
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from urllib.error import ContentTooShortError
 from urllib.request import urlopen
 
@@ -31,9 +34,14 @@ from sopran.core.time import TimeRange, day, period
 if TYPE_CHECKING:
     import xarray as xr
 
-BASE_URL = "https://spdf.gsfc.nasa.gov/pub/data/omni/omni_cdaweb/hro_5min/"
+CDAWEB_OMNI_URL = "https://spdf.gsfc.nasa.gov/pub/data/omni/omni_cdaweb/"
+BASE_URL = CDAWEB_OMNI_URL + "hro_5min/"
 DOCUMENTATION = "https://omniweb.gsfc.nasa.gov/html/omni_min_data.html"
 RESOLUTION_SECONDS = 300
+HroProduct = Literal["hro", "hro2"]
+HroResolution = Literal["1min", "5min"]
+_RESOLUTION_SECONDS: dict[str, int] = {"1min": 60, "5min": 300}
+_PRODUCTS = ("hro", "hro2")
 EARTH_RADIUS_KM = 6371.2
 #: NASA removes the mean Earth orbital aberration from the published GSE ``Vy``.
 #: Add this vector once to recover the geocentric flow direction (HRO documentation, Appendix 4).
@@ -124,8 +132,10 @@ OMNI_HRO_SCHEMA = InstrumentSchema(
 )
 
 
-def read_omni_hro(path: Path | str) -> pd.DataFrame:
-    """Read one monthly HRO 5-minute CDF with ``cdflib``; fill values become NaN."""
+def read_omni_hro(
+    path: Path | str, *, resolution_seconds: int = RESOLUTION_SECONDS
+) -> pd.DataFrame:
+    """Read one monthly HRO or HRO2 CDF with ``cdflib``; fill values become NaN."""
 
     try:
         import cdflib
@@ -140,7 +150,9 @@ def read_omni_hro(path: Path | str) -> pd.DataFrame:
         fill = attributes.get("FILLVAL") if isinstance(attributes, Mapping) else None
         fills[name] = None if fill is None else float(np.asarray(fill).reshape(-1)[0])
     epoch = cdflib.cdfepoch.unixtime(arrays["Epoch"])
-    frame = read_omni_hro_arrays(np.asarray(epoch, dtype=float), arrays, fills)
+    frame = read_omni_hro_arrays(
+        np.asarray(epoch, dtype=float), arrays, fills, resolution_seconds=resolution_seconds
+    )
     frame.attrs["source"] = str(path)
     return frame
 
@@ -149,8 +161,10 @@ def read_omni_hro_arrays(
     unix_time: np.ndarray,
     arrays: Mapping[str, np.ndarray],
     fills: Mapping[str, float | None] | None = None,
+    *,
+    resolution_seconds: int = RESOLUTION_SECONDS,
 ) -> pd.DataFrame:
-    """Build the HRO table from decoded CDF arrays (one row per 5-minute sample)."""
+    """Build the HRO table from decoded CDF arrays (one row per sample)."""
 
     times = np.asarray(unix_time, dtype=float)
     if times.ndim != 1 or not np.all(np.isfinite(times)) or np.any(np.diff(times) <= 0.0):
@@ -171,8 +185,8 @@ def read_omni_hro_arrays(
         result[name] = values
     result.attrs.update(
         documentation=DOCUMENTATION,
-        resolution_seconds=RESOLUTION_SECONDS,
-        context="bow_shock_nose_5min_proxy_not_local_lunar_measurement",
+        resolution_seconds=resolution_seconds,
+        context=f"bow_shock_nose_{resolution_seconds // 60}min_proxy_not_local_lunar_measurement",
         aberration="NASA removed the mean Earth aberration from vy_gse",
         units={name: units for name, units, _ in _VARIABLES.values()},
     )
@@ -181,11 +195,16 @@ def read_omni_hro_arrays(
 
 @dataclass(frozen=True)
 class OmniHroData:
-    """Loaded 5-minute HRO data for one time range."""
+    """Loaded HRO or HRO2 data for one time range."""
 
     time: TimeRange
     files: tuple[Path, ...]
     frame: pd.DataFrame
+    dataset: str = "omni.hro"
+
+    @property
+    def resolution_seconds(self) -> int:
+        return int(self.frame.attrs.get("resolution_seconds", RESOLUTION_SECONDS))
 
     def to_dataframe(self) -> pd.DataFrame:
         return self.frame
@@ -223,7 +242,8 @@ class OmniHroData:
             arrays,
             attrs=dict(
                 documentation=DOCUMENTATION,
-                resolution_seconds=RESOLUTION_SECONDS,
+                product=self.dataset,
+                resolution_seconds=self.resolution_seconds,
                 time_scale="UTC",
                 source_files=[str(p) for p in self.files],
                 context=self.frame.attrs.get("context"),
@@ -252,22 +272,29 @@ class OmniHroData:
             description=str(array.attrs.get("long_name", "")),
         )
         return SopranArray(
-            name=f"omni.hro.{name}", time=self.time, schema=schema, files=self.files, xr=array
+            name=f"{self.dataset}.{name}",
+            time=self.time,
+            schema=schema,
+            files=self.files,
+            xr=array,
         )
 
     def at(
         self,
         times: Iterable[object],
         *,
-        tolerance_seconds: float = 600.0,
+        tolerance_seconds: float | None = None,
         columns: tuple[str, ...] = ("vx_gse", "vy_gse", "vz_gse", "speed", "density", "pressure"),
     ) -> pd.DataFrame:
-        """Nearest 5-minute sample for each time, without interpolation.
+        """Nearest sample for each time, without interpolation.
 
-        Rows farther than ``tolerance_seconds`` from any sample are NaN. The
-        matched sample time is ``source_time`` and the signed offset is
-        ``dt_seconds`` (target minus source).
+        Rows farther than ``tolerance_seconds`` (default: two sample intervals)
+        from any sample are NaN. The matched sample time is ``source_time`` and
+        the signed offset is ``dt_seconds`` (target minus source).
         """
+
+        if tolerance_seconds is None:
+            tolerance_seconds = 2.0 * self.resolution_seconds
 
         targets = pd.DatetimeIndex(pd.to_datetime(list(cast(Any, times)), utc=True, format="mixed"))
         if targets.hasnans:
@@ -300,7 +327,7 @@ class OmniHroData:
 
 
 class OmniHighResolution:
-    """OMNI HRO 5-minute access with Store caching of the monthly CDF files."""
+    """OMNI HRO/HRO2 1- or 5-minute access with Store caching of the monthly CDF files."""
 
     def __init__(
         self,
@@ -309,9 +336,17 @@ class OmniHighResolution:
         download: DownloadMode | None = None,
         time: TimeRange | None = None,
         timeout_seconds: float = 120.0,
+        resolution: HroResolution = "5min",
+        product: HroProduct = "hro",
     ) -> None:
         if not isfinite(timeout_seconds) or timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be finite and positive")
+        if resolution not in _RESOLUTION_SECONDS:
+            raise ValueError("resolution must be '1min' or '5min'")
+        if product not in _PRODUCTS:
+            raise ValueError("product must be 'hro' or 'hro2'")
+        self.resolution = resolution
+        self.product = product
         self.store = store or Store()
         self.download = resolve_download_mode(download)
         self.time = time
@@ -332,17 +367,36 @@ class OmniHighResolution:
         attrs = dict(records[0][1].attrs) if records else {}
         frame = frame.loc[(frame.index >= interval.start) & (frame.index < interval.stop)]
         frame.attrs.update(attrs)
-        return OmniHroData(interval, tuple(row[0] for row in records), frame)
+        return OmniHroData(interval, tuple(row[0] for row in records), frame, self.dataset)
+
+    @property
+    def directory(self) -> str:
+        """CDAWeb directory name, such as ``hro_5min`` or ``hro2_1min``."""
+
+        return f"{self.product}_{self.resolution}"
+
+    @property
+    def dataset(self) -> str:
+        return "omni.hro" if self.directory == "hro_5min" else f"omni.{self.directory}"
+
+    def remote_url(self, year: int, month: int) -> str:
+        return hro_remote_url(self.directory, year, month)
+
+    def _filename(self, year: int, month: int) -> str:
+        return hro_filename(self.directory, year, month)
+
+    def _read(self, path: Path) -> pd.DataFrame:
+        return read_omni_hro(path, resolution_seconds=_RESOLUTION_SECONDS[self.resolution])
 
     def _month(self, year: int, month: int, policy: DownloadMode) -> tuple[Path, pd.DataFrame]:
-        name = f"omni_hro_5min_{year:04d}{month:02d}01_v01.cdf"
-        path = self.store.raw_path("omni", "hro_5min", f"{year:04d}", name)
+        name = self._filename(year, month)
+        path = self.store.raw_path("omni", self.directory, f"{year:04d}", name)
         if path.is_file() and policy != "always":
-            return path, read_omni_hro(path)
+            return path, self._read(path)
         if policy == "never":
-            raise FileNotFoundError(f"OMNI HRO file is not cached: {path}")
+            raise FileNotFoundError(f"OMNI {self.directory} file is not cached: {path}")
         path.parent.mkdir(parents=True, exist_ok=True)
-        url = f"{BASE_URL}{year:04d}/{name}"
+        url = self.remote_url(year, month)
         with NamedTemporaryFile(
             dir=path.parent, prefix=name + ".", suffix=".tmp", delete=False
         ) as handle:
@@ -356,9 +410,9 @@ class OmniHighResolution:
                 copyfileobj(response, out)
             if expected is not None and temporary.stat().st_size < int(expected):
                 raise ContentTooShortError(
-                    "Incomplete OMNI HRO download", (str(path), response.headers)
+                    f"Incomplete OMNI {self.directory} download", (str(path), response.headers)
                 )
-            frame = read_omni_hro(temporary)
+            frame = self._read(temporary)
             temporary.replace(path)
         finally:
             temporary.unlink(missing_ok=True)
@@ -366,11 +420,21 @@ class OmniHighResolution:
             path.relative_to(self.store.raw_path()),
             mission="omni",
             provider="nasa-spdf",
-            provider_path=f"omni_cdaweb/hro_5min/{year:04d}/{name}",
+            provider_path=f"omni_cdaweb/{self.directory}/{year:04d}/{name}",
             download_url=url,
         )
         frame.attrs["source"] = str(path)
         return path, frame
+
+
+def hro_filename(directory: str, year: int, month: int) -> str:
+    """Monthly CDAWeb file name for ``directory`` such as ``hro_1min`` or ``hro2_5min``."""
+
+    return f"omni_{directory}_{year:04d}{month:02d}01_v01.cdf"
+
+
+def hro_remote_url(directory: str, year: int, month: int) -> str:
+    return f"{CDAWEB_OMNI_URL}{directory}/{year:04d}/{hro_filename(directory, year, month)}"
 
 
 def _unix_seconds(index: pd.DatetimeIndex) -> np.ndarray:

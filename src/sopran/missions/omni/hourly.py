@@ -214,11 +214,35 @@ class Omni:
     def hro(self) -> Any:
         """5-minute HRO access (velocity vector in GSE) sharing this Store and download policy."""
 
+        return self.high_resolution("5min")
+
+    @property
+    def hro_1min(self) -> Any:
+        """1-minute HRO access sharing this Store and download policy."""
+
+        return self.high_resolution("1min")
+
+    @property
+    def hro2(self) -> Any:
+        """5-minute HRO2 access (definitive Wind/SWE plasma) sharing this Store."""
+
+        return self.high_resolution("5min", product="hro2")
+
+    @property
+    def hro2_1min(self) -> Any:
+        """1-minute HRO2 access (definitive Wind/SWE plasma) sharing this Store."""
+
+        return self.high_resolution("1min", product="hro2")
+
+    def high_resolution(self, resolution: str = "5min", *, product: str = "hro") -> Any:
+        """HRO or HRO2 access at ``resolution`` ("1min" or "5min")."""
+
         from sopran.missions.omni.hro import OmniHighResolution
 
         return OmniHighResolution(
             store=self.store, download=self.download, time=self.time,
             timeout_seconds=self.timeout_seconds,
+            resolution=cast(Any, resolution), product=cast(Any, product),
         )
 
     @classmethod

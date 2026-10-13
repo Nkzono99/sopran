@@ -48,7 +48,7 @@ flux = spn.kaguya.esa1.energy_flux.load(time)   # 解析用の配列として読
 |---|---|---|
 | `spn.kaguya` | PACE（電子・イオン）、LMAG（磁場）、LRS（電波・プラズマ波動）、軌道幾何 | [KAGUYA](data/kaguya/index.md) |
 | `spn.artemis` | P1/P2のFGM磁場、ESAイオン | [ARTEMIS](data/artemis.md) |
-| `spn.omni` | 太陽風・地磁気指数の1時間値 | [OMNI](data/omni.md) |
+| `spn.omni` | 太陽風・地磁気指数の1時間値と、1分・5分値（HRO・HRO2） | [OMNI](data/omni.md) |
 | `spn.moon` | DEM、表面磁場（SVM）、太陽天頂角、影、磁気異常カタログ | [月面マップ](data/moon/index.md) |
 
 ## 質問と不具合の報告

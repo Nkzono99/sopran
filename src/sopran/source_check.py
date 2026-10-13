@@ -76,6 +76,7 @@ def default_probes() -> tuple[SourceProbe, ...]:
         SELENE_STATIC_SPICE_KERNELS,
     )
     from sopran.missions.omni.hourly import BASE_URL as OMNI_BASE_URL
+    from sopran.missions.omni.hro import hro_remote_url
 
     day = "2008-02-29"
     # Only remote_url() is used, so the local root is irrelevant.
@@ -108,6 +109,7 @@ def default_probes() -> tuple[SourceProbe, ...]:
         ),
         SourceProbe("spice.generic_kernels", "NASA NAIF", MOON_ME_SPICE_KERNELS[0].url),
         SourceProbe("omni.hourly", "NASA SPDF", OMNI_BASE_URL + "omni2_2008.dat"),
+        SourceProbe("omni.hro", "NASA SPDF", hro_remote_url("hro_1min", 2008, 2)),
     ]
     probes.extend(
         SourceProbe(f"moon.dem.{source_id}", "USGS Astrogeology", info.url)

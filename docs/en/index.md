@@ -48,7 +48,7 @@ to saving a plot together with its analysis conditions. The other pages are refe
 |---|---|---|
 | `spn.kaguya` | PACE (electrons, ions), LMAG (magnetic field), LRS (radio and plasma waves), orbit geometry | [KAGUYA](data/kaguya/index.md) |
 | `spn.artemis` | P1/P2 FGM magnetic field, ESA ions | [ARTEMIS](data/artemis.md) |
-| `spn.omni` | Hourly solar wind and geomagnetic indices | [OMNI](data/omni.md) |
+| `spn.omni` | Hourly solar wind and geomagnetic indices, plus 1- and 5-minute values (HRO, HRO2) | [OMNI](data/omni.md) |
 | `spn.moon` | DEM, surface magnetic field (SVM), solar zenith angle, shadow, magnetic anomaly catalog | [Moon Maps](data/moon/index.md) |
 
 ## Questions and bug reports
