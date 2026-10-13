@@ -31,7 +31,7 @@ and configuration precedence only in [Configuration](../guide/configuration.md).
 Getting Started repeats a little to show the flow, but leaves details to the User Guide.
 
 Implementation status follows the same rule and sits next to the feature: support per data source is in the table of the [data overview](../data/index.md),
-unimplemented points in each page's "Limitations" section, and ideas in [Design Principles](design.md#future-directions). There is no separate "status" page.
+unimplemented points in each page's "Limitations" section, and plans and ideas in [Design Principles](design.md#planned-work). There is no separate "status" page.
 
 ## Page templates
 

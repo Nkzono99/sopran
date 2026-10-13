@@ -1,7 +1,7 @@
 # Design Principles
 
 These are the criteria for deciding SOPRAN's public API and internal implementation. Check new features and data sources against them.
-The rules here are the ones the current implementation follows; ideas not yet implemented are kept in the last section.
+The rules here are the ones the current implementation follows; decided plans and unimplemented ideas are kept in the last two sections.
 
 ## Intended experience
 
@@ -93,7 +93,7 @@ Individual research runs, comparison figures, and interpretations go to `working
 | Location | Role |
 |---|---|
 | `src/sopran/core/` | Store, configuration, Project/Case/View, data types, Pipeline, plotting, time alignment |
-| `src/sopran/missions/` | KAGUYA, ARTEMIS, and OMNI readers, instruments, and product APIs |
+| `src/sopran/missions/` | KAGUYA, ARTEMIS, Lunar Prospector, and OMNI readers, instruments, and product APIs |
 | `src/sopran/bodies/moon/` | Moon products such as DEM, shadow, and SVM |
 | `src/sopran/frames/`, `src/sopran/maps/` | Coordinate and time conversion, shared map types |
 | `src/sopran/experimental/` | Experiments imported explicitly |
@@ -120,13 +120,24 @@ All exceptions derive from `SopranError` and also from a standard exception.
 Error messages include, where possible, the failing endpoint or dataset ID, the available candidates, the next call to try (`info()` or `plan()`),
 and which stage failed: retrieval, decoding, schema, or coordinate transform.
 
-## Future directions
+## Planned work
 
-The following are ideas, neither implemented nor promised. Each will get its own design, following these principles, when work starts.
+The following items are decided. Each gets its design, following these principles, when work starts.
+
+| Item | Contents | Main work |
+|---|---|---|
+| Chandrayaan-1 SARA (SWIM, CENA) | PDS3 at ESA PSA. 2008–2009 overlaps KAGUYA, allowing simultaneous comparisons | Only raw counts (EDR) are published, so calibration has to be prepared |
+| Wind SWE and MFI | CDF files at CDAWeb; the upstream solar-wind observations behind OMNI | Reuse the ARTEMIS retrieval (newest version from the SPDF listing) |
+| LRO Diviner GCP | Surface (bolometric) brightness temperature by local time from PDS, for surface charging and exosphere studies | Return it as a Moon map on a grid with local time |
+| Lunar Prospector ER extensions | Pitch angles and the high-rate ER (`ER_HI_TS`) | Add pitch angles after checking the look-direction sign conventions in the literature |
+| ARTEMIS extensions | Quality flags and selenocentric position | Read `*_data_quality` for the quality flags |
+
+## Ideas
+
+The following are ideas, not promised.
 
 - Interactive plotting (HoloViews, hvPlot, Datashader) and long-period quicklooks.
 - `spacepy` and `astropy` coordinate transform backends.
 - Moon map reprojection, shadows with penumbra, and faster `terrain_ray`.
-- ARTEMIS retrieval from CDAWeb and HAPI and CDF reading.
 - A mission-independent generic pipeline backend and Rust processing stages.
 - Saving PACE viewing-direction and energy coordinate metadata.
