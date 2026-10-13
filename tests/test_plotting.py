@@ -1706,3 +1706,64 @@ def test_array_plot_defaults_follow_schema_log_hints() -> None:
     (auto,) = array("energy_flux").plot_items()
     assert auto.log_color is True
     assert auto.yscale == "log"
+
+
+def _per_record_energy_array() -> SopranArray:
+    times = np.arange("2011-07-01T00:00", "2011-07-01T00:04", dtype="datetime64[m]").astype(
+        "datetime64[ns]"
+    )
+    energy = np.tile(np.array([1000.0, 100.0, 10.0]), (times.size, 1))
+    energy[:, :] *= np.array([1.0, 1.1, 1.2, 1.3])[:, None]
+    energy[1, 2] = np.nan  # a bin missing from one record's table
+    values = np.arange(times.size * 3, dtype=float).reshape(times.size, 3) + 1.0
+    array = xr.DataArray(
+        values,
+        dims=("time", "energy_bin"),
+        coords={
+            "time": times,
+            "energy_bin": np.arange(3),
+            "energy": (("time", "energy_bin"), energy, {"units": "eV"}),
+        },
+        attrs={"units": "eV/(cm^2 s sr eV)"},
+    )
+    schema = spn.VariableSchema(
+        name="flux",
+        dims=("time", "energy_bin"),
+        units="eV/(cm^2 s sr eV)",
+        log_scale=True,
+        log_dims=("energy",),
+    )
+    return SopranArray(name="flux", time=spn.day("2011-07-01"), schema=schema, xr=array)
+
+
+def test_spectrogram_draws_an_energy_axis_that_changes_per_record() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    data = _per_record_energy_array()
+
+    (item,) = data.plot_items()
+    result = spn.stack(item).plot()
+    mesh = result.axes[0].collections[0]
+
+    assert item.y == "energy" and item.yscale == "log" and item.log_color
+    assert result.axes[0].get_ylabel() == "energy [eV]"
+    coordinates = mesh.get_coordinates()
+    cells = mesh.get_array()
+    assert np.isfinite(coordinates).all()
+    # Records sit on even rows; odd rows are the zero-width separators between records.
+    assert cells.shape == (7, 3)
+    assert np.ma.count_masked(cells[0::2]) == 1 and cells[1::2].mask.all()
+    assert np.isclose(coordinates[0, 1, 1], np.sqrt(1000.0 * 100.0))  # geometric bin edge
+    result.fig.clf()
+
+
+def test_spectrogram_keeps_the_bin_dimension_of_a_per_record_axis() -> None:
+    from sopran.core.plotting import _spectrogram_data
+
+    item = _per_record_energy_array().spectrogram(y="energy")
+    data = _spectrogram_data(item)
+
+    assert data.z_values.shape == (4, 3)
+    assert data.y_values.shape == (4, 3)
+    np.testing.assert_allclose(data.y_values[2], [1200.0, 120.0, 12.0])

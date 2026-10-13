@@ -736,7 +736,8 @@ class SopranArray:
         self._raise_if_placeholder_visualization()
         array = self.to_xarray()
         if reduce_dims is None and hasattr(array, "dims"):
-            reduce_dims = tuple(dim for dim in array.dims if dim not in {x, y})
+            kept = {x, *_axis_dims(array, y)}
+            reduce_dims = tuple(dim for dim in array.dims if dim not in kept)
         if reduce_dims:
             array = getattr(array, reduction)(reduce_dims)
         resolved_name = name or self.name
@@ -870,11 +871,27 @@ def _line_x(array: Any, requested: str) -> str:
     return _plot_x(array, requested)
 
 
+def _axis_dims(array: Any, name: str) -> tuple[str, ...]:
+    """Dimensions spanned by ``name``: itself, or those of a non-dimension coordinate."""
+
+    if name in _dims(array):
+        return (name,)
+    coords = getattr(array, "coords", {})
+    if name in coords:
+        return tuple(str(dim) for dim in coords[name].dims)
+    return (name,)
+
+
 def _infer_spectrogram_y(array: Any, *, x: str) -> str:
     dims = _dims(array)
+    coords = getattr(array, "coords", {})
     for preferred in ("energy", "pitch_angle", "look"):
         if preferred in dims and preferred != x:
             return preferred
+        if preferred not in dims and preferred in coords:
+            coord_dims = tuple(str(dim) for dim in coords[preferred].dims)
+            if len(coord_dims) == 2 and x in coord_dims:
+                return preferred
     for dim in dims:
         if dim != x:
             return dim

@@ -160,13 +160,20 @@ class PlotStack:
                 panel_metadata = _panel_metadata_for(item)
             elif item.kind == "spectrogram":
                 spectrogram_data = _spectrogram_data(item)
-                mesh = axis.pcolormesh(
-                    spectrogram_data.x_values,
-                    spectrogram_data.y_values,
-                    spectrogram_data.z_values.T,
-                    norm=_color_norm(item),
-                    shading="auto",
-                )
+                if spectrogram_data.y_values.ndim == 2:
+                    mesh = axis.pcolormesh(
+                        *_per_record_mesh(spectrogram_data, log_y=item.yscale == "log"),
+                        norm=_color_norm(item),
+                        shading="flat",
+                    )
+                else:
+                    mesh = axis.pcolormesh(
+                        spectrogram_data.x_values,
+                        spectrogram_data.y_values,
+                        spectrogram_data.z_values.T,
+                        norm=_color_norm(item),
+                        shading="auto",
+                    )
                 colorbar = fig.colorbar(mesh, ax=axis)
                 colorbar.set_label(spectrogram_data.value_label)
                 axis.set_ylabel(spectrogram_data.y_label)
@@ -542,20 +549,100 @@ def _spectrogram_data(item: PlotItem) -> _SpectrogramData:
         raise ValueError("Spectrogram plot requires a y coordinate name")
 
     data = _materialize(item.data)
+    y_values: np.ndarray | None = None
     if hasattr(data, "transpose") and hasattr(data, "dims"):
-        data = data.transpose(item.x, item.y)
+        y_dim = _record_coordinate_dim(data, x=item.x, y=item.y)
+        data = data.transpose(item.x, y_dim or item.y)
+        if y_dim is not None:
+            # Per-record axis (such as an energy table that changes every sample).
+            y_values = np.asarray(data.coords[item.y].transpose(item.x, y_dim).values)
 
     values = _values(data)
     if values.ndim != 2:
         raise ValueError(f"Spectrogram plot expects 2D data, got shape {values.shape}")
     return _SpectrogramData(
         x_values=_coord(data, item.x, axis=0),
-        y_values=_coord(data, item.y, axis=1),
+        y_values=y_values if y_values is not None else _coord(data, item.y, axis=1),
         z_values=values,
         x_label=item.x_label or _coordinate_label(data, item.x),
         y_label=item.y_label or _coordinate_label(data, item.y),
         value_label=item.value_label or _value_label(data, item.name),
     )
+
+
+def _record_coordinate_dim(data: Any, *, x: str, y: str) -> str | None:
+    """Return the bin dimension when ``y`` is a 2D (x, bin) coordinate rather than a dimension."""
+
+    if y in data.dims or not hasattr(data, "coords") or y not in data.coords:
+        return None
+    coord_dims = tuple(str(dim) for dim in data.coords[y].dims)
+    if len(coord_dims) == 2 and x in coord_dims:
+        return next(dim for dim in coord_dims if dim != x)
+    return None
+
+
+def _per_record_mesh(
+    data: _SpectrogramData, *, log_y: bool
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Quad mesh for a y axis that changes per record, such as a potential-corrected energy table.
+
+    Each record gets its own column of cells, spanning halfway to its neighbours in x and
+    with y edges from its own centres. Zero-width masked columns separate records, so
+    neighbouring records never share y edges. Bins without a finite y have zero height.
+    """
+
+    centres = np.asarray(data.y_values, dtype=float)
+    records, bins = centres.shape
+    x_edges = _centre_edges(_as_float_x(data.x_values), log=False)
+    y_edges = np.vstack([_row_edges(row, log=log_y) for row in centres])
+    corners_x = np.repeat(x_edges, 2)[1:-1]
+    corners_y = np.repeat(y_edges, 2, axis=0)
+    values = np.ma.masked_invalid(np.asarray(data.z_values, dtype=float))
+    cells = np.ma.masked_all((2 * records - 1, bins))
+    cells[0::2] = values
+    cells[0::2][~np.isfinite(centres)] = np.ma.masked
+    x_grid = np.broadcast_to(corners_x[:, None], corners_y.shape)
+    if np.issubdtype(np.asarray(data.x_values).dtype, np.datetime64):
+        x_grid = x_grid.astype("datetime64[ns]")
+    return x_grid, corners_y, cells
+
+
+def _as_float_x(values: Any) -> np.ndarray:
+    array = np.asarray(values)
+    if np.issubdtype(array.dtype, np.datetime64):
+        return array.astype("datetime64[ns]").astype("int64").astype(float)
+    return array.astype(float)
+
+
+def _centre_edges(centres: np.ndarray, *, log: bool) -> np.ndarray:
+    values = np.log(centres) if log else centres
+    if values.size == 1:
+        half = 0.05 if log else 0.5
+        edges = np.array([values[0] - half, values[0] + half])
+    else:
+        middle = (values[:-1] + values[1:]) / 2.0
+        first = values[0] - (middle[0] - values[0])
+        last = values[-1] + (values[-1] - middle[-1])
+        edges = np.concatenate(([first], middle, [last]))
+    return np.exp(edges) if log else edges
+
+
+def _row_edges(row: np.ndarray, *, log: bool) -> np.ndarray:
+    valid = np.isfinite(row) & ((row > 0) if log else True)
+    edges = np.empty(row.size + 1)
+    if not valid.any():
+        edges[:] = 1.0 if log else 0.0
+        return edges
+    valid_edges = _centre_edges(row[valid], log=log)
+    edges[0] = valid_edges[0]
+    k = 0
+    for index, ok in enumerate(valid):
+        if ok:
+            edges[index + 1] = valid_edges[k + 1]
+            k += 1
+        else:
+            edges[index + 1] = edges[index]
+    return edges
 
 
 def _histogram_values(item: PlotItem) -> np.ndarray:
