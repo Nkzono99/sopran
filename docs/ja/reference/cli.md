@@ -5,7 +5,7 @@ SOPRANをインストールすると、次のコマンドが使えます。ど�
 | コマンド | モジュール | 用途 |
 |---|---|---|
 | `sopran-store` | `sopran.core.sync` | Storeの同期・検証・索引の作り直し |
-| `sopran-env-check` | `sopran.env_check` | ソースからビルドするための環境の確認 |
+| `sopran-env-check` | `sopran.env_check` | ソースからビルドするための環境と、外部のデータ配布元への接続の確認 |
 | `sopran-schema-docs` | `sopran.schema_docs` | スキーマのリファレンスの生成 |
 | — | `sopran.experimental.kaguya.er_batch` | ERの全期間バッチ（[ER全期間バッチ](../experimental/er-batch.md)） |
 
@@ -29,11 +29,25 @@ sopran-store [--data-root DATA_ROOT] {sync-list,verify,rebuild,excludes} ...
 ## sopran-env-check
 
 ```text
-sopran-env-check [--native]
+sopran-env-check [--native] [--sources] [--timeout SECONDS]
 ```
 
 ソースからインストールするのに必要なものがそろっているかを確かめます。`--native`は、Rust拡張`sopran._native`をビルドするための
 Rustのツールチェーンと、WindowsではMSVCのビルドツールを確かめます。
+
+`--sources`は、SOPRANが取得に使う外部の配布元（JAXA DARTS、京都大学のPACE校正表、NASA NAIF、NASA SPDF、USGS）に、
+既知のファイルを1つずつ問い合わせます。URLは読み込みと同じ関数で作り、ヘッダーだけを受け取るので、ダウンロードもStoreへの書き込みもしません。
+配布元は並列に確かめ、サーバーエラーとタイムアウトは5秒おいて2回まで再試行します。`--timeout`は1回の問い合わせを待つ秒数（既定60）です。
+
+| 表示 | 意味 | 次にすること |
+|---|---|---|
+| `OK` | ファイルに届いた。リダイレクトされたときは移転先も表示する | なし |
+| `MISSING` | 配布元は応答したがファイルが無い（404・410） | 配布元が移転したか構成を変えた可能性が高い。配布元のサイトを確かめ、SOPRANのURLを直す |
+| `UNAVAILABLE` | サーバーエラー（5xx・429）、タイムアウト、接続の失敗 | 多くは一時的。時間をおいて再実行し、続くならこのマシンのネットワークを確かめる |
+| `ERROR` | アクセスを拒否された（403など） | アクセス制限やプロキシを確かめる |
+
+どれか1つでも`OK`でなければ0以外で終わります。計算ノードのように外部へ通信できるか分からないマシンでは、
+長い取得を始める前にこのコマンドで確かめてください。通信できない場合は`SOPRAN_OFFLINE=1`を設定します（[設定](../guide/configuration.md)）。
 
 ## sopran-schema-docs
 

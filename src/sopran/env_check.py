@@ -67,12 +67,24 @@ def current_probe() -> EnvironmentProbe:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Check prerequisites for building SOPRAN from source."
+        description="Check prerequisites for building SOPRAN from source, "
+        "and optionally whether the remote data archives are reachable."
     )
     parser.add_argument(
         "--native",
         action="store_true",
         help="check the Rust toolchain for building the sopran._native extension",
+    )
+    parser.add_argument(
+        "--sources",
+        action="store_true",
+        help="ask each remote archive for the headers of one known file (no download)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="seconds to wait for each archive with --sources (default: 60)",
     )
     args = parser.parse_args(argv)
 
@@ -86,7 +98,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"[{prefix}] {item.message}")
         if item.guidance:
             print(f"      {item.guidance}")
-    return report.exit_code
+    if not args.sources:
+        return report.exit_code
+
+    from sopran.source_check import check_sources, format_results
+
+    results = check_sources(timeout_seconds=args.timeout)
+    for line in format_results(results):
+        print(line)
+    return 1 if report.exit_code or not all(result.ok for result in results) else 0
 
 
 def _native_build_checks(probe: EnvironmentProbe) -> tuple[CheckItem, ...]:

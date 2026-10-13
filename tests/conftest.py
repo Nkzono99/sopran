@@ -30,12 +30,16 @@ def _is_loopback(host: object) -> bool:
 
 
 @pytest.fixture(autouse=True)
-def _block_network(monkeypatch: pytest.MonkeyPatch) -> None:
+def _block_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep the suite independent of DARTS, NAIF, Kyoto, and other remote servers.
 
     Local test servers on loopback addresses stay reachable. Tests that exercise a
     download path replace the transport (``urlopen``, ``_download_file``) or the source.
+    Tests marked ``network`` reach the real archives; they run only with ``-m network``.
     """
+
+    if request.node.get_closest_marker("network") is not None:
+        return
 
     real_getaddrinfo = socket.getaddrinfo
     real_connect = socket.socket.connect

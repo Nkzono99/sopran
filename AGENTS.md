@@ -69,6 +69,7 @@ APIの階層・型・単位でデータの意味を伝え、標準の入口か�
 | Rust変更 | `cargo test -p sopran-native` / `cargo fmt --all --check` |
 | schema変更 | `python -m sopran.schema_docs --check docs/ja/reference/schemas.md` / `python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md` |
 | docs変更 | `python -m mkdocs build` |
+| 外部配布元への接続 | `python -m pytest -m network` / `sopran-env-check --sources`（通常のテストは通信しない。通信するテストには`@pytest.mark.network`） |
 
 CIの依存セット・手順は `.github/workflows/ci.yml`、docsとwheel配布は同ディレクトリの `docs.yml` / `publish.yml` を確認します。
 

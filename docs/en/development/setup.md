@@ -35,15 +35,20 @@ Run from the repository root with the virtual environment's `python`, choosing t
 | Rust | `cargo test -p sopran-native` / `cargo fmt --all --check` |
 | Schema changes | `python -m sopran.schema_docs --check docs/ja/reference/schemas.md` / `python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md` |
 | Documentation changes | `python -m mkdocs build --strict` |
+| Connection to remote archives | `python -m pytest -m network` / `sopran-env-check --sources` |
 
 Tests rely mostly on synthetic data and fixtures. They do not assume an IDL installation; comparisons with SPEDAS behavior use
 reference specifications, synthetic data, and existing real data.
+
+The regular tests never reach the network: `tests/conftest.py` blocks connections to anything but loopback, and download paths are tested by replacing `urlopen` and similar functions.
+Tests that do reach remote servers are marked `@pytest.mark.network`. They are deselected by default and run only with `-m network`.
 
 ## CI
 
 | Workflow | Contents |
 |---|---|
 | `.github/workflows/ci.yml` | Installs `[dev,kaguya,moon,viz,docs,experimental]` and runs pytest, compileall, the schema page check, ruff, and mypy |
+| `.github/workflows/sources.yml` | Every Monday and on manual dispatch, checks the connection to the remote archives with `sopran-env-check --sources` |
 | `.github/workflows/docs.yml` | Builds the documentation with `mkdocs build --strict` and publishes to GitHub Pages from the `main` branch |
 | `.github/workflows/publish.yml` | On `v*` tags, builds the sdist and wheels for each OS and CPython 3.11–3.14 and publishes to PyPI ([Release](release.md)) |
 

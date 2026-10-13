@@ -35,15 +35,20 @@ python -c "import sopran._native as native; print(native.__file__)"
 | Rust | `cargo test -p sopran-native` / `cargo fmt --all --check` |
 | スキーマを変えたとき | `python -m sopran.schema_docs --check docs/ja/reference/schemas.md` / `python -m sopran.schema_docs --language en --check docs/en/reference/schemas.md` |
 | ドキュメントを変えたとき | `python -m mkdocs build --strict` |
+| 外部の配布元への接続 | `python -m pytest -m network` / `sopran-env-check --sources` |
 
 テストは合成データとfixtureを中心にしています。IDLの実行環境は前提にせず、SPEDASの挙動との比較は
 参照仕様・合成データ・既存の実データで行います。
+
+通常のテストは外部と通信しません。`tests/conftest.py`がループバック以外への接続を止め、取得の経路は`urlopen`などを差し替えて確かめます。
+外部へ通信するテストには`@pytest.mark.network`を付けます。これは既定では選ばれず、`-m network`を指定したときだけ実行されます。
 
 ## CI
 
 | ワークフロー | 内容 |
 |---|---|
 | `.github/workflows/ci.yml` | `[dev,kaguya,moon,viz,docs,experimental]`を入れて、pytest、compileall、スキーマのページの確認、ruff、mypyを実行する |
+| `.github/workflows/sources.yml` | 毎週月曜と手動実行で、`sopran-env-check --sources`により外部の配布元への接続を確かめる |
 | `.github/workflows/docs.yml` | `mkdocs build --strict`でドキュメントを作り、`main`ブランチではGitHub Pagesへ公開する |
 | `.github/workflows/publish.yml` | `v*`タグで、sdistと各OS・CPython 3.11〜3.14のwheelを作り、PyPIへ公開する（[リリース](release.md)） |
 
