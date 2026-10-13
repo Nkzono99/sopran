@@ -35,7 +35,7 @@ sopran-env-check [--native] [--sources] [--timeout SECONDS]
 ソースからインストールするのに必要なものがそろっているかを確かめます。`--native`は、Rust拡張`sopran._native`をビルドするための
 Rustのツールチェーンと、WindowsではMSVCのビルドツールを確かめます。
 
-`--sources`は、SOPRANが取得に使う外部の配布元（JAXA DARTS、京都大学のPACE校正表、NASA NAIF、NASA SPDF、USGS）に、
+`--sources`は、SOPRANが取得に使う外部の配布元（JAXA DARTS、京都大学のPACE校正表、NASA NAIF、NASA SPDF、NASA PDS PPI、USGS）に、
 既知のファイルを1つずつ問い合わせます。URLは読み込みと同じ関数で作り、ヘッダーだけを受け取るので、ダウンロードもStoreへの書き込みもしません。
 配布元は並列に確かめ、サーバーエラーとタイムアウトは5秒おいて2回まで再試行します。`--timeout`は1回の問い合わせを待つ秒数（既定60）です。
 

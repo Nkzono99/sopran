@@ -35,7 +35,7 @@ sopran-env-check [--native] [--sources] [--timeout SECONDS]
 Checks the prerequisites for installing from source. `--native` checks the Rust toolchain for building the extension `sopran._native`
 and, on Windows, the MSVC build tools.
 
-`--sources` asks each remote archive SOPRAN downloads from (JAXA DARTS, the Kyoto University PACE calibration tables, NASA NAIF, NASA SPDF, USGS)
+`--sources` asks each remote archive SOPRAN downloads from (JAXA DARTS, the Kyoto University PACE calibration tables, NASA NAIF, NASA SPDF, NASA PDS PPI, USGS)
 for one known file. URLs are built by the same functions the loaders use, and only headers are requested, so nothing is downloaded or written to the Store.
 Archives are checked in parallel, and server errors and timeouts are retried twice, 5 seconds apart. `--timeout` is the number of seconds to wait for each request (default 60).
 

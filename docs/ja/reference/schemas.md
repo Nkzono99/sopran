@@ -115,6 +115,23 @@
 | ion_velocity | time, component | km/s |  | GSE | ion_bulk_velocity | ESA ground-processed ion bulk velocity moment in GSE. |
 | electron_density | time | cm^-3 |  |  |  | ESA ground-processed electron density moment. |
 
+## lunar_prospector / mag
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| magnetic_field | time, component | nT |  | SSE | b | 5-s magnetic field in selenocentric solar ecliptic (SSE) coordinates. |
+| magnetic_field_sel | time, component | nT |  | SEL |  | 5-s magnetic field in selenographic (SEL) Cartesian coordinates. |
+| magnetic_field_rms | time | nT |  |  |  | RMS deviation of the field within each 5-s average. |
+| position | time, component | km |  | SSE |  | Spacecraft position from the Moon centre in SSE. |
+| position_sel | time, component | km |  | SEL |  | Spacecraft position from the Moon centre in SEL. |
+
+## lunar_prospector / er
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| electron_flux | time, energy_bin | 1/(cm^2 s sr eV) |  |  |  | ~80-s omnidirectional differential electron number flux in 15 energy bins; 'energy' is the (time, energy_bin) table in effect, in eV. |
+| electron_flux_3d | time, energy_bin, look | 1/(cm^2 s sr eV) |  |  |  | 3-D electron spectra (15 energies x 88 look directions per ~80-s spectrum) with theta, phi and the despun-spacecraft field as coordinates. |
+
 ## moon / surface
 
 | name | dims | units | dtype | frame | aliases | description |

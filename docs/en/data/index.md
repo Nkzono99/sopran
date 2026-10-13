@@ -11,6 +11,7 @@ Each data page describes variable dimensions, units, and frames, where the data 
 | [KAGUYA LMAG and orbit](kaguya/lmag-orbit.md) | `spn.kaguya.lmag`, `spn.kaguya.orbit` | Yes, DARTS | Yes | Orbit geometry, solar zenith angle, field-line connection | Yes | — |
 | [KAGUYA LRS](kaguya/lrs.md) | `spn.kaguya.lrs` | Yes, DARTS | Yes | Electric field level, power spectral density | Yes | — |
 | [ARTEMIS](artemis.md) | `spn.artemis` | ○ SPDF | ○ | — | Source files only | — |
+| [Lunar Prospector](lunar-prospector.md) | `spn.lunar_prospector` | ○ PDS PPI | ○ | — | Source files only | — |
 | [OMNI](omni.md) | `spn.omni` | Yes, SPDF | Yes | Matching to observation times | Source files only | — |
 | [Moon maps](moon/index.md) | `spn.moon` | DEM only | Yes | Solar zenith angle, illumination, shadow | — | — |
 | [Magnetic anomaly catalog](moon/magnetic-anomalies.md) | `spn.moon.magnetic_anomalies()` | Not needed (bundled) | Yes | — | — | — |

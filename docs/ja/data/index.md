@@ -11,6 +11,7 @@ SOPRANで扱えるデータ源と、それぞれで実装済みの機能をま�
 | [KAGUYA LMAG・軌道](kaguya/lmag-orbit.md) | `spn.kaguya.lmag`、`spn.kaguya.orbit` | ○ DARTS | ○ | 軌道幾何、太陽天頂角、磁力線の接続 | ○ | — |
 | [KAGUYA LRS](kaguya/lrs.md) | `spn.kaguya.lrs` | ○ DARTS | ○ | 電場強度、パワースペクトル密度 | ○ | — |
 | [ARTEMIS](artemis.md) | `spn.artemis` | ○ SPDF | ○ | — | 元ファイルのみ | — |
+| [Lunar Prospector](lunar-prospector.md) | `spn.lunar_prospector` | ○ PDS PPI | ○ | — | 元ファイルのみ | — |
 | [OMNI](omni.md) | `spn.omni` | ○ SPDF | ○ | 観測時刻への対応付け | 元ファイルのみ | — |
 | [月面マップ](moon/index.md) | `spn.moon` | DEMのみ | ○ | 太陽天頂角、日照、影 | — | — |
 | [磁気異常カタログ](moon/magnetic-anomalies.md) | `spn.moon.magnetic_anomalies()` | 不要（同梱） | ○ | — | — | — |

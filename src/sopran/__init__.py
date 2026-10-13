@@ -62,6 +62,7 @@ from sopran.frames import FrameContext, FrameTransformPlan, normalize_frame
 from sopran.maps import RasterLayer, RasterSpec, Region
 from sopran.missions.artemis import Artemis
 from sopran.missions.kaguya import Kaguya
+from sopran.missions.lunar_prospector import LunarProspector
 from sopran.missions.omni import Omni
 
 from . import config as config
@@ -71,6 +72,7 @@ if TYPE_CHECKING:
 
     artemis: Artemis
     kaguya: Kaguya
+    lunar_prospector: LunarProspector
     moon: Moon
     omni: Omni
 
@@ -118,6 +120,8 @@ __all__ = [
     "Kaguya",
     "artemis",
     "kaguya",
+    "lunar_prospector",
+    "LunarProspector",
     "moon",
     "Moon",
     "Omni",

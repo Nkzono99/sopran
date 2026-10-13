@@ -77,6 +77,7 @@ def default_probes() -> tuple[SourceProbe, ...]:
         MOON_ME_SPICE_KERNELS,
         SELENE_STATIC_SPICE_KERNELS,
     )
+    from sopran.missions.lunar_prospector.files import PPI_VOLUME_URL, lp_provider_path
     from sopran.missions.omni.hourly import BASE_URL as OMNI_BASE_URL
     from sopran.missions.omni.hro import hro_remote_url
 
@@ -111,6 +112,11 @@ def default_probes() -> tuple[SourceProbe, ...]:
         ),
         SourceProbe("spice.generic_kernels", "NASA NAIF", MOON_ME_SPICE_KERNELS[0].url),
         SourceProbe("omni.hourly", "NASA SPDF", OMNI_BASE_URL + "omni2_2008.dat"),
+        SourceProbe(
+            "lunar_prospector.er",
+            "NASA PDS PPI",
+            PPI_VOLUME_URL + str(lp_provider_path("ER_LO_TS", date(1998, 2, 1))),
+        ),
         SourceProbe(
             "artemis.fgm",
             "NASA SPDF",

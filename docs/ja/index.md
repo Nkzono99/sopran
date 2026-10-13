@@ -2,7 +2,7 @@
 
 SOPRAN（Satellite Observation Package for Retrieval, Analysis, and Navigation）は、
 月周辺の衛星観測データを取得・保存・解析・可視化するPythonパッケージです。
-KAGUYA/SELENE、ARTEMIS、OMNIの観測値と、月面の地形・磁場・日照マップを同じ書き方で扱えます。
+KAGUYA/SELENE、ARTEMIS、Lunar Prospector、OMNIの観測値と、月面の地形・磁場・日照マップを同じ書き方で扱えます。
 
 ```python
 import sopran as spn
@@ -47,7 +47,8 @@ flux = spn.kaguya.esa1.energy_flux.load(time)   # 解析用の配列として読
 | 入口 | 主なデータ | 詳細 |
 |---|---|---|
 | `spn.kaguya` | PACE（電子・イオン）、LMAG（磁場）、LRS（電波・プラズマ波動）、軌道幾何 | [KAGUYA](data/kaguya/index.md) |
-| `spn.artemis` | P1/P2のFGM磁場、ESAイオン | [ARTEMIS](data/artemis.md) |
+| `spn.artemis` | P1/P2のFGM磁場、ESAのイオン・電子のフラックスとモーメント | [ARTEMIS](data/artemis.md) |
+| `spn.lunar_prospector` | MAG（磁場・位置）、ER（全方向・3次元の電子フラックス） | [Lunar Prospector](data/lunar-prospector.md) |
 | `spn.omni` | 太陽風・地磁気指数の1時間値と、1分・5分値（HRO・HRO2） | [OMNI](data/omni.md) |
 | `spn.moon` | DEM、表面磁場（SVM）、太陽天頂角、影、磁気異常カタログ | [月面マップ](data/moon/index.md) |
 

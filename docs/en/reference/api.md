@@ -59,6 +59,8 @@ For usage, see the User Guide and Data pages.
 
 ::: sopran.missions.artemis.mission.Artemis
 
+::: sopran.missions.lunar_prospector.mission.LunarProspector
+
 ::: sopran.missions.omni.hourly.Omni
 
 ::: sopran.bodies.moon.Moon

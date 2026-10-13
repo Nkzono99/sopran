@@ -2,7 +2,7 @@
 
 SOPRAN (Satellite Observation Package for Retrieval, Analysis, and Navigation) is the
 Python package for retrieving, storing, analyzing, and visualizing spacecraft observations around the Moon.
-KAGUYA/SELENE, ARTEMIS, and OMNI observations, and lunar terrain, magnetic, and illumination maps, all use the same calling style.
+KAGUYA/SELENE, ARTEMIS, Lunar Prospector, and OMNI observations, and lunar terrain, magnetic, and illumination maps, all use the same calling style.
 
 ```python
 import sopran as spn
@@ -47,7 +47,8 @@ to saving a plot together with its analysis conditions. The other pages are refe
 | Entry point | Main data | Details |
 |---|---|---|
 | `spn.kaguya` | PACE (electrons, ions), LMAG (magnetic field), LRS (radio and plasma waves), orbit geometry | [KAGUYA](data/kaguya/index.md) |
-| `spn.artemis` | P1/P2 FGM magnetic field, ESA ions | [ARTEMIS](data/artemis.md) |
+| `spn.artemis` | P1/P2 FGM magnetic field, ESA ion and electron fluxes and moments | [ARTEMIS](data/artemis.md) |
+| `spn.lunar_prospector` | MAG (field, position), ER (omnidirectional and 3-D electron flux) | [Lunar Prospector](data/lunar-prospector.md) |
 | `spn.omni` | Hourly solar wind and geomagnetic indices, plus 1- and 5-minute values (HRO, HRO2) | [OMNI](data/omni.md) |
 | `spn.moon` | DEM, surface magnetic field (SVM), solar zenith angle, shadow, magnetic anomaly catalog | [Moon Maps](data/moon/index.md) |
 

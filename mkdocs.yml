@@ -152,6 +152,7 @@ nav:
           - LMAGと軌道: data/kaguya/lmag-orbit.md
           - LRS: data/kaguya/lrs.md
       - ARTEMIS: data/artemis.md
+      - Lunar Prospector: data/lunar-prospector.md
       - OMNI: data/omni.md
       - 月面:
           - 月面マップ: data/moon/index.md

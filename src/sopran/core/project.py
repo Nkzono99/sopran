@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from sopran.bodies.moon import Moon
     from sopran.missions.artemis import Artemis
     from sopran.missions.kaguya import Kaguya
+    from sopran.missions.lunar_prospector import LunarProspector
     from sopran.missions.omni import Omni
 
 
@@ -80,6 +81,10 @@ class Project:
     @property
     def artemis(self) -> Artemis:
         return self.view().artemis
+
+    @property
+    def lunar_prospector(self) -> LunarProspector:
+        return self.view().lunar_prospector
 
     @property
     def omni(self) -> Omni:
@@ -355,6 +360,10 @@ class Case:
     @property
     def artemis(self) -> Artemis:
         return self._view.artemis
+
+    @property
+    def lunar_prospector(self) -> LunarProspector:
+        return self._view.lunar_prospector
 
     @property
     def omni(self) -> Omni:

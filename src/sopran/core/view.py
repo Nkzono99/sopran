@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from sopran.core.project import Project
     from sopran.missions.artemis import Artemis
     from sopran.missions.kaguya import Kaguya
+    from sopran.missions.lunar_prospector import LunarProspector
     from sopran.missions.omni import Omni
 
 
@@ -114,6 +115,10 @@ class View:
     @property
     def artemis(self) -> Artemis:
         return cast("Artemis", self.source("artemis"))
+
+    @property
+    def lunar_prospector(self) -> LunarProspector:
+        return cast("LunarProspector", self.source("lunar_prospector"))
 
     @property
     def omni(self) -> Omni:

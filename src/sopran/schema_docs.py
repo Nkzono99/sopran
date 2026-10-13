@@ -20,6 +20,7 @@ def builtin_schemas() -> tuple[InstrumentSchema, ...]:
         KAGUYA_LRS_SCHEMA,
         KAGUYA_ORBIT_SCHEMA,
     )
+    from sopran.missions.lunar_prospector import LP_ER_SCHEMA, LP_MAG_SCHEMA
     from sopran.missions.omni.hro import OMNI_HRO_SCHEMA
 
     return (
@@ -33,6 +34,8 @@ def builtin_schemas() -> tuple[InstrumentSchema, ...]:
         KAGUYA_LMAG_CONNECTION_SCHEMA,
         ARTEMIS_FGM_SCHEMA,
         ARTEMIS_ESA_SCHEMA,
+        LP_MAG_SCHEMA,
+        LP_ER_SCHEMA,
         MOON_SURFACE_SCHEMA,
         OMNI_HRO_SCHEMA,
     )
