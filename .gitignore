@@ -19,7 +19,7 @@ src/sopran/_native*.pyd
 src/sopran/_native*.so
 src/sopran/*.pdb
 
-data/
+/data/
 datasets/
 sopran_data/
 sopran_cache/

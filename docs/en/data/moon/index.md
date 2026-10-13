@@ -1,0 +1,120 @@
+# Moon Maps
+
+Maps fixed to the lunar surface, such as terrain (DEM), surface magnetic field (SVM), solar zenith angle, illumination, and shadow,
+are handled through the body `spn.moon` rather than a mission. Whichever mission a map comes from, it means the same thing in use:
+a quantity on lunar longitude and latitude. GeoTIFF maps are read with `rasterio` (`moon` extra).
+
+```python
+moon = spn.moon
+region = spn.Region(lon=(120, 160), lat=(-45, -10), body="moon")
+
+dem = moon.dem.load(source="lro.lola.dem_118m", region=region)
+sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
+```
+
+## Map types
+
+| Entry point | Aliases | Units | Meaning |
+|---|---|---|---|
+| `moon.dem` | `elevation`, `height` | m | Elevation |
+| `moon.svm` | `surface_vector_map`, `svm_tsunakawa2015` | nT | Tsunakawa et al. (2015) surface magnetic field map; the default SVM |
+| `moon.sza` | `solar_zenith_angle` | deg | Solar zenith angle |
+| `moon.illumination` | `illumination_map` | fraction | Illumination |
+| `moon.shadow` | `shadow_map` | fraction | Shadow |
+
+Maps can also be selected by name, as in `moon.map("elevation")`. Loaded maps are `RasterLayer` objects, and
+`dem.sample(lat=0.5, lon=10.5)` returns values at arbitrary points. Each map's `info()`, `guide()`, `example()`,
+and `sources()` describe it and its available sources.
+
+## Coordinate conventions
+
+Longitude and latitude definitions are never implicit; they are kept in the plan (`plan()`) and in result metadata.
+
+| Key | Example values | Default |
+|---|---|---|
+| `lon_domain` | `0_360`, `-180_180` | `0_360` |
+| `lon_direction` | `east_positive`, `west_positive` | `east_positive` |
+| `lat_type` | `planetocentric`, `planetographic` | `planetocentric` |
+| `shape` | `spherical`, `spice_body_radii` | `spherical` |
+| `projection` | `native`, `polar_stereographic` | `native` |
+| `area_or_point` | `area`, `point` | `area` |
+
+Regions crossing 0/360 can be written as `spn.Region(lon=(350, 10), ...)` ([Time, Regions, And Cases](../../guide/views-cases.md#regions-carry-their-longitude-convention)).
+
+```python
+plan = moon.dem.plan(source="lro.lola.dem_118m", region=region, projection="polar_stereo")
+plan.to_metadata()      # check conventions and inputs before reading
+```
+
+## DEM
+
+| `source` | Contents | Size |
+|---|---|---|
+| `lro.lola.dem_118m` (`lro.lola.dem`) | LRO LOLA global DEM, 256 pixels/deg (118 m at the equator) | About 8 GB |
+| `lro.lola.sldem2015_59m` (`kaguya.tc.dem`) | SLDEM2015, merged LOLA and KAGUYA Terrain Camera, 512 pixels/deg, 60°S–60°N | About 22 GB |
+
+Both download directly from USGS into the Store's `raw/moon/dem/`.
+
+```python
+path = moon.dem.download(source="lro.lola.dem_118m")      # into the default Store
+dem = moon.dem.load(path=path, source="lro.lola.dem_118m", region=region)
+```
+
+Without `path=`, `load()` reads the file in the Store's `raw/moon/dem/`. When it is missing, the same download policy as other data applies
+([Configuration](../../guide/configuration.md#download-policy), default `missing`), so the file is retrieved first.
+DEMs are 8–22 GB; to avoid retrieval, pass `download="never"` or set the session or View policy to `never`.
+Missing files then raise `DatasetNotFoundError`.
+Choose the Store with `store=`; otherwise `spn.moon` uses the session settings and `view.moon` the Store of its Project.
+
+With `region=`, only the part of the file covering the region is read.
+Regions crossing 0/360 cannot be split into windows yet, so the whole file is read.
+
+## Surface magnetic field (SVM)
+
+No stable direct download URL has been confirmed for the Tsunakawa SVM (`LunarSVM_000_02_v02.dat`).
+Obtain it manually and pass `path=`, or place it in the Store's `raw/moon/svm/`. The original location is
+`http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG`.
+
+```python
+svm = moon.svm.load(path="/path/to/LunarSVM_000_02_v02.dat")
+svm = moon.svm.load(download="never")          # read from the Store's raw/moon/svm/
+svm.sample(lat=-0.5, lon=0.0)
+```
+
+## Solar zenith angle, illumination, and shadow
+
+`moon.sza.compute()` computes the solar zenith angle on a spherical Moon. Give the grid as an existing map (`like=`) or with `lon=`, `lat=`, `region=`.
+Give the Sun position with one of:
+
+| Argument | Sun position |
+|---|---|
+| `sun_vector=` | Sun direction vector in Moon-fixed coordinates |
+| `subsolar_lon_lat=` | Longitude and latitude of the subsolar point |
+| `time=` and `spice_kernels=` | Computed with SPICE (needs leap-second, lunar frame, and ephemeris kernels) |
+
+```python
+sza = moon.sza.compute(like=dem, subsolar_lon_lat=(0.0, 0.0))
+illumination = moon.illumination.compute(sza=sza, threshold_deg=90.0)   # 1 where sza <= 90
+shadow = moon.shadow.compute(sza=sza, threshold_deg=90.0)               # 1 where sza > 90
+```
+
+Threshold illumination and shadow are binary maps without terrain. Shadows cast by topography use `method="terrain_ray"`,
+which follows the horizon over the DEM toward the Sun.
+
+```python
+sza = moon.sza.compute(
+    like=dem,
+    time="2008-02-01T12:00:00Z",
+    spice_kernels=("kernels/naif0012.tls", "kernels/de421.bsp", "kernels/moon_pa.bpc"),
+)
+shadow = moon.shadow.compute(method="terrain_ray", dem=dem, sza=sza)
+```
+
+## Limitations
+
+- Reprojection and bilinear interpolation are not implemented; `projection` is used for records and plans.
+- The Sun is treated as a point source, so partial shadow (penumbra) is not computed.
+- `terrain_ray` is slow on large DEMs, and numerical validation with public DEMs and real SPICE kernels has not been done.
+
+To search anomaly locations from published tables, use the [Magnetic Anomaly Catalog](magnetic-anomalies.md).

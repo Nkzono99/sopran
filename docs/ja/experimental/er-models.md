@@ -164,3 +164,38 @@ Halekasは、露出で補正した自然対数の比の二乗残差を最小に�
 自由な`bottom`・`scale`・ビーム・$D_\mathrm{out}$はfinite-bin側の機能です。probitの幅（境界のなまり）と
 $D_\mathrm{out}$（角度の間の輸送）は別のパラメーターです。RMSEを比べるときは単位とマスクをそろえ、
 HalekasのガウスBICとHuberの値は直接比べません。
+
+## 比較用：robust mirror transmissionモデル
+
+```python
+from sopran.experimental.electron_reflection.mirror_transmission import (
+    MirrorTransmissionSettings, fit_mirror_transmission, fit_mirror_transmission_variants, ratio_from_counts,
+)
+
+energy, pitch, ratio, b_sc = ratio_from_counts(counts)      # affected/reference のレート比
+fit = fit_mirror_transmission(energy, pitch, ratio, b_sc, settings=MirrorTransmissionSettings())
+variants = fit_mirror_transmission_variants(energy, pitch, ratio, b_sc)   # 4つの入れ子モデル
+```
+
+lunarsatから移した比較用の推定器（`robust_mirror_transmission_log_ratio_v1`）です。比の自然対数を
+$a_j + A_j\,P(E_j,\alpha_k)$とモデル化し、エネルギー行ごとの基準$a_j$と振幅$A_j$を補助パラメーターとして、
+全行で共有する境界と幅だけを推定します。
+
+$$
+\sin^2\alpha_c = p_0\left(1 + \frac{\Delta U + \beta_1 s^2 + \beta_2 s^3}{E - U_\mathrm{sc}}\right),\quad
+s = \frac{E_*}{E - U_\mathrm{sc} + E_*},\qquad
+P = \Phi\!\left(\frac{\ln\sin^2\alpha - \ln\sin^2\alpha_c}{\sigma(E)}\right)
+$$
+
+| 記号 | 名前 | 意味 |
+|---|---|---|
+| $p_0$ | `p0` | 高エネルギー極限の$B_\mathrm{sc}/B_\mathrm{eff}$。`b_eff_nT = b_sc_reference_nT / p0` |
+| $\Delta U$ | `delta_u_eff_eV` | 電位項（`mirror_only`では0に固定） |
+| $\beta_1, \beta_2$ | `smooth_beta1_eV`, `smooth_beta2_eV` | `smooth_low_energy`の低エネルギー補正。高エネルギー極限は変えない |
+| $\sigma$ | `sigma_ln_b` | 境界の対数幅。`energy_broadened`では$\sqrt{\sigma^2 + (U_w/(E+E_0))^2}$ |
+
+損失は`soft_l1`（`robust_f_scale`=0.2）で、`scipy.optimize.least_squares`を使います。
+`fit.success`は最適化の収束と境界が$0<\sin^2\alpha_c<1$に入ることの両方を要求し、
+`no_edge_rmse_log`（行平均だけのモデル）との差と`aic_log`・`bic_log`で変種を比べます。
+lunarsat版と比べて初期値の決め方（行ごとの閾値交差）だけが簡略で、モデル・範囲・損失は同じです。
+finite-binのcount尤度とは入力と目的関数が異なるため、数値を直接は比べません。

@@ -69,6 +69,9 @@ plugins:
             ERモデルの定義: ER Model Definitions
             ER全期間バッチ: ER Full-Period Batch
             波動候補の抽出: Wave Candidates
+            dHT座標系: dHT Frame
+            衛星電位の代理量: Spacecraft Potential Proxies
+            磁場モデルと軌道: Field Models And Orbits
             リファレンス: Reference
             スキーマ: Schemas
             Storeのファイル構造: Store Layout
@@ -159,6 +162,9 @@ nav:
       - ERモデルの定義: experimental/er-models.md
       - ER全期間バッチ: experimental/er-batch.md
       - 波動候補の抽出: experimental/waves.md
+      - dHT座標系: experimental/dht.md
+      - 衛星電位の代理量: experimental/spacecraft-potential.md
+      - 磁場モデルと軌道: experimental/field-models.md
   - リファレンス:
       - Python API: reference/api.md
       - スキーマ: reference/schemas.md

@@ -12,7 +12,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
-const MOON_RADIUS_KM: f64 = 1737.4;
+pub(crate) const MOON_RADIUS_KM: f64 = 1737.4;
 const SVM_STEP_DEG: f64 = 0.2;
 
 #[derive(Debug)]
@@ -283,16 +283,16 @@ pub(crate) fn evaluate_tsunakawa_svm3d<'py>(
 }
 
 #[derive(Debug, Clone)]
-struct ShellGrid {
+pub(crate) struct ShellGrid {
     longitude_deg: Vec<f64>,
     latitude_deg: Vec<f64>,
-    altitude_km: Vec<f64>,
+    pub(crate) altitude_km: Vec<f64>,
     field_nt: Vec<f64>,
     longitude_step_deg: f64,
 }
 
 impl ShellGrid {
-    fn new(
+    pub(crate) fn new(
         longitude_deg: Vec<f64>,
         latitude_deg: Vec<f64>,
         altitude_km: Vec<f64>,
@@ -324,7 +324,11 @@ impl ShellGrid {
         })
     }
 
-    fn field_at(&self, position_km: [f64; 3], clamp_below_grid: bool) -> Option<[f64; 3]> {
+    pub(crate) fn field_at(
+        &self,
+        position_km: [f64; 3],
+        clamp_below_grid: bool,
+    ) -> Option<[f64; 3]> {
         let radius = norm(position_km);
         if !radius.is_finite() || radius <= 0.0 {
             return None;
@@ -842,7 +846,7 @@ where
     Ok(())
 }
 
-fn lon_lat_alt(position: [f64; 3]) -> [f64; 3] {
+pub(crate) fn lon_lat_alt(position: [f64; 3]) -> [f64; 3] {
     let radius = norm(position);
     if !radius.is_finite() || radius <= 0.0 {
         return [f64::NAN; 3];

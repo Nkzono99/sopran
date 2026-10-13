@@ -120,3 +120,15 @@
 | shadow | lat, lon | fraction | float64 | Moon body-fixed | shadow_map, shadow_fraction | Shadow or shadow-fraction map computed with SZA-threshold or terrain-ray DEM horizon classification. |
 | illumination | lat, lon | fraction | float64 | Moon body-fixed | illumination_map, visibility | Illumination or visibility fraction derived from solar geometry. |
 | sza | lat, lon | deg | float64 | Moon body-fixed | solar_zenith_angle | Solar zenith angle on the lunar surface. |
+
+## omni / hro_5min
+
+| name | dims | units | dtype | frame | aliases | description |
+| --- | --- | --- | --- | --- | --- | --- |
+| velocity | time, component | km/s | float64 | GSE |  | Solar-wind bulk velocity vector at the bow-shock nose; NASA removes the mean Earth aberration from Vy |
+| magnetic_field | time, component | nT | float64 | GSE |  | 5-minute mean interplanetary magnetic field vector |
+| speed | time | km/s | float64 |  |  | Flow speed |
+| density | time | cm^-3 | float64 |  |  | Proton density |
+| pressure | time | nPa | float64 |  |  | Flow pressure |
+| timeshift | time | s | float64 |  |  | Shift applied by NASA from the observing spacecraft to the bow-shock nose |
+| bsn_x | time | Re | float64 | GSE |  | Bow-shock nose x position used for the NASA time shift |

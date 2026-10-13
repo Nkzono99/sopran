@@ -10,8 +10,13 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+mod closure;
+mod dht;
 mod finite_bin;
+mod ridge;
+mod spectrum_edges;
 mod svm3d;
+mod test_particle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Endian {
@@ -227,6 +232,33 @@ fn sopran_native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(bin_energy_pitch, module)?)?;
     module.add_function(wrap_pyfunction!(svm3d::evaluate_tsunakawa_svm3d, module)?)?;
     module.add_function(wrap_pyfunction!(svm3d::trace_svm3d_shell_grid, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        dht::dht_tangential_velocity_batch,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(dht::shift_look_velocity_batch, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        test_particle::trace_test_particles_shell_grid,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        closure::classify_closed_islands_batch,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(ridge::ridge_fit_predict, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        ridge::grouped_ridge_cv_predictions,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(ridge::ridge_external_gain, module)?)?;
+    module.add_function(wrap_pyfunction!(
+        spectrum_edges::infer_low_energy_cutoff,
+        module
+    )?)?;
+    module.add_function(wrap_pyfunction!(
+        spectrum_edges::infer_ion_energy_peak,
+        module
+    )?)?;
     Ok(())
 }
 

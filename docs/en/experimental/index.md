@@ -20,6 +20,10 @@ python -m pip install -e ".[kaguya,viz,experimental]"
 | Tsunakawa SVM3D shell grid and field-line tracing | `sopran.experimental.moon.svm3d` | — |
 | Wave candidate detection, ridge tracking, clustering | `sopran.experimental.waves` | [Wave Candidates](waves.md) |
 | KAGUYA WFC detection presets and quality masks | `sopran.experimental.kaguya.waves` | [Wave Candidates](waves.md) |
+| Pitch-angle spectra in the dHT frame | `sopran.experimental.kaguya.dht` | [dHT Frame](dht.md) |
+| Spacecraft potential proxies, PACE low-level tables | `sopran.experimental.kaguya.spacecraft_potential`, `kaguya.pace_lowlevel` | [Spacecraft Potential Proxies](spacecraft-potential.md) |
+| Mirror-transmission comparison estimator | `sopran.experimental.electron_reflection.mirror_transmission` | [ER Model Definitions](er-models.md) |
+| Test-particle orbits, closed-field islands, field residuals, environment-response regression | `sopran.experimental.moon.test_particle`, `moon.closure`, `kaguya.field_residual`, `statistics.ridge` | [Field Models And Orbits](field-models.md) |
 
 ## Boundary with the regular API
 

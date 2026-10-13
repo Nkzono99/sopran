@@ -18,8 +18,13 @@ Import the specific model or adapter explicitly. Importing `sopran` or
 | `moon.connection` | `svm3d_native_connection_v1` connection screening on SVM3D traces | Same as `moon.svm3d`, plus a connection definition independent of the uniform-residual assumption |
 | `waves`, `kaguya.waves` | Candidate detectors, ridge tracking, clustering and presets | Frozen feature/quality contracts, calibrated labels and instrument comparisons |
 | `moon.svm3d` | Tsunakawa SVM3D shell grid, native RK4 tracing through a uniform external field, interpolation accuracy report | Documented grid build and accuracy limits; a field-line connection contract that is independent of ER |
+| `kaguya.dht` | dHT boost (OMNI aberration restored, Moon and spacecraft motion, HT in the Moon frame) and shifted-frame pitch spectra; coverage drops to about a quarter of records | Agreement with the 2026-09 lunarsat 20-minute validation on real data; a decision on which ER products use the dHT branch |
+| `kaguya.spacecraft_potential`, `kaguya.pace_lowlevel` | ESA edge and ion-peak potential proxies with direct/smoothed/prior gap filling (diagnostic quality); record-level PBF1 tables | Independent potential comparison; ion proxies stay diagnostic until the -57 V offset is explained |
+| `electron_reflection.mirror_transmission` | Ported robust mirror-transmission comparison estimator (shared boundary, per-energy nuisance, soft-L1) | Comparison role only; retire when finite-bin profiles cover the same question |
+| `moon.test_particle`, `moon.closure` | Boris orbits in SVM3D plus uniform field; closed-island labelling | Forward-model recovery of a loss cone against finite-bin; thresholds for closure tied to a documented product |
+| `kaguya.field_residual`, `statistics.ridge` | Residual decomposition, quiet baseline, standardized ridge with track-grouped CV and external gain | Feature contracts for the environment-response study and a saved product definition |
 
-ER inventory reviewed: 2026-10-02; finite-bin count likelihood added 2026-10-10. Finite-bin and Halekas are the retained
+ER inventory reviewed: 2026-10-02; finite-bin count likelihood added 2026-10-10; lunarsat ports (dHT, potential, residual, test particle, mirror transmission) added 2026-10-13. Finite-bin and Halekas are the retained
 estimators. Paired-count, binary, joint, global-joint and incident models,
 their dedicated research helpers and the former standalone JSONL CLI are retired.
 See `docs/ja/experimental/er.md` (English: `docs/en/experimental/er.md`).

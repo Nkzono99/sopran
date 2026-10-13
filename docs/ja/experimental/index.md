@@ -20,6 +20,10 @@ python -m pip install -e ".[kaguya,viz,experimental]"
 | Tsunakawa SVM3Dの殻格子と磁力線追跡 | `sopran.experimental.moon.svm3d` | — |
 | 波動候補の検出・リッジ追跡・クラスタリング | `sopran.experimental.waves` | [波動候補の抽出](waves.md) |
 | KAGUYA WFCの検出プリセットと品質マスク | `sopran.experimental.kaguya.waves` | [波動候補の抽出](waves.md) |
+| dHT座標系へ移したピッチ角分布 | `sopran.experimental.kaguya.dht` | [dHT座標系](dht.md) |
+| 衛星電位の代理量、PACE低レベル表 | `sopran.experimental.kaguya.spacecraft_potential`、`kaguya.pace_lowlevel` | [衛星電位の代理量](spacecraft-potential.md) |
+| 比較用のmirror transmission推定器 | `sopran.experimental.electron_reflection.mirror_transmission` | [ERモデルの定義](er-models.md) |
+| テスト粒子軌道、閉じた磁力線の島、磁場残差、環境応答の回帰 | `sopran.experimental.moon.test_particle`、`moon.closure`、`kaguya.field_residual`、`statistics.ridge` | [磁場モデルと軌道](field-models.md) |
 
 ## 通常APIとの境界
 

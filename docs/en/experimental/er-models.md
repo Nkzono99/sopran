@@ -163,3 +163,38 @@ because empty cells get a ratio of 1 from the pseudocount and would look like th
 Free `bottom`, `scale`, beams, and $D_\mathrm{out}$ belong to finite-bin. The probit width (boundary smoothing) and
 $D_\mathrm{out}$ (transport between angles) are different parameters. When comparing RMSE, match units and masks,
 and do not compare the Halekas Gaussian BIC with Huber values directly.
+
+## For comparison: the robust mirror-transmission model
+
+```python
+from sopran.experimental.electron_reflection.mirror_transmission import (
+    MirrorTransmissionSettings, fit_mirror_transmission, fit_mirror_transmission_variants, ratio_from_counts,
+)
+
+energy, pitch, ratio, b_sc = ratio_from_counts(counts)      # affected/reference rate ratio
+fit = fit_mirror_transmission(energy, pitch, ratio, b_sc, settings=MirrorTransmissionSettings())
+variants = fit_mirror_transmission_variants(energy, pitch, ratio, b_sc)   # four nested models
+```
+
+A comparison estimator ported from lunarsat (`robust_mirror_transmission_log_ratio_v1`). The natural log of the ratio is
+modelled as $a_j + A_j\,P(E_j,\alpha_k)$ with per-energy baseline $a_j$ and contrast $A_j$ nuisance terms; only the
+boundary and width shared across energy are estimated.
+
+$$
+\sin^2\alpha_c = p_0\left(1 + \frac{\Delta U + \beta_1 s^2 + \beta_2 s^3}{E - U_\mathrm{sc}}\right),\quad
+s = \frac{E_*}{E - U_\mathrm{sc} + E_*},\qquad
+P = \Phi\!\left(\frac{\ln\sin^2\alpha - \ln\sin^2\alpha_c}{\sigma(E)}\right)
+$$
+
+| Symbol | Name | Meaning |
+|---|---|---|
+| $p_0$ | `p0` | High-energy asymptote of $B_\mathrm{sc}/B_\mathrm{eff}$; `b_eff_nT = b_sc_reference_nT / p0` |
+| $\Delta U$ | `delta_u_eff_eV` | Potential term (fixed to 0 in `mirror_only`) |
+| $\beta_1, \beta_2$ | `smooth_beta1_eV`, `smooth_beta2_eV` | Low-energy correction of `smooth_low_energy`; the high-energy limit is unchanged |
+| $\sigma$ | `sigma_ln_b` | Log-width of the boundary; `energy_broadened` uses $\sqrt{\sigma^2 + (U_w/(E+E_0))^2}$ |
+
+The loss is `soft_l1` (`robust_f_scale` = 0.2) with `scipy.optimize.least_squares`. `fit.success` requires both optimiser
+convergence and a boundary inside $0<\sin^2\alpha_c<1$; compare variants through the difference from
+`no_edge_rmse_log` (row means only) and through `aic_log`/`bic_log`. Relative to the lunarsat version only the initial guess
+(per-row threshold crossings) is simplified; model, bounds and loss are the same. Its input and objective differ from the
+finite-bin count likelihood, so the numbers are not compared directly.

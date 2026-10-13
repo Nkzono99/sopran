@@ -210,6 +210,17 @@ class Omni:
         self.beta: OmniVariable = OmniVariable(self, "beta")
         self.alfven_mach: OmniVariable = OmniVariable(self, "alfven_mach")
 
+    @property
+    def hro(self) -> Any:
+        """5-minute HRO access (velocity vector in GSE) sharing this Store and download policy."""
+
+        from sopran.missions.omni.hro import OmniHighResolution
+
+        return OmniHighResolution(
+            store=self.store, download=self.download, time=self.time,
+            timeout_seconds=self.timeout_seconds,
+        )
+
     @classmethod
     def from_view(cls, view: View) -> Omni:
         """Build OMNI access whose loads default to the view's time."""
