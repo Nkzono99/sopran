@@ -5,6 +5,7 @@ import types
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.error import HTTPError
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,7 @@ import xarray as xr
 
 import sopran as spn
 from sopran import Store
+from sopran.missions.kaguya import files as kaguya_files
 from sopran.missions.kaguya import geometry as geometry_module
 from sopran.missions.kaguya import spice as kaguya_spice
 from sopran.missions.kaguya.geometry import (
@@ -146,6 +148,7 @@ def test_kaguya_orbit_sza_downloads_default_spice_kernels_when_missing(
         return np.broadcast_to(np.array([1.0, 0.0, 0.0]), (len(times), 3)).copy()
 
     monkeypatch.setattr(kaguya_spice, "_download_file", fake_download_file)
+    _serve_missing_optional_lmag(monkeypatch)
     monkeypatch.setattr(
         geometry_module,
         "spice_sun_vectors_moon_me",
@@ -247,6 +250,7 @@ def test_kaguya_view_orbit_sza_passes_context_spice_kernels(
     _write_lmag_file(project.store)
     kernel = tmp_path / "moon.tm"
     view = project.view(time=spn.day("2008-01-01"), spice_kernels=(kernel,))
+    _serve_missing_optional_lmag(monkeypatch)
 
     def fake_spice_sun_vectors_moon_me(times, *, context, backend, spice_kernels):
         assert context is view.context
@@ -658,6 +662,15 @@ def test_kaguya_scalar_geometry_rejects_non_native_frame_transform(tmp_path) -> 
     assert altitude.schema.frame == "MOON_ME"
     with pytest.raises(ValueError, match="frame transform is only supported"):
         kg.orbit.altitude.load(time, cache="never", frame="GSE")
+
+
+def _serve_missing_optional_lmag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Answer DARTS like the archive does: the optional LMAG file for the day is absent."""
+
+    def fake_urlopen(url, *, timeout):
+        raise HTTPError(url, 404, "Not Found", None, None)
+
+    monkeypatch.setattr(kaguya_files, "urlopen", fake_urlopen)
 
 
 def _write_lmag_file(store: Store):
