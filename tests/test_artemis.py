@@ -196,7 +196,7 @@ def test_artemis_guides_can_switch_language() -> None:
         "https://nkzono99.github.io/sopran/en/data/artemis/"
     )
     assert "ARTEMISは" in mission_ja.to_markdown()
-    assert "lunar-orbiting THEMIS probes" in mission_en.to_markdown()
+    assert "in lunar orbit" in mission_en.to_markdown()
     assert "FGM" in fgm_ja.to_markdown()
     assert "| name | dims | units | dtype | frame | aliases | description |" in (
         fgm_ja.to_markdown()
