@@ -1,0 +1,2854 @@
+
+<!doctype html>
+<html lang="ja" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="衛星観測データの取得、解析、可視化、保存を一貫して扱う Python ライブラリ">
+      
+      
+      
+        <link rel="canonical" href="https://nkzono99.github.io/sopran/data/kaguya/pace/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../esa-mode-policy/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="ja">
+        
+          <link rel="alternate" href="../../../en/data/kaguya/pace/" hreflang="en">
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>PACE - SOPRAN</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/sopran.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pace電子イオン" class="md-skip">
+          コンテンツにスキップ
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="ヘッダー">
+    <a href="../../.." title="SOPRAN" class="md-header__button md-logo" aria-label="SOPRAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SOPRAN
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PACE
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      
+
+
+
+
+
+
+<nav
+  class="md-header__option sopran-language-switcher"
+  aria-label="Lang: 日本語/English"
+  data-label="Lang: 日本語/English"
+  data-fallback-language="ja"
+>
+  <span class="sopran-language-switcher__prefix">Lang</span>
+  <span class="sopran-language-switcher__toggle" role="group" aria-label="Language">
+    
+      
+      <a
+        href="./"
+        hreflang="ja"
+        lang="ja"
+        class="sopran-language-switcher__link sopran-language-switcher__link--active"
+        aria-current="page"
+      >日本語</a>
+    
+      
+      <a
+        href="../../../en/data/kaguya/pace/"
+        hreflang="en"
+        lang="en"
+        class="sopran-language-switcher__link"
+        
+      >English</a>
+    
+  </span>
+</nav>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="検索" placeholder="検索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="検索">
+        
+        <button type="reset" class="md-search__icon md-icon" title="クリア" aria-label="クリア" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            検索を初期化
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Nkzono99/sopran" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Nkzono99/sopran
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="タブ" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  ホーム
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../start/install/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  はじめる
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../guide/arrays/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  ガイド
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  データ
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../experimental/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  試作API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../reference/api/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  リファレンス
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../development/design/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  開発
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="ナビゲーション" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="SOPRAN" class="md-nav__button md-logo" aria-label="SOPRAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SOPRAN
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Nkzono99/sopran" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Nkzono99/sopran
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ホーム
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    はじめる
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    はじめる
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../start/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    インストール
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../start/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    最初の図を描く
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../start/explore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    データの構造をたどる
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../start/reproducible/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    解析条件を残す
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ガイド
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    ガイド
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/arrays/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    読み込んだ配列を扱う
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/plotting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    可視化
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/views-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    期間・領域・解析条件
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    設定
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storeにデータを保存する
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/store-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storeを別マシンへ運ぶ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    時刻をそろえる
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    座標変換
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    バッチ処理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    データ
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    データ
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KAGUYA
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2" id="__nav_4_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    KAGUYA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#変数" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        変数
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#読み込む" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        読み込む
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#エネルギーフラックスの校正" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        エネルギーフラックスの校正
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#欠測値65535" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        欠測値65535
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ピッチ角スペクトル" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ピッチ角スペクトル
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#イオンの3次元分布imaiea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        イオンの3次元分布（IMA・IEA）
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parquetに保存する" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parquetに保存する
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#制約" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        制約
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#出典" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        出典
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../esa-mode-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE ESAのmode判定
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lmag-orbit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LMAGと軌道
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lrs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../artemis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ARTEMIS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lunar-prospector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lunar Prospector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../omni/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OMNI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../moon/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    月面
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    月面
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../moon/magnetic-anomalies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    磁気異常カタログ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../experimental/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    試作API
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    試作API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/er/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    電子反射法
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/er-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERモデルの定義
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/er-batch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ER全期間バッチ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/waves/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    波動候補の抽出
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/dht/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    dHT座標系
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/spacecraft-potential/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    衛星電位の代理量
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../experimental/field-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    磁場モデルと軌道
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    リファレンス
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    リファレンス
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    スキーマ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/store-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storeのファイル構造
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    コマンドライン
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    用語集
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    開発
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    開発
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    設計方針
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    開発環境と検証
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/extending/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    データ源を追加する
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/documentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ドキュメントの書き方
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    リリース
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ライセンスと移植
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#変数" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        変数
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#読み込む" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        読み込む
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#エネルギーフラックスの校正" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        エネルギーフラックスの校正
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#欠測値65535" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        欠測値65535
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ピッチ角スペクトル" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ピッチ角スペクトル
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#イオンの3次元分布imaiea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        イオンの3次元分布（IMA・IEA）
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parquetに保存する" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parquetに保存する
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#制約" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        制約
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#出典" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        出典
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="pace電子イオン">PACE（電子・イオン）<a class="headerlink" href="#pace電子イオン" title="Permanent link">&para;</a></h1>
+<p>PACE（Plasma energy Angle and Composition Experiment）は、KAGUYAに搭載された4台の粒子分析器です。
+SOPRANは公開PBF1（v3.0）を読み、4台とも同じ変数名で扱います。</p>
+<table>
+<thead>
+<tr>
+<th>入口</th>
+<th>センサー</th>
+<th>測る粒子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kg.esa1</code></td>
+<td>ESA-S1</td>
+<td>電子</td>
+</tr>
+<tr>
+<td><code>kg.esa2</code></td>
+<td>ESA-S2</td>
+<td>電子</td>
+</tr>
+<tr>
+<td><code>kg.ima</code></td>
+<td>IMA</td>
+<td>イオン（質量分析）</td>
+</tr>
+<tr>
+<td><code>kg.iea</code></td>
+<td>IEA</td>
+<td>イオン</td>
+</tr>
+</tbody>
+</table>
+<h2 id="変数">変数<a class="headerlink" href="#変数" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>変数</th>
+<th>次元</th>
+<th>単位</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>counts</code></td>
+<td><code>time, energy, look</code></td>
+<td>count</td>
+<td>生のカウント</td>
+</tr>
+<tr>
+<td><code>energy_flux</code></td>
+<td><code>time, energy, look</code></td>
+<td>eV/(cm^2 s sr eV)</td>
+<td>校正テーブルでカウントから求めた微分エネルギーフラックス</td>
+</tr>
+<tr>
+<td><code>energy</code></td>
+<td><code>energy</code></td>
+<td>channel / eV</td>
+<td>未校正ではエネルギーチャンネル番号、校正済みではエネルギー中心値（eV）</td>
+</tr>
+<tr>
+<td><code>quality</code></td>
+<td><code>time</code></td>
+<td>flag</td>
+<td>記録の品質フラグ</td>
+</tr>
+</tbody>
+</table>
+<p><code>look</code>は検出器の視線方向の番号で、方向そのものではありません。方向（極角・方位角）を得るには
+校正テーブルが必要で、下のピッチ角スペクトルはこれを使って計算します。
+<code>energy_flux</code>には別名<code>eflux</code>、<code>differential_energy_flux</code>があります。</p>
+<h2 id="読み込む">読み込む<a class="headerlink" href="#読み込む" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">kg</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">kaguya</span>
+<span class="n">time</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">day</span><span class="p">(</span><span class="s2">"2008-01-01"</span><span class="p">)</span>
+
+<span class="n">flux</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">esa1</span><span class="o">.</span><span class="n">energy_flux</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>       <span class="c1"># SopranArray</span>
+<span class="n">esa1</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">esa1</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>                   <span class="c1"># 機器単位の読み込み結果</span>
+
+<span class="n">esa1</span><span class="o">.</span><span class="n">counts</span><span class="p">,</span> <span class="n">esa1</span><span class="o">.</span><span class="n">energy_flux</span><span class="p">,</span> <span class="n">esa1</span><span class="o">.</span><span class="n">quality</span>
+<span class="n">esa1</span><span class="o">.</span><span class="n">to_xarray</span><span class="p">()</span>                            <span class="c1"># 全変数の xarray.Dataset</span>
+<span class="n">esa1</span><span class="o">.</span><span class="n">to_polars</span><span class="p">(</span><span class="s2">"counts"</span><span class="p">,</span> <span class="n">reduce_look</span><span class="o">=</span><span class="s2">"sum"</span><span class="p">)</span> <span class="c1"># look を合計した表</span>
+<span class="n">esa1</span><span class="o">.</span><span class="n">files</span>                                  <span class="c1"># 元ファイル</span>
+<span class="n">esa1</span><span class="o">.</span><span class="n">pace</span>                                   <span class="c1"># デコード直後のヘッダーと記録</span>
+</code></pre></div>
+<p>元ファイルを直接デコードするには<code>sopran.missions.kaguya.read_pace_pbf(files)</code>を使います。
+デコードはRust拡張で行い、拡張が無い環境ではPythonの参照実装に切り替わります（<code>backend="auto"</code>）。</p>
+<h2 id="エネルギーフラックスの校正">エネルギーフラックスの校正<a class="headerlink" href="#エネルギーフラックスの校正" title="Permanent link">&para;</a></h2>
+<p><code>energy_flux</code>は次の式でカウントから求めます。</p>
+<div class="arithmatex">\[
+\mathrm{energy\_flux} = \frac{\mathrm{counts}}{t_\mathrm{integ}\; G\; \varepsilon}
+\]</div>
+<p><span class="arithmatex">\(t_\mathrm{integ}\)</span>は積分時間、<span class="arithmatex">\(G\)</span>はPACE INFOテーブルのgファクター、<span class="arithmatex">\(\varepsilon\)</span>は検出効率です。
+<span class="arithmatex">\(\varepsilon\)</span>の既定値0.6は、SPEDASの<code>kgy_esa1_get3d.pro</code>・<code>kgy_esa2_get3d.pro</code>が使う一様な値です。
+別の値を使うときは<code>kg.esa1.load(time).to_energy_flux(efficiency=...)</code>を呼びます。</p>
+<p>校正テーブル（INFOとFOV）は既定で自動的に読み込みます。取得元はSPEDASの<code>kgy_read_inf.pro</code>・<code>kgy_read_fov.pro</code>と
+同じ配布元で、HTTPでのみ公開されています。取得したテーブルはURLとsha256をStoreの元ファイル台帳に記録します。
+テーブルが無いと<code>energy_flux</code>の読み込みは例外になり、未校正の値を返すことはありません。
+校正後は<code>energy</code>座標がeVの中心値になり、元のチャンネル番号は<code>energy_channel</code>座標に残ります。</p>
+<div class="highlight"><pre><span></span><code><span class="n">cal</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">esa1</span><span class="o">.</span><span class="n">load_calibration</span><span class="p">(</span><span class="n">download</span><span class="o">=</span><span class="s2">"never"</span><span class="p">)</span>   <span class="c1"># テーブルを明示的に読む</span>
+<span class="n">esa1</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">esa1</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">calibration</span><span class="o">=</span><span class="n">cal</span><span class="p">)</span>
+</code></pre></div>
+<p>4台とも同じ式とテーブルの読み方で計算します。回帰テストはESA1で行っており、
+ESA2・IMA・IEAのフラックスはSPEDASとの数値照合をまだ行っていません。</p>
+<h2 id="欠測値65535">欠測値65535<a class="headerlink" href="#欠測値65535" title="Permanent link">&para;</a></h2>
+<p>PBF1のカウントは16ビット符号なし整数です。SOPRANは、SPEDASのPACE読み込み処理（<code>kgy_read_pbf.pro</code>、
+<code>kgy_esa1_get3d.pro</code>）に合わせて、最大値<code>65535</code>を欠測としてNaNに変えます。
+確認したPDS3ラベルには<code>MISSING_CONSTANT</code>のような欠測値の宣言はありません。ゼロのカウントはゼロのまま残します。</p>
+<h2 id="ピッチ角スペクトル">ピッチ角スペクトル<a class="headerlink" href="#ピッチ角スペクトル" title="Permanent link">&para;</a></h2>
+<p><code>pitch_angle_spectrum()</code>は、校正テーブルで<code>look</code>を方向に戻し、磁場とのなす角でビンに分けて
+<code>time × energy × pitch_angle</code>の配列を作ります。</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sopran.missions.kaguya</span><span class="w"> </span><span class="kn">import</span> <span class="n">selene_spice_kernels</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">lmag</span><span class="o">.</span><span class="n">magnetic_field</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>                         <span class="c1"># MOON_ME</span>
+<span class="n">frames</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">FrameContext</span><span class="p">(</span><span class="n">spice_kernels</span><span class="o">=</span><span class="n">selene_spice_kernels</span><span class="p">(</span><span class="n">kg</span><span class="o">.</span><span class="n">store</span><span class="p">,</span> <span class="n">time</span><span class="p">))</span>   <span class="c1"># 月と機体姿勢のカーネルを取得</span>
+
+<span class="n">pas</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">esa1</span><span class="o">.</span><span class="n">energy_flux</span><span class="o">.</span><span class="n">pitch_angle_spectrum</span><span class="p">(</span>
+    <span class="n">time</span><span class="p">,</span>
+    <span class="n">magnetic_field</span><span class="o">=</span><span class="n">b</span><span class="p">,</span>
+    <span class="n">frame_context</span><span class="o">=</span><span class="n">frames</span><span class="p">,</span>             <span class="c1"># MOON_ME の磁場を PACE の視線の座標系へ回す</span>
+    <span class="n">pitch_bins</span><span class="o">=</span><span class="s2">"native"</span><span class="p">,</span>
+    <span class="n">cache</span><span class="o">=</span><span class="s2">"use"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">pas</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>                                          <span class="c1"># ピッチ角と時刻、エネルギーと時刻の2段</span>
+<span class="n">pas</span><span class="o">.</span><span class="n">energy_spectrogram</span><span class="p">(</span><span class="n">pitch</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">),</span> <span class="n">log_color</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p><code>magnetic_field=[1.0, 0.0, 0.0]</code>のように視線と同じ座標系の固定ベクトルを渡せば、カーネル無しで試せます。</p>
+<table>
+<thead>
+<tr>
+<th>引数</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>magnetic_field</code></td>
+<td>必須。PACEの視線と同じ座標系のベクトル、または座標系を持つ<code>SopranArray</code></td>
+</tr>
+<tr>
+<td><code>look_frame</code>、<code>magnetic_frame</code></td>
+<td>視線（既定<code>SELENE_M_SPACECRAFT</code>）と磁場の座標系。異なるときは<code>frame_context</code>に<code>FrameContext</code>を渡す</td>
+</tr>
+<tr>
+<td><code>pitch_bins</code></td>
+<td><code>"native"</code>（4×16方向の記録は16ビン、16×64方向は32ビン。混在する日は大きい方）、ビン数、またはビン境界</td>
+</tr>
+<tr>
+<td><code>min_look_bins</code></td>
+<td>ピッチ角ビンに入る視線の最小数</td>
+</tr>
+<tr>
+<td><code>count_correction</code></td>
+<td><code>"none"</code>（既定）、<code>"event"</code>、<code>"trash"</code>、<code>"event_trash"</code>。SPEDASの<code>/cntcorr</code>に相当する補正</td>
+</tr>
+<tr>
+<td><code>cache</code></td>
+<td><code>"use"</code>なら同じ引数の結果を<code>features</code>層に保存して再利用する</td>
+</tr>
+</tbody>
+</table>
+<p><code>count_correction="trash"</code>は、捨てられたカウント（trash counter）を方位方向に配り直し、<code>"event"</code>は隣り合う
+エネルギーの組をイベントカウンターに合わせて拡大します。補正は倍率として別に持ち、生のカウントは整数のまま残します。</p>
+<p>結果には、記録ごとの露出時間と、<code>pace_data_mode</code>、<code>pace_data_type</code>、<code>pace_submode</code>、<code>pace_svs_tbl</code>、
+<code>pace_data_quality</code>、<code>record_duration_seconds</code>の座標が付きます。ピッチ角に使える記録かどうかは
+観測モードから判定しており、その規則は<a href="../esa-mode-policy/">PACE ESAのmode判定</a>にあります。</p>
+<h2 id="イオンの3次元分布imaiea">イオンの3次元分布（IMA・IEA）<a class="headerlink" href="#イオンの3次元分布imaiea" title="Permanent link">&para;</a></h2>
+<p><code>ion_distribution()</code>は、IMA・IEAの記録をSPEDASの<code>kgy_ima_get3d</code>・<code>kgy_iea_get3d</code>と同じ形の
+3次元分布にし、記録の型ごとに<code>PaceIon3D</code>で返します。</p>
+<div class="highlight"><pre><span></span><code><span class="n">time</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">day</span><span class="p">(</span><span class="s2">"2009-02-17"</span><span class="p">)</span>
+<span class="n">iea</span> <span class="o">=</span> <span class="n">kg</span><span class="o">.</span><span class="n">iea</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">calibration</span><span class="o">=</span><span class="n">kg</span><span class="o">.</span><span class="n">iea</span><span class="o">.</span><span class="n">load_calibration</span><span class="p">())</span><span class="o">.</span><span class="n">ion_distribution</span><span class="p">(</span>
+    <span class="n">count_correction</span><span class="o">=</span><span class="s2">"event_trash"</span>
+<span class="p">)</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">iea</span><span class="p">[</span><span class="mh">0x81</span><span class="p">]</span>                       <span class="c1"># 32 energy × 16 polar × 64 azimuth</span>
+<span class="n">d</span><span class="o">.</span><span class="n">counts</span>                            <span class="c1"># (record, 32, bin)、bin = polar + azimuth × 16</span>
+<span class="n">d</span><span class="o">.</span><span class="n">to_units</span><span class="p">(</span><span class="s2">"eflux"</span><span class="p">)</span>                 <span class="c1"># counts / rate / eflux / flux / df</span>
+<span class="n">d</span><span class="o">.</span><span class="n">density</span><span class="p">()</span>                         <span class="c1"># cm^-3</span>
+<span class="n">d</span><span class="o">.</span><span class="n">velocity</span><span class="p">()</span>                        <span class="c1"># km/s、SELENE_M_SPACECRAFT</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sopran.frames</span><span class="w"> </span><span class="kn">import</span> <span class="n">FrameContext</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sopran.missions.kaguya</span><span class="w"> </span><span class="kn">import</span> <span class="n">selene_spice_kernels</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">FrameContext</span><span class="p">(</span><span class="n">spice_kernels</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">selene_spice_kernels</span><span class="p">(</span><span class="n">kg</span><span class="o">.</span><span class="n">store</span><span class="p">,</span> <span class="n">time</span><span class="p">))))</span>
+<span class="n">d</span><span class="o">.</span><span class="n">velocity</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="s2">"MOON_ME"</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+<span class="n">d</span><span class="o">.</span><span class="n">directions</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="s2">"MOON_ME"</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>   <span class="c1"># 各ビンの粒子の進む向き</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>型</th>
+<th>センサー</th>
+<th>形</th>
+<th>扱い</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0x40</td>
+<td>IMA</td>
+<td>4 polar × 32 energy × 1024 TOF</td>
+<td>TOFを合計。方位角なし（dphi = 360°）、幾何因子は方位角チャンネル4</td>
+</tr>
+<tr>
+<td>0x41</td>
+<td>IMA</td>
+<td>32 × 16 × 64</td>
+<td></td>
+</tr>
+<tr>
+<td>0x42</td>
+<td>IMA</td>
+<td>32 × 4 × 16</td>
+<td></td>
+</tr>
+<tr>
+<td>0x43</td>
+<td>IMA</td>
+<td>8 mass × 32 × 4 × 16</td>
+<td>質量チャンネルを合計</td>
+</tr>
+<tr>
+<td>0x80</td>
+<td>IEA</td>
+<td>32 × 4 × 16</td>
+<td></td>
+</tr>
+<tr>
+<td>0x81</td>
+<td>IEA</td>
+<td>32 × 16 × 64</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>これ以外の型（IMA 0x44・0x45、IEA 0x82）はSPEDASも扱っておらず、読み飛ばした件数を<code>notes</code>に残します。</p>
+<ul>
+<li>エネルギー・角度・幾何因子はINFOテーブルから、エネルギー・極角の並び番号で配置します（<code>angles="fov"</code>でFOVテーブル）。
+  RAM表ごとに一つの格子を<code>grids</code>に持ち、<code>grid_index</code>で記録と対応させます。</li>
+<li><code>theta_deg</code>・<code>phi_deg</code>は粒子の進む向きです。2009-02-17の太陽風で、IEAの速度を<code>MOON_ME</code>へ変換すると
+  速さの99.7%が反太陽方向でした。</li>
+<li>IMAの質量チャンネルは合計し、陽子として扱います（SPEDASと同じ）。</li>
+<li>単位は<code>kgy_pace_convert_units</code>、モーメントは<code>kgy_n_3d</code>・<code>kgy_j_3d</code>と同じ式で、効率は0.6です（SPEDASの仮の値）。
+  不感時間の補正は含みません。</li>
+<li>カウント補正はSPEDASの<code>/cntcorr</code>と同じです。IMAのevent補正にはTOFのevent 3行の和を使い、
+  型0x40にはtrashがないのでevent補正だけを行います。</li>
+<li>SPEDASとの違い：質量チャンネルがすべて欠測のセルはNaNのままにします（SPEDASは0）。
+  エネルギー幅<code>denergy_eV</code>は絶対値にします。</li>
+</ul>
+<p>2009-02-17（太陽風）で確かめた値：IEAの速さはOMNIの0.99–1.00倍、密度は0.46–0.70倍。
+昼側（SZA &lt; 45°）のIMAでは、月から離れる向きの流束が太陽風の流束（OMNIのnv）の約0.7–0.9%。</p>
+<h2 id="parquetに保存する">Parquetに保存する<a class="headerlink" href="#parquetに保存する" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">record</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">kg</span><span class="o">.</span><span class="n">esa1</span><span class="o">.</span><span class="n">energy_flux</span><span class="o">.</span><span class="n">pipeline</span><span class="p">(</span><span class="n">spn</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="s2">"2008-01-01"</span><span class="p">,</span> <span class="s2">"2008-01-03"</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">calibrate</span><span class="p">(</span><span class="n">calibration</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"kaguya.esa1.energy_flux"</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s2">"normalized"</span><span class="p">,</span> <span class="n">partition</span><span class="o">=</span><span class="s2">"day"</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>カウントのまま保存するときは<code>kg.esa1.counts.pipeline(...)</code>から<code>calibrate</code>を除きます。
+実行方法の詳細は<a href="../../../guide/pipeline/">バッチ処理</a>にあります。</p>
+<h2 id="制約">制約<a class="headerlink" href="#制約" title="Permanent link">&para;</a></h2>
+<ul>
+<li>保存したParquetには、<code>look</code>の方向（極角・方位角）とエネルギーの座標情報をまだ含めていません。</li>
+<li>ESA2・IMA・IEAのエネルギーフラックスは、SPEDASとの数値照合が未実施です。</li>
+<li><code>ion_distribution()</code>の密度は効率を0.6と置いた値で、IEAの太陽風密度はOMNIより3–5割小さくなります。
+  IMAのTOFによる質量の分離（<code>kgy_read_tof</code>）はまだありません。</li>
+<li><code>data_quality</code>のビットの意味は公開資料で確定していないため、値はそのまま<code>pace_data_quality</code>に残します。</li>
+</ul>
+<h2 id="出典">出典<a class="headerlink" href="#出典" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://data.darts.isas.jaxa.jp/pub/pds3/sln-l-pace-3-pbf1-v3.0/20071107/document/PACE_Format_en_V01.pdf">PACE形式説明（JAXA DARTS）</a></li>
+<li><a href="https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_read_pbf.pro">SPEDAS <code>kgy_read_pbf.pro</code></a>、
+  <a href="https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_esa1_get3d.pro"><code>kgy_esa1_get3d.pro</code></a>、
+  <a href="https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_ima_get3d.pro"><code>kgy_ima_get3d.pro</code></a>、
+  <a href="https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_iea_get3d.pro"><code>kgy_iea_get3d.pro</code></a>、
+  <a href="https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_pace_convert_units.pro"><code>kgy_pace_convert_units.pro</code></a></li>
+<li>Saito, Y., et al. (2008), Solar wind proton reflection at the lunar surface: Low energy ion measurement by MAP-PACE onboard SELENE (KAGUYA), GRL.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="フッター" >
+        
+          
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="前: 概要">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                前
+              </span>
+              <div class="md-ellipsis">
+                概要
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../esa-mode-policy/" class="md-footer__link md-footer__link--next" aria-label="次: PACE ESAのmode判定">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                次
+              </span>
+              <div class="md-ellipsis">
+                PACE ESAのmode判定
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.footer", "toc.follow", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f", "clipboard.copy": "\u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u3078\u30b3\u30d4\u30fc", "search.result.more.one": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3082\u30461\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.more.other": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3042\u3068#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.none": "\u4f55\u3082\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3067\u3057\u305f", "search.result.one": "1\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.other": "#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.placeholder": "\u691c\u7d22\u30ad\u30fc\u30ef\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044", "search.result.term.missing": "\u691c\u7d22\u306b\u542b\u307e\u308c\u306a\u3044", "select.version": "\u30d0\u30fc\u30b8\u30e7\u30f3\u5207\u308a\u66ff\u3048"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

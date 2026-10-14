@@ -1,0 +1,2922 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python library for retrieving, analyzing, visualizing, and storing satellite observations">
+      
+      
+      
+        <link rel="canonical" href="https://nkzono99.github.io/sopran/en/experimental/er-models/">
+      
+      
+        <link rel="prev" href="../er/">
+      
+      
+        <link rel="next" href="../er-batch/">
+      
+      
+        
+          <link rel="alternate" href="../../../experimental/er-models/" hreflang="ja">
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>ER Model Definitions - SOPRAN</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/sopran.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#er-model-definitions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../" title="SOPRAN" class="md-header__button md-logo" aria-label="SOPRAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SOPRAN
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ER Model Definitions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      
+
+
+
+
+
+
+<nav
+  class="md-header__option sopran-language-switcher"
+  aria-label="Lang: 日本語/English"
+  data-label="Lang: 日本語/English"
+  data-fallback-language="ja"
+>
+  <span class="sopran-language-switcher__prefix">Lang</span>
+  <span class="sopran-language-switcher__toggle" role="group" aria-label="Language">
+    
+      
+      <a
+        href="../../../experimental/er-models/"
+        hreflang="ja"
+        lang="ja"
+        class="sopran-language-switcher__link"
+        
+      >日本語</a>
+    
+      
+      <a
+        href="./"
+        hreflang="en"
+        lang="en"
+        class="sopran-language-switcher__link sopran-language-switcher__link--active"
+        aria-current="page"
+      >English</a>
+    
+  </span>
+</nav>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Nkzono99/sopran" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Nkzono99/sopran
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../start/install/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/arrays/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../data/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Data
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Experimental
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/api/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/design/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../" title="SOPRAN" class="md-nav__button md-logo" aria-label="SOPRAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SOPRAN
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Nkzono99/sopran" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Nkzono99/sopran
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First Plot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/explore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exploring Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/reproducible/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reproducible Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/arrays/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working With Arrays
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/plotting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plotting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/views-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time, Regions, And Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storing Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/store-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Moving A Store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coordinate Frames
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../data/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../data/kaguya/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KAGUYA
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    KAGUYA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/pace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/esa-mode-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE ESA Mode Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/lmag-orbit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LMAG And Orbit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/lrs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/artemis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ARTEMIS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/lunar-prospector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lunar Prospector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/omni/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OMNI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../data/moon/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Moon
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Moon
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/moon/magnetic-anomalies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Magnetic Anomaly Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Experimental
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Experimental
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../er/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Electron Reflectometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ER Model Definitions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ER Model Definitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#finite-bin-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        finite-bin model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="finite-bin model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-equation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model equation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#angular-transport-d_mathrmout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Angular transport \(D_\mathrm{out}\)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#objective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Objective
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cells-used-in-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cells used in the fit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#numerics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Numerics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#profile-intervals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profile intervals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixing-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixing parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#halekas-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Halekas model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-comparison-the-robust-mirror-transmission-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For comparison: the robust mirror-transmission model
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../er-batch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ER Full-Period Batch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../waves/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wave Candidates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dht/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    dHT Frame
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spacecraft-potential/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacecraft Potential Proxies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../field-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Field Models And Orbits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/store-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Store Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup And Checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/extending/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding A Data Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/documentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License And Porting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#finite-bin-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        finite-bin model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="finite-bin model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-equation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model equation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#angular-transport-d_mathrmout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Angular transport \(D_\mathrm{out}\)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#objective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Objective
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cells-used-in-the-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cells used in the fit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#numerics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Numerics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quality-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#profile-intervals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profile intervals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixing-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixing parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#halekas-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Halekas model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-comparison-the-robust-mirror-transmission-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For comparison: the robust mirror-transmission model
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="er-model-definitions">ER Model Definitions<a class="headerlink" href="#er-model-definitions" title="Permanent link">&para;</a></h1>
+<p>This page defines the model, objective, numerics, and quality checks of the two estimators used in <a href="../er/">Electron Reflectometry</a>.
+Both take <code>ElectronReflectionCounts</code> over energy × folded pitch angle (affected and reference counts and exposures).</p>
+<h2 id="finite-bin-model">finite-bin model<a class="headerlink" href="#finite-bin-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sopran.experimental.electron_reflection</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FiniteBinFitSettings</span><span class="p">,</span> <span class="n">FiniteBinObservation</span><span class="p">,</span> <span class="n">fit_finite_bin_distribution</span><span class="p">,</span> <span class="n">profile_mirror_ratio</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">observation</span> <span class="o">=</span> <span class="n">FiniteBinObservation</span><span class="o">.</span><span class="n">from_counts</span><span class="p">(</span>
+    <span class="n">counts</span><span class="p">,</span> <span class="n">energy_edges_eV</span><span class="o">=</span><span class="n">energy_edges</span><span class="p">,</span> <span class="n">pitch_edges_deg</span><span class="o">=</span><span class="n">folded_pitch_edges</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">fit_finite_bin_distribution</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="n">FiniteBinFitSettings</span><span class="p">())</span>
+<span class="n">profile</span> <span class="o">=</span> <span class="n">profile_mirror_ratio</span><span class="p">(</span><span class="n">observation</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="model-equation">Model equation<a class="headerlink" href="#model-equation" title="Permanent link">&para;</a></h3>
+<p>The incident flux, integrated over solid angle, is multiplied by the reflectance and a beam, moved by the angular transport <span class="arithmatex">\(D_\mathrm{out}\)</span>,
+and mapped back to observed ratios through ideal bin responses uniform in log energy and pitch angle.</p>
+<div class="arithmatex">\[
+N_\mathrm{out} = D_\mathrm{out}\left\{ s\left[\rho + (1-\rho)P_0\right] N_\mathrm{in} + N_\mathrm{beam} \right\},
+\qquad
+\sin^2\alpha_c = \frac{1 + \Delta U / E}{R_m}.
+\]</div>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Name in <code>result.parameters</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(R_m\)</span></td>
+<td><code>mirror_ratio</code></td>
+<td>Magnetic mirror ratio; <span class="arithmatex">\(B_\mathrm{eff} = R_m B_\mathrm{sc}\)</span> (<code>result.effective_field_nT</code>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\Delta U\)</span></td>
+<td><code>delta_u_eV</code></td>
+<td>Potential difference, surface minus spacecraft (eV)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\rho\)</span></td>
+<td><code>bottom_ratio</code></td>
+<td>Relative level inside the loss cone; inside is <span class="arithmatex">\(s\rho\)</span>, outside <span class="arithmatex">\(s\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(s\)</span></td>
+<td><code>scale</code></td>
+<td>Overall scale</td>
+</tr>
+<tr>
+<td></td>
+<td><code>sigma_deg</code></td>
+<td>Diffusion strength of <span class="arithmatex">\(D_\mathrm{out}\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\phi\)</span></td>
+<td><code>concentration</code></td>
+<td>Beta-binomial concentration</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\alpha_c\)</span></td>
+<td></td>
+<td>Pitch angle of the loss-cone boundary</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(P_0\)</span></td>
+<td></td>
+<td>Reflection indicator: 1 outside the boundary, 0 inside</td>
+</tr>
+</tbody>
+</table>
+<p>Search ranges are set with <code>mirror_ratio_bounds</code>, <code>delta_u_bounds_eV</code>, <code>bottom_ratio_bounds</code>, <code>scale_bounds</code>,
+<code>sigma_bounds_deg</code>, and <code>concentration_bounds</code> in <code>FiniteBinFitSettings</code>.</p>
+<p>The <strong>beam</strong> is enabled by default and disabled with <code>beam_enabled=False</code>. There are four shapes combining log-energy widths 0.15 and 0.30
+with pitch widths 10° and 20°. The amplitude is chosen continuously within <code>beam_amplitude_bounds</code> (default 0.25–8)
+by a one-dimensional golden-section search per shape at every evaluation. In results, <code>beam_template</code> is 0 for no beam,
+otherwise <code>1 + 2*energy_index + pitch_index</code>, and the amplitude is <code>beam_amplitude</code>.</p>
+<p>A <strong>known efficiency ratio</strong> is added to the model ratio as the observation's <code>model_offset_dex</code> (log10 of the affected/reference efficiency ratio).
+<code>scale_prior_sigma_dex</code> places a zero-centered Gaussian prior on <span class="arithmatex">\(\log_{10}s\)</span> (count losses only).
+Together with the offset, it moves the prior center to a calibration value.</p>
+<h3 id="angular-transport-d_mathrmout">Angular transport <span class="arithmatex">\(D_\mathrm{out}\)</span><a class="headerlink" href="#angular-transport-d_mathrmout" title="Permanent link">&para;</a></h3>
+<p>Enable it with <code>FiniteBinFitSettings(angular_transport="out")</code>; the default <code>"none"</code> is diagonal (no transport).</p>
+<p><code>result.d_out[j_out, j_in]</code> is the probability of moving from a source bin to a destination bin, and each column sums to 1. Its axis edges are
+<code>result.transport_pitch_edges_deg</code>; use <code>100 * result.d_out</code> to display percentages.
+It acts after reflection and the beam and never mixes energies. It is axisymmetric diffusion with no-flux boundaries at 0° and 90° of the folded hemisphere,
+which keeps an isotropic flux stationary. <code>sigma_deg</code> is a diffusion parameter that matches the RMS direction change in the small-angle limit;
+for large values it is not the simple Gaussian standard deviation of pitch-angle differences. Zero reproduces the diagonal case.</p>
+<h3 id="objective">Objective<a class="headerlink" href="#objective" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th><code>loss</code></th>
+<th>Observable</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"beta_binomial"</code> (default)</td>
+<td>Affected counts given affected + reference trials</td>
+<td>Main analysis; systematic overdispersion is absorbed by the concentration <span class="arithmatex">\(\phi\)</span></td>
+</tr>
+<tr>
+<td><code>"binomial"</code></td>
+<td>Same</td>
+<td>Comparison assuming statistical errors only</td>
+</tr>
+<tr>
+<td><code>"huber"</code> (default 0.1 dex)</td>
+<td><span class="arithmatex">\(\log_{10}(a/r)\)</span></td>
+<td>Flux-only inputs, comparison with earlier analyses</td>
+</tr>
+<tr>
+<td><code>"squared"</code></td>
+<td><span class="arithmatex">\(\log_{10}(a/r)\)</span></td>
+<td>Comparison</td>
+</tr>
+</tbody>
+</table>
+<p>Count losses treat the affected count <span class="arithmatex">\(a\)</span> as binomial with <span class="arithmatex">\(n = a + r\)</span> trials. The affected probability is <span class="arithmatex">\(q = \lambda/(1+\lambda)\)</span>
+with <span class="arithmatex">\(\lambda = x\,10^{c}R\)</span>, where <span class="arithmatex">\(R\)</span> is the model ratio, <span class="arithmatex">\(x\)</span> the affected/reference exposure ratio, and <span class="arithmatex">\(c\)</span> <code>model_offset_dex</code>.
+The beta-binomial has mean <span class="arithmatex">\(q\)</span> and concentration <span class="arithmatex">\(\phi\)</span>, estimated jointly with the other parameters.
+<code>objective_sum</code> is the <span class="arithmatex">\(-2\log L\)</span> difference from the saturated binomial likelihood (the deviance), so differences between two fits read on a χ² scale.
+Count losses need an observation with counts (created with <code>from_counts</code>).</p>
+<p>The Huber objective of a residual <span class="arithmatex">\(r\)</span> is <span class="arithmatex">\(r^2\)</span> for <span class="arithmatex">\(|r| \le 0.1\)</span> and <span class="arithmatex">\(0.2|r| - 0.01\)</span> otherwise.
+<code>objective_sum</code> and the per-cell <code>objective_mean</code> are returned. <code>root_mean_square_error_dex</code> is computed separately from squared residuals
+and is distinct from the objective value.</p>
+<h3 id="cells-used-in-the-fit">Cells used in the fit<a class="headerlink" href="#cells-used-in-the-fit" title="Permanent link">&para;</a></h3>
+<p><code>from_counts</code> defaults to <code>selection="total"</code> and <code>min_counts=1</code>, keeping cells with <span class="arithmatex">\(a + r \ge 1\)</span>.
+Cells with <span class="arithmatex">\(a = 0\)</span> enter the objective as information from inside the loss cone.
+<code>selection="paired", min_counts=5</code> is the earlier selection that requires at least five counts on both sides. Because it selects on affected counts,
+cells deep in the loss cone drop out and <span class="arithmatex">\(\rho\)</span> is biased upward. On synthetic counts with true <span class="arithmatex">\(\rho = 0.15\)</span>,
+paired + Huber gave 0.18–0.6 and total + beta-binomial gave 0.15.</p>
+<p>With either selection, only energies with at least three pitch angles and exposure ratios between 0.01 and 100 are fitted.
+Log ratios use a pseudocount of 0.5 and serve RMSE and figures. Instrument calibration and potential corrections happen before this fit,
+and the incident flux keeps relative values across pitch angles within each energy.</p>
+<p>Missing incident bins are interpolated in log flux within the same energy, with the nearest value at the ends.
+Interpolated bins are returned in <code>interpolated_incident_bins</code>, and the missing cells themselves are not added to the objective.
+Interpolated incident flux flows into observed cells through <span class="arithmatex">\(D_\mathrm{out}\)</span>, so many gaps make input assumptions matter.
+Reconstructions for unused energy rows stay NaN.</p>
+<h3 id="numerics">Numerics<a class="headerlink" href="#numerics" title="Permanent link">&para;</a></h3>
+<p>Reflection boundaries and beams are evaluated with composite 17-point Gauss quadrature, and each pitch bin is split into 8 by default.
+The search uses seeded differential evolution (35 candidates, 180 generations, 2 seeds) and bounded Nelder–Mead (up to 650 iterations).
+When <code>starts</code> is omitted, Nelder–Mead also starts from 12 points: <span class="arithmatex">\(R_m\)</span> = 1.2, 2, 5, 20 and <span class="arithmatex">\(\Delta U\)</span> = −50, 0, +50 eV,
+because differential evolution alone missed the best minimum in 2 of 7 KAGUYA windows.
+Everything from the response to the optimization runs in Rust, with no Python callbacks and no implicit fallback to Python.</p>
+<h3 id="quality-checks">Quality checks<a class="headerlink" href="#quality-checks" title="Permanent link">&para;</a></h3>
+<p><code>local_converged</code> reports local solver termination, and <code>at_bounds</code> that a free parameter sits at its search bound.
+<code>field_unconstrained</code> is True when any of the following <code>field_flags</code> is set.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no_contrast</code></td>
+<td><span class="arithmatex">\(\rho \ge 0.99\)</span></td>
+</tr>
+<tr>
+<td><code>barrier_unobserved</code></td>
+<td>All fitted cells lie on one side of the boundary</td>
+</tr>
+<tr>
+<td><code>field_at_search_bound</code></td>
+<td><span class="arithmatex">\(R_m\)</span> at its search bound</td>
+</tr>
+<tr>
+<td><code>boundary_rows_insufficient</code></td>
+<td>Fewer energy rows with cells on both sides of the boundary than <code>min_boundary_rows</code> (default 3)</td>
+</tr>
+<tr>
+<td><code>loss_cone_unsupported</code></td>
+<td><code>loss_cone_delta_bic</code> ≤ 0 with a count loss</td>
+</tr>
+</tbody>
+</table>
+<p><code>loss_cone_delta_objective</code> is the objective difference between two models that allow free levels per energy row: no loss cone (<span class="arithmatex">\(\rho = 1\)</span>)
+and the fitted loss cone, with the same beam. A step only in energy is explained by both, so this difference measures whether pitch-angle structure is needed.
+<code>loss_cone_delta_bic</code> subtracts <span class="arithmatex">\(k\ln N\)</span>, where <span class="arithmatex">\(k\)</span> is the number of free parameters among <span class="arithmatex">\(R_m\)</span>, <span class="arithmatex">\(\rho\)</span>, and <span class="arithmatex">\(\Delta U\)</span>.
+On real data a certain fraction of windows is <code>loss_cone_unsupported</code>, and the fraction is higher for solutions with <span class="arithmatex">\(R_m \le 1\)</span>.</p>
+<h3 id="profile-intervals">Profile intervals<a class="headerlink" href="#profile-intervals" title="Permanent link">&para;</a></h3>
+<p>No flags is not proof of identifiability, so adopt field values through <code>profile_mirror_ratio</code>.
+It fixes <span class="arithmatex">\(R_m\)</span> on a grid (default ±1 dex, 21 points) and re-optimizes the other parameters from nearby solutions.
+With count losses, <span class="arithmatex">\(\Delta\)</span><code>objective</code> ≤ 3.84 defines the 95% interval, with ends interpolated between grid points.</p>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>interval_nT</code></td>
+<td>95% interval of <span class="arithmatex">\(B_\mathrm{eff}\)</span></td>
+</tr>
+<tr>
+<td><code>interval_bounded=False</code></td>
+<td>The interval reached the edge of the grid</td>
+</tr>
+<tr>
+<td><code>improved_minimum=True</code></td>
+<td>The fit missed a better minimum, returned as <code>minimum_fit</code></td>
+</tr>
+</tbody>
+</table>
+<p>Results of <code>evaluate</code> with fixed parameters have <code>local_converged</code> False.</p>
+<h3 id="fixing-parameters">Fixing parameters<a class="headerlink" href="#fixing-parameters" title="Permanent link">&para;</a></h3>
+<p>Equal lower and upper bounds fix a parameter. For example, to fix <span class="arithmatex">\(B_\mathrm{eff}\)</span> to a regional mean field and refit <span class="arithmatex">\(\Delta U\)</span> and the rest, use
+<code>mirror_ratio_bounds=(area_mean_nT / b_sc, area_mean_nT / b_sc)</code>.
+<code>bottom_ratio_bounds=(0.1, 0.1)</code> and <code>scale_bounds=(1, 1)</code> compare finite-bin at the fixed 0.1/1 levels.</p>
+<h2 id="halekas-model">Halekas model<a class="headerlink" href="#halekas-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sopran.experimental.electron_reflection</span><span class="w"> </span><span class="kn">import</span> <span class="n">HalekasFitSettings</span><span class="p">,</span> <span class="n">fit_halekas_distribution</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">fit_halekas_distribution</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="n">HalekasFitSettings</span><span class="p">())</span>
+</code></pre></div>
+<p>Halekas minimizes squared residuals of exposure-corrected natural-log ratios. Cells with <span class="arithmatex">\(a + r\)</span> below <code>min_cell_total_counts</code> (default 1) are dropped,
+because empty cells get a ratio of 1 from the pseudocount and would look like the loss cone is absent.
+<code>root_mean_square_error</code> is in natural-log units; divide by <code>np.log(10)</code> before comparing with a dex RMSE on the same input and mask.</p>
+<table>
+<thead>
+<tr>
+<th><code>edge_transition</code></th>
+<th>Model and search</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"hard"</code> (default)</td>
+<td>Binary distribution with fixed backscatter (default 0.1) and outer level 1, evaluated at bin centers; grid search and refinement over <span class="arithmatex">\(R_m\)</span> and <span class="arithmatex">\(\Delta U\)</span></td>
+</tr>
+<tr>
+<td><code>"probit"</code></td>
+<td>Same levels with a boundary width; L-BFGS-B starting from the hard solution and others</td>
+</tr>
+</tbody>
+</table>
+<p>Free <code>bottom</code>, <code>scale</code>, beams, and <span class="arithmatex">\(D_\mathrm{out}\)</span> belong to finite-bin. The probit width (boundary smoothing) and
+<span class="arithmatex">\(D_\mathrm{out}\)</span> (transport between angles) are different parameters. When comparing RMSE, match units and masks,
+and do not compare the Halekas Gaussian BIC with Huber values directly.</p>
+<h2 id="for-comparison-the-robust-mirror-transmission-model">For comparison: the robust mirror-transmission model<a class="headerlink" href="#for-comparison-the-robust-mirror-transmission-model" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">sopran.experimental.electron_reflection.mirror_transmission</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MirrorTransmissionSettings</span><span class="p">,</span> <span class="n">fit_mirror_transmission</span><span class="p">,</span> <span class="n">fit_mirror_transmission_variants</span><span class="p">,</span> <span class="n">ratio_from_counts</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">energy</span><span class="p">,</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">ratio</span><span class="p">,</span> <span class="n">b_sc</span> <span class="o">=</span> <span class="n">ratio_from_counts</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span>      <span class="c1"># affected/reference rate ratio</span>
+<span class="n">fit</span> <span class="o">=</span> <span class="n">fit_mirror_transmission</span><span class="p">(</span><span class="n">energy</span><span class="p">,</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">ratio</span><span class="p">,</span> <span class="n">b_sc</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="n">MirrorTransmissionSettings</span><span class="p">())</span>
+<span class="n">variants</span> <span class="o">=</span> <span class="n">fit_mirror_transmission_variants</span><span class="p">(</span><span class="n">energy</span><span class="p">,</span> <span class="n">pitch</span><span class="p">,</span> <span class="n">ratio</span><span class="p">,</span> <span class="n">b_sc</span><span class="p">)</span>   <span class="c1"># four nested models</span>
+</code></pre></div>
+<p>A comparison estimator ported from lunarsat (<code>robust_mirror_transmission_log_ratio_v1</code>). The natural log of the ratio is
+modelled as <span class="arithmatex">\(a_j + A_j\,P(E_j,\alpha_k)\)</span> with per-energy baseline <span class="arithmatex">\(a_j\)</span> and contrast <span class="arithmatex">\(A_j\)</span> nuisance terms; only the
+boundary and width shared across energy are estimated.</p>
+<div class="arithmatex">\[
+\sin^2\alpha_c = p_0\left(1 + \frac{\Delta U + \beta_1 s^2 + \beta_2 s^3}{E - U_\mathrm{sc}}\right),\quad
+s = \frac{E_*}{E - U_\mathrm{sc} + E_*},\qquad
+P = \Phi\!\left(\frac{\ln\sin^2\alpha - \ln\sin^2\alpha_c}{\sigma(E)}\right)
+\]</div>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Name</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(p_0\)</span></td>
+<td><code>p0</code></td>
+<td>High-energy asymptote of <span class="arithmatex">\(B_\mathrm{sc}/B_\mathrm{eff}\)</span>; <code>b_eff_nT = b_sc_reference_nT / p0</code></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\Delta U\)</span></td>
+<td><code>delta_u_eff_eV</code></td>
+<td>Potential term (fixed to 0 in <code>mirror_only</code>)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\beta_1, \beta_2\)</span></td>
+<td><code>smooth_beta1_eV</code>, <code>smooth_beta2_eV</code></td>
+<td>Low-energy correction of <code>smooth_low_energy</code>; the high-energy limit is unchanged</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\sigma\)</span></td>
+<td><code>sigma_ln_b</code></td>
+<td>Log-width of the boundary; <code>energy_broadened</code> uses <span class="arithmatex">\(\sqrt{\sigma^2 + (U_w/(E+E_0))^2}\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>The loss is <code>soft_l1</code> (<code>robust_f_scale</code> = 0.2) with <code>scipy.optimize.least_squares</code>. <code>fit.success</code> requires both optimiser
+convergence and a boundary inside <span class="arithmatex">\(0&lt;\sin^2\alpha_c&lt;1\)</span>; compare variants through the difference from
+<code>no_edge_rmse_log</code> (row means only) and through <code>aic_log</code>/<code>bic_log</code>. Relative to the lunarsat version only the initial guess
+(per-row threshold crossings) is simplified; model, bounds and loss are the same. Its input and objective differ from the
+finite-bin count likelihood, so the numbers are not compared directly.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../er/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Electron Reflectometry">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Electron Reflectometry
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../er-batch/" class="md-footer__link md-footer__link--next" aria-label="Next: ER Full-Period Batch">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                ER Full-Period Batch
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.footer", "toc.follow", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

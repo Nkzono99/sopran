@@ -1,0 +1,8263 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python library for retrieving, analyzing, visualizing, and storing satellite observations">
+      
+      
+      
+        <link rel="canonical" href="https://nkzono99.github.io/sopran/en/reference/api/">
+      
+      
+        <link rel="prev" href="../../experimental/field-models/">
+      
+      
+        <link rel="next" href="../schemas/">
+      
+      
+        
+          <link rel="alternate" href="../../../reference/api/" hreflang="ja">
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Python API - SOPRAN</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/sopran.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#python-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../" title="SOPRAN" class="md-header__button md-logo" aria-label="SOPRAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SOPRAN
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Python API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      
+
+
+
+
+
+
+<nav
+  class="md-header__option sopran-language-switcher"
+  aria-label="Lang: 日本語/English"
+  data-label="Lang: 日本語/English"
+  data-fallback-language="ja"
+>
+  <span class="sopran-language-switcher__prefix">Lang</span>
+  <span class="sopran-language-switcher__toggle" role="group" aria-label="Language">
+    
+      
+      <a
+        href="../../../reference/api/"
+        hreflang="ja"
+        lang="ja"
+        class="sopran-language-switcher__link"
+        
+      >日本語</a>
+    
+      
+      <a
+        href="./"
+        hreflang="en"
+        lang="en"
+        class="sopran-language-switcher__link sopran-language-switcher__link--active"
+        aria-current="page"
+      >English</a>
+    
+  </span>
+</nav>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Nkzono99/sopran" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Nkzono99/sopran
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../start/install/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/arrays/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../data/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Data
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../experimental/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Experimental
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/design/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../" title="SOPRAN" class="md-nav__button md-logo" aria-label="SOPRAN" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SOPRAN
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Nkzono99/sopran" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Nkzono99/sopran
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First Plot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/explore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exploring Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../start/reproducible/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reproducible Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/arrays/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Working With Arrays
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/plotting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plotting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/views-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time, Regions, And Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storing Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/store-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Moving A Store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coordinate Frames
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Batch Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../data/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../data/kaguya/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KAGUYA
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    KAGUYA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/pace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/esa-mode-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PACE ESA Mode Policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/lmag-orbit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LMAG And Orbit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/kaguya/lrs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/artemis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ARTEMIS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/lunar-prospector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lunar Prospector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/omni/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OMNI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../data/moon/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Moon
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Moon
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data/moon/magnetic-anomalies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Magnetic Anomaly Catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../experimental/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Experimental
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Experimental
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/er/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Electron Reflectometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/er-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ER Model Definitions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/er-batch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ER Full-Period Batch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/waves/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wave Candidates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/dht/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    dHT Frame
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/spacecraft-potential/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacecraft Potential Proxies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../experimental/field-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Field Models And Orbits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entry-points-and-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry points and configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Entry points and configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.config.use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.config.using" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        using
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.config.save_user" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save_user
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.config.resolve_store_roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_store_roots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.config.resolve_download_mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_download_mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.config.default_project_root" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        default_project_root
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        view
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.loaders.load" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#time-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time ranges
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Time ranges">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.TimeRange" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TimeRange
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TimeRange">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.TimeRange.days" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        days
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.period" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        period
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.day" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        day
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.month" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        month
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.year" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        year
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#analysis-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analysis conditions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Analysis conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.View" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="View">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.View.source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        source
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.ViewSelection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewSelection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.ViewContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewContext
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Project">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Project.kaguya" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kaguya
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Case
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Case.view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.ProjectArtifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProjectArtifact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.ProjectCaseRecord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProjectCaseRecord
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.data.SopranArray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SopranArray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.mission.Kaguya" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kaguya
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Kaguya">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.mission.Kaguya.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.data.KaguyaPaceData" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        KaguyaPaceData
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="KaguyaPaceData">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.data.KaguyaPaceData.ion_distribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ion_distribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.data.KaguyaPaceData.pitch_angle_spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pitch_angle_spectrum
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.artemis.mission.Artemis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artemis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Artemis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.artemis.mission.Artemis.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.lunar_prospector.mission.LunarProspector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LunarProspector
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LunarProspector">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.lunar_prospector.mission.LunarProspector.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Omni
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Omni">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro2_1min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro2_1min
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro_1min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro_1min
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        at
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.high_resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        high_resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.bodies.moon.Moon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moon
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Moon">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.bodies.moon.Moon.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.bodies.moon.Moon.magnetic_anomalies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        magnetic_anomalies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.maps.Region" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Region
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plotting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plotting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plotting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.PlotItem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlotItem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.PlotStack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlotStack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.PlotResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlotResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.QuicklookResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QuicklookResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pages.InfoPage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InfoPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pages.GuidePage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GuidePage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#time-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Time alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.TimeBins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TimeBins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.SampleTable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SampleTable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.SampleSpec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SampleSpec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.AlignmentResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AlignmentResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.FeatureMatrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FeatureMatrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinate-frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinate frames
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Coordinate frames">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.FrameContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FrameContext
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FrameContext">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.FrameContext.transform_vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transform_vectors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.FrameTransformPlan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FrameTransformPlan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.normalize_frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_frame
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Store">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Store">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.dataset_records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dataset_records
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.file_reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        file_reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rebuild
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.register_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.write_parquet_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_parquet_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatasetRecord
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DatasetRecord">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord.files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord.rebuild_catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rebuild_catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord.verify_shards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        verify_shards
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.database.Database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.database.ProductRef" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProductRef
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.events.EventCatalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventCatalog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EventCatalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.events.EventCatalog.counts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        counts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.events.EventCatalog.rates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batch-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch pipelines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch pipelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pipeline.Pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pipeline.PipelineBackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineBackend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pipeline.PipelineResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schemas
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schemas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.InstrumentSchema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InstrumentSchema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.VariableSchema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VariableSchema
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VariableSchema">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.VariableSchema.default_yscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        default_yscale
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.validate_schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.schema_docs.builtin_schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        builtin_schemas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.schema_docs.schema_reference_markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        schema_reference_markdown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registering-data-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering data sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registering data sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.sources.register_source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.sources.source_names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        source_names
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exceptions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exceptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        errors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.BackendError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BackendError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.ConfigError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConfigError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.DatasetNotFoundError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatasetNotFoundError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.DecodeError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DecodeError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.DownloadError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DownloadError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.FrameTransformError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FrameTransformError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.PipelineError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.SchemaError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SchemaError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.SopranError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SopranError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../store-layout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Store Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup And Checks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/extending/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding A Data Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/documentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License And Porting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entry-points-and-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry points and configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Entry points and configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.config.use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.config.using" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        using
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.config.save_user" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save_user
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.config.resolve_store_roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_store_roots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.config.resolve_download_mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_download_mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.config.default_project_root" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        default_project_root
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        view
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.loaders.load" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#time-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time ranges
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Time ranges">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.TimeRange" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TimeRange
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TimeRange">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.TimeRange.days" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        days
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.period" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        period
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.day" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        day
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.month" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        month
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.time.year" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        year
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#analysis-conditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analysis conditions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Analysis conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.View" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="View">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.View.source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        source
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.ViewSelection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewSelection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.view.ViewContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewContext
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Project">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Project.kaguya" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kaguya
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Case" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Case
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Case">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.Case.view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.ProjectArtifact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProjectArtifact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.project.ProjectCaseRecord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProjectCaseRecord
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.data.SopranArray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SopranArray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.mission.Kaguya" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kaguya
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Kaguya">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.mission.Kaguya.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.data.KaguyaPaceData" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        KaguyaPaceData
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="KaguyaPaceData">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.data.KaguyaPaceData.ion_distribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ion_distribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.kaguya.data.KaguyaPaceData.pitch_angle_spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pitch_angle_spectrum
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.artemis.mission.Artemis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artemis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Artemis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.artemis.mission.Artemis.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.lunar_prospector.mission.LunarProspector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LunarProspector
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LunarProspector">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.lunar_prospector.mission.LunarProspector.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Omni
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Omni">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro2_1min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro2_1min
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.hro_1min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hro_1min
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        at
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.missions.omni.hourly.Omni.high_resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        high_resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.bodies.moon.Moon" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Moon
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Moon">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.bodies.moon.Moon.from_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        from_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.bodies.moon.Moon.magnetic_anomalies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        magnetic_anomalies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.maps.Region" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Region
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plotting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plotting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plotting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.PlotItem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlotItem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.PlotStack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlotStack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.PlotResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PlotResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.plotting.QuicklookResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QuicklookResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pages.InfoPage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InfoPage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pages.GuidePage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GuidePage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#time-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Time alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.TimeBins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TimeBins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.SampleTable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SampleTable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.SampleSpec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SampleSpec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.AlignmentResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AlignmentResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.alignment.FeatureMatrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FeatureMatrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinate-frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinate frames
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Coordinate frames">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.FrameContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FrameContext
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FrameContext">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.FrameContext.transform_vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transform_vectors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.FrameTransformPlan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FrameTransformPlan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.frames.normalize_frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_frame
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Store">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Store">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.dataset_records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dataset_records
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.file_reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        file_reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rebuild
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.register_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.Store.write_parquet_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_parquet_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatasetRecord
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DatasetRecord">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord.files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord.rebuild_catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rebuild_catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.store.DatasetRecord.verify_shards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        verify_shards
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.database.Database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.database.ProductRef" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProductRef
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.events.EventCatalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EventCatalog
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EventCatalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.events.EventCatalog.counts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        counts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.events.EventCatalog.rates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batch-pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch pipelines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch pipelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pipeline.Pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pipeline.PipelineBackend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineBackend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.pipeline.PipelineResult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineResult
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schemas
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schemas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.InstrumentSchema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        InstrumentSchema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.VariableSchema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VariableSchema
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VariableSchema">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.VariableSchema.default_yscale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        default_yscale
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.schema.validate_schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.schema_docs.builtin_schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        builtin_schemas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.schema_docs.schema_reference_markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        schema_reference_markdown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registering-data-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering data sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Registering data sources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.sources.register_source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.sources.source_names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        source_names
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exceptions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exceptions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        errors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.BackendError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BackendError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.ConfigError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConfigError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.DatasetNotFoundError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DatasetNotFoundError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.DecodeError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DecodeError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.DownloadError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DownloadError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.FrameTransformError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FrameTransformError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.PipelineError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PipelineError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.SchemaError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SchemaError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sopran.core.errors.SopranError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SopranError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h1>
+<p>Reference for the main public classes and functions, generated from the source docstrings.
+For usage, see the User Guide and Data pages.</p>
+<h2 id="entry-points-and-configuration">Entry points and configuration<a class="headerlink" href="#entry-points-and-configuration" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.config.use" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">artifact_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backends</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.config.use" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Set process-local defaults for <code>spn.kaguya</code>, <code>spn.view()</code>, and <code>Store()</code>.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.config.using" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">artifact_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backends</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.config.using" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Temporarily set process-local defaults inside a <code>with</code> block.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.config.save_user" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">save_user</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">artifact_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">backends</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.config.save_user" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Persist user-level defaults to the SOPRAN config file.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.config.resolve_store_roots" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resolve_store_roots</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.core.config.resolve_store_roots" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Resolve the Store data root and cache root for every entry point in one order.</p>
+<p>Each root is taken from the argument, the session (<code>spn.config.use</code>), the
+environment (<code>SOPRAN_DATA_ROOT</code> / <code>SOPRAN_CACHE_ROOT</code>), the project
+<code>[store]</code> table, and the user <code>[store]</code> table, in that order. The data root
+falls back to <code>&lt;project root&gt;/sopran_data</code> and the cache root to
+<code>&lt;data root&gt;/cache</code>. <code>project_root</code> defaults to :func:<code>default_project_root</code>,
+so <code>Store()</code> and <code>spn.kaguya</code> resolve to the same Store.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.config.resolve_download_mode" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">resolve_download_mode</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">case_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_root</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.core.config.resolve_download_mode" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Resolve the download policy for every entry point in one order.</p>
+<p>An explicit value wins, then <code>spn.config.use(download=...)</code>, then the
+environment (<code>SOPRAN_OFFLINE</code> forces <code>never</code>, else <code>SOPRAN_DOWNLOAD_MODE</code>),
+then file settings: a project case, the project <code>[defaults]</code>, and the user
+<code>[defaults]</code>. The fallback is <code>missing</code>. Environment variables outrank
+files so that an offline compute node stays offline whatever a config says.
+<code>project_root</code> defaults to :func:<code>default_project_root</code>.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.config.default_project_root" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">default_project_root</span><span class="p">()</span></code>
+
+<a href="#sopran.core.config.default_project_root" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Root of the default project used by <code>spn.kaguya</code>, <code>spn.view()</code> and <code>Store()</code>.</p>
+<p>The session <code>project=</code> wins, then the nearest <code>sopran.toml</code> above the current
+directory, then <code>[project].root</code> in the user config, then the current directory.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.view.view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">view</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">**</span><span class="n">parameters</span><span class="p">)</span></code>
+
+<a href="#sopran.core.view.view" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.loaders.load" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">loaders</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">dataset_id</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#sopran.core.loaders.load" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Load a dataset by stable string ID.</p>
+<p>The ID is the attribute path below a registered source, so
+<code>load("kaguya.esa1.counts", time)</code> equals <code>spn.kaguya.esa1.counts.load(time)</code>.
+The object API remains the primary interface; this helper is for CLI, batch,
+and power-user dispatch.</p>
+
+
+    </div>
+
+</div><h2 id="time-ranges">Time ranges<a class="headerlink" href="#time-ranges" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.time.TimeRange" class="doc doc-heading">
+            <code>sopran.core.time.TimeRange</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.time.TimeRange" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Half-open UTC time range used by SOPRAN public APIs.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.time.TimeRange.days" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">days</span><span class="p">()</span></code>
+
+<a href="#sopran.core.time.TimeRange.days" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return UTC day labels touched by this half-open interval.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.time.period" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">period</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span></code>
+
+<a href="#sopran.core.time.period" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Create a half-open UTC period [start, stop).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.time.day" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">day</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#sopran.core.time.day" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.time.month" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">month</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#sopran.core.time.month" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.time.year" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">year</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#sopran.core.time.year" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div><h2 id="analysis-conditions">Analysis conditions<a class="headerlink" href="#analysis-conditions" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.view.View" class="doc doc-heading">
+            <code>sopran.core.view.View</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.view.View" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>A lightweight lens that binds selection and context to the data tree.</p>
+<p><code>view.kaguya</code> and the other registered sources are real mission objects whose
+endpoints default to this view's time, region, download policy and SPICE kernels.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.view.View.source" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">source</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></code>
+
+<a href="#sopran.core.view.View.source" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return the registered source <code>name</code> bound to this view's time and context.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.view.ViewSelection" class="doc doc-heading">
+            <code>sopran.core.view.ViewSelection</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.view.ViewSelection" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Scientific subset selected by a SOPRAN view.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.view.ViewContext" class="doc doc-heading">
+            <code>sopran.core.view.ViewContext</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.view.ViewContext" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Execution context for delegated libraries and derived products.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.project.Project" class="doc doc-heading">
+            <code>sopran.core.project.Project</code>
+
+
+<a href="#sopran.core.project.Project" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Analysis workspace that supplies case context to mission objects.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="sopran.core.project.Project.kaguya" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">kaguya</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sopran.core.project.Project.kaguya" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>KAGUYA bound to the project defaults (no time); see <code>view(time=...)</code>.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.project.Case" class="doc doc-heading">
+            <code>sopran.core.project.Case</code>
+
+
+<a href="#sopran.core.project.Case" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="sopran.core.project.Case.view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">view</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sopran.core.project.Case.view" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The case as a view; its sources are reused across attribute access.</p>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.project.ProjectArtifact" class="doc doc-heading">
+            <code>sopran.core.project.ProjectArtifact</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.project.ProjectArtifact" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.project.ProjectCaseRecord" class="doc doc-heading">
+            <code>sopran.core.project.ProjectCaseRecord</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.project.ProjectCaseRecord" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="data">Data<a class="headerlink" href="#data" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.data.SopranArray" class="doc doc-heading">
+            <code>sopran.core.data.SopranArray</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.data.SopranArray" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Thin variable object for loaded SOPRAN data.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.missions.kaguya.mission.Kaguya" class="doc doc-heading">
+            <code>sopran.missions.kaguya.mission.Kaguya</code>
+
+
+<a href="#sopran.missions.kaguya.mission.Kaguya" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Object-oriented entry point for KAGUYA/SELENE public data.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.kaguya.mission.Kaguya.from_view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#sopran.missions.kaguya.mission.Kaguya.from_view" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build a mission whose endpoints default to the view's time and context.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.missions.kaguya.data.KaguyaPaceData" class="doc doc-heading">
+            <code>sopran.missions.kaguya.data.KaguyaPaceData</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.missions.kaguya.data.KaguyaPaceData" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.kaguya.data.KaguyaPaceData.ion_distribution" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">ion_distribution</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">count_correction</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">angles</span><span class="o">=</span><span class="s1">'info'</span><span class="p">,</span> <span class="n">efficiency</span><span class="o">=</span><span class="n">PACE_DEFAULT_EFFICIENCY</span><span class="p">)</span></code>
+
+<a href="#sopran.missions.kaguya.data.KaguyaPaceData.ion_distribution" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>IMA/IEA 3-D distributions per record type.</p>
+<p>Returns :class:<code>~sopran.missions.kaguya.ion3d.PaceIon3D</code> keyed by record type.</p>
+<p>Load with <code>calibration=kg.ima.load_calibration()</code> (or <code>kg.iea</code>) first.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.kaguya.data.KaguyaPaceData.pitch_angle_spectrum" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">pitch_angle_spectrum</span><span class="p">(</span><span class="n">magnetic_field</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s1">'counts'</span><span class="p">,</span> <span class="n">pitch_bins</span><span class="o">=</span><span class="s1">'native'</span><span class="p">,</span> <span class="n">look_frame</span><span class="o">=</span><span class="s1">'SELENE_M_SPACECRAFT'</span><span class="p">,</span> <span class="n">magnetic_frame</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_look_bins</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">count_correction</span><span class="o">=</span><span class="s1">'none'</span><span class="p">,</span> <span class="n">frame_context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="s1">'never'</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variant_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dataset_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">'features'</span><span class="p">)</span></code>
+
+<a href="#sopran.missions.kaguya.data.KaguyaPaceData.pitch_angle_spectrum" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return PACE spectra binned by pitch angle.</p>
+<p>The result has dimensions <code>time x energy x pitch_angle</code>. <code>look</code> is
+resolved through the PACE angle calibration tables, not treated as a
+physical direction by itself.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.missions.artemis.mission.Artemis" class="doc doc-heading">
+            <code>sopran.missions.artemis.mission.Artemis</code>
+
+
+<a href="#sopran.missions.artemis.mission.Artemis" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Object-oriented entry point for ARTEMIS probes (P1 = THEMIS-B, P2 = THEMIS-C).</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.artemis.mission.Artemis.from_view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#sopran.missions.artemis.mission.Artemis.from_view" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build a mission whose endpoints default to the view's time, Store and policy.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.missions.lunar_prospector.mission.LunarProspector" class="doc doc-heading">
+            <code>sopran.missions.lunar_prospector.mission.LunarProspector</code>
+
+
+<a href="#sopran.missions.lunar_prospector.mission.LunarProspector" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Entry point for Lunar Prospector MAG/ER Level 1B data (1998-01-16 to 1999-07-29).</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.lunar_prospector.mission.LunarProspector.from_view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#sopran.missions.lunar_prospector.mission.LunarProspector.from_view" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build endpoints that default to the view's time, Store and download policy.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.missions.omni.hourly.Omni" class="doc doc-heading">
+            <code>sopran.missions.omni.hourly.Omni</code>
+
+
+<a href="#sopran.missions.omni.hourly.Omni" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>OMNI2 hourly access with Store caching and optional view-bound time.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.hro" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">hro</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sopran.missions.omni.hourly.Omni.hro" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>5-minute HRO access (velocity vector in GSE) sharing this Store and download policy.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.hro2" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">hro2</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sopran.missions.omni.hourly.Omni.hro2" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>5-minute HRO2 access (definitive Wind/SWE plasma) sharing this Store.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.hro2_1min" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">hro2_1min</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sopran.missions.omni.hourly.Omni.hro2_1min" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>1-minute HRO2 access (definitive Wind/SWE plasma) sharing this Store.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.hro_1min" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">hro_1min</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#sopran.missions.omni.hourly.Omni.hro_1min" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>1-minute HRO access sharing this Store and download policy.</p>
+
+    </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.at" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">at</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.missions.omni.hourly.Omni.at" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Match containing UTC hours, without interpolation or filling missing hours.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.from_view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#sopran.missions.omni.hourly.Omni.from_view" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build OMNI access whose loads default to the view's time.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.missions.omni.hourly.Omni.high_resolution" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">high_resolution</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="s1">'5min'</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="s1">'hro'</span><span class="p">)</span></code>
+
+<a href="#sopran.missions.omni.hourly.Omni.high_resolution" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>HRO or HRO2 access at <code>resolution</code> ("1min" or "5min").</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.bodies.moon.Moon" class="doc doc-heading">
+            <code>sopran.bodies.moon.Moon</code>
+
+
+<a href="#sopran.bodies.moon.Moon" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Body-first entry point for Moon map products.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.bodies.moon.Moon.from_view" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">from_view</span><span class="p">(</span><span class="n">view</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#sopran.bodies.moon.Moon.from_view" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build Moon endpoints that default to the view's region, time, kernels and Store.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.bodies.moon.Moon.magnetic_anomalies" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">magnetic_anomalies</span><span class="p">(</span><span class="n">catalog</span><span class="o">=</span><span class="s1">'blewett2011'</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">near</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">radius_deg</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.bodies.moon.Moon.magnetic_anomalies" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>List literature anomalies; near=(east longitude, latitude) in degrees.</p>
+<p>Catalogs: 'blewett2011' (corrected), 'oliveira2017', or 'all'.
+Fields are regional peak nT at 30 km; radii are inversion domains.
+See magnetic_anomalies.magnetic_anomalies for columns and limitations.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.maps.Region" class="doc doc-heading">
+            <code>sopran.maps.Region</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.maps.Region" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="plotting">Plotting<a class="headerlink" href="#plotting" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.plotting.PlotItem" class="doc doc-heading">
+            <code>sopran.core.plotting.PlotItem</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.plotting.PlotItem" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.plotting.PlotStack" class="doc doc-heading">
+            <code>sopran.core.plotting.PlotStack</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.plotting.PlotStack" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.plotting.PlotResult" class="doc doc-heading">
+            <code>sopran.core.plotting.PlotResult</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.plotting.PlotResult" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.plotting.QuicklookResult" class="doc doc-heading">
+            <code>sopran.core.plotting.QuicklookResult</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.plotting.QuicklookResult" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.pages.InfoPage" class="doc doc-heading">
+            <code>sopran.core.pages.InfoPage</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.pages.InfoPage" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.pages.GuidePage" class="doc doc-heading">
+            <code>sopran.core.pages.GuidePage</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.pages.GuidePage" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="time-alignment">Time alignment<a class="headerlink" href="#time-alignment" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.alignment.TimeBins" class="doc doc-heading">
+            <code>sopran.core.alignment.TimeBins</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.alignment.TimeBins" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.alignment.SampleTable" class="doc doc-heading">
+            <code>sopran.core.alignment.SampleTable</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.alignment.SampleTable" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Build a feature table with product-specific time alignment rules.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.alignment.SampleSpec" class="doc doc-heading">
+            <code>sopran.core.alignment.SampleSpec</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.alignment.SampleSpec" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>One input series and its alignment rule for a sampled feature table.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.alignment.AlignmentResult" class="doc doc-heading">
+            <code>sopran.core.alignment.AlignmentResult</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.alignment.AlignmentResult" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.alignment.FeatureMatrix" class="doc doc-heading">
+            <code>sopran.core.alignment.FeatureMatrix</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.alignment.FeatureMatrix" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="coordinate-frames">Coordinate frames<a class="headerlink" href="#coordinate-frames" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.frames.FrameContext" class="doc doc-heading">
+            <code>sopran.frames.FrameContext</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.frames.FrameContext" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Coordinate-frame context for SOPRAN products.</p>
+<p>This is intentionally a thin adapter boundary. Kernel-backed and
+model-backed transforms are delegated to established libraries in later
+implementations; the current implementation records provenance and supports
+identity transforms.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.frames.FrameContext.transform_vectors" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">transform_vectors</span><span class="p">(</span><span class="n">vectors</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">source_frame</span><span class="p">,</span> <span class="n">target_frame</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">missing</span><span class="o">=</span><span class="s1">'error'</span><span class="p">)</span></code>
+
+<a href="#sopran.frames.FrameContext.transform_vectors" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Transform one or more 3-D vectors between coordinate frames.</p>
+<p>Non-identity transforms are delegated to SPICE through spiceypy. SPICE
+kernels must already be supplied through <code>FrameContext(spice_kernels=...)</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.frames.FrameTransformPlan" class="doc doc-heading">
+            <code>sopran.frames.FrameTransformPlan</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.frames.FrameTransformPlan" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.frames.normalize_frame" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">frames</span><span class="o">.</span><span class="n">normalize_frame</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span></code>
+
+<a href="#sopran.frames.normalize_frame" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div><h2 id="store">Store<a class="headerlink" href="#store" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.store.Store" class="doc doc-heading">
+            <code>sopran.core.store.Store</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.store.Store" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Filesystem roots used by SOPRAN data discovery and products.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.Store.dataset_records" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">dataset_records</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.core.store.Store.dataset_records" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Every dataset (manifest) in the Store, optionally of one layer.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.Store.file_reference" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">file_reference</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></code>
+
+<a href="#sopran.core.store.Store.file_reference" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Portable reference to a file: Store-relative path when inside the Store,
+otherwise only an external hint; identity is the content checksum.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.Store.rebuild" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">rebuild</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.core.store.Store.rebuild" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Rebuild every dataset catalog from shard sidecars, then the registries.</p>
+<p>Run after copying datasets between machines (e.g. with <code>rsync</code>).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.Store.register_dataset" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">register_dataset</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">dataset_id</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">variant_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variant</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mission</span><span class="p">,</span> <span class="n">instrument</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">time_coverage</span><span class="p">,</span> <span class="n">source_files</span><span class="o">=</span><span class="p">(),</span> <span class="n">source_datasets</span><span class="o">=</span><span class="p">(),</span> <span class="n">shards</span><span class="o">=</span><span class="p">(),</span> <span class="n">producer</span><span class="o">=</span><span class="s1">'sopran'</span><span class="p">,</span> <span class="n">provenance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s1">'candidate'</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">storage_layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dataset_version</span><span class="o">=</span><span class="s1">'1'</span><span class="p">,</span> <span class="n">partitioning</span><span class="o">=</span><span class="p">(),</span> <span class="n">managed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">_prune_shard_sidecars</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#sopran.core.store.Store.register_dataset" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Write manifest, schema and catalog; <code>shards</code> is the complete shard list.</p>
+<p><code>managed=True</code> marks datasets that sopran creates and reuses on its own
+(caches and pipeline products with content-derived variants); they are
+synchronized by default. Shard sidecars not in <code>shards</code> are removed.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.Store.write_parquet_dataset" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">write_parquet_dataset</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">dataset_id</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">variant_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variant</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mission</span><span class="p">,</span> <span class="n">instrument</span><span class="p">,</span> <span class="n">product</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="n">time_coverage</span><span class="p">,</span> <span class="n">frame</span><span class="p">,</span> <span class="n">source_files</span><span class="o">=</span><span class="p">(),</span> <span class="n">source_datasets</span><span class="o">=</span><span class="p">(),</span> <span class="n">shard_path</span><span class="o">=</span><span class="s1">'shards/part-000.parquet'</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">'zstd'</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">append</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">producer</span><span class="o">=</span><span class="s1">'sopran'</span><span class="p">,</span> <span class="n">provenance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s1">'candidate'</span><span class="p">,</span> <span class="n">dataset_version</span><span class="o">=</span><span class="s1">'1'</span><span class="p">,</span> <span class="n">partitioning</span><span class="o">=</span><span class="p">(),</span> <span class="n">managed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#sopran.core.store.Store.write_parquet_dataset" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Write one shard; <code>append</code> keeps the other shards (catalog and sidecars).</p>
+<p>Appends never delete other shards' sidecars, so concurrent writers of the
+same dataset lose at most catalog rows, which <code>rebuild_catalog</code> restores.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.store.DatasetRecord" class="doc doc-heading">
+            <code>sopran.core.store.DatasetRecord</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.store.DatasetRecord" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.DatasetRecord.files" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">files</span><span class="p">()</span></code>
+
+<a href="#sopran.core.store.DatasetRecord.files" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Files of this dataset, excluding nested datasets, <code>work/</code> and temporaries.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.DatasetRecord.rebuild_catalog" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">rebuild_catalog</span><span class="p">()</span></code>
+
+<a href="#sopran.core.store.DatasetRecord.rebuild_catalog" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Rebuild <code>catalog.parquet</code> from shard sidecars merged with the catalog.</p>
+<p>Sidecars win over catalog rows for the same path; catalog-only rows are
+kept and receive sidecars, so datasets written before sidecars existed are
+migrated. Use after copying shards from another machine or job.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.store.DatasetRecord.verify_shards" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">verify_shards</span><span class="p">()</span></code>
+
+<a href="#sopran.core.store.DatasetRecord.verify_shards" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compare complete shards of catalog and sidecars with the files on disk.</p>
+<p>Returns lists of shard paths that are <code>missing</code>, have a different
+<code>checksum</code>, or are known only to the catalog or only to sidecars (rerun
+<code>rebuild_catalog</code> for the latter two, e.g. after a sync).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.database.Database" class="doc doc-heading">
+            <code>sopran.core.database.Database</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.database.Database" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.database.ProductRef" class="doc doc-heading">
+            <code>sopran.core.database.ProductRef</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.database.ProductRef" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.events.EventCatalog" class="doc doc-heading">
+            <code>sopran.core.events.EventCatalog</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.events.EventCatalog" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.events.EventCatalog.counts" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">counts</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="p">(),</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.core.events.EventCatalog.counts" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Count event onsets, grouped into UTC calendar bins.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.events.EventCatalog.rates" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">rates</span><span class="p">(</span><span class="n">exposure</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">freq</span><span class="p">,</span> <span class="n">by</span><span class="o">=</span><span class="p">(</span><span class="s1">'phenomenon'</span><span class="p">,),</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exposure_column</span><span class="o">=</span><span class="s1">'exposure_seconds'</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">3600.0</span><span class="p">)</span></code>
+
+<a href="#sopran.core.events.EventCatalog.rates" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Join event counts to detector-specific exposure bins.</p>
+<p><code>exposure</code> is a long table with <code>bin_start</code>, <code>bin_stop</code>, the
+requested grouping columns, and an exposure duration.  Exposure rows are
+the left side of the join so bins with zero detected events are retained.
+Events are counted by <code>time_start</code>. When <code>time</code> is supplied it must
+cover complete calendar bins, because pre-aggregated exposure cannot be
+clipped safely to a partial bin.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="batch-pipelines">Batch pipelines<a class="headerlink" href="#batch-pipelines" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.pipeline.Pipeline" class="doc doc-heading">
+            <code>sopran.core.pipeline.Pipeline</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.pipeline.Pipeline" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.pipeline.PipelineBackend" class="doc doc-heading">
+            <code>sopran.core.pipeline.PipelineBackend</code>
+
+
+<a href="#sopran.core.pipeline.PipelineBackend" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Executes the pipelines of one data source.</p>
+<p>A data endpoint's <code>pipeline(time)</code> attaches its backend. Subclasses override
+the operations their source supports; the rest raise :class:<code>PipelineError</code>.
+<code>stream_pipeline</code> falls back to splitting <code>scan_pipeline</code> by day.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.pipeline.PipelineResult" class="doc doc-heading">
+            <code>sopran.core.pipeline.PipelineResult</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.pipeline.PipelineResult" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="schemas">Schemas<a class="headerlink" href="#schemas" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.schema.InstrumentSchema" class="doc doc-heading">
+            <code>sopran.core.schema.InstrumentSchema</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.schema.InstrumentSchema" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="sopran.core.schema.VariableSchema" class="doc doc-heading">
+            <code>sopran.core.schema.VariableSchema</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#sopran.core.schema.VariableSchema" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="sopran.core.schema.VariableSchema.default_yscale" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">default_yscale</span><span class="p">(</span><span class="n">y</span><span class="p">)</span></code>
+
+<a href="#sopran.core.schema.VariableSchema.default_yscale" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Default axis scale for coordinate <code>y</code>: <code>"log"</code> when listed in <code>log_dims</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.schema.validate_schema" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">validate_schema</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">schema</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">variables</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#sopran.core.schema.validate_schema" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Validate that data exposes the selected schema variables.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.schema_docs.builtin_schemas" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">schema_docs</span><span class="o">.</span><span class="n">builtin_schemas</span><span class="p">()</span></code>
+
+<a href="#sopran.schema_docs.builtin_schemas" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.schema_docs.schema_reference_markdown" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">schema_docs</span><span class="o">.</span><span class="n">schema_reference_markdown</span><span class="p">(</span><span class="n">schemas</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">language</span><span class="o">=</span><span class="s1">'ja'</span><span class="p">)</span></code>
+
+<a href="#sopran.schema_docs.schema_reference_markdown" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+    </div>
+
+</div><h2 id="registering-data-sources">Registering data sources<a class="headerlink" href="#registering-data-sources" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.sources.register_source" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">register_source</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">factory</span><span class="p">)</span></code>
+
+<a href="#sopran.core.sources.register_source" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Register <code>factory</code> (<code>"module:attribute.path"</code>) as the source <code>name</code>.</p>
+<p>The factory is imported on first use and called as <code>factory(view)</code>. It must
+return a source object bound to that view's time, region and context.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="sopran.core.sources.source_names" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">sopran</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">sources</span><span class="o">.</span><span class="n">source_names</span><span class="p">()</span></code>
+
+<a href="#sopran.core.sources.source_names" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Names of the registered sources, in registration order.</p>
+
+
+    </div>
+
+</div><h2 id="exceptions">Exceptions<a class="headerlink" href="#exceptions" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="sopran.core.errors" class="doc doc-heading">
+            <code>sopran.core.errors</code>
+
+
+<a href="#sopran.core.errors" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.BackendError" class="doc doc-heading">
+            <code>BackendError</code>
+
+
+<a href="#sopran.core.errors.BackendError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="RuntimeError">RuntimeError</span></code></p>
+
+
+
+        <p>Raised when an external or Rust backend stage fails.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.ConfigError" class="doc doc-heading">
+            <code>ConfigError</code>
+
+
+<a href="#sopran.core.errors.ConfigError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="ValueError">ValueError</span></code></p>
+
+
+
+        <p>Raised when configuration cannot be resolved or validated.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.DatasetNotFoundError" class="doc doc-heading">
+            <code>DatasetNotFoundError</code>
+
+
+<a href="#sopran.core.errors.DatasetNotFoundError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="LookupError">LookupError</span></code></p>
+
+
+
+        <p>Raised when a requested dataset or shard is not available.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.DecodeError" class="doc doc-heading">
+            <code>DecodeError</code>
+
+
+<a href="#sopran.core.errors.DecodeError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="ValueError">ValueError</span></code></p>
+
+
+
+        <p>Raised when mission data decoding fails.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.DownloadError" class="doc doc-heading">
+            <code>DownloadError</code>
+
+
+<a href="#sopran.core.errors.DownloadError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="OSError">OSError</span></code></p>
+
+
+
+        <p>Raised when raw data download or local acquisition fails.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.FrameTransformError" class="doc doc-heading">
+            <code>FrameTransformError</code>
+
+
+<a href="#sopran.core.errors.FrameTransformError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="ValueError">ValueError</span></code></p>
+
+
+
+        <p>Raised when coordinate or frame transformation fails.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.PipelineError" class="doc doc-heading">
+            <code>PipelineError</code>
+
+
+<a href="#sopran.core.errors.PipelineError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="RuntimeError">RuntimeError</span></code></p>
+
+
+
+        <p>Raised when pipeline planning or execution fails.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.SchemaError" class="doc doc-heading">
+            <code>SchemaError</code>
+
+
+<a href="#sopran.core.errors.SchemaError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="SopranError (sopran.core.errors.SopranError)" href="#sopran.core.errors.SopranError">SopranError</a></code>, <code><span title="ValueError">ValueError</span></code></p>
+
+
+
+        <p>Raised when data does not match a SOPRAN schema.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="sopran.core.errors.SopranError" class="doc doc-heading">
+            <code>SopranError</code>
+
+
+<a href="#sopran.core.errors.SopranError" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="Exception">Exception</span></code></p>
+
+
+
+        <p>Base class for SOPRAN public exceptions.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../experimental/field-models/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Field Models And Orbits">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Field Models And Orbits
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../schemas/" class="md-footer__link md-footer__link--next" aria-label="Next: Schemas">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Schemas
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.footer", "toc.follow", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
