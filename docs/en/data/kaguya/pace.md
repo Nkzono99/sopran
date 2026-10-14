@@ -113,6 +113,56 @@ Results carry the per-record exposure and the coordinates `pace_data_mode`, `pac
 `pace_data_quality`, and `record_duration_seconds`. Whether a record may be used for pitch angles is decided from the observation mode;
 the rules are in [PACE ESA Mode Policy](esa-mode-policy.md).
 
+## Ion 3-D distributions (IMA and IEA)
+
+`ion_distribution()` turns IMA and IEA records into 3-D distributions shaped like those of SPEDAS
+`kgy_ima_get3d` and `kgy_iea_get3d`, returning one `PaceIon3D` per record type.
+
+```python
+time = spn.day("2009-02-17")
+iea = kg.iea.load(time, calibration=kg.iea.load_calibration()).ion_distribution(
+    count_correction="event_trash"
+)
+d = iea[0x81]                       # 32 energy × 16 polar × 64 azimuth
+d.counts                            # (record, 32, bin), bin = polar + azimuth × 16
+d.to_units("eflux")                 # counts / rate / eflux / flux / df
+d.density()                         # cm^-3
+d.velocity()                        # km/s, SELENE_M_SPACECRAFT
+
+from sopran.frames import FrameContext
+from sopran.missions.kaguya import selene_spice_kernels
+
+context = FrameContext(spice_kernels=tuple(map(str, selene_spice_kernels(kg.store, time))))
+d.velocity(frame="MOON_ME", context=context)
+d.directions(frame="MOON_ME", context=context)   # direction of motion for each bin
+```
+
+| Type | Sensor | Shape | Handling |
+|---|---|---|---|
+| 0x40 | IMA | 4 polar × 32 energy × 1024 TOF | TOF summed; no azimuth (dphi = 360°); gfactor of azimuth channel 4 |
+| 0x41 | IMA | 32 × 16 × 64 | |
+| 0x42 | IMA | 32 × 4 × 16 | |
+| 0x43 | IMA | 8 mass × 32 × 4 × 16 | mass channels summed |
+| 0x80 | IEA | 32 × 4 × 16 | |
+| 0x81 | IEA | 32 × 16 × 64 | |
+
+Other types (IMA 0x44 and 0x45, IEA 0x82) are not handled by SPEDAS either; the skipped counts are listed in `notes`.
+
+- Energies, angles and geometric factors come from the INFO tables, placed by the energy and polar sequence
+  numbers (`angles="fov"` uses the FOV tables). `grids` holds one grid per RAM table and `grid_index` maps records to it.
+- `theta_deg` and `phi_deg` give the direction of particle motion. In the solar wind on 2009-02-17, 99.7% of the
+  IEA speed pointed anti-sunward after conversion to `MOON_ME`.
+- IMA mass channels are summed and treated as protons, as in SPEDAS.
+- Units follow `kgy_pace_convert_units` and moments `kgy_n_3d` and `kgy_j_3d`, with efficiency 0.6 (the SPEDAS
+  placeholder). No dead-time correction is applied.
+- Count correction is the SPEDAS `/cntcorr`. IMA uses the sum of the three TOF event rows, and type 0x40 has no trash
+  telemetry, so only the event step is applied.
+- Differences from SPEDAS: cells whose mass channels are all fill values stay NaN (SPEDAS gives 0), and the energy
+  widths `denergy_eV` are absolute values.
+
+Checked on 2009-02-17 (solar wind): IEA speed was 0.99–1.00 times OMNI and density 0.46–0.70 times. On the dayside
+(SZA < 45°) the IMA flux moving away from the Moon was about 0.7–0.9% of the solar-wind flux (OMNI nv).
+
 ## Saving to Parquet
 
 ```python
@@ -131,10 +181,16 @@ Running pipelines is covered in [Batch Pipelines](../../guide/pipeline.md).
 
 - Saved Parquet does not yet include `look` directions (polar and azimuth angles) or energy coordinate metadata.
 - ESA2, IMA, and IEA energy flux has not been compared numerically with SPEDAS.
+- `ion_distribution()` densities use efficiency 0.6; IEA solar-wind density is 30–50% below OMNI.
+  IMA TOF mass separation (`kgy_read_tof`) is not implemented yet.
 - The bit meanings of `data_quality` are not settled in public documents, so the value is kept as is in `pace_data_quality`.
 
 ## Sources
 
 - [PACE format description (JAXA DARTS)](https://data.darts.isas.jaxa.jp/pub/pds3/sln-l-pace-3-pbf1-v3.0/20071107/document/PACE_Format_en_V01.pdf)
 - [SPEDAS `kgy_read_pbf.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_read_pbf.pro),
-  [`kgy_esa1_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_esa1_get3d.pro)
+  [`kgy_esa1_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_esa1_get3d.pro),
+  [`kgy_ima_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_ima_get3d.pro),
+  [`kgy_iea_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_iea_get3d.pro),
+  [`kgy_pace_convert_units.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_pace_convert_units.pro)
+- Saito, Y., et al. (2008), Solar wind proton reflection at the lunar surface: Low energy ion measurement by MAP-PACE onboard SELENE (KAGUYA), GRL.

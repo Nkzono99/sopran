@@ -127,6 +127,43 @@ class KaguyaPaceData:
             return None
         return read_pace_pbf(self.files)
 
+    def ion_distribution(
+        self,
+        *,
+        count_correction: CountCorrection = "none",
+        angles: str = "info",
+        efficiency: float = PACE_DEFAULT_EFFICIENCY,
+    ) -> dict[int, Any]:
+        """IMA/IEA 3-D distributions per record type.
+
+        Returns :class:`~sopran.missions.kaguya.ion3d.PaceIon3D` keyed by record type.
+
+        Load with ``calibration=kg.ima.load_calibration()`` (or ``kg.iea``) first.
+        """
+
+        from sopran.missions.kaguya.ion3d import pace_ion_3d
+
+        if self.instrument.upper() not in {"IMA", "IEA"}:
+            raise ValueError(f"ion_distribution is for IMA and IEA, not {self.instrument}")
+        pace = self.pace
+        if pace is None:
+            return {}
+        if self.calibration is None:
+            raise ValueError(
+                f"{self.instrument} calibration is required: "
+                f"kg.{self.instrument.lower()}.load(time, "
+                f"calibration=kg.{self.instrument.lower()}.load_calibration())"
+            )
+        return pace_ion_3d(
+            pace,
+            self.calibration,
+            count_correction=count_correction,
+            angles=angles,  # type: ignore[arg-type]
+            time=self.time,
+            efficiency=efficiency,
+            files=self.files,
+        )
+
     def to_xarray(self) -> Any:
         try:
             import numpy as np

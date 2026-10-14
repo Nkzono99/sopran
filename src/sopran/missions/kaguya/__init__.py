@@ -1,6 +1,7 @@
 from sopran.core.sources import register_source
 from sopran.missions.kaguya.data import KaguyaESA1Data, KaguyaPaceData
 from sopran.missions.kaguya.files import KaguyaFileSource
+from sopran.missions.kaguya.ion3d import PaceIon3D, PaceIonGrid, pace_ion_3d
 from sopran.missions.kaguya.lmag import KaguyaLmagData, read_lmag_public
 from sopran.missions.kaguya.lrs import KaguyaLrsData, read_lrs_public
 from sopran.missions.kaguya.mission import Kaguya
@@ -42,7 +43,10 @@ __all__ = [
     "PACE_INFO_FILES",
     "PaceCalibration",
     "PaceData",
+    "PaceIon3D",
+    "PaceIonGrid",
     "PaceRecord",
+    "pace_ion_3d",
     "CountCorrection",
     "PitchAngleSpectrumOptions",
     "build_aligned_pitch_angle_spectra",

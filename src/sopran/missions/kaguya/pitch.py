@@ -642,6 +642,30 @@ def _pace_count_correction_factor(
     separate so raw integer counts can remain the likelihood observations.
     """
 
+    trash_array = record.arrays.get("trash")
+    event_array = record.arrays.get("event")
+    return pace_count_correction_factor(
+        raw_counts,
+        trash=None if trash_array is None else _pace_telemetry_values(trash_array),
+        event=None if event_array is None else np.squeeze(_pace_telemetry_values(event_array)),
+        correction=correction,
+    )
+
+
+def pace_count_correction_factor(
+    raw_counts: np.ndarray,
+    *,
+    trash: np.ndarray | None,
+    event: np.ndarray | None,
+    correction: CountCorrection,
+) -> np.ndarray:
+    """SPEDAS ``/cntcorr`` multiplier for a ``(32, polar, azimuth)`` count array.
+
+    ``trash`` is the ``(32, polar, 2)`` discarded-count telemetry and ``event`` the
+    16 energy-pair event counters (for IMA the sum of the three TOF event rows),
+    both with fill values already set to NaN.
+    """
+
     counts = np.asarray(raw_counts, dtype=float)
     if counts.ndim != 3 or counts.shape[0] != 32:
         raise ValueError("PACE count correction requires a (32, polar, azimuth) count array")
@@ -649,12 +673,11 @@ def _pace_count_correction_factor(
     corrected = counts.copy()
 
     if correction in {"trash", "event_trash"}:
-        trash_array = record.arrays.get("trash")
-        if trash_array is None:
+        if trash is None:
             raise _CountCorrectionTelemetryError(
                 "trash count correction requires PACE trash telemetry"
             )
-        trash = _pace_telemetry_values(trash_array)
+        trash = np.asarray(trash, dtype=float)
         expected_shape = counts.shape[:2] + (2,)
         if trash.shape != expected_shape:
             raise _CountCorrectionTelemetryError(
@@ -669,12 +692,11 @@ def _pace_count_correction_factor(
         corrected *= trash_factor[:, :, None]
 
     if correction in {"event", "event_trash"}:
-        event_array = record.arrays.get("event")
-        if event_array is None:
+        if event is None:
             raise _CountCorrectionTelemetryError(
                 "event count correction requires PACE event telemetry"
             )
-        event = np.squeeze(_pace_telemetry_values(event_array))
+        event = np.asarray(event, dtype=float)
         if event.shape != (16,):
             raise _CountCorrectionTelemetryError(
                 "PACE event correction currently requires one 16-bin event vector "

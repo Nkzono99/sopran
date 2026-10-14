@@ -113,6 +113,56 @@ pas.energy_spectrogram(pitch=(0.0, 30.0), log_color=True)
 `pace_data_quality`、`record_duration_seconds`の座標が付きます。ピッチ角に使える記録かどうかは
 観測モードから判定しており、その規則は[PACE ESAのmode判定](esa-mode-policy.md)にあります。
 
+## イオンの3次元分布（IMA・IEA）
+
+`ion_distribution()`は、IMA・IEAの記録をSPEDASの`kgy_ima_get3d`・`kgy_iea_get3d`と同じ形の
+3次元分布にし、記録の型ごとに`PaceIon3D`で返します。
+
+```python
+time = spn.day("2009-02-17")
+iea = kg.iea.load(time, calibration=kg.iea.load_calibration()).ion_distribution(
+    count_correction="event_trash"
+)
+d = iea[0x81]                       # 32 energy × 16 polar × 64 azimuth
+d.counts                            # (record, 32, bin)、bin = polar + azimuth × 16
+d.to_units("eflux")                 # counts / rate / eflux / flux / df
+d.density()                         # cm^-3
+d.velocity()                        # km/s、SELENE_M_SPACECRAFT
+
+from sopran.frames import FrameContext
+from sopran.missions.kaguya import selene_spice_kernels
+
+context = FrameContext(spice_kernels=tuple(map(str, selene_spice_kernels(kg.store, time))))
+d.velocity(frame="MOON_ME", context=context)
+d.directions(frame="MOON_ME", context=context)   # 各ビンの粒子の進む向き
+```
+
+| 型 | センサー | 形 | 扱い |
+|---|---|---|---|
+| 0x40 | IMA | 4 polar × 32 energy × 1024 TOF | TOFを合計。方位角なし（dphi = 360°）、幾何因子は方位角チャンネル4 |
+| 0x41 | IMA | 32 × 16 × 64 | |
+| 0x42 | IMA | 32 × 4 × 16 | |
+| 0x43 | IMA | 8 mass × 32 × 4 × 16 | 質量チャンネルを合計 |
+| 0x80 | IEA | 32 × 4 × 16 | |
+| 0x81 | IEA | 32 × 16 × 64 | |
+
+これ以外の型（IMA 0x44・0x45、IEA 0x82）はSPEDASも扱っておらず、読み飛ばした件数を`notes`に残します。
+
+- エネルギー・角度・幾何因子はINFOテーブルから、エネルギー・極角の並び番号で配置します（`angles="fov"`でFOVテーブル）。
+  RAM表ごとに一つの格子を`grids`に持ち、`grid_index`で記録と対応させます。
+- `theta_deg`・`phi_deg`は粒子の進む向きです。2009-02-17の太陽風で、IEAの速度を`MOON_ME`へ変換すると
+  速さの99.7%が反太陽方向でした。
+- IMAの質量チャンネルは合計し、陽子として扱います（SPEDASと同じ）。
+- 単位は`kgy_pace_convert_units`、モーメントは`kgy_n_3d`・`kgy_j_3d`と同じ式で、効率は0.6です（SPEDASの仮の値）。
+  不感時間の補正は含みません。
+- カウント補正はSPEDASの`/cntcorr`と同じです。IMAのevent補正にはTOFのevent 3行の和を使い、
+  型0x40にはtrashがないのでevent補正だけを行います。
+- SPEDASとの違い：質量チャンネルがすべて欠測のセルはNaNのままにします（SPEDASは0）。
+  エネルギー幅`denergy_eV`は絶対値にします。
+
+2009-02-17（太陽風）で確かめた値：IEAの速さはOMNIの0.99–1.00倍、密度は0.46–0.70倍。
+昼側（SZA < 45°）のIMAでは、月から離れる向きの流束が太陽風の流束（OMNIのnv）の約0.7–0.9%。
+
 ## Parquetに保存する
 
 ```python
@@ -131,10 +181,16 @@ record = (
 
 - 保存したParquetには、`look`の方向（極角・方位角）とエネルギーの座標情報をまだ含めていません。
 - ESA2・IMA・IEAのエネルギーフラックスは、SPEDASとの数値照合が未実施です。
+- `ion_distribution()`の密度は効率を0.6と置いた値で、IEAの太陽風密度はOMNIより3–5割小さくなります。
+  IMAのTOFによる質量の分離（`kgy_read_tof`）はまだありません。
 - `data_quality`のビットの意味は公開資料で確定していないため、値はそのまま`pace_data_quality`に残します。
 
 ## 出典
 
 - [PACE形式説明（JAXA DARTS）](https://data.darts.isas.jaxa.jp/pub/pds3/sln-l-pace-3-pbf1-v3.0/20071107/document/PACE_Format_en_V01.pdf)
 - [SPEDAS `kgy_read_pbf.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_read_pbf.pro)、
-  [`kgy_esa1_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_esa1_get3d.pro)
+  [`kgy_esa1_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_esa1_get3d.pro)、
+  [`kgy_ima_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_ima_get3d.pro)、
+  [`kgy_iea_get3d.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_iea_get3d.pro)、
+  [`kgy_pace_convert_units.pro`](https://raw.githubusercontent.com/spedas/bleeding_edge/master/idl/projects/kaguya/map/pace/kgy_pace_convert_units.pro)
+- Saito, Y., et al. (2008), Solar wind proton reflection at the lunar surface: Low energy ion measurement by MAP-PACE onboard SELENE (KAGUYA), GRL.
