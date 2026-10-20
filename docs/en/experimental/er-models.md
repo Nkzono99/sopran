@@ -44,8 +44,14 @@ Search ranges are set with `mirror_ratio_bounds`, `delta_u_bounds_eV`, `bottom_r
 
 The **beam** is enabled by default and disabled with `beam_enabled=False`. There are four shapes combining log-energy widths 0.15 and 0.30
 with pitch widths 10° and 20°. The amplitude is chosen continuously within `beam_amplitude_bounds` (default 0.25–8)
-by a one-dimensional golden-section search per shape at every evaluation. In results, `beam_template` is 0 for no beam,
-otherwise `1 + 2*energy_index + pitch_index`, and the amplitude is `beam_amplitude`.
+by a one-dimensional golden-section search per shape at every evaluation.
+By default (`beam_energy="delta_u"`) the centre energy is $-\Delta U$ and the beam is active only for $\Delta U < 0$,
+following Halekas et al. (2008, 2011) for secondary electrons accelerated from a negatively charged surface.
+With `beam_energy="free"`, the centre is fitted within `beam_energy_bounds_eV` (default 20–200 eV) as a seventh parameter
+(`FiniteBinParameters.beam_energy_eV`, starting at 45 eV), and the beam is active whatever the sign of $\Delta U$,
+so that a low-energy excess unrelated to $\Delta U$ does not produce a spurious negative $\Delta U$.
+In results, `beam_template` is 0 for no beam, otherwise `1 + 2*energy_index + pitch_index`;
+the amplitude is `beam_amplitude` and the centre `beam_energy_eV` ($-\Delta U$ for `delta_u`).
 
 A **known efficiency ratio** is added to the model ratio as the observation's `model_offset_dex` (log10 of the affected/reference efficiency ratio).
 `scale_prior_sigma_dex` places a zero-centered Gaussian prior on $\log_{10}s$ (count losses only).

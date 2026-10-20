@@ -22,7 +22,10 @@ from sopran.experimental.electron_reflection.common import ElectronReflectionCou
 AngularTransport = Literal["none", "out"]
 FiniteBinLoss = Literal["huber", "squared", "binomial", "beta_binomial"]
 CountSelection = Literal["paired", "total"]
+BeamEnergy = Literal["delta_u", "free"]
 COUNT_LOSSES = frozenset({"binomial", "beta_binomial"})
+# Start of a free beam centre and the fixed placeholder of a tied one.
+DEFAULT_BEAM_ENERGY_EV = 45.0
 
 
 @dataclass(frozen=True)
@@ -217,8 +220,11 @@ class FiniteBinFitSettings:
     counts (``FiniteBinObservation.from_counts``); flux-only observations use
     ``loss="huber"`` or ``"squared"``.
     ``scale_prior_sigma_dex`` adds a Gaussian prior on log10(scale) around 0
-    (count losses only). ``local_converged`` reports Nelder–Mead termination,
-    not global optimality.
+    (count losses only). ``beam_energy="delta_u"`` centres the beam at
+    -Delta U (active only for Delta U < 0); ``"free"`` fits the centre within
+    ``beam_energy_bounds_eV`` as a seventh parameter, whatever the sign of
+    Delta U. ``local_converged`` reports Nelder–Mead termination, not global
+    optimality.
     """
 
     angular_transport: AngularTransport = "none"
@@ -226,6 +232,8 @@ class FiniteBinFitSettings:
     huber_delta_dex: float = 0.1
     beam_enabled: bool = True
     beam_amplitude_bounds: tuple[float, float] = (0.25, 8.0)
+    beam_energy: BeamEnergy = "delta_u"
+    beam_energy_bounds_eV: tuple[float, float] = (20.0, 200.0)
     mirror_ratio_bounds: tuple[float, float] = (0.001, 1000.0)
     bottom_ratio_bounds: tuple[float, float] = (0.0001, 1.0)
     delta_u_bounds_eV: tuple[float, float] = (-500.0, 1000.0)
@@ -259,12 +267,15 @@ class FiniteBinFitSettings:
             "sigma_bounds_deg",
             "concentration_bounds",
             "beam_amplitude_bounds",
+            "beam_energy_bounds_eV",
         ):
             bounds = getattr(self, name)
             if len(bounds) != 2 or not np.isfinite(bounds).all() or bounds[0] > bounds[1]:
                 raise ValueError(f"invalid {name}")
             if name not in {"delta_u_bounds_eV", "sigma_bounds_deg"} and bounds[0] <= 0:
                 raise ValueError(f"{name} must be positive")
+        if self.beam_energy not in {"delta_u", "free"}:
+            raise ValueError("beam_energy must be delta_u/free")
         if self.scale_prior_sigma_dex is not None and (
             self.loss not in COUNT_LOSSES
             or not np.isfinite(self.scale_prior_sigma_dex)
@@ -290,7 +301,8 @@ class FiniteBinFitSettings:
 
 @dataclass(frozen=True)
 class FiniteBinParameters:
-    """Physical parameters; ``concentration`` is used only by ``beta_binomial``."""
+    """Physical parameters; ``concentration`` is used only by ``beta_binomial``
+    and ``beam_energy_eV`` only with ``beam_energy="free"``."""
 
     mirror_ratio: float
     bottom_ratio: float
@@ -298,6 +310,7 @@ class FiniteBinParameters:
     scale: float = 1.0
     sigma_deg: float = 0.0
     concentration: float = 100.0
+    beam_energy_eV: float = DEFAULT_BEAM_ENERGY_EV
 
     def vector(self) -> list[float]:
         values = (
@@ -307,6 +320,7 @@ class FiniteBinParameters:
             self.scale,
             self.sigma_deg,
             self.concentration,
+            self.beam_energy_eV,
         )
         if (
             not np.isfinite(values).all()
@@ -315,6 +329,7 @@ class FiniteBinParameters:
             or self.scale <= 0
             or not 0 <= self.sigma_deg <= 90
             or self.concentration <= 0
+            or self.beam_energy_eV <= 0
         ):
             raise ValueError("invalid finite-bin physical parameters")
         return [
@@ -324,6 +339,7 @@ class FiniteBinParameters:
             float(np.log10(self.scale)),
             self.sigma_deg,
             float(np.log10(self.concentration)),
+            float(np.log(self.beam_energy_eV)),
         ]
 
 
@@ -333,7 +349,8 @@ class FiniteBinFit:
 
     ``beam_template`` is 0 (none) or 1 + shape, where shape = 2 * (log-energy
     width 0.15/0.30 index) + (pitch width 10/20 deg index); ``beam_amplitude``
-    is its continuous amplitude. ``boundary_rows`` counts energy rows with
+    is its continuous amplitude and ``beam_energy_eV`` its centre (-Delta U
+    when tied, None without a beam). ``boundary_rows`` counts energy rows with
     fitted cells on both sides of the bin-mean boundary.
     ``loss_cone_delta_objective`` compares free per-energy levels without
     (rho = 1) and with the fitted loss cone at the fitted beam; positive values
@@ -349,6 +366,7 @@ class FiniteBinFit:
     root_mean_square_error_dex: float
     beam_template: int
     beam_amplitude: float
+    beam_energy_eV: float | None
     local_converged: bool
     evaluations: int
     field_unconstrained: bool
@@ -467,6 +485,7 @@ class FiniteBinModel:
             offset[self.rows].tolist(),
             settings.beam_enabled,
             list(settings.beam_amplitude_bounds),
+            settings.beam_energy == "free",
             settings.loss,
             settings.huber_delta_dex,
             0.0 if prior is None else prior**-2,
@@ -505,6 +524,9 @@ class FiniteBinModel:
             np.log10(settings.scale_bounds).tolist(),
             list(settings.sigma_bounds_deg) if settings.angular_transport == "out" else [0.0, 0.0],
             concentration,
+            np.log(settings.beam_energy_bounds_eV).tolist()
+            if settings.beam_energy == "free" and settings.beam_enabled
+            else [np.log(DEFAULT_BEAM_ENERGY_EV)] * 2,
         ]
 
     def fit(self, *, starts: Sequence[FiniteBinParameters] = ()) -> FiniteBinFit:
@@ -528,6 +550,13 @@ class FiniteBinModel:
             x, cost, template, amplitude, prediction, converged, calls, barrier, rows
         )
 
+    def _beam_energy(self, template: int, params: FiniteBinParameters) -> float | None:
+        if template == 0:
+            return None
+        if self.settings.beam_energy == "free":
+            return params.beam_energy_eV
+        return -params.delta_u_eV
+
     def _result(
         self,
         x: Sequence[float],
@@ -541,7 +570,7 @@ class FiniteBinModel:
         boundary_rows: int,
     ) -> FiniteBinFit:
         params = FiniteBinParameters(
-            10 ** x[0], 10 ** x[1], x[2] * 500, 10 ** x[3], x[4], 10 ** x[5]
+            10 ** x[0], 10 ** x[1], x[2] * 500, 10 ** x[3], x[4], 10 ** x[5], float(np.exp(x[6]))
         )
         observation, settings = self.observation, self.settings
         fitted: FloatArray = np.full(np.asarray(observation.incident_flux).shape, np.nan)
@@ -557,6 +586,7 @@ class FiniteBinModel:
                     "scale",
                     "sigma_deg",
                     "concentration",
+                    "beam_energy_eV",
                 ),
                 self._bounds(),
                 strict=True,
@@ -596,6 +626,7 @@ class FiniteBinModel:
             root_mean_square_error_dex=float(np.sqrt(np.mean(residual**2))),
             beam_template=template,
             beam_amplitude=amplitude,
+            beam_energy_eV=self._beam_energy(template, params),
             local_converged=converged,
             evaluations=calls,
             field_unconstrained=bool(flags),

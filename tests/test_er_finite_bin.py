@@ -227,9 +227,53 @@ def test_frozen_synthetic_events_match_pilot_predictions_and_beam_selection():
                 assert 0.25 <= result.beam_amplitude <= 8
 
 
+def test_free_beam_centre_recovers_excess_independent_of_delta_u():
+    truth = FiniteBinParameters(2.0, 0.15, 0.0, 0.9)
+    _, energy_edges, pitch_edges = synthetic_counts(1.0, truth=truth)
+    energy = np.sqrt(energy_edges[:-1] * energy_edges[1:])
+    pitch = (pitch_edges[:-1] + pitch_edges[1:]) / 2
+    cone = (
+        10
+        ** FiniteBinModel(
+            FiniteBinObservation(
+                energy_edges,
+                pitch_edges,
+                np.ones((energy.size, pitch.size)),
+                np.zeros((energy.size, pitch.size)),
+                5.0,
+            ),
+            huber(beam_enabled=False),
+        )
+        .evaluate(truth)
+        .fitted_log_ratio_dex
+    )
+    excess = 3.0 * np.outer(
+        np.exp(-(np.log(energy / 50.0) ** 2) / (2 * 0.15**2)), np.exp(-(pitch**2) / 200.0)
+    )
+    counts, _, _ = synthetic_counts(200.0, ratio=cone + excess)
+    obs = FiniteBinObservation.from_counts(
+        counts, energy_edges_eV=energy_edges, pitch_edges_deg=pitch_edges
+    )
+    params = FiniteBinParameters(2.0, 0.15, 0.0, 0.9, concentration=1e4)
+    tied = FiniteBinModel(obs, FiniteBinFitSettings()).evaluate(params)
+    assert tied.beam_template == 0 and tied.beam_energy_eV is None
+    fit = fit_finite_bin_distribution(
+        obs, settings=FiniteBinFitSettings(beam_energy="free", generations=60, seeds=1)
+    )
+    assert fit.beam_template > 0
+    assert fit.beam_energy_eV == pytest.approx(50.0, rel=0.2)
+    assert np.log10(fit.parameters.mirror_ratio / 2.0) == pytest.approx(0, abs=0.03)
+    # The tied model reports its centre at -Delta U.
+    negative = FiniteBinModel(obs, FiniteBinFitSettings()).evaluate(replace(params, delta_u_eV=-50))
+    assert negative.beam_template > 0 and negative.beam_energy_eV == 50
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
+        {"beam_energy": "both"},
+        {"beam_energy_bounds_eV": (100, 50)},
+        {"beam_energy_bounds_eV": (0, 100)},
         {"angular_transport": "both"},
         {"loss": "invalid"},
         {"mirror_ratio_bounds": (-1, 1)},

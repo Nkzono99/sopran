@@ -150,6 +150,7 @@ FIT_COLUMNS: tuple[tuple[str, Any, str | None, str], ...] = (
     ("concentration", pl.Float64, None, "beta-binomial concentration"),
     ("beam_template", pl.Int64, None, "0 none, 1-4 beam shape"),
     ("beam_amplitude", pl.Float64, None, "continuous beam amplitude"),
+    ("beam_energy_eV", pl.Float64, "eV", "beam centre energy"),
     ("objective_sum", pl.Float64, None, "deviance (count losses)"),
     ("objective_mean", pl.Float64, None, "deviance per fitted cell"),
     ("rmse_dex", pl.Float64, "dex", "RMSE of log10 affected/reference"),
@@ -191,6 +192,7 @@ class RunConfig:
     round_counts: bool = True
     min_cells: int = 12
     min_energy_rows: int = 4
+    min_fit_energy_eV: float | None = None
     profile_points: int = 13
     profile_half_width_dex: float = 1.0
 
@@ -743,6 +745,10 @@ def _fit_payload(payload: dict) -> dict:
         return np.asarray(payload[name], dtype=dtype).reshape(shape)
 
     fit_valid = array("fit_valid", bool)
+    energy = np.asarray(payload["energy_eV"], dtype=float)
+    if config.get("min_fit_energy_eV"):
+        # Rows below the threshold (e.g. the ~45 eV outgoing excess) leave the fit.
+        fit_valid &= (energy >= config["min_fit_energy_eV"])[:, None]
     affected, reference = array("affected_counts"), array("reference_counts")
     if config["round_counts"]:
         # Catalog counts were redistributed across bins; round to count-equivalents.
@@ -759,7 +765,6 @@ def _fit_payload(payload: dict) -> dict:
     if bsc is None or not np.isfinite(bsc) or bsc <= 0:
         row.update(status="insufficient_support", reason="spacecraft_field")
         return row
-    energy = np.asarray(payload["energy_eV"], dtype=float)
     counts = ElectronReflectionCounts(energy, pitch, affected, reference, bsc, xa, xr)
     try:
         observation = FiniteBinObservation.from_counts(
@@ -824,6 +829,7 @@ def _fit_payload(payload: dict) -> dict:
         concentration=p.concentration,
         beam_template=best.beam_template,
         beam_amplitude=best.beam_amplitude,
+        beam_energy_eV=best.beam_energy_eV,
         objective_sum=best.objective_sum,
         objective_mean=best.objective_mean,
         rmse_dex=best.root_mean_square_error_dex,
@@ -1221,6 +1227,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="override a FiniteBinFitSettings field, e.g. generations=80",
     )
     p.add_argument("--profile-points", type=int, default=13)
+    p.add_argument(
+        "--min-fit-energy", type=float, help="drop energy rows below this from the fit [eV]"
+    )
 
     p = sub.add_parser("run", help="fit days of a prepared run (resumable)")
     p.add_argument("--run-variant", required=True)
@@ -1265,6 +1274,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             run_variant=args.run_variant,
             fit_settings=overrides,
             profile_points=args.profile_points,
+            min_fit_energy_eV=args.min_fit_energy,
         )
         root = prepare_run(store, config, groups=args.groups, days=args.days)
         print(root / "run.json")

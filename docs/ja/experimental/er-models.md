@@ -44,8 +44,14 @@ $$
 
 **ビーム**は既定で有効で、`beam_enabled=False`で無効にできます。形はエネルギーの対数幅0.15・0.30と
 ピッチ角幅10・20度を組み合わせた4つです。振幅は`beam_amplitude_bounds`（既定0.25〜8）の範囲で、
-評価のたびに形ごとの1次元の黄金分割探索で連続的に決めます。結果の`beam_template`は、0がビーム無し、
-それ以外が`1 + 2*energy_index + pitch_index`で、振幅は`beam_amplitude`です。
+評価のたびに形ごとの1次元の黄金分割探索で連続的に決めます。
+中心エネルギーは既定（`beam_energy="delta_u"`）で$-\Delta U$に置き、$\Delta U < 0$のときだけ有効です。
+負に帯電した月面で加速された二次電子のビームを想定した、Halekas et al. (2008, 2011)の扱いです。
+`beam_energy="free"`では、中心を`beam_energy_bounds_eV`（既定20〜200 eV）の範囲で7番目のパラメーター
+（`FiniteBinParameters.beam_energy_eV`、開始値45 eV）として当てはめ、$\Delta U$の符号によらず有効にします。
+$\Delta U$と無関係な低エネルギーの超過に、偽の負の$\Delta U$を作らせないためです。
+結果の`beam_template`は、0がビーム無し、それ以外が`1 + 2*energy_index + pitch_index`で、
+振幅は`beam_amplitude`、中心は`beam_energy_eV`（`delta_u`では$-\Delta U$）です。
 
 **既知の効率比**は、観測の`model_offset_dex`（affected/referenceの効率比のlog10）としてモデルの比に加えます。
 `scale_prior_sigma_dex`は$\log_{10}s$に中心0のガウス事前分布を置きます（カウント損失のみ）。

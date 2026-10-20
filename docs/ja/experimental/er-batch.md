@@ -128,6 +128,7 @@ er_batch.write_input_days(spn.Store(), "<build>", {"2008-02-10": rows})
 ## 実行を固定して走らせる
 
 `prepare`は、`FiniteBinFitSettings()`の既定に`--fit-setting`の上書きを加えた設定と、入力カタログのチェックサムを`run.json`に記録します。
+`--min-fit-energy E`は、中心エネルギーがE eV未満の行を当てはめのセルから外し、`config.min_fit_energy_eV`に記録します。
 当てはめのコードとRust拡張のsha256、Python・numpy・scipy・polarsの版も記録します。
 `run`は起動時にこれらを今の環境と比べ、違えば止まります。設定を変えるときは別の実行名で`prepare`し直します。
 

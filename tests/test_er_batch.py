@@ -181,6 +181,24 @@ def test_resume_keeps_saved_parts_and_stop_halts(tmp_path, catalog):
     assert not (root / "work/2008-01-01").exists()
 
 
+def test_min_fit_energy_drops_low_rows_and_records_beam_energy(tmp_path, catalog):
+    store, root = _prepared(tmp_path, catalog)
+    source = pl.read_parquet(
+        er_batch.input_root(store, "test-input") / "shards/day=2008-01-01.parquet"
+    ).filter(pl.col("has_distribution")).row(0, named=True)
+    run = json.loads((root / "run.json").read_text())
+    er_batch._init_worker(run, False)
+    full = er_batch.fit_payload(source)
+    run["config"]["min_fit_energy_eV"] = 100.0
+    run["config"]["fit_settings"] = dict(FAST, beam_enabled=True, beam_energy="free")
+    er_batch._init_worker(run, False)
+    high = er_batch.fit_payload(source)
+    energy = np.asarray(source["energy_eV"])
+    assert high["energy_rows"] == full["energy_rows"] - int((energy < 100).sum())
+    assert high["status"] == "fitted"
+    assert (high["beam_template"] == 0) == (high["beam_energy_eV"] is None)
+
+
 def test_changed_code_identity_or_settings_are_refused(tmp_path, catalog):
     store, root = _prepared(tmp_path, catalog)
     run = json.loads((root / "run.json").read_text())

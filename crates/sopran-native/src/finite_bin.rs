@@ -2,12 +2,13 @@
 //! Port of the validated angle-transport pilot; all search iterations stay in Rust.
 //!
 //! The parameter vector is `[log10 Rm, log10 rho, Delta U / 500 eV, log10 scale,
-//! sigma_deg, log10 concentration]`. Concentration is used only by the
-//! beta-binomial count likelihood; other losses keep it fixed.
+//! sigma_deg, log10 concentration, ln beam centre eV]`. Concentration is used
+//! only by the beta-binomial count likelihood and the beam centre only when it
+//! is free; otherwise both stay fixed.
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-const NP: usize = 6;
+const NP: usize = 7;
 type Vector = [f64; NP];
 const BEAM_SHAPES: usize = 4;
 const AMPLITUDE_STEPS: usize = 12;
@@ -47,6 +48,8 @@ struct Config {
     subdivisions: usize,
     beam_enabled: bool,
     beam_log_amplitude: [f64; 2],
+    /// Beam centre from x[6] at any Delta U; otherwise at -Delta U for Delta U < 0.
+    beam_free: bool,
     loss: Loss,
     scale_prior_inv_var: f64,
 }
@@ -376,7 +379,7 @@ impl Config {
         let du = x[2] * 500.;
         let scale = 10_f64.powf(x[3]);
         let q = self.projection(x[4]);
-        let beam_active = self.beam_enabled && du < 0.;
+        let beam_active = self.beam_enabled && (self.beam_free || du < 0.);
         let mut probability = vec![0.; n];
         let mut reflected = vec![0.; p];
         let mut beam = vec![vec![0.; p]; 2];
@@ -406,7 +409,7 @@ impl Config {
             }
             let mut spectral = [0.; 2];
             if beam_active {
-                let center = (-du).ln();
+                let center = if self.beam_free { x[6] } else { (-du).ln() };
                 for (index, width) in [0.15, 0.30].iter().enumerate() {
                     let lo = event.low[row]
                         .ln()
@@ -861,6 +864,7 @@ impl FiniteBinProblem {
         offset: Vec<Vec<f64>>,
         beam_enabled: bool,
         beam_amplitude_bounds: [f64; 2],
+        beam_free: bool,
         loss: &str,
         huber_delta: f64,
         scale_prior_inv_var: f64,
@@ -989,6 +993,7 @@ impl FiniteBinProblem {
                 subdivisions,
                 beam_enabled,
                 beam_log_amplitude: beam_amplitude_bounds.map(f64::log10),
+                beam_free,
                 loss,
                 scale_prior_inv_var,
             },
@@ -1144,6 +1149,7 @@ mod tests {
             subdivisions: 2,
             beam_enabled: true,
             beam_log_amplitude: [0.25_f64.log10(), 8_f64.log10()],
+            beam_free: false,
             loss: Loss::Huber(0.1),
             scale_prior_inv_var: 0.,
         }
@@ -1232,6 +1238,33 @@ mod tests {
     }
 
     #[test]
+    fn free_centre_at_minus_delta_u_matches_tied_beam_and_ignores_its_sign() {
+        let mut tied = response();
+        tied.angular_beams = vec![vec![1., 0.8, 0.2, 0.], vec![1., 0.9, 0.6, 0.2]];
+        let mut e = event(5., 10.);
+        e.observed = vec![vec![0.4, 0.1]];
+        let x = [0.3, -1., -140. / 500., 0., 0., 2., 140_f64.ln()];
+        let mut free = response();
+        free.angular_beams = tied.angular_beams.clone();
+        free.beam_free = true;
+        let a = tied.evaluate(&e, x, true, f64::INFINITY);
+        let b = free.evaluate(&e, x, true, f64::INFINITY);
+        assert!(a.template > 0);
+        assert_eq!(
+            (a.cost, a.template, a.amplitude),
+            (b.cost, b.template, b.amplitude)
+        );
+        assert_eq!(a.prediction, b.prediction);
+        // A free centre keeps the beam available when Delta U >= 0.
+        let positive = [0.3, -1., 10. / 500., 0., 0., 2., 140_f64.ln()];
+        assert_eq!(
+            tied.evaluate(&e, positive, false, f64::INFINITY).template,
+            0
+        );
+        assert!(free.evaluate(&e, positive, false, f64::INFINITY).template > 0);
+    }
+
+    #[test]
     fn simd_projection_retains_scalar_summation_order() {
         let c = response();
         for sigma in [0.0001, 0.5, 12., 90.] {
@@ -1266,7 +1299,10 @@ mod tests {
 
     #[test]
     fn bounded_search_recovers_interior_and_boundary() {
-        for target in [[0.3, -1.2, 0.4, 0., 12., 2.], [-3., 0., 2., 0., 0., 2.]] {
+        for target in [
+            [0.3, -1.2, 0.4, 0., 12., 2., 4.],
+            [-3., 0., 2., 0., 0., 2., 3.],
+        ] {
             let bounds = [
                 [-3., 3.],
                 [-4., 0.],
@@ -1274,9 +1310,11 @@ mod tests {
                 [0., 0.],
                 [0., 90.],
                 [2., 2.],
+                [3., 5.],
             ];
             let mut score = |x: Vector| (0..NP).map(|j| (x[j] - target[j]).powi(2)).sum();
-            let (cost, _, converged) = local([1., -0.3, 0.1, 0., 20., 2.], &bounds, &mut score);
+            let (cost, _, converged) =
+                local([1., -0.3, 0.1, 0., 20., 2., 3.5], &bounds, &mut score);
             assert!(converged && cost < 1e-9, "{cost}");
         }
     }

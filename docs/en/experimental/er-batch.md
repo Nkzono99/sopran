@@ -129,6 +129,7 @@ The parts follow these rules.
 ## Freezing and running
 
 `prepare` records in `run.json` the settings (defaults of `FiniteBinFitSettings()` plus `--fit-setting` overrides) and the input catalog checksum.
+`--min-fit-energy E` removes rows whose centre energy is below E eV from the fitted cells and records it as `config.min_fit_energy_eV`.
 It also records the sha256 of the fitting code and the Rust extension, and the versions of Python, numpy, scipy, and polars.
 `run` compares these with the current environment at startup and stops on any difference. To change settings, `prepare` a new run name.
 
