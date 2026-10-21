@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 import urllib.request
 from pathlib import Path
@@ -125,7 +126,12 @@ def download_surface_source(
             f"{source_info.filename}. {source_info.manual_note or ''}".strip()
         )
     if not target_path.exists() or overwrite:
-        _download_file(source_info.url, target_path, overwrite=overwrite)
+        _download_file(
+            source_info.url,
+            target_path,
+            overwrite=overwrite,
+            sha256=source_info.sha256,
+        )
     register_surface_download(resolved_store, target_path, source_info)
     return target_path
 
@@ -144,7 +150,13 @@ def register_surface_download(store: Store, path: Path, source: SurfaceSource) -
         return
 
 
-def _download_file(url: str, target: Path, *, overwrite: bool = False) -> None:
+def _download_file(
+    url: str,
+    target: Path,
+    *,
+    overwrite: bool = False,
+    sha256: str | None = None,
+) -> None:
     if target.exists() and not overwrite:
         return
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -152,10 +164,28 @@ def _download_file(url: str, target: Path, *, overwrite: bool = False) -> None:
     try:
         with urllib.request.urlopen(url) as response, temp.open("wb") as output:
             shutil.copyfileobj(response, output)
+        if sha256 is not None:
+            actual = _file_sha256(temp)
+            if actual != sha256.lower():
+                from sopran.core.errors import DownloadError
+
+                raise DownloadError(
+                    f"Downloaded file does not match the registered SHA-256 for {target.name}: "
+                    f"expected {sha256}, got {actual}. The distributor may have replaced the "
+                    "file; the existing Store file was left unchanged."
+                )
         temp.replace(target)
     except Exception:
         temp.unlink(missing_ok=True)
         raise
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def temporary_download_path(target: Path) -> Path:

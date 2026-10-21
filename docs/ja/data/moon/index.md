@@ -73,15 +73,35 @@ Storeは`store=`で指定でき、省略時は`spn.moon`ならセッションの
 
 ## 表面磁場（SVM）
 
-Tsunakawa SVM（`LunarSVM_000_02_v02.dat`）は、安定した直接ダウンロードのURLを確認できていません。
-手で入手して`path=`に渡すか、Storeの`raw/moon/svm/`に置いてください。元の公開先は
-`http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG`です。
+Tsunakawa SVM（`LunarSVM_000_02_v02.dat`、ver. 2）は、KAGUYAとLunar Prospectorの低高度磁場から求めた月面の磁気異常の
+3成分です（[Tsunakawa et al. 2015](https://doi.org/10.1002/2014JE004785)、ver. 2は[Tsunakawa et al. 2023](https://doi.org/10.20637/00049167)）。
+`moon.svm.download()`は、LMAGチームが2023年の論文の付録として公開しているGoogle Driveのファイルを取得し、
+登録したSHA-256と一致したときだけStoreの`raw/moon/svm/`に置きます。`load()`は既定の取得方針（`missing`）なら、
+ファイルが無いときに自動で取得します。
 
 ```python
+path = moon.svm.download()                      # 約165 MB、Storeへ
+svm = moon.svm.load()                           # Storeから読む。無ければ取得する
 svm = moon.svm.load(path="/path/to/LunarSVM_000_02_v02.dat")
-svm = moon.svm.load(download="never")          # Storeの raw/moon/svm/ から読む
 svm.sample(lat=-0.5, lon=0.0)
 ```
+
+配布元のフォルダ（[globalSVM_v02_2022](https://drive.google.com/drive/folders/108u0-lGucZ5yXKA-rVksGPGR8sj0SF8U)）には、
+格子のほかに次のファイルがあります。SOPRANはこれらを自動取得しないため、必要ならブラウザで取得してください。
+
+| ファイル | 内容 |
+|---|---|
+| `LunarSVM_SHC_v02.dat` | 球面調和係数$g_n^m, h_n^m$（$n\le450$、$R=1737.4$ km）。約4 MB で、格子と任意高度の磁場を再計算できる |
+| `Bcal_v02.f90` | 表面のBrから月面上空の磁場を計算する公式のFortranプログラム |
+| `Positions.dat`、`B_Positions_v02.rst` | `Bcal_v02.f90`の入力例と出力例。SVM3Dの照合に使う |
+| `Readme_v02.txt` | ver. 2のデータ選別と解析手順の概要 |
+
+ver. 1（2015年）は同じ付録の[globalSVM_v01_2015](https://drive.google.com/drive/folders/1eCsFu5h3ZsZ2b0sadX6uQLfOHGHb6_Zz)にあり、
+解析に使った観測期間の一覧（`Periods_KGused.dat`、`Periods_LPused.dat`）も含みます。
+元の公開先`http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG`は2026年10月時点で接続できません。
+
+配布元はライセンスを明示していません。SOPRANはファイルを同梱・再配布せず、配布元へのリンクと取得の手続きだけを提供します。
+使用するときはTsunakawa et al. (2015, 2023)を引用してください。
 
 Ravat et al. (2020)のモデル（`moon.svm_ravat2020`）は、Lunar ProspectorとKAGUYAの磁場の軌道方向の勾配から求めた表面磁場です。
 月の楕円体面（赤道半径1738.1 km、極半径1736.0 km）上の0.1度格子で、成分を`component=`で選びます。

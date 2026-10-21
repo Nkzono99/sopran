@@ -441,7 +441,7 @@ def test_moon_dem_download_registers_raw_file(tmp_path, monkeypatch) -> None:
     store = spn.Store(tmp_path / "store")
     calls = []
 
-    def fake_download_file(url, target, *, overwrite=False):
+    def fake_download_file(url, target, *, overwrite=False, sha256=None):
         calls.append((url, target, overwrite))
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"downloaded")
@@ -524,18 +524,50 @@ def test_moon_download_file_overwrite_failure_preserves_existing_file(
     assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
 
 
-def test_moon_svm_download_requires_manual_acquisition(tmp_path) -> None:
+def test_moon_svm_download_verifies_the_registered_checksum(tmp_path, monkeypatch) -> None:
+    import dataclasses
+    import hashlib
+    import io
+
+    import sopran.bodies.moon.loaders as moon_loaders
+    from sopran.bodies.moon.sources import surface_source_info
+
+    payload = b"0.000 -89.900 1.740 -3.189 -3.328 4.927\n"
+    calls: list[str] = []
+
+    def fake_urlopen(url):
+        calls.append(url)
+        return io.BytesIO(payload)
+
+    monkeypatch.setattr(moon_loaders.urllib.request, "urlopen", fake_urlopen)
+    info = surface_source_info("kaguya.lmag.svm_tsunakawa2015")
     store = spn.Store(tmp_path / "store")
     moon = spn.Moon()
 
-    with pytest.raises(DownloadError, match="LunarSVM_000_02_v02.dat"):
+    with pytest.raises(DownloadError, match="SHA-256"):
         moon.svm.download(store=store)
+    target = store.raw_path("moon", "svm", "LunarSVM_000_02_v02.dat")
+    assert not target.exists()
+    assert list(target.parent.glob("*.tmp")) == []
 
-    guide = moon.svm.acquisition_guide().to_markdown()
+    patched = dataclasses.replace(info, sha256=hashlib.sha256(payload).hexdigest())
+    monkeypatch.setattr(moon.svm, "source_info", lambda source=None: patched)
+    path = moon.svm.download(store=store)
+
+    assert path == target and path.read_bytes() == payload
+    assert calls[0] == info.url
+    assert calls[0].startswith("https://drive.usercontent.google.com/download?id=")
+
+
+def test_moon_svm_acquisition_guide_links_the_distributor_and_license() -> None:
+    guide = spn.Moon().svm.acquisition_guide().to_markdown()
 
     assert "LunarSVM_000_02_v02.dat" in guide
     assert "Tsunakawa" in guide
     assert "http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG" in guide
+    assert "drive.google.com/drive/folders/108u0-lGucZ5yXKA-rVksGPGR8sj0SF8U" in guide
+    assert "577b248d37b73876815e13a1d531a500bdb81ae4389fc4f87c5991be960cc2de" in guide
+    assert "does not redistribute" in guide
     assert "web.archive.org" not in guide
 
 
@@ -930,7 +962,7 @@ def test_moon_load_follows_the_view_store_and_download_policy(tmp_path, monkeypa
     project = spn.Project(tmp_path / "project", store=store)
     calls = []
 
-    def fake_download_file(url, target, *, overwrite=False):
+    def fake_download_file(url, target, *, overwrite=False, sha256=None):
         calls.append(url)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(b"downloaded")

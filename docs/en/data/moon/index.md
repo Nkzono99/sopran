@@ -73,15 +73,36 @@ Regions crossing 0/360 cannot be split into windows yet, so the whole file is re
 
 ## Surface magnetic field (SVM)
 
-No stable direct download URL has been confirmed for the Tsunakawa SVM (`LunarSVM_000_02_v02.dat`).
-Obtain it manually and pass `path=`, or place it in the Store's `raw/moon/svm/`. The original location is
-`http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG`.
+The Tsunakawa SVM (`LunarSVM_000_02_v02.dat`, ver. 2) gives the three surface components of the lunar magnetic anomalies
+derived from low-altitude Kaguya and Lunar Prospector magnetometer data
+([Tsunakawa et al. 2015](https://doi.org/10.1002/2014JE004785); ver. 2 in [Tsunakawa et al. 2023](https://doi.org/10.20637/00049167)).
+`moon.svm.download()` fetches the file that the LMAG team distributes on Google Drive as a supplement of the 2023 paper and
+places it in the Store's `raw/moon/svm/` only when it matches the registered SHA-256. With the default download policy
+(`missing`), `load()` fetches it when the file is absent.
 
 ```python
+path = moon.svm.download()                      # about 165 MB, into the Store
+svm = moon.svm.load()                           # read from the Store, fetching it if absent
 svm = moon.svm.load(path="/path/to/LunarSVM_000_02_v02.dat")
-svm = moon.svm.load(download="never")          # read from the Store's raw/moon/svm/
 svm.sample(lat=-0.5, lon=0.0)
 ```
+
+The distributor's folder ([globalSVM_v02_2022](https://drive.google.com/drive/folders/108u0-lGucZ5yXKA-rVksGPGR8sj0SF8U))
+also holds the files below. SOPRAN does not fetch them automatically; download them in a browser when you need them.
+
+| File | Contents |
+|---|---|
+| `LunarSVM_SHC_v02.dat` | Spherical harmonic coefficients $g_n^m, h_n^m$ ($n\le450$, $R=1737.4$ km). About 4 MB; regenerates the grid and the field at any altitude |
+| `Bcal_v02.f90` | The official Fortran program that computes the field above the surface from the surface Br |
+| `Positions.dat`, `B_Positions_v02.rst` | Example input and output of `Bcal_v02.f90`, used to validate SVM3D |
+| `Readme_v02.txt` | Outline of the ver. 2 data selection and processing |
+
+Ver. 1 (2015) is in [globalSVM_v01_2015](https://drive.google.com/drive/folders/1eCsFu5h3ZsZ2b0sadX6uQLfOHGHb6_Zz) of the same
+supplement, together with the lists of observation periods used (`Periods_KGused.dat`, `Periods_LPused.dat`).
+The original location `http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG` was unreachable as of October 2026.
+
+The distributor states no license. SOPRAN neither bundles nor redistributes the files; it only links to the distributor and
+provides the download procedure. Cite Tsunakawa et al. (2015, 2023) when you use the map.
 
 The Ravat et al. (2020) model (`moon.svm_ravat2020`) is a surface field derived from along-track magnetic field gradients
 of Lunar Prospector and KAGUYA. It is given on a 0.1-degree grid on the lunar ellipsoid (equatorial radius 1738.1 km,

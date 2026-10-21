@@ -33,6 +33,8 @@ class SurfaceSource:
     scale: float | None = None
     offset: float | None = None
     manual_note: str | None = None
+    sha256: str | None = None
+    license_note: str | None = None
 
     def to_metadata(self) -> dict[str, Any]:
         return {
@@ -49,6 +51,8 @@ class SurfaceSource:
             "scale": self.scale,
             "offset": self.offset,
             "manual_note": self.manual_note,
+            "sha256": self.sha256,
+            "license_note": self.license_note,
         }
 
 

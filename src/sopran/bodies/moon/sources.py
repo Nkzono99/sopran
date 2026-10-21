@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from .models import SurfaceSource
 
+#: Google Drive folder of the Tsunakawa et al. (2023) supplement that holds the ver. 2 bundle.
+TSUNAKAWA_SVM_V02_FOLDER = (
+    "https://drive.google.com/drive/folders/108u0-lGucZ5yXKA-rVksGPGR8sj0SF8U"
+)
+
 SURFACE_SOURCES = {
     "dem": (
         "lro.lola.dem_118m",
@@ -59,16 +64,30 @@ SURFACE_SOURCE_INFO = {
         product="svm",
         provider="kaguya_lmag_tsunakawa",
         filename="LunarSVM_000_02_v02.dat",
-        description="Tsunakawa et al. lunar magnetic anomaly surface vector map.",
-        landing_page=(
-            "https://stereo-ssc.nascom.nasa.gov/instruments/software/impact/"
-            "TDAS/socware/spedas_5_0/idl/projects/kaguya/map/lmag_spd_doc_list.html"
+        description=(
+            "Tsunakawa et al. lunar magnetic anomaly surface vector map, ver. 2 "
+            "(Tsunakawa et al. 2023, revised from Tsunakawa et al. 2015): Be, Bn, Br, Bt "
+            "and their standard errors on a 0.2 degree grid at R = 1737.4 km."
         ),
+        url=(
+            "https://drive.usercontent.google.com/download"
+            "?id=1cWK1JlLpYeXUd6TI6drRXaq_QNf1H0n1&export=download&confirm=t"
+        ),
+        landing_page=TSUNAKAWA_SVM_V02_FOLDER,
         original_url="http://www.geo.titech.ac.jp/lab/tsunakawa/Kaguya_LMAG",
-        version="2015",
+        size="165 MB",
+        version="v02 (2023)",
+        sha256="577b248d37b73876815e13a1d531a500bdb81ae4389fc4f87c5991be960cc2de",
         manual_note=(
-            "A stable public direct download URL is not registered in SOPRAN. "
-            "Place the file under the store raw/moon/svm directory or pass path= explicitly."
+            "The original Tokyo Tech site is offline. SOPRAN downloads the copy that the "
+            "LMAG team distributes as a supplement of Tsunakawa et al. (2023), "
+            "doi:10.20637/00049167. The same folder holds the spherical harmonic "
+            "coefficients (LunarSVM_SHC_v02.dat) and the Fortran forward code."
+        ),
+        license_note=(
+            "No license is stated by the distributor. SOPRAN links to and downloads the "
+            "author-distributed file and does not redistribute it; cite Tsunakawa et al. "
+            "(2015, 2023) when you use it."
         ),
     ),
     "ravat2020.l1": SurfaceSource(

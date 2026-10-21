@@ -311,6 +311,15 @@ def example_page(title: str, markdown: str) -> GuidePage:
     )
 
 
+def _optional_notes(source: SurfaceSource) -> str:
+    lines = []
+    if source.manual_note:
+        lines.append(f"- note: {source.manual_note}")
+    if source.license_note:
+        lines.append(f"- license: {source.license_note}")
+    return "".join(line + "\n" for line in lines)
+
+
 def acquisition_markdowns(source: SurfaceSource) -> dict[str, str]:
     if source.url is not None:
         return {
@@ -331,7 +340,8 @@ layer = moon.{source.product}.load(path=path, source="{source.source_id}")
 - landing page: {source.landing_page or "none"}
 - original URL: {source.original_url or "none"}
 - direct URL: {source.url}
-""",
+- SHA-256: {source.sha256 or "not registered"}
+{_optional_notes(source)}""",
             "en": f"""# Acquire {source.source_id}
 
 SOPRAN can download this source directly.
@@ -349,7 +359,8 @@ layer = moon.{source.product}.load(path=path, source="{source.source_id}")
 - landing page: {source.landing_page or "none"}
 - original URL: {source.original_url or "none"}
 - direct URL: {source.url}
-""",
+- SHA-256: {source.sha256 or "not registered"}
+{_optional_notes(source)}""",
         }
     return {
         "ja": f"""# {source.source_id} の手動取得
